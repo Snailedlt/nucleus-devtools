@@ -323,6 +323,16 @@ for (const theme of ['light', 'dark']) {
         await hubRow.click();
         await p.waitForTimeout(300);
         check(/not downloaded here/.test(await p.$eval('#file-card', (e) => e.textContent)), `${theme}: a big file of the Hub package shows where to get it`);
+        // Before saving, Share and the Save menu say the .zip leaves the big files out, with the Hub link.
+        await p.click('#share-open');
+        await p.waitForTimeout(300);
+        const note = await p.evaluate(() => ({ shown: !document.getElementById('code-hub-note').hidden, href: document.querySelector('#code-hub-note a').href, sub: document.getElementById('code-file-sub').textContent }));
+        await p.click('#code-close');
+        check(note.shown && /hub\.splitscreen\.me/.test(note.href) && /only on the Hub/.test(note.sub), `${theme}: Share says which Hub files the .zip leaves out (${note.sub})`);
+        await p.click('#save-more');
+        await p.waitForTimeout(200);
+        check(/only on the Hub/.test(await p.evaluate(() => document.querySelector('[role=menu]')?.textContent ?? '')), `${theme}: the Save menu says it too`);
+        await p.keyboard.press('Escape');
       }
       await axe(p, `${theme}, Files panel with a Hub package`);
       // Over the code the hint covers the page; over the open Files panel, the panel says it adds the file instead.

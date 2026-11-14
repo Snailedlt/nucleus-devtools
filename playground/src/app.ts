@@ -9,7 +9,7 @@ import { applyTheme, initDevBar } from './devbar';
 import { applyCodeTheme, applyCustomTheme } from './customtheme';
 import { watchPictures } from './themed';
 import { announce, clearNotice, confirmOn, initToasts, notice, toast as showToast, type ToastOptions } from './toast';
-import { decodeShare, DISCORD_LIMIT, encodeShare, isNamedLink, shareAdvice, shareFileMessage } from './share';
+import { decodeShare, DISCORD_LIMIT, encodeShare, isNamedLink, missingFilesText, shareAdvice, shareFileMessage } from './share';
 import CodeMirror from 'codemirror';
 import 'codemirror/mode/javascript/javascript';
 import 'codemirror/addon/lint/lint';
@@ -2901,8 +2901,17 @@ function openCodeDialog() {
   // Unchanged (code and package files): the link is the handler's own; a name link (#hub-…) is short and opens its files too.
   const unchanged = !!doc.hash && editor.getValue() === loadedText && !doc.filesEdited && !selection;
   const named = unchanged && isNamedLink(doc.hash);
+  // The Hub package's big files: said before saving, with where to get them (after saving, noteRemoteFiles says it again).
+  const remote = packageFiles.filter((f) => f.remote);
+  const hubNote = $('#code-hub-note');
+  hubNote.hidden = !remote.length;
+  if (remote.length) {
+    // The option above already says how many: this line is the way to get them.
+    (hubNote.querySelector('a') as HTMLAnchorElement).textContent = `Get the ${remote.length === 1 ? 'big file' : `${remote.length} big files`} from the Hub page`;
+    (hubNote.querySelector('a') as HTMLAnchorElement).href = remote[0].remote!.url;
+  }
   const advise = (linkLength: number | null) => {
-    const a = shareAdvice({ selection, files: packageFiles.length, linkLength, named });
+    const a = shareAdvice({ selection, files: packageFiles.length, linkLength, named, missing: remote.length });
     $('#code-link-sub').textContent = a.linkSub;
     $('#code-file-sub').textContent = a.fileSub;
     codeDialog.querySelector('[data-code=link]')!.className = a.fileFirst ? 'code-opt' : 'code-hero';
@@ -3016,6 +3025,8 @@ async function saveToNucleus(pick = false, trigger: HTMLElement = saveButton()) 
 }
 const saveItems = (): MenuItem[] => [
   { label: 'Save as', kind: 'heading' },
+  // A Hub package's big files aren't here to save: said before saving, with the way to get them.
+  ...((r) => (r.length ? [{ label: `${missingFilesText(r.length)} Open the Hub page`, run: () => void window.open(r[0].remote!.url, '_blank', 'noopener') }] : []))(packageFiles.filter((f) => f.remote)),
   ...(['zip', 'js', 'nc'] as SaveKind[]).map((k) => ({ label: SAVE_LABEL[k], checked: saveKind() === k, run: () => void saveAs(k) })),
   { label: '', kind: 'separator' as const },
   { label: nucleusFolderName ? `Into Nucleus Co-op (${nucleusFolderName})` : 'Into Nucleus Co-op…', run: () => void saveToNucleus() },

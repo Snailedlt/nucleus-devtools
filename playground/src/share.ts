@@ -43,9 +43,22 @@ export interface ShareAdvice {
  * or e-mail carry it. With lines selected, the link is for those lines and stays first; an unchanged example or
  * Hub handler is linked by name, which opens all of it.
  */
-export function shareAdvice(o: { selection: boolean; files: number; linkLength: number | null; /** an unchanged example or Hub handler: its link is its name, and opens it whole */ named?: boolean }): ShareAdvice {
+export function shareAdvice(o: {
+  selection: boolean;
+  files: number;
+  linkLength: number | null;
+  /** an unchanged example or Hub handler: its link is its name, and opens it whole */
+  named?: boolean;
+  /** Files of a Hub package too big for the workbench's copy of the Hub: listed, but not in a .zip saved here. */
+  missing?: number;
+}): ShareAdvice {
   const n = o.files;
-  const fileSub = n ? `The .zip with the code and its ${n} file${n === 1 ? '' : 's'}, and a message to post with it` : 'The .zip, and a message to post with it';
+  const m = Math.min(o.missing ?? 0, n);
+  const fileSub = m
+    ? `The .zip with the code${n > m ? ` and ${n - m} of its ${n} files` : ''}, and a message to post with it. ${missingFilesText(m)}`
+    : n
+      ? `The .zip with the code and its ${n} file${n === 1 ? '' : 's'}, and a message to post with it`
+      : 'The .zip, and a message to post with it';
   if (o.selection) return { fileFirst: false, linkSub: 'Opens just the selected lines for anyone', fileSub };
   if (o.named) return { fileFirst: false, linkSub: n ? `A short link: opens it for anyone, with its ${n} file${n === 1 ? '' : 's'}` : 'A short link: opens it for anyone', fileSub };
   const tooLong = o.linkLength !== null && o.linkLength > DISCORD_LIMIT;
@@ -56,6 +69,10 @@ export function shareAdvice(o: { selection: boolean; files: number; linkLength: 
       : 'Opens this handler for anyone, or just the selected lines';
   return { fileFirst: n > 0 || tooLong, linkSub, fileSub };
 }
+
+/** What a saved package leaves out: the Hub package's big files, which the workbench has by name only. */
+export const missingFilesText = (m: number): string =>
+  `${m === 1 ? '1 big file is' : `${m} big files are`} only on the Hub, so ${m === 1 ? "it isn't" : "they aren't"} included.`;
 
 /** A link by name (#hub-…, #package-…, #example-…): short, and opens the original. A #share-… link carries the code itself. */
 export const isNamedLink = (hash: string | undefined): boolean => !!hash && !hash.startsWith(SHARE_PREFIX);

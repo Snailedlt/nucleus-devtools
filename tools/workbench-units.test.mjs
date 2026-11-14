@@ -232,6 +232,13 @@ test('Share: the link leads while it carries everything and fits Discord, else t
   assert.match(shareFileMessage({ game: '', filename: 'x.zip', site: 's' }), /^Nucleus Co-op handler: x\.zip/);
 });
 
+test('share: the file option says which Hub files the .zip leaves out', async () => {
+  const { shareAdvice } = await load('playground/src/share.ts');
+  assert.equal(shareAdvice({ selection: false, files: 2, linkLength: 100, missing: 2 }).fileSub, "The .zip with the code, and a message to post with it. 2 big files are only on the Hub, so they aren't included.");
+  assert.equal(shareAdvice({ selection: false, files: 3, linkLength: 100, missing: 1 }).fileSub, "The .zip with the code and 2 of its 3 files, and a message to post with it. 1 big file is only on the Hub, so it isn't included.");
+  assert.doesNotMatch(shareAdvice({ selection: false, files: 3, linkLength: 100 }).fileSub, /Hub/);
+});
+
 test('share: only a catalogue link is a name link; a #share- link carries the code and its length counts', async () => {
   const { isNamedLink, shareAdvice } = await load('playground/src/share.ts');
   assert.equal(isNamedLink('hub-123'), true);
