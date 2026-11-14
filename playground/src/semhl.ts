@@ -46,5 +46,6 @@ export function semHighlight(src: string, runMode: (src: string, mode: string, c
 /** The colours, in the code themes' variables: objects like numbers' blue, members like properties. */
 export const SEM_CSS = (scope: string) =>
   `${scope} .cm-nucleus-obj, ${scope} .cm-nucleus-val { color: var(--num); }
-${scope} .cm-nucleus-prop, ${scope} .cm-nucleus-fn { color: var(--prop); }`;
+${scope} .cm-nucleus-prop { color: var(--prop); }
+${scope} .cm-nucleus-fn { color: var(--fn, var(--prop)); }`;
 export { SEM_STATIC_CSS } from './semcss';

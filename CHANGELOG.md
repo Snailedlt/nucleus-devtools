@@ -20,6 +20,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 ### 🛠️ Improved
 
+- **Functions have a colour of their own.** `Game.Play`, the other callbacks Nucleus calls and `Context` methods now use each code theme's function colour (VS Code's yellow, for example) instead of the settings' colour.
 - **Hub handlers say how fresh they are.** An opened Hub handler shows the date of the workbench's copy of the Hub next to its version, and the list says newer ones may be on the Hub.
 - **A link to an unchanged Hub handler says it's short.** Share now tells you that link opens the whole handler, files included.
 - **Share and Save say what a .zip leaves out.** For a Hub handler with files too big for the workbench's copy of the Hub, the Share dialog and the Save menu say so before you save, with a link to the Hub page to get them.
