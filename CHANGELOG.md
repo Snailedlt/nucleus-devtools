@@ -22,9 +22,11 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 - **Hub handlers say how fresh they are.** An opened Hub handler shows the date of the workbench's copy of the Hub next to its version, and the list says newer ones may be on the Hub.
 - **A link to an unchanged Hub handler says it's short.** Share now tells you that link opens the whole handler, files included.
+- **Drop a file anywhere to open it.** Dragging a .js, .zip or .nc over the workbench now shows one clear hint over the whole page, wherever the pointer is, and dropping it opens the handler. Over the open Files panel the drop adds the file to the handler's package instead, and the panel says so. The home page mentions it too.
 
 ### 🐛 Fixed
 
+- **No flash of the editor on a first visit.** The home page shows from the first moment, behind the opening questions, instead of the empty editor appearing first.
 - **A Hub handler that isn't verified no longer says "verified on the Hub".** It shows "not verified", as the list already did.
 - **Learn keeps your code.** What you typed in a lesson is still there after a reload or a browser restart. Reset (above the code) goes back to the lesson's start and forgets it.
 - **One Reset in Learn.** After Show me there used to be two Reset buttons; now Show me steps aside and the one above the code stays.

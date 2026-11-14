@@ -1597,6 +1597,8 @@ function initTabs() {
   saveTabs();
   // Nothing was open last time (and nothing is asked for now): keep it that way.
   try { if ((firstVisit || localStorage.getItem(NONE_KEY)) && tabs.length === 1 && !editor.getValue().trim() && !INITIAL_HASH) setNoneOpen(true); else localStorage.removeItem(NONE_KEY); } catch { /* ignore */ }
+  // The page guessed before first paint (<head>); when something is open after all, show it.
+  if (!noneOpen) document.documentElement.classList.remove('no-handler');
   document.getElementById('no-handler')?.addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest<HTMLElement>('[data-nh]');
     if (!b) return;

@@ -42,30 +42,42 @@ export function initFileOpen(deps: FileOpenDeps): HTMLInputElement {
     if (f) openFile(f);
     fileInput.value = '';
   });
+  // Dropping a file anywhere on the page opens it; the whole window says so while a file is dragged over it. Over the
+  // open Files panel the drop adds the file to this handler's package instead (packageui.ts), and the panel says that.
+  // Driven by dragover alone (it repeats while the pointer is over the page, also when it holds still): when it stops
+  // coming, the pointer left the window or the drag ended. Counting dragenter/dragleave, as before, lost count over
+  // the editor's nested elements and showed the hint only some of the time.
   const dropHint = $('#drop-hint');
-  let dragDepth = 0;
   const hasFiles = (e: DragEvent) => !!e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files');
-  document.addEventListener('dragenter', (e) => {
-    if (!hasFiles(e)) return;
-    dragDepth++;
-    dropHint.hidden = false;
-  });
-  document.addEventListener('dragleave', (e) => {
-    if (!hasFiles(e)) return;
-    dragDepth = Math.max(0, dragDepth - 1);
-    if (!dragDepth) dropHint.hidden = true;
-  });
-  document.addEventListener('dragover', (e) => {
-    if (hasFiles(e)) e.preventDefault();
-  });
-  document.addEventListener(
-    'drop',
+  const overFiles = (e: DragEvent) => !!(e.target as Element | null)?.closest?.('#files-panel');
+  let hideTimer = 0;
+  const show = (where: 'page' | 'files' | null) => {
+    dropHint.hidden = where !== 'page';
+    document.getElementById('files-panel')?.classList.toggle('drop-add', where === 'files');
+  };
+  window.addEventListener(
+    'dragover',
     (e) => {
       if (!hasFiles(e)) return;
       e.preventDefault();
-      e.stopPropagation();
-      dragDepth = 0;
-      dropHint.hidden = true;
+      const files = overFiles(e);
+      e.dataTransfer!.dropEffect = 'copy';
+      show(files ? 'files' : 'page');
+      clearTimeout(hideTimer);
+      hideTimer = window.setTimeout(() => show(null), 200);
+    },
+    true,
+  );
+  window.addEventListener('dragend', () => show(null), true);
+  window.addEventListener(
+    'drop',
+    (e) => {
+      if (!hasFiles(e)) return;
+      clearTimeout(hideTimer);
+      show(null);
+      if (overFiles(e)) return; // the Files panel adds it to the package
+      e.preventDefault();
+      e.stopPropagation(); // not into the code editor as text
       const f = e.dataTransfer!.files[0];
       if (f) openFile(f);
     },

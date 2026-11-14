@@ -325,6 +325,16 @@ for (const theme of ['light', 'dark']) {
         check(/not downloaded here/.test(await p.$eval('#file-card', (e) => e.textContent)), `${theme}: a big file of the Hub package shows where to get it`);
       }
       await axe(p, `${theme}, Files panel with a Hub package`);
+      // Over the code the hint covers the page; over the open Files panel, the panel says it adds the file instead.
+      const drag = (sel, type = 'dragover') => p.evaluate(([sel, type]) => {
+        const dt = new DataTransfer();
+        dt.items.add(new File(['Game.GameName = "Dropped";\n'], 'dropped.js', { type: 'text/javascript' }));
+        document.querySelector(sel).dispatchEvent(new DragEvent(type, { dataTransfer: dt, bubbles: true, cancelable: true }));
+        return { page: !document.getElementById('drop-hint').hidden, files: document.getElementById('files-panel').classList.contains('drop-add') };
+      }, [sel, type]);
+      const onCode = await drag('.CodeMirror'), onFiles = await drag('#files-panel .fp-open');
+      check(onCode.page && !onCode.files && onFiles.files && !onFiles.page, `${theme}: dragging over the code shows the page hint, over Files the add-to-package hint (${JSON.stringify([onCode, onFiles])})`);
+      await p.waitForTimeout(400);
       // Share right after typing in one of its text files (before the pause that saves it): the edit counts, so the
       // file leads, not the Hub link (which would open the original files).
       // A Hub handler whose package has a text file that's downloaded here (hub/<id>.files.json in this build).
@@ -368,6 +378,9 @@ for (const theme of ['light', 'dark']) {
           check(/\.zip$/.test(zip.suggestedFilename()) && zipText.includes('; second edit'), `${theme}: an edit made just before switching to handler.js and sharing at once is in the .zip (${zip.suggestedFilename()})`);
           await p.waitForTimeout(300);
           if (await p.$eval('#code-dialog', (d) => d.open)) await p.click('#code-close');
+          await drag('.CodeMirror', 'drop');
+          await p.waitForTimeout(500);
+          check((await p.textContent('#doc-name')) === 'dropped.js' && /Dropped/.test(await p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue())), `${theme}: dropping a .js on the code opens it`);
         }
       }
     }
@@ -394,6 +407,17 @@ for (const theme of ['light', 'dark']) {
     await q.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
     check(await q.isVisible('#no-handler .nh-intro') && (await q.textContent('#nh-title')) === 'Welcome to the workbench' && await q.isHidden('#main'), `${theme}: a first visit starts on the home page`);
     await axe(q, `${theme}, home page`);
+    // Dragging a file: the same hint over the whole window, wherever the pointer is (home page, header, footer).
+    const dragOver = (sel) => q.evaluate((sel) => {
+      const dt = new DataTransfer();
+      dt.items.add(new File(['Game.GameName = "Dropped";\n'], 'dropped.js', { type: 'text/javascript' }));
+      document.querySelector(sel).dispatchEvent(new DragEvent('dragover', { dataTransfer: dt, bubbles: true, cancelable: true }));
+      return !document.getElementById('drop-hint').hidden && getComputedStyle(document.getElementById('drop-hint')).position === 'fixed';
+    }, sel);
+    const overHome = await dragOver('#no-handler'), overHeader = await dragOver('header'), overFooter = await dragOver('footer');
+    check(overHome && overHeader && overFooter, `${theme}: dragging a file shows the drop hint over the whole page (home ${overHome}, header ${overHeader}, footer ${overFooter})`);
+    await q.waitForTimeout(400);
+    check(await q.isHidden('#drop-hint'), `${theme}: the drop hint goes away when the drag leaves`);
     await q.click('[data-nh=new]');
     await q.fill('#new-name', 'Smoke Game');
     await q.fill('#new-exe', 'Smoke.exe');

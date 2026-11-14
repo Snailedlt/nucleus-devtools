@@ -3,6 +3,12 @@
 <script>/* the dev bar's theme choice, applied before first paint (see src/devbar.ts) */
 try { if (localStorage.getItem('nucleus-workbench-dev-site') === 'v3') document.documentElement.dataset.site = 'v3';
   var m = localStorage.getItem('nucleus-workbench-dev-mode'); if (m === 'light' || m === 'dark') document.documentElement.dataset.theme = m; } catch (e) {}</script>
+<script>/* Before first paint, the same screen the app will show (app.ts: firstVisit, NONE_KEY, MODE_KEY): the home page when
+   nothing is open, so a first visit never flashes the editor before the questions and the home page. */
+try { var d = document.documentElement, ls = localStorage;
+  if (ls.getItem('nucleus-workbench-advanced') === '1') d.dataset.mode = 'dev';
+  if (!location.hash && ((!ls.getItem('nucleus-workbench-draft') && !ls.getItem('nucleus-workbench-tabs')) || ls.getItem('nucleus-workbench-none-open'))) d.classList.add('no-handler');
+} catch (e) {}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>/*CODEMIRROR_CSS*/
@@ -93,7 +99,9 @@ a.btn { text-decoration: none; color: var(--fg); display: inline-block; }
 html.no-handler #main { display: none; }
 .no-handler { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 24px 16px; text-align: center; }
 .no-handler[hidden] { display: none; }
+html.no-handler #no-handler[hidden] { display: flex !important; } /* set before first paint (see <head>) */
 .no-handler h2 { margin: 0; font-size: 20px; }
+.no-handler .nh-drop { margin: 10px 0 0; font-size: var(--fs-sm); }
 .no-handler .nh-acts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px; }
 .no-handler .nh-intro { max-width: 920px; }
 .no-handler .nh-intro p { max-width: 640px; margin-left: auto; margin-right: auto; }
@@ -1357,7 +1365,12 @@ kbd { font: 11px var(--font-mono); border: 1px solid var(--line); border-bottom-
 .effects li { padding: 3px 0 3px 18px; position: relative; overflow-wrap: anywhere; }
 .effects li::before { content: "•"; position: absolute; left: 4px; color: var(--accent); }
 .steps { padding-left: 20px; margin: 0 0 10px; display: flex; flex-direction: column; gap: 6px; }
-#drop-hint { position: absolute; inset: 40px 0 0; z-index: 8; display: grid; place-items: center; background: color-mix(in srgb, var(--accent) 14%, var(--surface)); border: 2px dashed var(--accent); border-radius: var(--r-pane); font-weight: 600; color: var(--fg); pointer-events: none; }
+/* Dragging a file over the page (fileopen-ui.ts): the whole window, so it's the same wherever the pointer is. */
+#drop-hint { position: fixed; inset: 8px; z-index: 1000; display: grid; place-content: center; gap: 6px; text-align: center; background: color-mix(in srgb, var(--accent) 14%, color-mix(in srgb, var(--surface) 85%, transparent)); border: 2px dashed var(--accent); border-radius: var(--r-pane); font-size: var(--fs-lg); font-weight: 600; color: var(--fg); pointer-events: none; backdrop-filter: blur(2px); }
+#drop-hint small { font-size: var(--fs-md); font-weight: 400; color: var(--muted); }
+/* Over the open Files panel the drop adds the file to the package instead. */
+#files-panel.drop-add { outline: 2px dashed var(--accent); outline-offset: -4px; }
+#files-panel.drop-add::after { content: "Drop to add it to this handler's files"; position: absolute; inset: 4px; display: grid; place-items: center; padding: 16px; text-align: center; font-weight: 600; background: color-mix(in srgb, var(--accent) 14%, var(--surface)); pointer-events: none; z-index: 5; }
 #drop-hint[hidden] { display: none; }
 .pane { position: relative; }
 /* --- phone / tablet: one pane at a time --- */
@@ -2126,12 +2139,13 @@ footer .made-by { margin-left: auto; }
 
   <div id="updated" role="status" hidden><span id="updated-text"></span> <button class="link" type="button" id="updated-open">What's new</button><button class="btn icon" type="button" id="updated-close" aria-label="Dismiss">×</button></div>
   <section id="no-handler" class="no-handler" role="main" aria-labelledby="nh-title" hidden>
-    <h2 id="nh-title">No handler open</h2>
+    <h2 id="nh-title">Welcome to the workbench</h2>
     <div class="nh-intro">
       <p class="muted">A handler is the file that tells Nucleus Co-op how to run a game split-screen (it goes in Nucleus' <code>handlers</code> folder). Here you write one, check it and try it, then save it for Nucleus.</p>
       <ol class="nh-steps"><li><b>1</b> Start one, or open yours</li><li><b>2</b> Fix what Nucleus would reject</li><li><b>3</b> Try it per player</li><li><b>4</b> Save it for Nucleus</li></ol>
     </div>
     <div class="nh-acts"><button type="button" class="btn primary" data-nh="new">New handler…</button><button type="button" class="btn" data-nh="open" title="Your own handler (.js, .zip, .nc), an example, or one from the Hub">Open a handler or example… <kbd>Ctrl+P</kbd></button><button type="button" class="btn" data-nh="learn">Learn: make your first one</button><button type="button" class="btn" data-nh="undo" hidden>Reopen</button><button type="button" class="btn" data-nh="back" hidden>Back to the code <kbd>Esc</kbd></button></div>
+    <p class="muted nh-drop">Or drop a .js, .zip or .nc file anywhere on this page.</p>
   </section>
   <main class="main" id="main" data-view="results">
     <section class="pane" aria-label="Handler source">
@@ -2140,7 +2154,6 @@ footer .made-by { margin-left: auto; }
         <div id="doc-meta"></div>
       </div>
       <div id="notice" hidden><svg class="notice-icon" viewBox="0 0 24 24" aria-hidden="true"></svg><div class="notice-text"></div><button class="btn notice-action" type="button" hidden></button><button class="notice-close" type="button" aria-label="Dismiss" title="Dismiss"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
-      <div id="drop-hint" hidden>Drop a handler .js, .zip or .nc to open it</div>
       <div id="file-strip" role="tablist" aria-label="Files in this package" hidden></div>
       <div class="code-row">
         <div id="line-pop" role="dialog" aria-label="Problems on this line" hidden></div>
@@ -2552,5 +2565,6 @@ footer .made-by { margin-left: auto; }
   </form>
 </dialog>
 
+<div id="drop-hint" hidden role="status">Drop to open it in the workbench<small>A handler (.js), or a package (.zip, .nc) with its files</small></div>
 <script>/*PROBES_AND_BUILD*/</script>
 <script>/*APP_JS*/</script>
