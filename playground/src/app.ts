@@ -2914,6 +2914,8 @@ function openCodeDialog() {
     const a = shareAdvice({ selection, files: packageFiles.length, linkLength, named, missing: remote.length });
     $('#code-link-sub').textContent = a.linkSub;
     $('#code-file-sub').textContent = a.fileSub;
+    $('#code-file-warn').hidden = !a.fileWarn;
+    $('#code-file-warn').lastChild!.textContent = a.fileWarn;
     codeDialog.querySelector('[data-code=link]')!.className = a.fileFirst ? 'code-opt' : 'code-hero';
     codeDialog.querySelector('[data-code=file]')!.className = a.fileFirst ? 'code-hero' : 'code-opt';
   };

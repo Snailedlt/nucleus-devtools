@@ -326,9 +326,9 @@ for (const theme of ['light', 'dark']) {
         // Before saving, Share and the Save menu say the .zip leaves the big files out, with the Hub link.
         await p.click('#share-open');
         await p.waitForTimeout(300);
-        const note = await p.evaluate(() => ({ shown: !document.getElementById('code-hub-note').hidden, href: document.querySelector('#code-hub-note a').href, sub: document.getElementById('code-file-sub').textContent }));
+        const note = await p.evaluate(() => ({ shown: !document.getElementById('code-hub-note').hidden, href: document.querySelector('#code-hub-note a').href, sub: document.getElementById('code-file-warn').hidden ? '' : document.getElementById('code-file-warn').textContent, warnColour: getComputedStyle(document.getElementById('code-file-warn')).color !== getComputedStyle(document.getElementById('code-file-sub')).color }));
         await p.click('#code-close');
-        check(note.shown && /hub\.splitscreen\.me/.test(note.href) && /only on the Hub/.test(note.sub), `${theme}: Share says which Hub files the .zip leaves out (${note.sub})`);
+        check(note.shown && note.warnColour && /hub\.splitscreen\.me/.test(note.href) && /only on the Hub/.test(note.sub), `${theme}: Share says which Hub files the .zip leaves out (${note.sub})`);
         await p.click('#save-more');
         await p.waitForTimeout(200);
         check(/only on the Hub/.test(await p.evaluate(() => document.querySelector('[role=menu]')?.textContent ?? '')), `${theme}: the Save menu says it too`);

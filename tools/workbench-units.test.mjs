@@ -234,9 +234,13 @@ test('Share: the link leads while it carries everything and fits Discord, else t
 
 test('share: the file option says which Hub files the .zip leaves out', async () => {
   const { shareAdvice } = await load('playground/src/share.ts');
-  assert.equal(shareAdvice({ selection: false, files: 2, linkLength: 100, missing: 2 }).fileSub, "The .zip with the code, and a message to post with it. 2 big files are only on the Hub, so they aren't included.");
-  assert.equal(shareAdvice({ selection: false, files: 3, linkLength: 100, missing: 1 }).fileSub, "The .zip with the code and 2 of its 3 files, and a message to post with it. 1 big file is only on the Hub, so it isn't included.");
-  assert.doesNotMatch(shareAdvice({ selection: false, files: 3, linkLength: 100 }).fileSub, /Hub/);
+  const all = shareAdvice({ selection: false, files: 2, linkLength: 100, missing: 2 });
+  assert.equal(all.fileSub, 'The .zip with the code, and a message to post with it');
+  assert.equal(all.fileWarn, "2 big files are only on the Hub, so they aren't included.");
+  const some = shareAdvice({ selection: false, files: 3, linkLength: 100, missing: 1 });
+  assert.equal(some.fileSub, 'The .zip with the code and 2 of its 3 files, and a message to post with it');
+  assert.equal(some.fileWarn, "1 big file is only on the Hub, so it isn't included.");
+  assert.equal(shareAdvice({ selection: false, files: 3, linkLength: 100 }).fileWarn, '');
 });
 
 test('share: only a catalogue link is a name link; a #share- link carries the code and its length counts', async () => {

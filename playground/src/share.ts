@@ -35,6 +35,8 @@ export interface ShareAdvice {
   linkSub: string;
   /** Under "Share the file". */
   fileSub: string;
+  /** Under that, set apart as a warning: what this handler's .zip leaves out (empty when nothing). */
+  fileWarn: string;
 }
 
 /**
@@ -54,20 +56,21 @@ export function shareAdvice(o: {
 }): ShareAdvice {
   const n = o.files;
   const m = Math.min(o.missing ?? 0, n);
+  const fileWarn = m ? missingFilesText(m) : '';
   const fileSub = m
-    ? `The .zip with the code${n > m ? ` and ${n - m} of its ${n} files` : ''}, and a message to post with it. ${missingFilesText(m)}`
+    ? `The .zip with the code${n > m ? ` and ${n - m} of its ${n} files` : ''}, and a message to post with it`
     : n
       ? `The .zip with the code and its ${n} file${n === 1 ? '' : 's'}, and a message to post with it`
       : 'The .zip, and a message to post with it';
-  if (o.selection) return { fileFirst: false, linkSub: 'Opens just the selected lines for anyone', fileSub };
-  if (o.named) return { fileFirst: false, linkSub: n ? `A short link: opens it for anyone, with its ${n} file${n === 1 ? '' : 's'}` : 'A short link: opens it for anyone', fileSub };
+  if (o.selection) return { fileFirst: false, linkSub: 'Opens just the selected lines for anyone', fileSub, fileWarn };
+  if (o.named) return { fileFirst: false, linkSub: n ? `A short link: opens it for anyone, with its ${n} file${n === 1 ? '' : 's'}` : 'A short link: opens it for anyone', fileSub, fileWarn };
   const tooLong = o.linkLength !== null && o.linkLength > DISCORD_LIMIT;
   const linkSub = n
     ? `The code only: the ${n} other file${n === 1 ? " doesn't" : "s don't"} fit in a link`
     : tooLong
       ? `${o.linkLength!.toLocaleString('en')} characters: too long for a Discord message (${DISCORD_LIMIT.toLocaleString('en')})`
       : 'Opens this handler for anyone, or just the selected lines';
-  return { fileFirst: n > 0 || tooLong, linkSub, fileSub };
+  return { fileFirst: n > 0 || tooLong, linkSub, fileSub, fileWarn };
 }
 
 /** What a saved package leaves out: the Hub package's big files, which the workbench has by name only. */
