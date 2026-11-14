@@ -868,7 +868,9 @@ export function semanticTokens(text: string): SemanticToken[] {
         break;
       case 'member':
         if (!r.owner) return; // JavaScript's own functions (parseInt): the editor colours those already
-        type = r.member.kind === 'method' ? 'method' : r.member.kind === 'object' ? 'namespace' : 'property';
+        // Callbacks Nucleus calls (Game.Play, OnStop, the hotkey and Proto Input lock callbacks) are functions too:
+        // the function colour, like methods, so they stand out from the settings.
+        type = r.member.kind === 'method' || r.member.type === 'function' ? 'method' : r.member.kind === 'object' ? 'namespace' : 'property';
         if (r.member.readonly && r.member.kind !== 'object') mods.push('readonly');
         if (r.member.deprecated) mods.push('deprecated');
         break;
