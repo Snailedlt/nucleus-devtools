@@ -344,7 +344,7 @@ for (const theme of ['light', 'dark']) {
       }, [sel, type]);
       const onCode = await drag('.CodeMirror'), onFiles = await drag('#files-panel .fp-open');
       check(onCode.page && !onCode.files && onFiles.files && !onFiles.page, `${theme}: dragging over the code shows the page hint, over Files the add-to-package hint (${JSON.stringify([onCode, onFiles])})`);
-      await p.waitForTimeout(400);
+      await p.evaluate(() => window.dispatchEvent(new DragEvent('dragend', { bubbles: true })));
       // Share right after typing in one of its text files (before the pause that saves it): the edit counts, so the
       // file leads, not the Hub link (which would open the original files).
       // A Hub handler whose package has a text file that's downloaded here (hub/<id>.files.json in this build).
@@ -426,8 +426,15 @@ for (const theme of ['light', 'dark']) {
     }, sel);
     const overHome = await dragOver('#no-handler'), overHeader = await dragOver('header'), overFooter = await dragOver('footer');
     check(overHome && overHeader && overFooter, `${theme}: dragging a file shows the drop hint over the whole page (home ${overHome}, header ${overHeader}, footer ${overFooter})`);
-    await q.waitForTimeout(400);
-    check(await q.isHidden('#drop-hint'), `${theme}: the drop hint goes away when the drag leaves`);
+    // Held still: browsers repeat dragover only every ~350 ms, so the hint must outlast a pause like that.
+    await q.waitForTimeout(700);
+    check(await q.isVisible('#drop-hint'), `${theme}: the drop hint stays while the file is held still`);
+    await q.evaluate(() => {
+      const dt = new DataTransfer();
+      dt.items.add(new File(['x'], 'dropped.js'));
+      document.querySelector('header').dispatchEvent(new DragEvent('dragleave', { dataTransfer: dt, bubbles: true, relatedTarget: null, clientX: -1, clientY: 10 }));
+    });
+    check(await q.isHidden('#drop-hint'), `${theme}: the drop hint goes away when the drag leaves the window`);
     await q.click('[data-nh=new]');
     await q.fill('#new-name', 'Smoke Game');
     await q.fill('#new-exe', 'Smoke.exe');

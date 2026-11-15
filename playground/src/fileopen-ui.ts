@@ -44,9 +44,10 @@ export function initFileOpen(deps: FileOpenDeps): HTMLInputElement {
   });
   // Dropping a file anywhere on the page opens it; the whole window says so while a file is dragged over it. Over the
   // open Files panel the drop adds the file to this handler's package instead (packageui.ts), and the panel says that.
-  // Driven by dragover alone (it repeats while the pointer is over the page, also when it holds still): when it stops
-  // coming, the pointer left the window or the drag ended. Counting dragenter/dragleave, as before, lost count over
-  // the editor's nested elements and showed the hint only some of the time.
+  // Shown by dragover; hidden when the drag leaves the window (a dragleave with nowhere to go), is dropped, or ends.
+  // Counting dragenter/dragleave, as before, lost count over the editor's nested elements and showed the hint only
+  // some of the time. A held-still file gets a dragover only every ~350 ms (the HTML spec's drag loop), so the
+  // safety timer, for a drag that ends without any event here, is far longer than that.
   const dropHint = $('#drop-hint');
   const hasFiles = (e: DragEvent) => !!e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files');
   const overFiles = (e: DragEvent) => !!(e.target as Element | null)?.closest?.('#files-panel');
@@ -64,11 +65,23 @@ export function initFileOpen(deps: FileOpenDeps): HTMLInputElement {
       e.dataTransfer!.dropEffect = 'copy';
       show(files ? 'files' : 'page');
       clearTimeout(hideTimer);
-      hideTimer = window.setTimeout(() => show(null), 200);
+      hideTimer = window.setTimeout(() => show(null), 1500);
     },
     true,
   );
   window.addEventListener('dragend', () => show(null), true);
+  // Out of the window: the pointer is over nothing of this page (no element it goes to, or outside the viewport).
+  window.addEventListener(
+    'dragleave',
+    (e) => {
+      if (!hasFiles(e)) return;
+      // Outside the viewport, or (Safari, and some Chromium versions) no target and no position at all. A missing
+      // target alone isn't enough: some browsers leave it out when moving between elements inside the page.
+      const out = e.clientX < 0 || e.clientY < 0 || e.clientX >= innerWidth || e.clientY >= innerHeight || (!e.relatedTarget && e.clientX === 0 && e.clientY === 0);
+      if (out) { clearTimeout(hideTimer); show(null); }
+    },
+    true,
+  );
   window.addEventListener(
     'drop',
     (e) => {
