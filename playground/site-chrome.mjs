@@ -107,12 +107,12 @@ export function siteVisitScript(site) {
   } catch (e) {}
   var off = navigator.doNotTrack === '1' || navigator.globalPrivacyControl === true || get('nucleus-workbench-feedback-off') === '1' || get('skipgc') === 't';
   // This page, as a page view (its address, no query or #); the visit's first page also says where the visit came from
-  // (GoatCounter reads the ?ref= tag only from page views), so each visit is credited to its source once.
+  // (GoatCounter reads the ?ref= tag only from page views: ref as the source, campaign for its Campaigns list), so each visit is credited to its source once.
   if (!off) {
     var first = !v.counted;
     v.counted = true;
     var url = 'https://' + site + '.goatcounter.com/count?p=' + encodeURIComponent(location.pathname) + '&s=' + encodeURIComponent(screen.width + ',' + screen.height + ',' + (window.devicePixelRatio || 1))
-      + (first && v.from ? '&r=' + encodeURIComponent(v.from) : '') + (first && v.ref ? '&q=' + encodeURIComponent('?ref=' + v.ref) : '') + '&rnd=' + Math.random().toString(36).slice(2);
+      + (first && v.from ? '&r=' + encodeURIComponent(v.from) : '') + (first && v.ref ? '&q=' + encodeURIComponent('?ref=' + v.ref + '&campaign=' + v.ref) : '') + '&rnd=' + Math.random().toString(36).slice(2);
     try { navigator.sendBeacon ? navigator.sendBeacon(url) : fetch(url, { mode: 'no-cors', keepalive: true }); } catch (e) {}
   }
   try { sessionStorage.setItem(KEY, JSON.stringify(v)); } catch (e) {}

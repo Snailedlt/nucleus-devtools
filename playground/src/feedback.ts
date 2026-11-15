@@ -109,7 +109,7 @@ export function vote(kind: 'tip' | 'doc', id: string, v: Vote): Vote | undefined
 /**
  * This page, counted once as a page view (GoatCounter's Pages: the address without its query or #, so no code or
  * handler names). The visit's first page also says where the visit came from: the other site (Top referrers) and the
- * link's ?ref= tag (Campaigns; GoatCounter reads that tag only from page views, never from events), so each visit is
+ * link's ?ref= tag (as the source under Top referrers and as a campaign; GoatCounter reads it only from page views, never from events), so each visit is
  * credited to its source once. Totals only: nothing follows one person from page to page.
  */
 export function countVisit() {
@@ -120,7 +120,8 @@ export function countVisit() {
   try { sessionStorage.setItem(VISIT_KEY, JSON.stringify(visit)); } catch { /* private mode */ }
   const size = `${screen.width},${screen.height},${window.devicePixelRatio || 1}`;
   const from = first && visit.from ? `&r=${encodeURIComponent(visit.from)}` : '';
-  const ref = first && visit.ref ? `&q=${encodeURIComponent(`?ref=${visit.ref}`)}` : '';
+  // GoatCounter takes ref as the source (Top referrers, in place of r) and campaign for its Campaigns list.
+  const ref = first && visit.ref ? `&q=${encodeURIComponent(`?ref=${visit.ref}&campaign=${visit.ref}`)}` : '';
   beacon(`https://${BUILD.feedback}.goatcounter.com/count?p=${encodeURIComponent(location.pathname)}&s=${encodeURIComponent(size)}${from}${ref}&rnd=${Math.random().toString(36).slice(2)}`);
 }
 let pageCounted = false;
