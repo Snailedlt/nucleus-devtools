@@ -868,7 +868,9 @@ export function semanticTokens(text: string): SemanticToken[] {
         break;
       case 'member':
         if (!r.owner) return; // JavaScript's own functions (parseInt): the editor colours those already
-        type = r.member.kind === 'method' ? 'method' : r.member.kind === 'object' ? 'namespace' : 'property';
+        // Callbacks Nucleus calls (Game.Play, OnStop, the hotkey and Proto Input lock callbacks) are functions too:
+        // the function colour, like methods, so they stand out from the settings.
+        type = r.member.kind === 'method' || r.member.type === 'function' ? 'method' : r.member.kind === 'object' ? 'namespace' : 'property';
         if (r.member.readonly && r.member.kind !== 'object') mods.push('readonly');
         if (r.member.deprecated) mods.push('deprecated');
         break;
@@ -915,4 +917,11 @@ export function semanticTokens(text: string): SemanticToken[] {
   };
   visit(program, undefined);
   return out.sort((a, b) => a.start - b.start);
+}
+
+/** A package check's quick fix for handler.js (core/pkgcheck.ts: a misspelled file in the handler's folder), as the
+ *  edit the editors apply. */
+export function packageQuickFix(p: { start?: number; end?: number; edit?: { title: string; text: string } }): { title: string; edits: { start: number; end: number; text: string }[] } | undefined {
+  if (!p.edit || p.start === undefined) return undefined;
+  return { title: p.edit.title, edits: [{ start: p.start, end: p.end ?? p.start, text: p.edit.text }] };
 }

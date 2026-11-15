@@ -205,7 +205,7 @@ test('semantic tokens: Nucleus names in the theme\'s colours; unknown names and 
   assert.deepEqual(semantic[0].legend.tokenTypes, ['namespace', 'class', 'enum', 'enumMember', 'property', 'method']);
   const doc = m.makeDocument(HEADER + 'Game.wrongName = 1;\nGame.Play = function () {\n  var p = Context.GetFolder(Nucleus.Folder.InstancedGameFolder);\n  var w = Context.Width;\n};\n');
   const toks = semantic[0].p.provideDocumentSemanticTokens(doc).tokens.map((t: any) => `${doc.getText(t.range)}:${t.type}${t.modifiers.length ? '.' + t.modifiers.join('.') : ''}`);
-  for (const want of ['Game:namespace.defaultLibrary', 'Play:property', 'GetFolder:method', 'Folder:enum', 'InstancedGameFolder:enumMember', 'Width:property.readonly']) assert.ok(toks.includes(want), `${want} in ${toks.join(' ')}`);
+  for (const want of ['Game:namespace.defaultLibrary', 'Play:method', 'GetFolder:method', 'Folder:enum', 'InstancedGameFolder:enumMember', 'Width:property.readonly']) assert.ok(toks.includes(want), `${want} in ${toks.join(' ')}`);
   assert.ok(!toks.some((t: string) => t.startsWith('wrongName')), 'an unknown name keeps the plain colour (its underline explains)');
   // A local variable named like a Nucleus object isn't Nucleus'.
   const own = m.makeDocument(HEADER + 'var Context = {};\nContext.Width = 1;\n');
