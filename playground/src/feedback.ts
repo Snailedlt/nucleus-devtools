@@ -11,6 +11,8 @@
 //   (BUILD.feedback); otherwise nothing leaves the browser;
 // - off when the browser asks not to be tracked (Do Not Track, Global Privacy Control), switchable in
 //   Settings › General, and off in a browser opened once with #toggle-goatcounter (GoatCounter's own switch);
+// - the answers to the start-up questions count as features too (use/firstrun/guided|developer|skipped and
+//   use/firstrun/layout-…; the beta testers' answers as use/test/profile/<coding>-<nucleus>), so we know who uses the tools;
 // - each feature is counted at most once per visit.
 // Your own votes are kept in this browser, so the buttons show what you picked.
 declare const BUILD: { feedback?: string | null };

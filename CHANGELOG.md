@@ -20,7 +20,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 ### ⚠️ Changed
 
-- **Anonymous counts now include which pages are opened.** With anonymous usage counts on, each page of the site counts as one page view, and the first page of a visit says which site or post linked to it. These are totals only: nothing follows one person from page to page, and Settings › Privacy still switches it all off.
+- **Anonymous counts now include which pages are opened.** With anonymous usage counts on, each page of the site counts as one page view, and the first page of a visit says which site or post linked to it. These are totals only: nothing follows one person from page to page, and Settings › Privacy still switches it all off. The answer to the start-up question (guided or code, and the layout) is counted the same way, so we can see who the workbench serves.
 
 ## 2026-11-15
 
