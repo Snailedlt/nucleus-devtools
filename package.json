@@ -51,6 +51,21 @@
     }
   },
   "contributes": {
+    "semanticTokenModifiers": [
+      { "id": "group", "description": "A Nucleus object that holds options, or an enum (Game.ProtoInput, Game.Hook, Nucleus.Folder)" },
+      { "id": "choice", "description": "One of a Nucleus enum's fixed values (Nucleus.Folder.InstancedGameFolder)" },
+      { "id": "callback", "description": "A function Nucleus calls (Game.Play, Game.OnStop)" }
+    ],
+    "semanticTokenScopes": [
+      {
+        "language": "javascript",
+        "scopes": {
+          "property.group": ["entity.name.namespace"],
+          "property.choice": ["variable.other.enummember"],
+          "method.callback": ["entity.name.function"]
+        }
+      }
+    ],
     "mcpServerDefinitionProviders": [
       {
         "id": "nucleus",

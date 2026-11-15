@@ -202,10 +202,16 @@ test("what's new: highlights of the version's CHANGELOG section", async () => {
 
 test('semantic tokens: Nucleus names in the theme\'s colours; unknown names and other files get none', () => {
   const semantic = [(m.__registered as any).semantic.at(-1)];
-  assert.deepEqual(semantic[0].legend.tokenTypes, ['namespace', 'class', 'enum', 'enumMember', 'property', 'method']);
+  assert.deepEqual(semantic[0].legend.tokenTypes, ['variable', 'property', 'method', 'class']);
+  assert.deepEqual(semantic[0].legend.tokenModifiers, ['readonly', 'defaultLibrary', 'deprecated', 'group', 'choice', 'callback']);
   const doc = m.makeDocument(HEADER + 'Game.wrongName = 1;\nGame.Play = function () {\n  var p = Context.GetFolder(Nucleus.Folder.InstancedGameFolder);\n  var w = Context.Width;\n};\n');
   const toks = semantic[0].p.provideDocumentSemanticTokens(doc).tokens.map((t: any) => `${doc.getText(t.range)}:${t.type}${t.modifiers.length ? '.' + t.modifiers.join('.') : ''}`);
-  for (const want of ['Game:namespace.defaultLibrary', 'Play:method', 'GetFolder:method', 'Folder:enum', 'InstancedGameFolder:enumMember', 'Width:property.readonly']) assert.ok(toks.includes(want), `${want} in ${toks.join(' ')}`);
+  // JavaScript's categories; Nucleus's detail in the modifiers (defaultLibrary on every one, then group/choice/callback).
+  for (const want of ['Game:variable.defaultLibrary', 'Play:method.defaultLibrary.callback', 'GetFolder:method.defaultLibrary', 'Nucleus:variable.defaultLibrary', 'Folder:property.defaultLibrary.group', 'InstancedGameFolder:property.defaultLibrary.readonly.choice', 'Width:property.defaultLibrary.readonly']) assert.ok(toks.includes(want), `${want} in ${toks.join(' ')}`);
+  // The custom modifiers are declared, and mapped to standard scopes so any theme colours them.
+  const pkg = require('../../package.json');
+  assert.deepEqual(pkg.contributes.semanticTokenModifiers.map((x: any) => x.id), ['group', 'choice', 'callback']);
+  assert.deepEqual(Object.keys(pkg.contributes.semanticTokenScopes[0].scopes), ['property.group', 'property.choice', 'method.callback']);
   assert.ok(!toks.some((t: string) => t.startsWith('wrongName')), 'an unknown name keeps the plain colour (its underline explains)');
   // A local variable named like a Nucleus object isn't Nucleus'.
   const own = m.makeDocument(HEADER + 'var Context = {};\nContext.Width = 1;\n');

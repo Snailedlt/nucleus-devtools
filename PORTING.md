@@ -87,6 +87,8 @@ Send them as `initializationOptions`, or later as `workspace/didChangeConfigurat
 - `gameFolders`: the game's install folder per handler file name. The handler is then checked against the real files (`ExecutableName`, `BinariesFolder`, the symlink and copy lists…), each problem's fix comes as a quick fix, and completion inside those lists offers the game's own files. Only names and sizes are read.
 - `completion.enable`: hover, completion, signature help, inlay hints and semantic tokens (Nucleus names coloured by what they are). Turn it off if TypeScript provides them (the `.d.ts` in `types/`).
 
+  The semantic tokens use JavaScript's standard types (`variable`, `property`, `method`, `class`, all `defaultLibrary`), so any theme colours them. Three modifiers of our own add Nucleus's detail for themes that want it: `group` (an object of options, or an enum: `Game.ProtoInput`, `Nucleus.Folder`), `choice` (an enum's fixed value) and `callback` (a function Nucleus calls: `Game.Play`). In Neovim, for example, style them with the `@lsp.typemod.property.group`, `@lsp.typemod.property.choice` and `@lsp.typemod.method.callback` highlight groups.
+
 The same names as the VS Code settings, without the `splitscreenme.` prefix; a `splitscreenme` key is accepted too.
 
 ## Wiring `ncdev lsp` into an editor
