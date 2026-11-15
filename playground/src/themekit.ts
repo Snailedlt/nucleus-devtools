@@ -39,6 +39,9 @@ export const PAIRS: [string, string, string][] = [
   ['cmt', 'code-bg', 'Code: comment'],
   ['prop', 'code-bg', 'Code: property'],
   ['fn', 'code-bg', 'Code: function'],
+  ['obj', 'code-bg', 'Code: Game, Context, Nucleus'],
+  ['group', 'code-bg', 'Code: option group'],
+  ['choice', 'code-bg', 'Code: fixed choice'],
 ];
 
 type Kind = 'color' | 'length' | 'shadow' | 'font' | 'number' | 'percent';
@@ -47,7 +50,7 @@ export const TOKENS: Record<string, Kind> = {
   bg: 'color', surface: 'color', 'surface-2': 'color', line: 'color', fg: 'color', muted: 'color',
   accent: 'color', 'accent-fg': 'color', brand: 'color',
   err: 'color', 'err-bg': 'color', warn: 'color', 'warn-bg': 'color', info: 'color', 'info-bg': 'color', ok: 'color', 'ok-bg': 'color',
-  'code-bg': 'color', 'code-fg': 'color', 'code-muted': 'color', 'code-gutter': 'color', 'code-line': 'color', kw: 'color', str: 'color', num: 'color', cmt: 'color', prop: 'color', fn: 'color',
+  'code-bg': 'color', 'code-fg': 'color', 'code-muted': 'color', 'code-gutter': 'color', 'code-line': 'color', kw: 'color', str: 'color', num: 'color', cmt: 'color', prop: 'color', fn: 'color', obj: 'color', group: 'color', choice: 'color',
   p1: 'color', p2: 'color', p3: 'color', p4: 'color', p5: 'color', p6: 'color', p7: 'color', p8: 'color',
   'r-sm': 'length', 'r-ctl': 'length', 'r-pane': 'length', 'r-lg': 'length',
   'sh-1': 'shadow', 'sh-2': 'shadow',
@@ -67,6 +70,10 @@ const DERIVED: Record<string, { from: string[]; make: (t: Tokens, mode: Mode) =>
   'ok-bg': { from: ['ok', 'surface'], make: (t, m) => `color-mix(in srgb, ${t.ok} ${m === 'dark' ? 16 : 9}%, ${t.surface})` },
   // Nucleus's functions and callbacks (Game.Play, Context methods): the property colour, for a look without one.
   fn: { from: ['prop'], make: (t) => t.prop },
+  // The Nucleus colouring's own: Game and the option groups like numbers were coloured before, a fixed choice too.
+  obj: { from: ['num'], make: (t) => t.num },
+  group: { from: ['num'], make: (t) => t.obj ?? t.num },
+  choice: { from: ['num'], make: (t) => t.num },
   'code-bg': { from: ['surface', 'fg'], make: (t, m) => `color-mix(in srgb, ${t.fg} ${m === 'dark' ? 4 : 2}%, ${t.surface})` },
 };
 

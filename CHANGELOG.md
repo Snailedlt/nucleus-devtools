@@ -12,6 +12,12 @@ How to write it (people and AI agents read this, and the workbench shows it):
 - When it goes live: rename "## Unreleased" to "## <yyyy-mm-dd>" (add " HH:MM", UTC, for a second release on the same day). A `---` line separates releases.
 -->
 
+## Unreleased
+
+### 🛠️ Improved
+
+- **Code colours that tell Nucleus names apart.** The default code colours (now called *Nucleus (follows the look)*) give `Game`, `Context` and `Nucleus`, option groups like `Game.Hook`, fixed choices like `Nucleus.Folder.InstancedGameFolder`, and callbacks like `Game.Play` each their own colour, matched to your look. Pick a VS Code or JetBrains code theme in Settings to colour them as that editor colours JavaScript.
+
 ## 2026-11-15
 
 ### ✨ New

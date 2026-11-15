@@ -579,7 +579,17 @@ html.kb-up #toasts { bottom: calc(var(--kb) + 12px); }
 .CodeMirror-matchingbracket { color: var(--accent) !important; font-weight: 600; }
 .cm-s-default .cm-keyword { color: var(--kw); font-weight: var(--kw-weight, normal); } .cm-s-default .cm-string, .cm-s-default .cm-string-2 { color: var(--str); }
 .cm-s-default .cm-number { color: var(--num); } .cm-s-default .cm-comment { color: var(--cmt); font-style: italic; }
-:is(.cm-s-default, .hl) span.cm-nucleus-obj, :is(.cm-s-default, .hl) span.cm-nucleus-val { color: var(--num); } :is(.cm-s-default, .hl) span.cm-nucleus-prop { color: var(--prop); } :is(.cm-s-default, .hl) span.cm-nucleus-fn { color: var(--fn, var(--prop)); }
+/* Nucleus names (semhl.ts). The Nucleus colouring, the default: each kind its own colour, from the look (obj, group,
+   choice and fn fall back to related colours, so a look or theme file without them still works). */
+:is(.cm-s-default, .hl, .ct-sample) span.cm-nucleus-obj { color: var(--obj, var(--num)); font-weight: 600; }
+:is(.cm-s-default, .hl, .ct-sample) span.cm-nucleus-group { color: var(--group, var(--obj, var(--num))); }
+:is(.cm-s-default, .hl, .ct-sample) span.cm-nucleus-prop { color: var(--prop); }
+:is(.cm-s-default, .hl, .ct-sample) span.cm-nucleus-val { color: var(--choice, var(--num)); font-style: italic; }
+:is(.cm-s-default, .hl, .ct-sample) span.cm-nucleus-fn { color: var(--fn, var(--prop)); }
+:is(.cm-s-default, .hl, .ct-sample) span.cm-nucleus-cb { color: var(--fn, var(--prop)); font-weight: 600; }
+/* A named code theme (VS Code, JetBrains…): JavaScript's categories alone, as that editor colours them. */
+:is(:root[data-code-theme] :is(.cm-s-default, .hl), .ct-sample.js) :is(.cm-nucleus-obj, .cm-nucleus-group, .cm-nucleus-val) { color: var(--prop); font-weight: normal; font-style: normal; }
+:is(:root[data-code-theme] :is(.cm-s-default, .hl), .ct-sample.js) .cm-nucleus-cb { font-weight: normal; }
 .cm-s-default .cm-property { color: var(--prop); } .cm-s-default .cm-variable, .cm-s-default .cm-def, .cm-s-default .cm-variable-2 { color: var(--code-fg, var(--fg)); }
 .cm-s-default .cm-atom { color: var(--num); } .cm-s-default .cm-operator { color: var(--op, var(--code-muted, var(--muted))); font-weight: var(--op-weight, normal); }
 /* Tokens other file types use (batch, PowerShell, ini, xml, yaml): mapped onto the same code colours. */

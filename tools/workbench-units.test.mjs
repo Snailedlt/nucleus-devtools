@@ -387,3 +387,25 @@ test('AI fix diff: a huge rewrite is shown without the n×m table', async () => 
   assert.equal(thin.filter((l) => l.kind === ' ').length, 2);
   assert.deepEqual(diffLines('x\ny\nz', 'x\nY\nz').map((l) => l.kind).sort(), [' ', ' ', '+', '-']);
 });
+
+test('Nucleus colouring: each kind of name gets its class, from the core\'s JavaScript categories', async () => {
+  const sem = await load('playground/src/semhl.ts');
+  const src = 'Game.Hook.ForceFocus = true;\nGame.Play = function () {\n  var d = Context.GetFolder(Nucleus.Folder.InstancedGameFolder);\n};\n';
+  const got = Object.fromEntries(sem.semanticSpans(src).map((s) => [src.slice(s.start, s.end), s.cls]));
+  assert.equal(got.Game, 'cm-nucleus-obj');
+  assert.equal(got.Hook, 'cm-nucleus-group');
+  assert.equal(got.ForceFocus, 'cm-nucleus-prop');
+  assert.equal(got.Play, 'cm-nucleus-cb');
+  assert.equal(got.GetFolder, 'cm-nucleus-fn');
+  assert.equal(got.Folder, 'cm-nucleus-group');
+  assert.equal(got.InstancedGameFolder, 'cm-nucleus-val');
+  assert.equal(got.d, undefined, 'your own names stay plain');
+});
+
+test('Nucleus colouring: every look gives its colours enough contrast, a theme file without them still works', () => {
+  for (const t of ['obj', 'group', 'choice']) assert.ok(kit.PAIRS.some(([a]) => a === t), `${t} is contrast-checked`);
+  const looks = { a: { name: 'A', light: { num: '#123456' }, dark: { num: '#abcdef' } }, b: { name: 'B', light: { num: '#123456', obj: '#222222' }, dark: {} } };
+  const a = kit.resolve('a', looks, 'light');
+  assert.deepEqual([a.obj, a.group, a.choice], ['#123456', '#123456', '#123456'], 'without them: the number colour, as before');
+  assert.equal(kit.resolve('b', looks, 'light').group, '#222222', 'a group follows Game\'s colour');
+});

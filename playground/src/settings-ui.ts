@@ -80,7 +80,8 @@ export function initSettings(d: Deps) {
     if (!box) return;
     const on = currentCodeTheme();
     const mode = isDark() ? 'dark' : 'light';
-    const sample = '<span class="c">// Two players, one screen</span>\nGame.<span class="p">MaxPlayers</span> <span class="o">=</span> <span class="n">2</span>;\n<span class="k">var</span> exe <span class="o">=</span> <span class="s">"game.exe"</span>;';
+    // A setting, an option group and a callback, so the Nucleus colouring shows what it adds.
+    const sample = '<span class="c">// Two players, one screen</span>\n<span class="cm-nucleus-obj">Game</span>.<span class="cm-nucleus-prop">MaxPlayers</span> <span class="o">=</span> <span class="n">2</span>;\n<span class="cm-nucleus-obj">Game</span>.<span class="cm-nucleus-group">Hook</span>.<span class="cm-nucleus-prop">ForceFocus</span> <span class="o">=</span> <span class="k">true</span>;\n<span class="cm-nucleus-obj">Game</span>.<span class="cm-nucleus-cb">Play</span> <span class="o">=</span> <span class="k">function</span> () {};';
     const card = (id: string, name: string) => {
       const label = document.createElement('label');
       label.className = `code-card${id === on ? ' on' : ''}`;
@@ -92,7 +93,7 @@ export function initSettings(d: Deps) {
       r.className = 'sr-only';
       r.addEventListener('change', () => (pickCodeTheme(id), syncCode(), (box.querySelector(`input[value="${CSS.escape(id)}"]`) as HTMLInputElement | null)?.focus()));
       const pre = document.createElement('pre');
-      pre.className = 'ct-sample';
+      pre.className = id ? 'ct-sample js' : 'ct-sample';
       pre.setAttribute('aria-hidden', 'true');
       for (const [k, v] of Object.entries(codeThemeTokens(id, mode))) if (v) pre.style.setProperty(`--${k}`, v);
       pre.innerHTML = sample;
@@ -106,7 +107,7 @@ export function initSettings(d: Deps) {
       label.append(r, pre, nm, tick);
       return label;
     };
-    box.replaceChildren(card('', "The look's own"), ...Object.entries(CODE_THEMES).map(([id, t]) => {
+    box.replaceChildren(card('', 'Nucleus (follows the look)'), ...Object.entries(CODE_THEMES).map(([id, t]) => {
       const c = card(id, t.name);
       if (t.about) c.title = t.about; // what it is ("VS Code's default colours…") on hover
       return c;
