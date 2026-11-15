@@ -211,7 +211,7 @@ test('semantic tokens: Nucleus names in the theme\'s colours; unknown names and 
   // The custom modifiers are declared, and mapped to standard scopes so any theme colours them.
   const pkg = require('../../package.json');
   assert.deepEqual(pkg.contributes.semanticTokenModifiers.map((x: any) => x.id), ['group', 'choice', 'callback']);
-  assert.deepEqual(Object.keys(pkg.contributes.semanticTokenScopes[0].scopes), ['property.group', 'property.choice', 'method.callback']);
+  assert.deepEqual(Object.keys(pkg.contributes.semanticTokenScopes[0].scopes), ['property.group', 'property.defaultLibrary.readonly.choice', 'method.callback']);
   assert.ok(!toks.some((t: string) => t.startsWith('wrongName')), 'an unknown name keeps the plain colour (its underline explains)');
   // A local variable named like a Nucleus object isn't Nucleus'.
   const own = m.makeDocument(HEADER + 'var Context = {};\nContext.Width = 1;\n');

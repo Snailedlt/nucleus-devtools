@@ -61,7 +61,7 @@
         "language": "javascript",
         "scopes": {
           "property.group": ["entity.name.namespace"],
-          "property.choice": ["variable.other.enummember"],
+          "property.defaultLibrary.readonly.choice": ["variable.other.enummember"],
           "method.callback": ["entity.name.function"]
         }
       }
