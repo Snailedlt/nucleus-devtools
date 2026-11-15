@@ -72,7 +72,7 @@ const DERIVED: Record<string, { from: string[]; make: (t: Tokens, mode: Mode) =>
   fn: { from: ['prop'], make: (t) => t.prop },
   // The Nucleus colouring's own: Game and the option groups like numbers were coloured before, a fixed choice too.
   obj: { from: ['num'], make: (t) => t.num },
-  group: { from: ['num'], make: (t) => t.obj ?? t.num },
+  group: { from: ['num', 'obj'], make: (t) => t.obj ?? t.num },
   choice: { from: ['num'], make: (t) => t.num },
   'code-bg': { from: ['surface', 'fg'], make: (t, m) => `color-mix(in srgb, ${t.fg} ${m === 'dark' ? 4 : 2}%, ${t.surface})` },
 };

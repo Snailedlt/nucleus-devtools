@@ -408,4 +408,6 @@ test('Nucleus colouring: every look gives its colours enough contrast, a theme f
   const a = kit.resolve('a', looks, 'light');
   assert.deepEqual([a.obj, a.group, a.choice], ['#123456', '#123456', '#123456'], 'without them: the number colour, as before');
   assert.equal(kit.resolve('b', looks, 'light').group, '#222222', 'a group follows Game\'s colour');
+  const inherit = { base: looks.a, own: { name: 'Own', base: 'base', light: { obj: '#333333' }, dark: {} } };
+  assert.equal(kit.resolve('own', inherit, 'light').group, '#333333', 'a theme that sets only Game\'s colour moves the groups with it');
 });
