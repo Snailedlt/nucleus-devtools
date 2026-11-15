@@ -648,6 +648,16 @@
                 "off"
               ]
             },
+            "option-compare": {
+              "type": "string",
+              "enum": [
+                "error",
+                "warning",
+                "info",
+                "hint",
+                "off"
+              ]
+            },
             "no-cond-assign": {
               "type": "string",
               "enum": [
