@@ -814,14 +814,20 @@ function outlineByLines(text: string): SymbolEntry[] {
 }
 
 // ---------------------------------------------------------------------------
-// Semantic tokens: what a Nucleus name is, so the theme colours it (Game and Context as objects, their
-// properties, methods and Nucleus enum values each in their own colour). Only names the API knows get one;
-// an unknown name keeps the plain colour (its problem underline says why).
+// Semantic tokens: what a Nucleus name is, in JavaScript's own categories, so any editor theme colours a handler
+// like any other JavaScript file: `Game`, `Context`, `Nucleus` are variables, what's on them properties, what you
+// call (and what Nucleus calls back) methods, `new Nucleus.IniSaveInfo(…)` a class. Every one is defaultLibrary
+// (Nucleus provides it, as JavaScript does Math), and three modifiers of our own carry what JavaScript has no word
+// for: `group` (an object holding options, or an enum: Game.ProtoInput, Nucleus.Folder), `choice` (one of an enum's
+// fixed values: Nucleus.Folder.InstancedGameFolder) and `callback` (a function Nucleus calls: Game.Play). A theme
+// that knows them (the workbench's Nucleus colouring; VS Code through the scopes in package.json) shows them;
+// any other ignores them. Only names the API knows get a token: an unknown name keeps the plain colour (its
+// problem underline says why).
 
 /** The token types, in legend order (LSP's and VS Code's standard names). */
-export const SEMANTIC_TOKEN_TYPES = ['namespace', 'class', 'enum', 'enumMember', 'property', 'method'] as const;
-/** The modifiers, in legend order (bit n = SEMANTIC_TOKEN_MODIFIERS[n]). */
-export const SEMANTIC_TOKEN_MODIFIERS = ['readonly', 'defaultLibrary', 'deprecated'] as const;
+export const SEMANTIC_TOKEN_TYPES = ['variable', 'property', 'method', 'class'] as const;
+/** The modifiers, in legend order (bit n = SEMANTIC_TOKEN_MODIFIERS[n]): the standard ones, then ours. */
+export const SEMANTIC_TOKEN_MODIFIERS = ['readonly', 'defaultLibrary', 'deprecated', 'group', 'choice', 'callback'] as const;
 export type SemanticTokenType = (typeof SEMANTIC_TOKEN_TYPES)[number];
 export type SemanticTokenModifier = (typeof SEMANTIC_TOKEN_MODIFIERS)[number];
 export interface SemanticToken extends Span {
@@ -847,31 +853,40 @@ export function semanticTokens(text: string): SemanticToken[] {
     }
   };
   decl(program);
-  const emit = (node: any, r: Resolved) => {
+  // `global`: a name on its own (Game), not after a dot (Game.ProtoInput).
+  const emit = (node: any, r: Resolved, global: boolean) => {
     let type: SemanticTokenType | undefined;
-    const mods: SemanticTokenModifier[] = [];
+    const mods: SemanticTokenModifier[] = ['defaultLibrary'];
     switch (r.kind) {
       case 'object':
       case 'nucleus':
       case 'list':
-        type = 'namespace';
-        mods.push('defaultLibrary');
+        type = global ? 'variable' : 'property';
+        if (!global) mods.push('group');
         break;
       case 'enum':
-        type = 'enum';
+        type = 'property';
+        mods.push('group');
         break;
       case 'enumValue':
-        type = 'enumMember';
+        type = 'property';
+        mods.push('readonly', 'choice');
         break;
       case 'nucleusClass':
         type = 'class';
         break;
       case 'member':
         if (!r.owner) return; // JavaScript's own functions (parseInt): the editor colours those already
-        // Callbacks Nucleus calls (Game.Play, OnStop, the hotkey and Proto Input lock callbacks) are functions too:
-        // the function colour, like methods, so they stand out from the settings.
-        type = r.member.kind === 'method' || r.member.type === 'function' ? 'method' : r.member.kind === 'object' ? 'namespace' : 'property';
-        if (r.member.readonly && r.member.kind !== 'object') mods.push('readonly');
+        if (r.member.kind === 'method') type = 'method';
+        else if (r.member.type === 'function') {
+          // A callback Nucleus calls (Game.Play, OnStop, the hotkey and Proto Input lock callbacks): a function.
+          type = 'method';
+          mods.push('callback');
+        } else {
+          type = 'property';
+          if (r.member.kind === 'object') mods.push('group');
+          else if (r.member.readonly) mods.push('readonly');
+        }
         if (r.member.deprecated) mods.push('deprecated');
         break;
     }
@@ -883,14 +898,14 @@ export function semanticTokens(text: string): SemanticToken[] {
     let r: Resolved | undefined;
     if (node.type === 'Identifier') {
       r = api.globals[node.name] && !own.has(node.name) ? resolveGlobal(node.name) : undefined;
-      if (r && r.kind !== 'opaque') emit(node, r);
+      if (r && r.kind !== 'opaque') emit(node, r, true);
     } else if (node.type === 'MemberExpression') {
       const base = resolve(node.object);
       if (base && base.kind !== 'opaque') {
         if (node.computed) r = resolveIndex(base);
         else if (node.property.type === 'Identifier') {
           r = resolveMember(base, node.property.name).resolved;
-          if (r && r.kind !== 'opaque') emit(node.property, r);
+          if (r && r.kind !== 'opaque') emit(node.property, r, false);
         }
       }
     } else if (node.type === 'CallExpression') {

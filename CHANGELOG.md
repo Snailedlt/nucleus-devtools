@@ -12,6 +12,14 @@ How to write it (people and AI agents read this; the release workflow publishes 
 - At release: rename "## Unreleased" to "## <version> · <yyyy-mm-dd>". A `---` line separates releases.
 -->
 
+## Unreleased
+
+### ⚠️ Changed
+
+- **Handlers are coloured like any JavaScript file.** Nucleus names now use JavaScript's own categories, so your theme colours them as it colours everything else: `Game` and `Context` as variables, what's on them as properties, what you call as methods. Option groups (`Game.ProtoInput`, `Nucleus.Folder`), fixed choices (`Nucleus.Folder.InstancedGameFolder`) and callbacks (`Game.Play`) keep a colour of their own in VS Code, through your theme's namespace, enum value and function colours. `Game` is no longer shown in the type colour. Other editors can style these three with the new `group`, `choice` and `callback` modifiers (PORTING.md).
+
+---
+
 ## 0.7.0 · 2026-11-15
 
 ### ✨ New

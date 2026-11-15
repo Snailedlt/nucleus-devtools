@@ -153,7 +153,7 @@ test('lsp: hover, completion, value suggestions, signature help, inlay hints', a
     ch = st[i] ? st[i + 1] : ch + st[i + 1];
     decoded.push(`${text.split('\n')[line].slice(ch, ch + st[i + 2])}:${SEMANTIC_TOKEN_TYPES[st[i + 3]]}`);
   }
-  assert.deepEqual(decoded.slice(decoded.indexOf('Hook:namespace') - 1, decoded.indexOf('Hook:namespace') + 2), ['Game:namespace', 'Hook:namespace', 'ForceFocus:property']);
+  assert.deepEqual(decoded.slice(decoded.indexOf('Hook:property') - 1, decoded.indexOf('Hook:property') + 2), ['Game:variable', 'Hook:property', 'ForceFocus:property']);
 
   const symbols = (await request('textDocument/documentSymbol', { textDocument: doc })).result;
   // (This handler is half-typed, so it gets the line-by-line outline.)
