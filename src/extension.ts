@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { HANDLER_LANGUAGE, registerHandlerMode } from './handlermode';
 import { registerWhatsNew } from './whatsnew';
 import { Diagnostic as LintDiagnostic, lint, RuleId, Severity } from './core/lint';
 import { registerCommands } from './commands';
@@ -17,7 +18,10 @@ import { registerDebugger } from './debugvscode';
 import { forgetPackageFiles, packageFileForPath, packageFilesFor, packageFilePath } from './pkgfiles';
 
 const SOURCE = 'nucleus';
+// Handlers open in their own language mode (handlermode.ts); in JavaScript mode, by the setting or by hand, too.
 const SELECTOR: vscode.DocumentSelector = [
+  { language: HANDLER_LANGUAGE, scheme: 'file' },
+  { language: HANDLER_LANGUAGE, scheme: 'untitled' },
   { language: 'javascript', scheme: 'file' },
   { language: 'javascript', scheme: 'untitled' },
 ];
@@ -30,8 +34,10 @@ function config() {
 
 /** Is this document a Nucleus handler we should provide features for? */
 export function isHandler(doc: vscode.TextDocument): boolean {
-  if (doc.languageId !== 'javascript') return false;
   const mode = config().get<'auto' | 'always' | 'off'>('detection', 'auto');
+  // In the handler language mode it's a handler (detection put it there, or the user picked it), unless turned off.
+  if (doc.languageId === HANDLER_LANGUAGE) return mode !== 'off';
+  if (doc.languageId !== 'javascript') return false;
   return isHandlerFile(doc.fileName, doc.getText(), mode);
 }
 
@@ -257,6 +263,7 @@ export function activate(context: vscode.ExtensionContext) {
   registerTryIt(context, isHandler);
   registerDocsPanel(context);
   registerGameFolders(context, isHandler, SELECTOR, (d) => refresh(d, 0));
+  registerHandlerMode(context, isHandler);
   registerDebugger(context, isHandler);
 
   registerCommands(context, {

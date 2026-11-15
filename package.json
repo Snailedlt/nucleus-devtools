@@ -39,7 +39,8 @@
     "nucleus-lint": "./dist/cli.js"
   },
   "activationEvents": [
-    "onLanguage:javascript"
+    "onLanguage:javascript",
+    "onLanguage:nucleus-handler"
   ],
   "capabilities": {
     "untrustedWorkspaces": {
@@ -51,6 +52,20 @@
     }
   },
   "contributes": {
+    "languages": [
+      {
+        "id": "nucleus-handler",
+        "aliases": ["Nucleus Co-op handler", "nucleus-handler"],
+        "configuration": "./syntaxes/nucleus-handler.language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "nucleus-handler",
+        "scopeName": "source.js.nucleus-handler",
+        "path": "./syntaxes/nucleus-handler.tmLanguage.json"
+      }
+    ],
     "semanticTokenModifiers": [
       { "id": "group", "description": "A Nucleus object that holds options, or an enum (Game.ProtoInput, Game.Hook, Nucleus.Folder)" },
       { "id": "choice", "description": "One of a Nucleus enum's fixed values (Nucleus.Folder.InstancedGameFolder)" },
@@ -59,6 +74,14 @@
     "semanticTokenScopes": [
       {
         "language": "javascript",
+        "scopes": {
+          "property.group": ["entity.name.namespace"],
+          "property.defaultLibrary.readonly.choice": ["variable.other.enummember"],
+          "method.callback": ["entity.name.function"]
+        }
+      },
+      {
+        "language": "nucleus-handler",
         "scopes": {
           "property.group": ["entity.name.namespace"],
           "property.defaultLibrary.readonly.choice": ["variable.other.enummember"],
@@ -266,6 +289,10 @@
       {
         "language": "javascript",
         "path": "./snippets/nucleus.code-snippets"
+      },
+      {
+        "language": "nucleus-handler",
+        "path": "./snippets/nucleus.code-snippets"
       }
     ],
     "configuration": {
@@ -285,6 +312,19 @@
             "Disable all handler features."
           ],
           "description": "Which JavaScript files are treated as Nucleus Co-op handlers."
+        },
+        "splitscreenme.languageMode": {
+          "type": "string",
+          "enum": [
+            "handler",
+            "javascript"
+          ],
+          "default": "handler",
+          "enumDescriptions": [
+            "Handlers open as \"Nucleus Co-op handler\": JavaScript's colours, with only the handler's suggestions, hovers and checks. VS Code's own JavaScript suggestions (browser globals, newer methods Nucleus' engine doesn't have) stay out.",
+            "Handlers stay JavaScript, so VS Code's JavaScript and TypeScript features run on them too (for example \"// @ts-check\" with Nucleus: Set Up Type Definitions). Their suggestions mix in with the handler's."
+          ],
+          "markdownDescription": "The language mode handlers open in. The language shows in the status bar; click it to switch one file."
         },
         "splitscreenme.showWhatsNew": {
           "type": "boolean",
@@ -897,6 +937,9 @@
     "breakpoints": [
       {
         "language": "javascript"
+      },
+      {
+        "language": "nucleus-handler"
       }
     ],
     "debuggers": [
@@ -904,7 +947,8 @@
         "type": "nucleus",
         "label": "Nucleus handler (simulated)",
         "languages": [
-          "javascript"
+          "javascript",
+          "nucleus-handler"
         ],
         "configurationAttributes": {
           "launch": {

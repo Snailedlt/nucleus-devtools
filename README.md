@@ -87,7 +87,7 @@ One engine runs underneath all of them, so the checks, suggestions and docs are 
 | **Nucleus: Test in Nucleus Co-op** (▷ above a handler, Windows) | Installs the handler and starts Nucleus Co-op with its game selected: pick the players and press Play. Restarts an open Nucleus (with your OK; it reads handlers when it starts) and offers to turn on its debug log once. **Nucleus: Open Nucleus Co-op's Debug Log** opens `debug-log.txt`. Also `ncdev test` and in Notepad++. |
 | **Nucleus: Install Handler into Nucleus Co-op** | Copies `Game.js` and `Game/` into `<Nucleus>/handlers/`. Asks for your Nucleus folder once (`splitscreenme.nucleusPath`). |
 | **Nucleus: Browse Handlers on the Hub…** | Searches hub.splitscreen.me; opens a handler's source or its Hub page. |
-| **Nucleus: Set Up Type Definitions** | Writes `.vscode/nucleus.d.ts` and a `jsconfig.json` (ES5 lib), then hands completion over to the TypeScript service. Add `// @ts-check` to a handler for type errors. |
+| **Nucleus: Set Up Type Definitions** | Writes `.vscode/nucleus.d.ts` and a `jsconfig.json` (ES5 lib), then hands completion over to the TypeScript service and keeps the folder's handlers in JavaScript mode. Add `// @ts-check` to a handler for type errors. |
 | **Nucleus: Fix All Auto-fixable Problems** | Applies every safe fix to the open handler. To run it on save, add `"editor.codeActionsOnSave": { "source.fixAll.nucleus": "explicit" }`. |
 | **Nucleus: Lint All Handlers in Workspace** | Lints every handler in the workspace, not just open files. |
 | **Nucleus: Docs (Every Option and Function)** | Opens **Nucleus Docs** beside the editor: every option and function with its docs, by group or by search (**Nucleus: Search the Docs…**). API names in hovers, parameter hints and suggestions open their page here; *Open in the workbench* shows the same page in the browser. |
@@ -278,6 +278,7 @@ The linter runs over the 150 most-downloaded handlers on the Hub with **no error
 | Setting | Default | |
 | --- | --- | --- |
 | `splitscreenme.detection` | `auto` | `auto`: handler-looking files and files in a `handlers` folder. `always`: every `.js` file. `off`: disable. |
+| `splitscreenme.languageMode` | `handler` | `handler`: handlers open as **Nucleus Co-op handler**, with JavaScript's colours but only the handler's suggestions, hovers and checks. `javascript`: they stay JavaScript, so VS Code's own JavaScript features run on them too. See [Handler language mode](#handler-language-mode). |
 | `splitscreenme.lint.enable` | `true` | Report problems. |
 | `splitscreenme.lint.compareWithHub` | `true` | For a handler with a `Hub.Handler.Id`, compare `Game.GUID` with the Hub version (`guid-changed`); downloads that version once. |
 | `splitscreenme.lint.rules` | `{}` | Per-rule severity: `error`, `warning`, `info`, `hint` or `off`. |
@@ -288,6 +289,15 @@ The linter runs over the 150 most-downloaded handlers on the Hub with **no error
 | `splitscreenme.completion.enable` | `true` | The extension's completion/hover/signature help. Turned off by **Set Up Type Definitions**, because TypeScript then provides them. |
 | `splitscreenme.nucleusPath` | | Your Nucleus Co-op folder, used by Install. |
 | `splitscreenme.showWhatsNew` | `true` | After an update, a short note with what's new. **Nucleus: What's New** opens the changelog any time. |
+
+### Handler language mode
+
+Handlers open in a language mode of their own, **Nucleus Co-op handler**. It uses JavaScript's grammar, so colours, brackets, comments and folding look the same as in any `.js` file. VS Code's built-in JavaScript and TypeScript features don't run on it, though: their suggestions would otherwise mix with the handler's, and many of them are wrong for Nucleus (browser globals like `document`, and newer methods such as `Array.prototype.includes` that Nucleus' engine, Jint 2.11.58, doesn't have).
+
+- The status bar shows the mode. Click it to switch one file back to JavaScript; that file stays JavaScript for the session.
+- `"splitscreenme.languageMode": "javascript"` keeps all handlers as JavaScript.
+- **Nucleus: Set Up Type Definitions** sets that for its folder, because `// @ts-check` needs the TypeScript service.
+- Formatters, linters, snippets and keybindings you set up for `javascript` (Prettier, ESLint, …) don't apply to handler files. Add `nucleus-handler` to their languages, or use JavaScript mode. The extension's own formatter, snippets and debugger work in both.
 
 **What the Hub sees.** The Hub's handler list comes from our daily copy on GitHub, checked at most once an hour; hub.splitscreen.me is asked only when that copy is missing or out of date, and each package is downloaded once per version. Every request says it comes from these devtools, which tool and which feature sent it (`User-Agent: SplitScreenMe-DevTools/0.6.0 (ncdev-cli; hub-search; +https://github.com/Snailedlt/splitscreenme-vscode)` and the same in `X-Requested-With`), and nothing else: no search text, file names, code, user or computer names.
 

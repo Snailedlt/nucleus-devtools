@@ -16,6 +16,7 @@ How to write it (people and AI agents read this; the release workflow publishes 
 
 ### ⚠️ Changed
 
+- **Handlers open as "Nucleus Co-op handler", without VS Code's JavaScript suggestions.** VS Code's own JavaScript suggestions and type lines no longer mix in with the handler's: no browser globals, and no newer methods that Nucleus' engine doesn't have. Colours, brackets and folding stay those of JavaScript. Click the language in the status bar to switch a file back, or set `splitscreenme.languageMode` to `javascript` to keep all handlers as JavaScript; **Set Up Type Definitions** does that for its folder.
 - **Handlers are coloured like any JavaScript file.** Nucleus names now use JavaScript's own categories, so your theme colours them as it colours everything else: `Game` and `Context` as variables, what's on them as properties, what you call as methods. Option groups (`Game.ProtoInput`, `Nucleus.Folder`), fixed choices (`Nucleus.Folder.InstancedGameFolder`) and callbacks (`Game.Play`) keep a colour of their own in VS Code, through your theme's namespace, enum value and function colours. `Game` is no longer shown in the type colour. Other editors can style these three with the new `group`, `choice` and `callback` modifiers (PORTING.md).
 
 ---
