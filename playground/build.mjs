@@ -760,8 +760,8 @@ for (const f of fs.readdirSync(path.join(here, 'src', 'editor-icons'))) if (f.en
   if (fs.existsSync(packs)) { fs.mkdirSync(path.join(dst, 'packs'), { recursive: true }); for (const f of fs.readdirSync(packs)) if (f.endsWith('.zip')) fs.copyFileSync(path.join(packs, f), path.join(dst, 'packs', f)); }
   else console.warn('No mascot packs (the assets branch, --assets <dir>): the Downloads buttons will lead nowhere.');
 }
-// The site's own pages count one anonymous visit with where it came from (site-chrome.mjs siteVisitScript), as the
-// workbench does, so the `?ref=` on links to the start page, Learn, docs and checks shows up under Campaigns.
+// The site's own pages each count an anonymous page view, the first with where the visit came from (site-chrome.mjs
+// siteVisitScript), as the workbench does, so the `?ref=` on links to the start page, Learn, docs and checks shows up under Campaigns.
 // Every site page also gets: keyboard shortcuts drawn as keys (src/kbd.ts, the same as Learn's), and a Copy button
 // on its code blocks and inline commands (site-chrome.mjs COPY_SCRIPT), and the community links where it asks for
 // them (<!--COMMUNITY--> box, <!--COMMUNITY_FOOTER--> links; site-chrome.mjs COMMUNITY).
@@ -788,6 +788,19 @@ for (const f of fs.readdirSync(path.join(here, 'src', 'editor-icons'))) if (f.en
     }
   };
   for (const sub of ['start', 'tools', 'learn', 'docs', 'rules', 'test-guide', 'votes']) add(path.join(here, 'dist', 'pages', sub));
+  // The Duo and Nucli pages (design/, copied in as they are) count their page views too, and nothing else is added to them.
+  const countOnly = (d) => {
+    if (!script || !fs.existsSync(d)) return;
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const f = path.join(d, e.name);
+      if (e.isDirectory()) countOnly(f);
+      else if (e.name.endsWith('.html')) {
+        const html = fs.readFileSync(f, 'utf8'), at = html.lastIndexOf('</body>');
+        if (at >= 0) fs.writeFileSync(f, html.slice(0, at) + script + '\n' + html.slice(at));
+      }
+    }
+  };
+  for (const sub of ['mascots', 'ui-kit', 'duo-nucli']) countOnly(path.join(here, 'dist', 'pages', sub));
 }
 // Fingerprint of everything served, so the deploy can be skipped when nothing changed (pages.yml
 // compares it with the live build.txt).

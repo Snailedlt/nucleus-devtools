@@ -1,23 +1,29 @@
 // Code coloured by what the names are, as in VS Code: CodeMirror's JavaScript tokens, then the core's semantic tokens
-// (core/features.ts semanticTokens) on top: `Game`, `Context` and `Nucleus` as objects, their properties, methods and
-// enum values each their own colour; a name Nucleus doesn't know stays plain. The workbench's and Learn's editors,
+// (core/features.ts semanticTokens) on top. Those are JavaScript's own categories (variable, property, method,
+// class) with Nucleus's detail as modifiers (group, choice, callback). The Nucleus colouring (the default, which
+// follows the look) gives each its own colour; a named code theme (VS Code, JetBrains…) colours by the JavaScript
+// category alone, as that editor does. A name Nucleus doesn't know stays plain. The workbench's and Learn's editors,
 // codehl.ts (hovers, Check, docs) and the site's static pages (build.mjs, with CodeMirror's Node runMode) all use it.
-import { semanticTokens, type SemanticTokenType } from '@core/features';
+import { semanticTokens, type SemanticToken } from '@core/features';
 
-/** The class each kind of Nucleus name gets (styled by SEM_CSS and the workbench's code themes). */
-export const SEM_CLASS: Record<SemanticTokenType, string> = {
-  namespace: 'cm-nucleus-obj',
-  class: 'cm-nucleus-obj',
-  enum: 'cm-nucleus-obj',
-  enumMember: 'cm-nucleus-val',
-  property: 'cm-nucleus-prop',
-  method: 'cm-nucleus-fn',
-};
+/** The class a Nucleus name gets (styled in page.html and semcss.ts). */
+export function semClass(t: Pick<SemanticToken, 'type' | 'modifiers'>): string {
+  const m = (x: string) => t.modifiers.includes(x as any);
+  switch (t.type) {
+    case 'variable':
+    case 'class':
+      return 'cm-nucleus-obj'; // Game, Context, Nucleus; new Nucleus.IniSaveInfo
+    case 'method':
+      return m('callback') ? 'cm-nucleus-cb' : 'cm-nucleus-fn'; // Game.Play; Context.GetFolder
+    default:
+      return m('group') ? 'cm-nucleus-group' : m('choice') ? 'cm-nucleus-val' : 'cm-nucleus-prop'; // Game.Hook; Nucleus.Folder.X; settings
+  }
+}
 
 /** Where the Nucleus names are: [start, end) offsets and their class. Empty if the code doesn't parse at all. */
 export function semanticSpans(src: string): { start: number; end: number; cls: string }[] {
   try {
-    return semanticTokens(src).map((t) => ({ start: t.start, end: t.end, cls: SEM_CLASS[t.type] }));
+    return semanticTokens(src).map((t) => ({ start: t.start, end: t.end, cls: semClass(t) }));
   } catch {
     return [];
   }
@@ -43,9 +49,4 @@ export function semHighlight(src: string, runMode: (src: string, mode: string, c
   return out;
 }
 
-/** The colours, in the code themes' variables: objects like numbers' blue, members like properties. */
-export const SEM_CSS = (scope: string) =>
-  `${scope} .cm-nucleus-obj, ${scope} .cm-nucleus-val { color: var(--num); }
-${scope} .cm-nucleus-prop { color: var(--prop); }
-${scope} .cm-nucleus-fn { color: var(--fn, var(--prop)); }`;
 export { SEM_STATIC_CSS } from './semcss';

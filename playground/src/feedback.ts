@@ -5,6 +5,8 @@
 //   GoatCounter's own script sends it, so we know which screens to design for), the browser's language, the
 //   site the visit came from (only the site, e.g. discord.com, never the page) and the `?ref=` tag of the link
 //   followed (our own posts and READMEs add one: `?ref=discord`), so we see where people find the workbench;
+// - each page opened is a page view (its address without query or #), so we see how many reach which page: totals
+//   only, nothing that follows one person through the site;
 // - they go to a GoatCounter site (cookie-less, no personal data stored) only when the build names one
 //   (BUILD.feedback); otherwise nothing leaves the browser;
 // - off when the browser asks not to be tracked (Do Not Track, Global Privacy Control), switchable in
@@ -46,10 +48,21 @@ export function setFeedback(on: boolean) {
 
 // Where this visit came from: read once, when the page opens (later navigation in the page loses it).
 const VISIT_KEY = 'nucleus-workbench-visit';
+// Leave the tag out of the address bar, so a link copied from it doesn't carry it on (also when this tab already knows
+// where the visit came from: a site page passed its own tag on).
+const dropTag = (q: URLSearchParams) => {
+  if (!q.has('ref') && !q.has('utm_source')) return;
+  q.delete('ref');
+  q.delete('utm_source');
+  history.replaceState(history.state, '', `${location.pathname}${q.toString() ? `?${q}` : ''}${location.hash}`);
+};
 const visit: { ref?: string; from?: string; counted?: boolean } = (() => {
   try {
     const saved = JSON.parse(sessionStorage.getItem(VISIT_KEY) || 'null');
-    if (saved) return saved;
+    if (saved) {
+      dropTag(new URLSearchParams(location.search));
+      return saved;
+    }
   } catch { /* private mode */ }
   const v: { ref?: string; from?: string } = {};
   try {
@@ -60,12 +73,7 @@ const visit: { ref?: string; from?: string; counted?: boolean } = (() => {
       const u = new URL(document.referrer);
       if (u.host && u.host !== location.host) v.from = `${u.protocol}//${u.host}`; // the site only, never the page
     }
-    // Leave the tag out of the address bar, so a link copied from it doesn't carry it on.
-    if (ref) {
-      q.delete('ref');
-      q.delete('utm_source');
-      history.replaceState(history.state, '', `${location.pathname}${q.toString() ? `?${q}` : ''}${location.hash}`);
-    }
+    dropTag(q);
   } catch { /* odd URL: no source */ }
   try { sessionStorage.setItem(VISIT_KEY, JSON.stringify(v)); } catch { /* private mode */ }
   return v;
@@ -73,13 +81,14 @@ const visit: { ref?: string; from?: string; counted?: boolean } = (() => {
 
 function send(path: string) {
   if (!feedbackOn()) return;
-  // GoatCounter's count endpoint; an event (e=true), so it isn't counted as a page view. No referrer, no title.
+  // GoatCounter's count endpoint; an event (e=true), so it isn't counted as a page view. No title.
   // s: the screen size, as GoatCounter's own script sends it (width,height,pixel ratio), for its Sizes chart.
   const size = `${screen.width},${screen.height},${window.devicePixelRatio || 1}`;
-  // r: the site this visit came from (Top referrers); q: the link's ?ref= tag (Campaigns).
+  // r: the site this visit came from (Top referrers), so the feature counts show where their visits began.
   const from = visit.from ? `&r=${encodeURIComponent(visit.from)}` : '';
-  const ref = visit.ref ? `&q=${encodeURIComponent(`?ref=${visit.ref}`)}` : '';
-  const url = `https://${BUILD.feedback}.goatcounter.com/count?p=${encodeURIComponent('/' + path)}&e=true&s=${encodeURIComponent(size)}${from}${ref}&rnd=${Math.random().toString(36).slice(2)}`;
+  beacon(`https://${BUILD.feedback}.goatcounter.com/count?p=${encodeURIComponent('/' + path)}&e=true&s=${encodeURIComponent(size)}${from}&rnd=${Math.random().toString(36).slice(2)}`);
+}
+function beacon(url: string) {
   try { navigator.sendBeacon ? navigator.sendBeacon(url) : fetch(url, { mode: 'no-cors', keepalive: true }); } catch { /* ignore */ }
 }
 
@@ -97,13 +106,25 @@ export function vote(kind: 'tip' | 'doc', id: string, v: Vote): Vote | undefined
   return now;
 }
 
-/** One "visit" count per visit (with where it came from), so referrers and campaigns count visits, not clicks. */
+/**
+ * This page, counted once as a page view (GoatCounter's Pages: the address without its query or #, so no code or
+ * handler names). The visit's first page also says where the visit came from: the other site (Top referrers) and the
+ * link's ?ref= tag (as the source under Top referrers and as a campaign; GoatCounter reads it only from page views, never from events), so each visit is
+ * credited to its source once. Totals only: nothing follows one person from page to page.
+ */
 export function countVisit() {
-  if (visit.counted || !feedbackOn()) return;
+  if (pageCounted || !feedbackOn()) return;
+  pageCounted = true;
+  const first = !visit.counted;
   visit.counted = true;
   try { sessionStorage.setItem(VISIT_KEY, JSON.stringify(visit)); } catch { /* private mode */ }
-  send('visit');
+  const size = `${screen.width},${screen.height},${window.devicePixelRatio || 1}`;
+  const from = first && visit.from ? `&r=${encodeURIComponent(visit.from)}` : '';
+  // GoatCounter takes ref as the source (Top referrers, in place of r) and campaign for its Campaigns list.
+  const ref = first && visit.ref ? `&q=${encodeURIComponent(`?ref=${visit.ref}&campaign=${visit.ref}`)}` : '';
+  beacon(`https://${BUILD.feedback}.goatcounter.com/count?p=${encodeURIComponent(location.pathname)}&s=${encodeURIComponent(size)}${from}${ref}&rnd=${Math.random().toString(36).slice(2)}`);
 }
+let pageCounted = false;
 
 const used = new Set<string>();
 /** Beta testing (Help test this beta and the pinned tasks): what gets opened, pinned, tried and reported, by task id

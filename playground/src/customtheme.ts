@@ -223,13 +223,16 @@ export function pickCodeTheme(id: string) {
 export function codeThemeTokens(id: string, mode: Mode): Record<string, string> {
   if (!id) {
     const t = lookTokens(currentLook(), mode);
-    return { 'code-bg': t['code-bg'], 'code-fg': t['code-fg'] ?? t.fg, kw: t.kw, str: t.str, num: t.num, cmt: t.cmt, prop: t.prop };
+    return { 'code-bg': t['code-bg'], 'code-fg': t['code-fg'] ?? t.fg, kw: t.kw, str: t.str, num: t.num, cmt: t.cmt, prop: t.prop, fn: t.fn, obj: t.obj, group: t.group, choice: t.choice };
   }
   const c = CODE_THEMES[id];
   return codeTokens((mode === 'dark' && c.dark) || c.light);
 }
 export function applyCodeTheme() {
   const id = currentCodeTheme();
+  // A named code theme colours by JavaScript's categories alone (page.html); none: the Nucleus colouring.
+  if (id) document.documentElement.dataset.codeTheme = id;
+  else delete document.documentElement.dataset.codeTheme;
   let style = document.getElementById(CODE_STYLE_ID) as HTMLStyleElement | null;
   if (!id) return void style?.remove();
   if (!style) {

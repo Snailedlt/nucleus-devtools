@@ -50,7 +50,9 @@
         "num": "#0f6f6d",
         "cmt": "#6a737d",
         "prop": "#0b5c8a",
-        "fn": "#795e26"
+        "fn": "#795e26",
+        "obj": "#3b6600",
+        "choice": "#a14a00"
       },
       "dark": {
         "bg": "#1b1b1d",
@@ -75,7 +77,9 @@
         "num": "#bd93f9",
         "cmt": "#8b96c4",
         "prop": "#8be9fd",
-        "fn": "#dcdcaa"
+        "fn": "#dcdcaa",
+        "obj": "#4ec9b0",
+        "choice": "#f78c6c"
       }
     },
     "v3": {
@@ -115,7 +119,9 @@
         "num": "#9a5200",
         "cmt": "#626b7b",
         "prop": "#1d5fd1",
-        "fn": "#7a4f00"
+        "fn": "#7a4f00",
+        "obj": "#8a1c5e",
+        "choice": "#c0262d"
       },
       "dark": {
         "bg": "#000000",
@@ -141,7 +147,9 @@
         "num": "#f5b971",
         "cmt": "#8b93a3",
         "prop": "#93c5fd",
-        "fn": "#fcd34d"
+        "fn": "#fcd34d",
+        "obj": "#f0abfc",
+        "choice": "#fb7185"
       }
     },
     "mac": {
@@ -184,7 +192,9 @@
         "num": "#1c00cf",
         "cmt": "#5d6c79",
         "prop": "#326d74",
-        "fn": "#6c36a9"
+        "fn": "#6c36a9",
+        "obj": "#0b4f79",
+        "choice": "#b5480f"
       },
       "dark": {
         "bg": "#15161c",
@@ -210,7 +220,9 @@
         "num": "#d0bf69",
         "cmt": "#7f8c98",
         "prop": "#67b7a4",
-        "fn": "#a167e6"
+        "fn": "#a167e6",
+        "obj": "#5dd8ff",
+        "choice": "#ffa14f"
       }
     },
     "alpha8": {
@@ -253,7 +265,9 @@
         "num": "#098658",
         "cmt": "#008000",
         "prop": "#001080",
-        "fn": "#795e26"
+        "fn": "#795e26",
+        "obj": "#267f99",
+        "choice": "#0070c1"
       },
       "dark": {
         "bg": "#323232",
@@ -279,7 +293,9 @@
         "num": "#b5cea8",
         "cmt": "#6a9955",
         "prop": "#9cdcfe",
-        "fn": "#dcdcaa"
+        "fn": "#dcdcaa",
+        "obj": "#4ec9b0",
+        "choice": "#4fc1ff"
       }
     }
   },
