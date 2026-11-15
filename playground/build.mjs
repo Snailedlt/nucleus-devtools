@@ -788,6 +788,19 @@ for (const f of fs.readdirSync(path.join(here, 'src', 'editor-icons'))) if (f.en
     }
   };
   for (const sub of ['start', 'tools', 'learn', 'docs', 'rules', 'test-guide', 'votes']) add(path.join(here, 'dist', 'pages', sub));
+  // The Duo and Nucli pages (design/, copied in as they are) count the visit too, and nothing else is added to them.
+  const countOnly = (d) => {
+    if (!script || !fs.existsSync(d)) return;
+    for (const e of fs.readdirSync(d, { withFileTypes: true })) {
+      const f = path.join(d, e.name);
+      if (e.isDirectory()) countOnly(f);
+      else if (e.name.endsWith('.html')) {
+        const html = fs.readFileSync(f, 'utf8'), at = html.lastIndexOf('</body>');
+        if (at >= 0) fs.writeFileSync(f, html.slice(0, at) + script + '\n' + html.slice(at));
+      }
+    }
+  };
+  for (const sub of ['mascots', 'ui-kit', 'duo-nucli']) countOnly(path.join(here, 'dist', 'pages', sub));
 }
 // Fingerprint of everything served, so the deploy can be skipped when nothing changed (pages.yml
 // compares it with the live build.txt).

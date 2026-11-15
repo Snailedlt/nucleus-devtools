@@ -81,7 +81,7 @@ export function docFeedbackScript(site) {
  * One anonymous "visit" count per visit on the site's own pages (start, Learn, docs, rules), with where it came from:
  * the other site (only its address, never the page) and the link's `?ref=` tag (GoatCounter's Campaigns). The same
  * rules and the same per-tab record as the workbench (feedback.ts `countVisit`), so a visit that moves on to the
- * workbench is counted once. Off with Do Not Track, Global Privacy Control or Settings › Privacy in the workbench.
+ * workbench is counted once, and our tagged links carry the visit's tag on (also into a new tab). Off with Do Not Track, Global Privacy Control or Settings › Privacy in the workbench.
  */
 export function siteVisitScript(site) {
   if (!site) return '';
@@ -96,9 +96,13 @@ export function siteVisitScript(site) {
       var q = new URLSearchParams(location.search), ref = q.get('ref') || q.get('utm_source');
       if (ref && /^[\\w.-]{1,40}$/.test(ref)) v.ref = ref;
       if (document.referrer) { var u = new URL(document.referrer); if (u.host && u.host !== location.host) v.from = u.protocol + '//' + u.host; }
-      if (ref) { q.delete('ref'); q.delete('utm_source'); var s = q.toString(); history.replaceState(history.state, '', location.pathname + (s ? '?' + s : '') + location.hash); }
     } catch (e) {}
   }
+  // The tag stays out of the address bar, so a link copied from it doesn't carry it on.
+  try {
+    var q2 = new URLSearchParams(location.search);
+    if (q2.has('ref') || q2.has('utm_source')) { q2.delete('ref'); q2.delete('utm_source'); var s = q2.toString(); history.replaceState(history.state, '', location.pathname + (s ? '?' + s : '') + location.hash); }
+  } catch (e) {}
   var off = navigator.doNotTrack === '1' || navigator.globalPrivacyControl === true || get('nucleus-workbench-feedback-off') === '1' || get('skipgc') === 't';
   if (!v.counted && !off) {
     v.counted = true;
@@ -107,6 +111,17 @@ export function siteVisitScript(site) {
     try { navigator.sendBeacon ? navigator.sendBeacon(url) : fetch(url, { mode: 'no-cors', keepalive: true }); } catch (e) {}
   }
   try { sessionStorage.setItem(KEY, JSON.stringify(v)); } catch (e) {}
+  // Our tagged links (the workbench buttons: ?ref=start) carry the visit's own tag instead, else the site it came
+  // from, so a page opened in a new tab (which starts without this tab's record) still knows where the visit began.
+  var tag = v.ref || (v.from ? v.from.split('//')[1] : '');
+  if (tag && /^[\\w.-]{1,40}$/.test(tag)) {
+    var fix = function () {
+      document.querySelectorAll('a[href*="ref="]').forEach(function (a) {
+        try { var h = a.getAttribute('href'), u = new URL(h, location.href); if (u.origin === location.origin && u.searchParams.has('ref')) a.setAttribute('href', h.replace(/([?&]ref=)[^&#]*/, '$1' + encodeURIComponent(tag))); } catch (e) {}
+      });
+    };
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', fix); else fix();
+  }
 })();
 </script>`;
 }

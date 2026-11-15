@@ -46,10 +46,21 @@ export function setFeedback(on: boolean) {
 
 // Where this visit came from: read once, when the page opens (later navigation in the page loses it).
 const VISIT_KEY = 'nucleus-workbench-visit';
+// Leave the tag out of the address bar, so a link copied from it doesn't carry it on (also when this tab already knows
+// where the visit came from: a site page passed its own tag on).
+const dropTag = (q: URLSearchParams) => {
+  if (!q.has('ref') && !q.has('utm_source')) return;
+  q.delete('ref');
+  q.delete('utm_source');
+  history.replaceState(history.state, '', `${location.pathname}${q.toString() ? `?${q}` : ''}${location.hash}`);
+};
 const visit: { ref?: string; from?: string; counted?: boolean } = (() => {
   try {
     const saved = JSON.parse(sessionStorage.getItem(VISIT_KEY) || 'null');
-    if (saved) return saved;
+    if (saved) {
+      dropTag(new URLSearchParams(location.search));
+      return saved;
+    }
   } catch { /* private mode */ }
   const v: { ref?: string; from?: string } = {};
   try {
@@ -60,12 +71,7 @@ const visit: { ref?: string; from?: string; counted?: boolean } = (() => {
       const u = new URL(document.referrer);
       if (u.host && u.host !== location.host) v.from = `${u.protocol}//${u.host}`; // the site only, never the page
     }
-    // Leave the tag out of the address bar, so a link copied from it doesn't carry it on.
-    if (ref) {
-      q.delete('ref');
-      q.delete('utm_source');
-      history.replaceState(history.state, '', `${location.pathname}${q.toString() ? `?${q}` : ''}${location.hash}`);
-    }
+    dropTag(q);
   } catch { /* odd URL: no source */ }
   try { sessionStorage.setItem(VISIT_KEY, JSON.stringify(v)); } catch { /* private mode */ }
   return v;
