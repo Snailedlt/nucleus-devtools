@@ -47,7 +47,7 @@ export function initFileOpen(deps: FileOpenDeps): HTMLInputElement {
   // Shown by dragover; hidden when the drag leaves the window (a dragleave with nowhere to go), is dropped, or ends.
   // Counting dragenter/dragleave, as before, lost count over the editor's nested elements and showed the hint only
   // some of the time. A held-still file gets a dragover only every ~350 ms (the HTML spec's drag loop), so the
-  // safety timer, for a drag that ends without any event here, is far longer than that.
+  // safety timer, for a drag that ends without any event here, is far longer than that (5 s).
   const dropHint = $('#drop-hint');
   const hasFiles = (e: DragEvent) => !!e.dataTransfer && Array.from(e.dataTransfer.types).includes('Files');
   const overFiles = (e: DragEvent) => !!(e.target as Element | null)?.closest?.('#files-panel');
@@ -65,7 +65,7 @@ export function initFileOpen(deps: FileOpenDeps): HTMLInputElement {
       e.dataTransfer!.dropEffect = 'copy';
       show(files ? 'files' : 'page');
       clearTimeout(hideTimer);
-      hideTimer = window.setTimeout(() => show(null), 1500);
+      hideTimer = window.setTimeout(() => show(null), 5000);
     },
     true,
   );
