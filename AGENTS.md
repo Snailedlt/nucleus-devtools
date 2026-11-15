@@ -43,6 +43,7 @@ Run `npm test` and `npm run typecheck` before finishing. Run `npm run build` aft
   - `jsbuiltins.ts`: JavaScript's ES5 objects and methods (String, Array, Math, JSON, Number, global functions) for completion/hover/signature help, from `data/js-builtins.json` (generated from TypeScript's `lib.es5.d.ts` by `scripts/generate-jsbuiltins.mjs`; a test checks it's current).
   - `format.ts`: Format Document / `ncdev format`: indentation and spacing only. Line breaks never move and the result is re-tokenized and compared with the original; any difference and it refuses. Keep that guarantee.
   - `complete.ts`: text-based resolution for completion/hover/signature help (works on incomplete code).
+  - `scopes.ts`: a small scope model of the handler's own variables (what's assigned to them, per function), for checks that follow a value through the handler's code (`option-compare`). Measured against every Hub handler in `docs/spikes/26-deeper-checks.md`.
   - `features.ts`: the editor features as plain data (hover, completion, signature help, quick fixes, Format Document edits, inlay hints, handler detection). `extension.ts` and `lsp.ts` only convert them.
   - `lookup.ts`: `ncdev api` lookup/search and the Markdown API reference.
   - `sim.ts`: "Try it", runs a handler per player emulating Jint. Shared with the testbench's browser workbench; keep it free of Node and DOM APIs.
