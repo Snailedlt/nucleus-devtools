@@ -49,7 +49,8 @@
         "str": "#b0175a",
         "num": "#0f6f6d",
         "cmt": "#6a737d",
-        "prop": "#0b5c8a"
+        "prop": "#0b5c8a",
+        "fn": "#795e26"
       },
       "dark": {
         "bg": "#1b1b1d",
@@ -73,7 +74,8 @@
         "str": "#f1fa8c",
         "num": "#bd93f9",
         "cmt": "#8b96c4",
-        "prop": "#8be9fd"
+        "prop": "#8be9fd",
+        "fn": "#dcdcaa"
       }
     },
     "v3": {
@@ -112,7 +114,8 @@
         "str": "#0f6b3f",
         "num": "#9a5200",
         "cmt": "#626b7b",
-        "prop": "#1d5fd1"
+        "prop": "#1d5fd1",
+        "fn": "#7a4f00"
       },
       "dark": {
         "bg": "#000000",
@@ -137,7 +140,8 @@
         "str": "#8fe3b8",
         "num": "#f5b971",
         "cmt": "#8b93a3",
-        "prop": "#93c5fd"
+        "prop": "#93c5fd",
+        "fn": "#fcd34d"
       }
     },
     "mac": {
@@ -179,7 +183,8 @@
         "str": "#c41a16",
         "num": "#1c00cf",
         "cmt": "#5d6c79",
-        "prop": "#326d74"
+        "prop": "#326d74",
+        "fn": "#6c36a9"
       },
       "dark": {
         "bg": "#15161c",
@@ -204,7 +209,8 @@
         "str": "#fc6a5d",
         "num": "#d0bf69",
         "cmt": "#7f8c98",
-        "prop": "#67b7a4"
+        "prop": "#67b7a4",
+        "fn": "#a167e6"
       }
     },
     "alpha8": {
@@ -246,7 +252,8 @@
         "str": "#a31515",
         "num": "#098658",
         "cmt": "#008000",
-        "prop": "#001080"
+        "prop": "#001080",
+        "fn": "#795e26"
       },
       "dark": {
         "bg": "#323232",
@@ -271,7 +278,8 @@
         "str": "#d69d85",
         "num": "#b5cea8",
         "cmt": "#6a9955",
-        "prop": "#9cdcfe"
+        "prop": "#9cdcfe",
+        "fn": "#dcdcaa"
       }
     }
   },
@@ -285,7 +293,8 @@
         "str": "#0a3069",
         "num": "#0550ae",
         "cmt": "#6e7781",
-        "prop": "#8250df"
+        "prop": "#8250df",
+        "fn": "#953800"
       },
       "dark": {
         "code-bg": "#0d1117",
@@ -294,7 +303,8 @@
         "str": "#a5d6ff",
         "num": "#79c0ff",
         "cmt": "#8b949e",
-        "prop": "#d2a8ff"
+        "prop": "#d2a8ff",
+        "fn": "#ffa657"
       }
     },
     "vscode": {
@@ -306,7 +316,8 @@
         "str": "#a31515",
         "num": "#098658",
         "cmt": "#008000",
-        "prop": "#001080"
+        "prop": "#001080",
+        "fn": "#795e26"
       },
       "dark": {
         "code-bg": "#1e1e1e",
@@ -315,7 +326,8 @@
         "str": "#ce9178",
         "num": "#b5cea8",
         "cmt": "#6a9955",
-        "prop": "#9cdcfe"
+        "prop": "#9cdcfe",
+        "fn": "#dcdcaa"
       },
       "about": "VS Code's default colours: Light+ and Dark+ (Light Modern and Dark Modern use the same)."
     },
@@ -332,7 +344,8 @@
         "cmt": "#008000",
         "prop": "#000000",
         "op": "#000080",
-        "op-weight": "700"
+        "op-weight": "700",
+        "fn": "#8000ff"
       },
       "dark": {
         "code-bg": "#3f3f3f",
@@ -344,7 +357,8 @@
         "cmt": "#95b895",
         "prop": "#dcdccc",
         "op": "#c3bf9f",
-        "op-weight": "700"
+        "op-weight": "700",
+        "fn": "#c792ea"
       }
     },
     "xcode": {
@@ -356,7 +370,8 @@
         "str": "#c41a16",
         "num": "#1c00cf",
         "cmt": "#5d6c79",
-        "prop": "#326d74"
+        "prop": "#326d74",
+        "fn": "#6c36a9"
       },
       "dark": {
         "code-bg": "#1f1f24",
@@ -365,7 +380,8 @@
         "str": "#fc6a5d",
         "num": "#d0bf69",
         "cmt": "#7f8c98",
-        "prop": "#67b7a4"
+        "prop": "#67b7a4",
+        "fn": "#a167e6"
       }
     },
     "one": {
@@ -379,7 +395,8 @@
         "num": "#986801",
         "cmt": "#6e6f77",
         "prop": "#2a5bd7",
-        "code-muted": "#5d5f66"
+        "code-muted": "#5d5f66",
+        "fn": "#b0431f"
       },
       "dark": {
         "code-bg": "#282c34",
@@ -389,7 +406,8 @@
         "num": "#d19a66",
         "cmt": "#979ca7",
         "prop": "#61afef",
-        "code-muted": "#a3a9b4"
+        "code-muted": "#a3a9b4",
+        "fn": "#e06c75"
       }
     },
     "monokai": {
@@ -402,7 +420,8 @@
         "str": "#e6db74",
         "num": "#ae81ff",
         "cmt": "#9a957f",
-        "prop": "#a6e22e"
+        "prop": "#a6e22e",
+        "fn": "#66d9ef"
       }
     },
     "dracula": {
@@ -415,7 +434,8 @@
         "str": "#f1fa8c",
         "num": "#bd93f9",
         "cmt": "#8b96c4",
-        "prop": "#8be9fd"
+        "prop": "#8be9fd",
+        "fn": "#50fa7b"
       }
     }
   }

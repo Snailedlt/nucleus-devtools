@@ -38,6 +38,7 @@ export const PAIRS: [string, string, string][] = [
   ['num', 'code-bg', 'Code: number'],
   ['cmt', 'code-bg', 'Code: comment'],
   ['prop', 'code-bg', 'Code: property'],
+  ['fn', 'code-bg', 'Code: function'],
 ];
 
 type Kind = 'color' | 'length' | 'shadow' | 'font' | 'number' | 'percent';
@@ -46,7 +47,7 @@ export const TOKENS: Record<string, Kind> = {
   bg: 'color', surface: 'color', 'surface-2': 'color', line: 'color', fg: 'color', muted: 'color',
   accent: 'color', 'accent-fg': 'color', brand: 'color',
   err: 'color', 'err-bg': 'color', warn: 'color', 'warn-bg': 'color', info: 'color', 'info-bg': 'color', ok: 'color', 'ok-bg': 'color',
-  'code-bg': 'color', 'code-fg': 'color', 'code-muted': 'color', 'code-gutter': 'color', 'code-line': 'color', kw: 'color', str: 'color', num: 'color', cmt: 'color', prop: 'color',
+  'code-bg': 'color', 'code-fg': 'color', 'code-muted': 'color', 'code-gutter': 'color', 'code-line': 'color', kw: 'color', str: 'color', num: 'color', cmt: 'color', prop: 'color', fn: 'color',
   p1: 'color', p2: 'color', p3: 'color', p4: 'color', p5: 'color', p6: 'color', p7: 'color', p8: 'color',
   'r-sm': 'length', 'r-ctl': 'length', 'r-pane': 'length', 'r-lg': 'length',
   'sh-1': 'shadow', 'sh-2': 'shadow',
@@ -64,6 +65,8 @@ const DERIVED: Record<string, { from: string[]; make: (t: Tokens, mode: Mode) =>
   'warn-bg': { from: ['warn', 'surface'], make: (t, m) => `color-mix(in srgb, ${t.warn} ${m === 'dark' ? 16 : 10}%, ${t.surface})` },
   'info-bg': { from: ['info', 'surface'], make: (t, m) => `color-mix(in srgb, ${t.info} ${m === 'dark' ? 16 : 9}%, ${t.surface})` },
   'ok-bg': { from: ['ok', 'surface'], make: (t, m) => `color-mix(in srgb, ${t.ok} ${m === 'dark' ? 16 : 9}%, ${t.surface})` },
+  // Nucleus's functions and callbacks (Game.Play, Context methods): the property colour, for a look without one.
+  fn: { from: ['prop'], make: (t) => t.prop },
   'code-bg': { from: ['surface', 'fg'], make: (t, m) => `color-mix(in srgb, ${t.fg} ${m === 'dark' ? 4 : 2}%, ${t.surface})` },
 };
 
