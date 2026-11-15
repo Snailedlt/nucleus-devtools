@@ -278,6 +278,65 @@ test('...but a typo of a real member in that idiom is a warning, with the fix', 
   assert.equal(d[0].fixes?.[0].edits[0].text, 'StartArguments');
 });
 
+test('the idiom is a hint wherever the value is used: a call, a condition, another assignment (issue #26)', () => {
+  const src = HEADER + 'Game.Play = function () {\n  if (System.IO.File.Exists((Context.filePath = Context.HandlersFolder + "\\\\x"))) {}\n  var a;\n  a = (Context.Args = "-x");\n  Context.Argz = 1;\n};\n';
+  const d = only(src, 'unknown-member');
+  assert.deepEqual(d.map((x) => x.severity), ['hint', 'hint', 'warning']);
+  assert.match(d[0].message, /only the call receives this value/);
+  assert.match(d[1].message, /only the variable receives this value/);
+});
+
+test('option-compare: a saved option is text, so === 4, == true, case 4: and a "False" if go wrong', () => {
+  const src =
+    HEADER +
+    `var answers = ["2", "4"];
+Game.AddOption("Players", "", "players", answers);
+Game.AddOption("Music", "", "music", [true, false]);
+Game.AddOption("Fps", "", "fps", [30, 60]);
+Game.Play = function () {
+  var p = Context.Options["players"];
+  if (p === 4) {}
+  if (Context.Options["fps"] !== -1) {}
+  if (Context.Options["music"] == true) {}
+  if (Context.Options["music"]) {}
+  switch (p) { case 2: break; }
+  switch (Context.Options["fps"]) { case 30: break; }
+};
+`;
+  const d = only(src, 'option-compare');
+  assert.equal(d.length, 6);
+  assert.match(d[0].message, /option's values are text.*never true/);
+  assert.equal(apply(src, d[0].fixes![0]).includes('if (p == 4)'), true);
+  assert.match(d[1].message, /saved profile.*always true then/);
+  assert.match(d[2].message, /never equals `true`/);
+  assert.match(d[3].message, /"False", which counts as true/);
+  assert.equal(apply(src, d[4].fixes![0]).includes('case "2":'), true);
+  assert.equal(d[5].fixes, undefined, 'numbers in the list: "30" would not match a fresh pick');
+});
+
+test('option-compare: no false alarms on what works', () => {
+  const src =
+    HEADER +
+    `Game.AddOption("Players", "", "players", ["2", "4"]);
+Game.AddOption("Mode", "", "mode", ["Yes", "No"]);
+Game.Play = function () {
+  var id = Context.Options["players"];
+  if (id == 4 && Context.PlayerID == 0) {}
+  if (Context.Options["players"] === "4") {}
+  if (Context.Options["mode"]) {}
+  switch (id) { case "2": break; }
+  var q = Context.Options["players"];
+  q = 3;
+  if (q === 3) {}
+  var Options = { a: 1 };
+  if (Options["a"] === 1) {}
+  if (Context.PlayerID === 0) {}
+};
+function f(Context) { return Context.Options["x"] === 1; }
+`;
+  assert.deepEqual(only(src, 'option-compare'), []);
+});
+
 test('member names follow Jint: first letter case-insensitive, the rest exact', () => {
   const src = HEADER + 'Game.symlinkGame = true;\nGame.IgnoreWindowBordercheck = true;\nGame.Play = function () { var w = Context.width; };\n';
   const d = only(src, 'unknown-member');

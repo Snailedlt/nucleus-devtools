@@ -170,6 +170,13 @@ const NUCLEUS: Record<string, RuleDoc> = {
     good: 'Game.FakeFocus = true;\nGame.FakeFocusInterval = 1000;',
     fix: 'Turn on the option it names (the quick fix adds it), or remove the line.',
   },
+  'option-compare': {
+    title: 'An option compared as a number or boolean',
+    why: 'When the player starts from a saved profile, Nucleus gives every Game.AddOption value back as text: 4 becomes "4", true becomes "True". So `=== 4`, `== true` and `case 4:` never match, and "False" counts as true in an `if`.',
+    bad: 'Game.AddOption("Players", "", "players", ["2", "4"]);\nGame.Play = function () {\n  if (Context.Options["players"] === 4) {\n    Context.StartArguments = "-four";\n  }\n};',
+    good: 'Game.AddOption("Players", "", "players", ["2", "4"]);\nGame.Play = function () {\n  if (Context.Options["players"] == "4") {\n    Context.StartArguments = "-four";\n  }\n};',
+    fix: 'Compare with text ("4", "Yes") or with `==`, which matches "4" and 4; give yes/no options text values such as "Yes" and "No". The quick fix changes `===` to `==`.',
+  },
   'guid-changed': {
     title: 'A GUID that differs from the Hub',
     why: 'Nucleus keys a user\'s game, profiles, cover and content folder by Game.GUID. Updating a published handler with another GUID drops the game from their list.',

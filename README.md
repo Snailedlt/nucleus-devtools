@@ -226,6 +226,7 @@ Every check has its own page, with why it matters, a wrong and a right example a
 | `protoinput-needs-hook` | warning | `Game.ProtoInput.BlockedMessages` or a message filter without `Game.ProtoInput.MessageFilterHook = true`: they only work inside that hook. Fix adds it. |
 | `blocked-message` | warning | A number in `BlockedMessages` that Proto Input's message list doesn't have (it blocks another entry, or nothing), or one listed twice (info). |
 | `needs-option` | warning | An option Nucleus only reads when another is on: `FakeFocusInterval` / `FakeFocusSendActivate…` need `FakeFocus`, the fake-cursor options need `DrawFakeMouseCursor`, `SteamlessArgs` / `SteamlessTiming` need `UseSteamless`. Fix turns the parent on. |
+| `option-compare` | warning | A `Context.Options["key"]` value compared as a number or boolean: from a saved profile Nucleus gives every option back as text (`"4"`, `"True"`), so `=== 4`, `== true` and `case 4:` never match, and a `false` option is the text `"False"`, which an `if` counts as true. Follows the value through the handler's own variables. Loose `== 4` is fine. Fix: `==` for `===`, or `case "4":` when the option's values are text. |
 | `deprecated` | hint | Options the docs mark deprecated, such as the pre-Proto Input multi-keyboard settings. |
 
 General JavaScript mistakes are checked with [ESLint](https://eslint.org)'s own rules (run inside the tools, no setup), only the ones that catch real bugs and were checked against every Hub handler:
