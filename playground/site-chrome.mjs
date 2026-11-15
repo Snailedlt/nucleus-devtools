@@ -78,10 +78,12 @@ export function docFeedbackScript(site) {
 }
 
 /**
- * One anonymous "visit" count per visit on the site's own pages (start, Learn, docs, rules), with where it came from:
- * the other site (only its address, never the page) and the link's `?ref=` tag (GoatCounter's Campaigns). The same
- * rules and the same per-tab record as the workbench (feedback.ts `countVisit`), so a visit that moves on to the
- * workbench is counted once, and our tagged links carry the visit's tag on (also into a new tab). Off with Do Not Track, Global Privacy Control or Settings › Privacy in the workbench.
+ * The site's own pages (start, Learn, docs, rules, the Duo and Nucli pages) each count as an anonymous page view. The
+ * visit's first page also says where it came from: the other site (only its address, never the page) and the link's
+ * `?ref=` tag (GoatCounter's Campaigns). The same rules and the same per-tab record as the workbench (feedback.ts
+ * `countVisit`), so a visit that moves on to the workbench is credited to its source once, and our tagged links carry
+ * the visit's tag on (also into a new tab). Totals only: nothing follows one person from page to page. Off with Do
+ * Not Track, Global Privacy Control or Settings › Privacy in the workbench.
  */
 export function siteVisitScript(site) {
   if (!site) return '';
@@ -104,10 +106,13 @@ export function siteVisitScript(site) {
     if (q2.has('ref') || q2.has('utm_source')) { q2.delete('ref'); q2.delete('utm_source'); var s = q2.toString(); history.replaceState(history.state, '', location.pathname + (s ? '?' + s : '') + location.hash); }
   } catch (e) {}
   var off = navigator.doNotTrack === '1' || navigator.globalPrivacyControl === true || get('nucleus-workbench-feedback-off') === '1' || get('skipgc') === 't';
-  if (!v.counted && !off) {
+  // This page, as a page view (its address, no query or #); the visit's first page also says where the visit came from
+  // (GoatCounter reads the ?ref= tag only from page views), so each visit is credited to its source once.
+  if (!off) {
+    var first = !v.counted;
     v.counted = true;
-    var url = 'https://' + site + '.goatcounter.com/count?p=' + encodeURIComponent('/visit') + '&e=true&s=' + encodeURIComponent(screen.width + ',' + screen.height + ',' + (window.devicePixelRatio || 1))
-      + (v.from ? '&r=' + encodeURIComponent(v.from) : '') + (v.ref ? '&q=' + encodeURIComponent('?ref=' + v.ref) : '') + '&rnd=' + Math.random().toString(36).slice(2);
+    var url = 'https://' + site + '.goatcounter.com/count?p=' + encodeURIComponent(location.pathname) + '&s=' + encodeURIComponent(screen.width + ',' + screen.height + ',' + (window.devicePixelRatio || 1))
+      + (first && v.from ? '&r=' + encodeURIComponent(v.from) : '') + (first && v.ref ? '&q=' + encodeURIComponent('?ref=' + v.ref) : '') + '&rnd=' + Math.random().toString(36).slice(2);
     try { navigator.sendBeacon ? navigator.sendBeacon(url) : fetch(url, { mode: 'no-cors', keepalive: true }); } catch (e) {}
   }
   try { sessionStorage.setItem(KEY, JSON.stringify(v)); } catch (e) {}
