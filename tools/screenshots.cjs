@@ -94,7 +94,7 @@ const box = (p, sel) => p.$eval(sel, (e) => { const r = e.getBoundingClientRect(
 
     // Lines as a tree, on a wide screen.
     if (want('lines-tree')) {
-    ({ ctx, p } = await open(b, t, { viewport: { width: 1600, height: 800 }, deviceScaleFactor: 2 }));
+    ({ ctx, p } = await open(b, t, { viewport: { width: 1600, height: 800 }, deviceScaleFactor: 2 }, 'example-mistakes')); // a hash skips the home page
     await setCode(p, DEMO, 'Demo Game.js');
     if (!(await p.isVisible('#lines'))) await p.click('#lines-toggle');
     await p.evaluate(() => document.querySelector('#lines').classList.add('wide'));
@@ -153,7 +153,7 @@ const box = (p, sel) => p.$eval(sel, (e) => { const r = e.getBoundingClientRect(
     await p.evaluate(() => document.activeElement && document.activeElement.blur());
     await p.tap('#lines-close');
     await p.waitForTimeout(300);
-    await p.tap('#more-open');
+    await p.tap('#more-open', { timeout: 3000 }).catch(() => {}); // only in some layouts
     await p.waitForTimeout(400);
     parts.push(await p.screenshot());
     require('fs').writeFileSync(path.join(CH, `.phones-${t}.json`), JSON.stringify(parts.map((x) => x.toString('base64'))));
