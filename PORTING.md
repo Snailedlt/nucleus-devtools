@@ -112,6 +112,18 @@ vim.lsp.enable('nucleus')
 --   function(_, text) if text then print(text) end end)
 ```
 
+Many colour schemes only colour the semantic-token groups they know, so Nucleus names can stay plain. These links give them colour in any scheme (tried with Neovim's own `habamax`):
+
+```lua
+local hl = function(group, opts) vim.api.nvim_set_hl(0, group, opts) end
+hl('@lsp.typemod.variable.defaultLibrary', { link = 'Constant' }) -- Game, Context, Nucleus
+hl('@lsp.type.property', { link = 'Identifier' }) -- Game.MaxPlayers
+hl('@lsp.type.method', { link = 'Function' }) -- Context.GetFolder
+hl('@lsp.typemod.property.group', { link = 'Type' }) -- Game.Hook, Nucleus.Folder
+hl('@lsp.typemod.property.choice', { link = 'Special' }) -- InstancedGameFolder
+hl('@lsp.typemod.method.callback', { link = 'Function', bold = true }) -- Game.Play
+```
+
 On older Neovim with [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig):
 
 ```lua
