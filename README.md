@@ -17,7 +17,7 @@ Runs [Nucleus Co-op](https://github.com/SplitScreen-Me/splitscreenme-nucleus) ga
 
 **In motion** (a minute or two each, captioned, no sound): [▶ the workbench](docs/videos/workbench.mp4) · [▶ VS Code](https://github.com/Snailedlt/splitscreenme-vscode/blob/main/docs/videos/vscode.mp4) · [▶ Notepad++](https://github.com/Snailedlt/splitscreenme-vscode/blob/main/docs/videos/notepadpp.mp4)
 
-[![The workbench in motion: checks, fixes, suggestions, Docs, Try it, the visual editor and the debugger](docs/videos/workbench-poster.jpg)](docs/videos/workbench.mp4)
+[![The workbench in motion: code colours, checks, fixes, suggestions, Docs, Try it, the visual editor, the debugger and the settings](docs/videos/workbench-poster.jpg)](docs/videos/workbench.mp4)
 
 ## What it does
 
@@ -75,7 +75,7 @@ python3 -I tools/fetch_verified.py --limit 150        # or: --id <handlerId>
 
 **Hub index** (`.github/workflows/hub-sync.yml`, daily): the only place that reads hub.splitscreen.me's handler list. `tools/hub-sync.mjs` writes `hub-index.json` to the `data` branch (<https://raw.githubusercontent.com/Snailedlt/nucleuscoop-handler-testbench/data/hub-index.json>), and the workbench build, the weekly check and the extension's CLI, MCP server and Browse the Hub read that instead of the Hub API (which stays the fallback). Handler packages come from the Hub's storage, once per version. The same run mirrors every handler for the workbench (`tools/hub-mirror.mjs`): `hub/<id>.js`, `hub/packages.json`, the covers, and each package's other files (`hub/<id>.files.json` from `tools/hub-files.mjs`: small files with content, big ones by name and size; `HUB_MIRROR_PKG_MAX` package downloads a run, default 60), so Hub handlers open in the workbench with their whole package listed.
 
-**Lines column usage counts** (`playground/src/usage.json`): how many Hub handlers use each API name, shown in the workbench's Lines column. Regenerate from handlers you already downloaded (`nucleus hub fetch`, one folder per handler) with `node tools/usage-counts.mjs <dir>`; only the counts are saved. Last taken from the 600 most-starred Hub handlers (before the index had all of them; rerun it to count every one).
+**Lines column usage counts** (`playground/src/usage.json`): how many Hub handlers use each API name, shown in the workbench's Lines column. Regenerate from handlers you already downloaded (`ncdev hub fetch`, one folder per handler) with `node tools/usage-counts.mjs <dir>`; only the counts are saved. Last taken from the 600 most-starred Hub handlers (before the index had all of them; rerun it to count every one).
 
 **Nightly** (`.github/workflows/nightly.yml`, also on pushes to the harness, tools or probes): the probes in real Jint, Try it's parity on every probe, and every verified Hub handler run in real Jint (network isolated) and compared with Try it by `tools/compare-hub.mjs`: outcome, player 1's launch arguments, and lint errors. Last local run: 150 handlers, 91 comparable (the rest touch real files the harness can't provide), 91/91 outcomes and launch arguments agree, no lint errors. It also warns when Nucleus master moves past the commit the stubs are pinned to.
 
@@ -96,11 +96,12 @@ Handlers get .NET access through Jint (`System.IO`, `System.Diagnostics`, …), 
 
 `playground/` builds a single self-contained page for testing by hand. It's published at **https://snailedlt.github.io/nucleuscoop-handler-testbench/?ref=workbench-readme-md** (`.github/workflows/pages.yml`: on every push and daily, against splitscreenme-vscode's `main`; one-time setup: Settings > Pages > Source: GitHub Actions). It has:
 
-- a code editor with the same features as the VS Code extension: live squiggles and quick fixes, suggestions (API members, option values, your own functions and variables, `Context.Options` keys, snippets, the template in an empty file), hovers and parameter hints styled like VS Code's, F12, rename (F2), find and replace, folding, Format Document, and VS Code's shortcuts (all rebindable);
+- a home page for first visits (what a handler is, the four steps, New handler, Open, Learn), and **Learn** (`learn/`): lessons that walk you through a first handler, with Check beside the code;
+- a code editor with the same features as the VS Code extension: live squiggles and quick fixes, suggestions (API members, option values, your own functions and variables, `Context.Options` keys, snippets, the template in an empty file), hovers and parameter hints styled like VS Code's, F12, rename (F2), find and replace, folding, Format Document, and VS Code's shortcuts (all rebindable); its code colours, *Nucleus (follows the look)*, give `Game`/`Context`/`Nucleus`, option groups (`Game.Hook`), fixed choices (`Nucleus.Folder.InstancedGameFolder`) and callbacks (`Game.Play`) colours of their own, or pick VS Code's, Notepad++'s and other editors' colours in Settings;
 - a visual editor beside the code: **Form** (one line per option, values from lists) and **Blocks** (`Game.Play` as conditions and actions), plus **Lines** (every option Nucleus has, grouped, insertable);
 - a **debugger**: breakpoints, stepping, variables and watches, per player;
 - **Files**: open a whole `.zip`/`.nc` package, edit its text files, with the package checks; and **Your game on this PC**: link the game's install folder to check paths against it;
-- **Docs**: every name with its docs, searchable; `#docs-<name>` links open one (e.g. `#docs-Context.ModifySaveFile`), and the address follows what you browse;
+- **Docs**: every name with its docs, searchable; `#docs-<name>` links open one (e.g. `#docs-Context.ModifySaveFile`), and the address follows what you browse. Every name also has a page of its own (`docs/Context.ModifySaveFile/`), and every check one under `rules/`;
 - the New Handler generator;
 - a per-player `Game.Play` simulation (**Try it**), and **Test all** for every players × input × monitor combination;
 - the probes, shown next to the linter's verdict;
@@ -131,7 +132,7 @@ In Advanced mode everything is keyboard-driven:
 
 **Theme and dev bar.** The page uses splitscreen.me's theme (brand blue, system fonts, light and dark). A dev bar, like lonnsinnplassering's, sets the colour mode and checks the WCAG contrast of the theme's text colours. Open it with Ctrl+Alt+D (remembered), a `#dev` link (this page load only), or "Show or hide the dev bar" under Examples… (Ctrl K).
 
-**Share links.** **Share › Copy a link** puts the handler, compressed, into the link (`#share-…`), so anyone with the link sees the same code; with text selected it shares just the selection, which keeps links short enough for a Discord message (2,000 characters; whole handlers are usually longer).
+**Share links.** **Share › Copy a link** puts the handler, compressed, into the link (`#share-…`), so anyone with the link sees the same code; with text selected it shares just the selection, which keeps links short enough for a Discord message (2,000 characters; whole handlers are usually longer). For those, **Share › Save the file** saves the handler and its files as a `.zip` and copies a short message to post with it.
 
 Links like `#hub-<id>`, `#probe-17`, `#template-basic` or `#example-mistakes` open that example directly, and `#docs-<name>` opens a name in Docs (over the handler you have open). The page also remembers your draft, the active tab and the simulation settings in your browser.
 
