@@ -14,17 +14,19 @@ Tooling for writing [Nucleus Co-op](https://github.com/SplitScreen-Me/splitscree
   <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/vscode-quickfix-dark.png"><img src="docs/images/vscode-quickfix-light.png" width="32%" alt="VS Code: the quick fix that wraps Game.KillMutex's value in an array"></picture>
 </p>
 
-*Problems, the **Try it** panel, hover, completion and quick fixes, in VS Code. The same checks run in the [browser workbench](https://snailedlt.github.io/nucleuscoop-handler-testbench/?ref=vscode-readme-md). Testing it? See [TESTING.md](TESTING.md).*
+*Problems, the **Try it** panel, hover, completion and quick fixes, in VS Code (the status bar shows the handler's own language mode, **Nucleus Co-op handler**). The same checks run in the [browser workbench](https://snailedlt.github.io/nucleuscoop-handler-testbench/?ref=vscode-readme-md). Testing it? See [TESTING.md](TESTING.md).*
 
-**In motion** (about a minute each, captioned, no sound; click to play):
+**In motion** (a minute or two each, captioned, no sound; click to play):
 
 <p>
-  <a href="docs/videos/vscode.mp4"><img src="docs/videos/vscode-poster.jpg" width="49%" alt="Video: VS Code with the extension, showing problems, quick fixes, suggestions, parameter hints, the Docs panel and Try it"></a>
-  <a href="docs/videos/notepadpp.mp4"><img src="docs/videos/notepadpp-poster.jpg" width="49%" alt="Video: Notepad++ with the plugin, showing the same checks, fixes, suggestions and docs"></a>
+  <a href="docs/videos/vscode.mp4"><img src="docs/videos/vscode-poster.jpg" width="49%" alt="Video: VS Code with the extension, showing the handler language mode, the colours, problems, quick fixes, suggestions, parameter hints, the Docs panel and Try it"></a>
+  <a href="docs/videos/notepadpp.mp4"><img src="docs/videos/notepadpp-poster.jpg" width="49%" alt="Video: Notepad++ with the plugin, showing the same checks, fixes, suggestions, docs and Try it"></a>
 </p>
 
 The browser workbench has [its own](https://github.com/Snailedlt/nucleuscoop-handler-testbench/blob/main/docs/videos/workbench.mp4).
 
+- **Its own language mode.** Handlers open as **Nucleus Co-op handler**: JavaScript's colours, brackets and folding, but only the suggestions Nucleus can use (no browser globals, no newer methods its engine lacks). See [Handler language mode](#handler-language-mode).
+- **Colours that tell Nucleus names apart**, in your theme's own JavaScript colours: option groups (`Game.Hook`), fixed choices (`Nucleus.Folder.InstancedGameFolder`) and callbacks (`Game.Play`) each get one, so a name Nucleus doesn't know stands out.
 - **IntelliSense** for `Game`, `Game.Hook`, `Game.ProtoInput`, `Context`, `Player`, `PlayerList`, `ProtoInput`, `Hub` and the `Nucleus.*` enums. Completion lists every option Nucleus actually has, with types, defaults and docs. On an empty line, `Game.` completes the whole assignment, e.g. `Game.SymlinkGame = true|false;`. After `=`, the values the option takes.
 - **Suggestions that know your handler:** `Context.Options["` suggests the keys your `Game.AddOption` lines add, and `== "` their choices; what your own functions return is understood after a dot.
 - **Hover docs** and **signature help** for every method and its overloads, saying what to pass for each parameter of the most used ones. API names in them are links to the **Nucleus Docs** panel.
@@ -74,7 +76,7 @@ One engine runs underneath all of them, so the checks, suggestions and docs are 
 ## Getting started
 
 1. Install the extension. Until it is on the Marketplace, download the `.vsix` from the [releases](https://github.com/Snailedlt/splitscreenme-vscode/releases) (or run `npm ci && npm run package`), then **Extensions: Install from VSIX…**. Testing it? See [TESTING.md](TESTING.md).
-2. Open the folder where you keep your handlers. Any `.js` file that sets `Game.GUID`, `Game.GameName`, `Game.ExecutableName` or `Game.Play`, or lives in a `handlers` folder, gets handler features. Other JavaScript files are left alone.
+2. Open the folder where you keep your handlers. Any `.js` file that sets `Game.GUID`, `Game.GameName`, `Game.ExecutableName` or `Game.Play`, or lives in a `handlers` folder, opens as **Nucleus Co-op handler** (shown in the status bar) and gets handler features. Other JavaScript files are left alone.
 3. Run **Nucleus: New Handler…** from the Command Palette, or type `handler` in an empty `.js` file. New to handlers? *Help › Welcome › Make a Nucleus Co-op handler* walks you through it.
 
 ### Commands
@@ -300,11 +302,11 @@ Handlers open in a language mode of their own, **Nucleus Co-op handler**. It use
 - **Nucleus: Set Up Type Definitions** sets that for its folder, because `// @ts-check` needs the TypeScript service.
 - Formatters, linters, snippets and keybindings you set up for `javascript` (Prettier, ESLint, …) don't apply to handler files. Add `nucleus-handler` to their languages, or use JavaScript mode. The extension's own formatter, snippets and debugger work in both.
 
-**What the Hub sees.** The Hub's handler list comes from our daily copy on GitHub, checked at most once an hour; hub.splitscreen.me is asked only when that copy is missing or out of date, and each package is downloaded once per version. Every request says it comes from these devtools, which tool and which feature sent it (`User-Agent: SplitScreenMe-DevTools/0.6.0 (ncdev-cli; hub-search; +https://github.com/Snailedlt/splitscreenme-vscode)` and the same in `X-Requested-With`), and nothing else: no search text, file names, code, user or computer names.
+**What the Hub sees.** The Hub's handler list comes from our daily copy on GitHub, checked at most once an hour; hub.splitscreen.me is asked only when that copy is missing or out of date, and each package is downloaded once per version. Every request says it comes from these devtools, which tool and which feature sent it (`User-Agent: SplitScreenMe-DevTools/0.7.0 (ncdev-cli; hub-search; +https://github.com/Snailedlt/splitscreenme-vscode)` and the same in `X-Requested-With`), and nothing else: no search text, file names, code, user or computer names.
 
 ## Try it
 
-**Nucleus: Try It** and `ncdev simulate` load the handler and run `Game.Play` once per player, the way Nucleus does, without Nucleus or the game. They emulate the rules of Nucleus' engine (Jint 2.11.58): unknown options are skipped, only the first letter of a name is case-insensitive, list and enum values are converted the same way, wrong argument counts throw, and ES2015+ built-ins such as `.includes()` fail. The emulation is checked against the real engine: it predicts the same outcome on all 106 probes of the [testbench](https://github.com/Snailedlt/nucleuscoop-handler-testbench), launch arguments included.
+**Nucleus: Try It** and `ncdev simulate` load the handler and run `Game.Play` once per player, the way Nucleus does, without Nucleus or the game. They emulate the rules of Nucleus' engine (Jint 2.11.58): unknown options are skipped, only the first letter of a name is case-insensitive, list and enum values are converted the same way, wrong argument counts throw, and ES2015+ built-ins such as `.includes()` fail. The emulation is checked against the real engine: it predicts the same outcome on all 121 probes of the [testbench](https://github.com/Snailedlt/nucleuscoop-handler-testbench), launch arguments included.
 
 It also follows Nucleus' session flow: an error in `Game.Play` ends the session (later players are never set up), `Game.OnFinishedSetup` and `Game.OnStop` run with the last player's `Context`, `Game.GamePlayAfterLaunch` makes `Context.StartArguments` irrelevant, and paths (`Context.ExePath`, `GetFolder`, ...) depend on `Game.SymlinkGame`/`HardcopyGame`/`HardlinkGame` and `Game.BinariesFolder` as in Nucleus. Plugin globals listed in the handler folder's `pluginsInfo.txt` record their calls.
 
@@ -407,6 +409,8 @@ vim.lsp.config('nucleus', {
 vim.lsp.enable('nucleus')
 ```
 
+If your colour scheme leaves Nucleus names plain, [PORTING.md](PORTING.md#neovim-011-built-in) has six highlight links that colour them in any scheme.
+
 Before Neovim 0.11:
 
 ```lua
@@ -465,6 +469,8 @@ The generator parses the public members of the C# classes exposed to handlers, w
 ```
 src/core/api.ts         typed access to the API model, member resolution, suggestions
 src/core/lint.ts        the linter (acorn AST, no VS Code dependency)
+src/core/scopes.ts      the handler's own variables and what's assigned to them (option-compare)
+src/core/features.ts    hover, completion, quick fixes, formatting edits as plain data for every editor
 src/core/complete.ts    text-based resolution for completion/hover/signature help
 src/core/sim.ts         "Try it": runs a handler per player, emulating Jint (also used by the testbench workbench)
 src/sandbox.ts          runs sim.ts isolated in a vm context for Node hosts (CLI, extension)
@@ -473,8 +479,10 @@ src/core/templates.ts   New Handler templates
 src/core/zip.ts         dependency-free zip reader/writer for .nc packages
 src/core/hub.ts         hub.splitscreen.me client
 src/extension.ts        VS Code providers
+src/handlermode.ts      the Nucleus Co-op handler language mode
 src/commands.ts         VS Code commands
-src/cli.ts              the nucleus CLI (nucleus-lint is an alias)
+src/cli.ts              the ncdev CLI (nucleus is its old name, nucleus-lint an alias of ncdev lint)
+src/lsp.ts              ncdev lsp: the Language Server for other editors
 src/mcp.ts              ncdev mcp: the tools as an MCP server
 scripts/generate-api.mjs
 ```
