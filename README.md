@@ -40,7 +40,7 @@ The browser workbench has [its own](https://github.com/Snailedlt/nucleuscoop-han
 - **Go to definition** (F12) and the **Outline** of the handler's options, functions and variables.
 - **Checks against the game's folder**: link the game's install folder and `ExecutableName`, `BinariesFolder` and the symlink lists are checked against the real files (only names and sizes are read).
 - **A getting-started guide**: *Help › Welcome › Make a Nucleus Co-op handler* walks from an empty file to the Hub.
-- **Browse the Hub**: search the 600+ handlers on [hub.splitscreen.me](https://hub.splitscreen.me) and open any handler's source, which is handy for seeing how others solved a problem.
+- **Browse the Hub**: search the almost 900 handlers on [hub.splitscreen.me](https://hub.splitscreen.me) and open any handler's source, which is handy for seeing how others solved a problem.
 - **Type definitions** (`nucleus.d.ts`), so you can opt into full TypeScript checking with `// @ts-check`.
 - More snippets (`nc-…`) for INI/XML edits, copying files from the handler folder, Goldberg and Proto Input.
 - **The `ncdev` CLI** runs the same checks in CI, and much more: see [below](#the-command-line-tool-ncdev).
@@ -122,11 +122,11 @@ The repo also ships an agent kit, so coding agents (Claude Code, Copilot, Codex,
 
   | Command | What it does |
   | --- | --- |
-  | `nucleus lint <file> --json` | Diagnostics and available fixes |
-  | `nucleus format <file> --write` | Indentation, spacing, quotes and semicolons; never what the code does |
-  | `nucleus api Game.KillMutex` / `nucleus api --search mutex` | The "hover": type, default and docs |
-  | `nucleus hub search <game>` / `nucleus hub fetch <id>` | Study how existing handlers solved the same problem |
-  | `nucleus new …` / `nucleus install …` / `nucleus package …` | Scaffold a handler / copy it into Nucleus' `handlers` folder / build the `.nc` package |
+  | `ncdev lint <file> --json` | Diagnostics and available fixes |
+  | `ncdev format <file> --write` | Indentation, spacing, quotes and semicolons; never what the code does |
+  | `ncdev api Game.KillMutex` / `ncdev api --search mutex` | The "hover": type, default and docs |
+  | `ncdev hub search <game>` / `ncdev hub fetch <id>` | Study how existing handlers solved the same problem |
+  | `ncdev new …` / `ncdev install …` / `ncdev package …` | Scaffold a handler / copy it into Nucleus' `handlers` folder / build the `.nc` package |
 
 ### Claude Code
 

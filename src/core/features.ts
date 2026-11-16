@@ -3,7 +3,7 @@
 // src/lsp.ts for the Language Server) only converts these to its own types, so a new editor gets the
 // same behaviour. Positions are UTF-16 offsets into the text (what JavaScript strings index), which
 // is also what LSP counts by default. No `vscode` import here, no Node APIs either.
-import { blockedItemAt, blockedListAt, blockedLists, blockTarget, COMMON_MESSAGES, hex, messageMarkdown } from './wm';
+import { blockedItemAt, blockedListAt, blockedLists, blockTarget, COMMON_MESSAGES, hex, messageMarkdown, WM_HUB_SAMPLE } from './wm';
 import { api, claudeNote, DOCS_URL, isStringMember, Member, memberMarkdown, memberSignature, membersOf, ownerLabel, Resolved, resolveCall, resolveGlobal, resolveIndex, resolveMember } from './api';
 import { callContextAt, memberContextAt, resolveAt, valueContextAt } from './complete';
 export { explainLine, type LineExplanation } from './explain';
@@ -285,7 +285,7 @@ function completionsAtRaw(text: string, offset: number, opts: FeatureOptions = {
       kind: 'constant' as const,
       insertText: `${before && !before.endsWith(',') ? ', ' : ''}${hex(m.id)}`,
       filterText: `${m.name} ${hex(m.id)}`,
-      detail: m.hub ? `Blocked by ${m.hub} of the 600 most-starred Hub handlers` : 'Window message',
+      detail: m.hub ? `Blocked by ${m.hub} of the ${WM_HUB_SAMPLE} Hub handlers` : 'Window message',
       documentation: messageMarkdown(m.id),
       sortText: String(i).padStart(2, '0'),
     }));
