@@ -26,7 +26,7 @@ import { hlHtml, hlCode } from '../codehl';
 import { reportButton } from '@core/reporticons';
 import { openReportFlow, ensureReportStyles } from '../reportflow';
 import { initErrorReports } from '../errorcatch';
-import { CHAPTERS, findLesson, hintFor, listed, lessonNumber, problems, progress, run, textWrites, type Chapter, type Lesson, type NoteKind, type Step } from './lessons';
+import { CHAPTERS, chapterMinutes, findLesson, hintFor, isLocal, isUnverified, listed, lessonNumber, problems, progress, run, skipTo, textWrites, tipText, type Chapter, type Lesson, type Note, type NoteKind, type Step, type Tip } from './lessons';
 import type { SimResult } from '@core/sim';
 
 const KEY = 'nucleus-learn';
@@ -67,25 +67,27 @@ function para(p: string): string {
   return copy ? `<div class="code-wrap">${pre}<button type="button" class="copy-code" data-copy="${esc(copy)}" aria-label="${adds.length ? 'Copy the lines to add' : 'Copy the code'}">Copy</button></div>` : pre;
 }
 /** A note: short ones whole; a long one shows its first sentence, the rest folded (opened on request). */
-function noteHtml(x: { kind: NoteKind; text: string; answer?: string }): string {
-  const answer = x.answer ? `<details class="answer"><summary>What happens, and why</summary><p>${inline(x.answer)}</p></details>` : '';
+function noteHtml(x: Note, i: number): string {
+  const answer = (x.answer ? `<details class="answer"><summary>What happens, and why</summary><p>${inline(x.answer)}</p></details>` : '') + (x.unverified ? differentFor(`note:${i}`) : '');
   const m = x.text.length > 220 ? /^([\s\S]{20,160}?[.!?])\s+([\s\S]+)$/.exec(x.text) : null;
   if (!m) return `<div class="note ${x.kind}"><strong>${NOTE[x.kind]}</strong> ${inline(x.text)}${answer}</div>`;
   return `<details class="note ${x.kind} long"><summary><strong>${NOTE[x.kind]}</strong> ${inline(m[1])} <span class="more">More</span></summary><p>${inline(m[2])}</p>${answer}</details>`;
 }
+/** A tip nobody has checked on a real PC yet: a small "Different for you? Tell us" after it (a report, on request).
+ *  `where` finds the tip again (step:<i>:<j> or note:<i>). */
+const differentFor = (where: string) => ' ' + reportButton('report', { text: 'Different for you? Tell us', tip: "We haven't checked this on every PC yet. Different for you? Tell us: the lesson and this tip are filled in.", className: 'unverified', attrs: `data-unverified="${where}"` });
+const tipHtml = (t: Tip, where: string) => `<li>${inline(tipText(t))}${isUnverified(t) ? differentFor(where) : ''}</li>`;
 /** A step on the learner's PC: what to do, what they should see, and fixes (folded) if they don't. */
 function stepHtml(st: Step, i: number): string {
   const o = typeof st === 'string' ? { text: st } : st;
-  return `<li><label><input type="checkbox" data-step="${i}"> <span>${inline(o.text)}</span></label>${o.see ? `<p class="see"><strong>You should see:</strong> ${inline(o.see)}</p>` : ''}${o.trouble?.length ? `<details class="trouble"><summary>Not working?</summary><ul>${o.trouble.map((t) => `<li>${inline(t)}</li>`).join('')}</ul></details>` : ''}</li>`;
+  return `<li><label><input type="checkbox" data-step="${i}"> <span>${o.optional ? `<span class="opt-tag">Optional: ${esc(o.optional.toLowerCase())}</span> ` : ''}${inline(o.text)}</span></label>${o.see ? `<p class="see"><strong>You should see:</strong> ${inline(o.see)}</p>` : ''}${o.trouble?.length ? `<details class="trouble"><summary>Not working?</summary><ul>${o.trouble.map((t, j) => tipHtml(t, `step:${i}:${j}`)).join('')}</ul></details>` : ''}</li>`;
 }
-/** Is a lesson done on the learner's PC (not in the browser)? */
-const isLocal = (l: Lesson) => (l.kind === 'setup' || l.kind === 'test') && !!l.steps?.length;
+const optTag = '<span class="opt-tag">optional</span>';
 /** The overview lesson: what you'll build, what you need first (the steps), and the lessons with their minutes. */
 function overviewHtml(l: Lesson, steps: string): string {
-  const total = chapter.lessons.reduce((n, x) => n + x.minutes, 0);
-  const local = chapter.lessons.filter(isLocal).reduce((n, x) => n + x.minutes, 0);
-  const list = chapter.lessons.map((x, i) => `<li><a href="#${chapter.id}/${x.id}"${x === l ? ' aria-current="page"' : ''}><span class="ov-no">${i + 1}</span><span class="ov-title">${esc(x.title)}</span>${isLocal(x) ? '<span class="ov-pc">on your PC</span>' : ''}<span class="ov-min">${x.minutes} min</span></a></li>`).join('');
-  return `<h2 class="ov-h">What you'll build</h2><p>${inline(chapter.build)}</p><h2 class="ov-h">What you need first</h2>${l.text.map(para).join('')}${steps}${l.footnote ? `<p class="footnote">${inline(l.footnote)}</p>` : ''}<h2 class="ov-h">The lessons <span class="muted">· about ${total} minutes, ${local} of them on your PC</span></h2><ol class="ov-list">${list}</ol>`;
+  const m = chapterMinutes(chapter);
+  const list = chapter.lessons.map((x, i) => `<li><a href="#${chapter.id}/${x.id}"${x === l ? ' aria-current="page"' : ''}><span class="ov-no">${i + 1}</span><span class="ov-title">${esc(x.title)}</span>${x.optional ? optTag : ''}${isLocal(x) ? '<span class="ov-pc">on your PC</span>' : ''}<span class="ov-min">${x.minutes} min</span></a></li>`).join('');
+  return `<h2 class="ov-h">What you'll build</h2><p>${inline(chapter.build)}</p><h2 class="ov-h">What you need first</h2>${l.text.map(para).join('')}${steps}${l.footnote ? `<p class="footnote">${inline(l.footnote)}</p>` : ''}<h2 class="ov-h">The lessons <span class="muted">· about ${m.total} minutes, ${m.local} of them on your PC${m.optional ? `, plus ${m.optional} optional` : ''}</span></h2><ol class="ov-list">${list}</ol>`;
 }
 const NOTE: Record<NoteKind, string> = { pitfall: 'Pitfall', why: 'Why this way', alt: 'Another way', odd: 'If you see something odd', check: 'What Check says', try: 'Try this' };
 const testEvent = (name: string, detail: string) => { try { (window as any).goatcounter?.count?.({ path: `learn-${name}-${detail}`, title: `Learn: ${name}`, event: true }); } catch { /* no counter */ } };
@@ -503,6 +505,8 @@ function renderLesson(focus = false) {
   $('#count').textContent = `${index + 1} of ${n}`;
   $('#bar').style.width = `${Math.round(((index + 1) / n) * 100)}%`;
   const notes = (l.notes ?? []).map(noteHtml).join('');
+  // An optional lesson: who it's for, and the way past it in one click.
+  const optional = l.optional ? `<p class="optional-note"><span class="opt-tag">Optional</span> ${inline(l.optional.invite)} <button type="button" class="btn" id="skip">${esc(l.optional.skip)} ›</button></p>` : '';
   const steps = l.steps ? `<ol class="steps">${l.steps.map(stepHtml).join('')}</ol>` : '';
   const dl = l.download ? `<p><button type="button" class="btn primary" id="download">${dlLabel(l.download)}</button></p>` : '';
   const ask = l.ask ? `<fieldset class="ask"><legend>${inline(l.ask.question)}</legend>${l.ask.answers.map((a, i) => `<label><input type="radio" name="ask" value="${i}"> ${inline(a.label)}</label>`).join('')}<p class="ask-reply" role="status"></p></fieldset>` : '';
@@ -510,7 +514,7 @@ function renderLesson(focus = false) {
   const next = CHAPTERS[CHAPTERS.indexOf(chapter) + 1];
   const end = index === n - 1 ? `<div class="end"><h2>${inline(chapter.end.title)}</h2><p>${inline(chapter.end.text)}</p>${next ? `<p><a class="btn primary" href="#${next.id}/${next.lessons[0].id}">Next chapter: ${esc(next.title)} ›</a></p>` : ''}</div>` : '';
   const body = l.overview ? overviewHtml(l, steps) : `${l.text.map(para).join('')}${steps}${l.footnote ? `<p class="footnote">${inline(l.footnote)}</p>` : ''}`;
-  $('#lesson-body').innerHTML = kbdify(`<p class="kicker">${esc(l.section)}</p><h1 id="lesson-title" tabindex="-1">${inline(l.title)}</h1>${body}${dl}${ask}${(l.after ?? []).map(para).join('')}${l.kind === 'code' ? '<div id="task" class="task" role="status"></div>' : ''}${checkpoint}${notes}${end}`);
+  $('#lesson-body').innerHTML = kbdify(`<p class="kicker">${esc(l.section)}</p><h1 id="lesson-title" tabindex="-1">${inline(l.title)}</h1>${optional}${body}${dl}${ask}${(l.after ?? []).map(para).join('')}${l.kind === 'code' ? '<div id="task" class="task" role="status"></div>' : ''}${checkpoint}${notes}${end}`);
   $('#back').toggleAttribute('disabled', index === 0 && CHAPTERS.indexOf(chapter) === 0);
   const last = index === n - 1, nextChapter = CHAPTERS[CHAPTERS.indexOf(chapter) + 1];
   $('#next').textContent = last ? (nextChapter ? 'Next chapter ›' : 'Done') : 'Next ›';
@@ -545,6 +549,7 @@ function renderLesson(focus = false) {
     requestAnimationFrame(() => { editor.refresh(); editor.scrollIntoView(editor.getCursor(), 120); });
   } else if (l.kind === 'intro') scene.reset();
   syncShow();
+  $('#lesson-body').querySelector<HTMLButtonElement>('#skip')?.addEventListener('click', () => { testEvent('skip', l.id); go(skipTo(chapter, index)); });
   $('#lesson-body').querySelector<HTMLButtonElement>('#download')?.addEventListener('click', () => download(l.download!, editor.getValue()));
   $('#lesson-body').querySelector<HTMLButtonElement>('#cp-download')?.addEventListener('click', () => download(l.checkpoint!.download, editor.getValue()));
   $('#lesson-body').querySelectorAll<HTMLInputElement>('input[name=ask]').forEach((r) => r.addEventListener('change', () => {
@@ -582,7 +587,7 @@ function renderDrawer() {
     const here = c === chapter && lesson().section === s;
     const key = `${c.id}/${s}`;
     const open = here || (saved.open ?? []).includes(key);
-    return `<li><details class="d-section" data-key="${esc(key)}"${open ? ' open' : ''}><summary>${esc(s)}</summary><ol>${ls.map(({ l, i }) => `<li><a href="#${c.id}/${l.id}"${c === chapter && i === index ? ' aria-current="page"' : ''}><span class="d-no">${i + 1}</span><span class="d-title">${esc(l.title)}</span>${saved.done.includes(`${c.id}/${l.id}`) ? '<span class="tick" aria-label="done">✓</span>' : ''}</a></li>`).join('')}</ol></details></li>`;
+    return `<li><details class="d-section" data-key="${esc(key)}"${open ? ' open' : ''}><summary>${esc(s)}</summary><ol>${ls.map(({ l, i }) => `<li><a href="#${c.id}/${l.id}"${c === chapter && i === index ? ' aria-current="page"' : ''}><span class="d-no">${i + 1}</span><span class="d-title">${esc(l.title)}</span>${l.optional ? optTag : ''}${saved.done.includes(`${c.id}/${l.id}`) ? '<span class="tick" aria-label="done">✓</span>' : ''}</a></li>`).join('')}</ol></details></li>`;
   }).join('')}</ul></li>`).join('');
   $('#drawer-list').querySelectorAll<HTMLDetailsElement>('details').forEach((d) => d.addEventListener('toggle', () => {
     const k = d.dataset.key!;
@@ -700,6 +705,17 @@ const stuck = () => {
 document.addEventListener('click', (e) => { if ((e.target as HTMLElement).closest?.('[data-stuck]')) stuck(); });
 $('#drawer-report').innerHTML = reportButton('idea', { text: "I'm stuck in this lesson", attrs: 'data-stuck' }) + reportButton('report', { text: 'Report a problem with Learn', attrs: 'id="learn-problem"' });
 $('#learn-problem').addEventListener('click', () => openReportFlow({ kind: 'problem', tool: 'learn', extra: { Lesson: keyOf(lesson()) } }));
+// "Different for you? Tell us", next to a tip nobody has checked on a real PC yet (Tip.unverified, Note.unverified).
+$('#lesson-body').addEventListener('click', (e) => {
+  const b = (e.target as HTMLElement).closest<HTMLElement>('[data-unverified]');
+  if (!b) return;
+  e.preventDefault(); // inside a step's label: don't tick its box
+  const l = lesson();
+  const [where, i, j] = b.dataset.unverified!.split(':');
+  const st = l.steps?.[Number(i)];
+  const tip = where === 'note' ? l.notes?.[Number(i)]?.text : st && typeof st !== 'string' ? tipText(st.trouble?.[Number(j)] ?? '') : '';
+  openReportFlow({ kind: 'problem', tool: 'learn', title: `Learn: a tip is different for me (${l.title.replace(/`/g, '')})`, extra: { Lesson: keyOf(l), Tip: tip } });
+});
 $('#reset').addEventListener('click', () => { reset(); status(); });
 
 // ------------------------------------------------------------------------------------------------------------

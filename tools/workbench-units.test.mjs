@@ -210,7 +210,9 @@ test('learn: every lesson starts unfinished, its solution passes, with no errors
     const order = ch.lessons.map((l) => l.section).filter((s, i, a) => s !== a[i - 1]);
     assert.equal(new Set(order).size, order.length, `${ch.id}: sections out of order: ${order.join(', ')}`);
   }
-  assert.equal(findLesson('#launch-options/window-size').chapter.id, 'launch-options', 'a link into chapter 2');
+  // Chapter ids are written once, in CHAPTERS (a rename is that line plus `formerIds`): tests read them from there.
+  const [, ch2] = CHAPTERS;
+  assert.equal(findLesson(`#${ch2.id}/window-size`).chapter, ch2, 'a link into chapter 2');
   assert.equal(findLesson('#nonsense').index, 0, 'an unknown link opens the start');
   const d = lint(FINAL).filter((x) => x.severity === 'error' || x.severity === 'warning');
   assert.deepEqual(d.map((x) => `${x.rule}: ${x.message}`), [], 'the finished handler: no errors or warnings');
@@ -224,7 +226,7 @@ test('learn: every lesson starts unfinished, its solution passes, with no errors
   // Chapter 2 (Codename CURE): the finished handler is clean, and the quiz starts with exactly the three mistakes
   // its text names, each found by Check.
   const { CURE_FINAL } = await load('playground/src/learn/lessons.ts');
-  const second = CHAPTERS.find((c) => c.id === 'launch-options');
+  const second = CHAPTERS[1];
   assert.ok(second && second.lessons.length >= 8, 'the second chapter');
   assert.deepEqual(lint(CURE_FINAL).filter((x) => x.severity === 'error' || x.severity === 'warning').map((x) => `${x.rule}: ${x.message}`), [], 'chapter 2\'s handler: no errors or warnings');
   const quiz = second.lessons.find((l) => l.id === 'fix-it');
@@ -235,6 +237,49 @@ test('learn: every lesson starts unfinished, its solution passes, with no errors
   let fixed = quiz.start;
   for (let i = 0; i < 3; i++) { const d = lint(fixed).find((x) => x.fixes?.length && (x.severity === 'error' || x.severity === 'warning')); if (d) fixed = applyEditsToText(fixed, d.fixes[0].edits); }
   assert.equal(quiz.check(fixed), null, `Check's fixes finish the quiz: ${quiz.check(fixed)}`);
+});
+
+test('learn: optional lessons are skippable in one click, and the chapter works without them', async () => {
+  const { CHAPTERS, chapterMinutes, skipTo, findLesson, problems, run, isUnverified, tipText } = await load('playground/src/learn/lessons.ts');
+  const ch2 = CHAPTERS[1];
+  const opt = ch2.lessons.findIndex((l) => l.id === 'keyboard-or-controller');
+  assert.ok(ch2.lessons[opt].optional?.skip && ch2.lessons[opt].optional.invite, 'chapter 2\'s controller lesson is optional, with a Skip and an invitation');
+  for (const ch of CHAPTERS) {
+    ch.lessons.forEach((l, i) => {
+      if (!l.optional) return;
+      assert.ok(!l.overview && i > 0, `${ch.id}/${l.id}: the overview is never optional`);
+      // Skipped: the lesson Skip leads to starts from code that loads and passes Check, without the learner's attempt.
+      const next = ch.lessons[skipTo(ch, i)];
+      if (!next) return;
+      // (A quiz starts with its mistakes on purpose: what it ends with is clean.)
+      if (next.start) {
+        assert.ok(run(next.start).loaded, `${ch.id}/${next.id}: loads after skipping ${l.id}`);
+        assert.deepEqual(problems(next.solution, next).map((d) => d.rule), [], `${ch.id}/${next.id}: ends clean after skipping ${l.id}`);
+        if (next.check) assert.equal(next.check(next.solution), null, `${ch.id}/${next.id}: can be finished after skipping ${l.id}`);
+      }
+      // Done: the optional lesson's solution is clean too (the learner who did it carries no problem forward).
+      assert.deepEqual(problems(l.solution, l).map((d) => d.rule), [], `${ch.id}/${l.id}: its solution is clean`);
+    });
+  }
+  // skipTo jumps over a run of optional lessons; past the end it's the chapter's length.
+  const fake = { lessons: [{}, { optional: {} }, { optional: {} }, {}] };
+  assert.equal(skipTo(fake, 0), 3);
+  assert.equal(skipTo(fake, 3), 4);
+  assert.equal(skipTo(ch2, opt), opt + 1);
+  // Minutes: the optional ones apart from the total.
+  const m = chapterMinutes(ch2);
+  assert.equal(m.optional, ch2.lessons.filter((l) => l.optional).reduce((n, l) => n + l.minutes, 0));
+  assert.equal(m.total + m.optional, ch2.lessons.reduce((n, l) => n + l.minutes, 0));
+  assert.ok(m.local > 0 && m.local < m.total);
+  // A chapter's former ids still open it (links live for ever).
+  const was = ch2.formerIds;
+  ch2.formerIds = ['old-id'];
+  assert.equal(findLesson('#old-id/window-size').chapter, ch2);
+  assert.equal(findLesson('#old-id/window-size').index, ch2.lessons.findIndex((l) => l.id === 'window-size'));
+  ch2.formerIds = was;
+  // Unverified tips: marked in the data, so Learn adds "Different for you? Tell us".
+  const tips = CHAPTERS.flatMap((c) => c.lessons.flatMap((l) => (l.steps ?? []).flatMap((st) => (typeof st === 'string' ? [] : st.trouble ?? []))));
+  assert.ok(tips.filter(isUnverified).map(tipText).some((t) => /firewall|network/.test(t)) && tips.filter(isUnverified).map(tipText).some((t) => /DirectX/.test(t)), 'the firewall and first-start tips are marked unverified');
 });
 
 test('Share: the link leads while it carries everything and fits Discord, else the file', async () => {

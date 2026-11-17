@@ -13,9 +13,15 @@ import { simulate, type SimResult } from '@core/sim';
 
 export type NoteKind = 'pitfall' | 'why' | 'alt' | 'odd' | 'check' | 'try';
 /** `answer`: for a 'try' note, what happens and why, folded away until the learner opens it. */
-export interface Note { kind: NoteKind; text: string; answer?: string }
-/** A step done on the learner's PC: what to do, what they should see then, and a few fixes (folded) if they don't. */
-export type Step = string | { text: string; see?: string; trouble?: string[] };
+export interface Note { kind: NoteKind; text: string; answer?: string; unverified?: boolean }
+/** A tip or a fix in a step's *Not working?* list. `unverified`: nobody has checked it on a real PC yet (it comes from
+ *  the docs or experience elsewhere): it gets a small "Different for you? Tell us" that opens a report. */
+export type Tip = string | { text: string; unverified?: boolean };
+export const tipText = (t: Tip) => (typeof t === 'string' ? t : t.text);
+export const isUnverified = (t: Tip) => typeof t !== 'string' && !!t.unverified;
+/** A step done on the learner's PC: what to do, what they should see then, and a few fixes (folded) if they don't.
+ *  `optional`: who it's for ("With controllers"), shown as a tag; the steps after it work without it. */
+export type Step = string | { text: string; see?: string; trouble?: Tip[]; optional?: string };
 /** One part of a lesson's task, counted in the task line ("Task: 1 of 2 lines"). */
 export interface Goal { label: string; ok(text: string): boolean }
 
@@ -68,10 +74,20 @@ export interface Lesson {
   after?: string[];
   /** test lessons: "what did you see?" and where each answer leads. */
   ask?: { question: string; answers: { label: string; reply: string }[] };
+  /**
+   * A lesson the chapter works without (marked optional in the lesson list and the overview, its minutes apart).
+   * `skip`: the button that goes past it in one click; `invite`: one line asking those it's for to do it. The next
+   * lesson's starting code must load and pass Check whether or not the learner did it (tests check that).
+   */
+  optional?: { skip: string; invite: string };
 }
 
 export interface Chapter {
+  /** The chapter's part of every link (learn/#<id>/<lesson>). Defined here only: everything else reads it from
+   *  CHAPTERS. To rename it, change it here and put the old one in `formerIds`, so published links keep working. */
   id: string;
+  /** Ids this chapter had before: links with them still open it. */
+  formerIds?: string[];
   title: string;
   blurb: string;
   /** What you'll build: the overview lesson's first paragraph. */
@@ -750,10 +766,11 @@ const CURE: Lesson[] = [
     text: [
       'Chapter 1\'s lines are written for you here, plus two that Source games need. Everything new happens **per player**, in `Game.Play`: you\'ll see each player\'s result in Try it, in your browser, before you test it for real.',
       'To test it at the end you need a Windows PC with Nucleus Co-op (chapter 1\'s overview) and the game. Only reading along? Skip the steps: everything up to the test runs in your browser.',
+      'Controllers are optional: one lesson, and the test\'s last step, are for those who have them. With the keyboard alone you test one window.',
     ],
     steps: [
       { text: 'Get Codename CURE on [its Steam page](' + CURE_STORE + ') (free: **Play Game**) and let Steam install it.', see: 'Codename CURE in your Steam library.' },
-      { text: 'Start it once from Steam, then quit from its menu. That makes its settings and its `cfg` folder.', see: 'The game\'s main menu.', trouble: ['Steam installs a few things the first time (DirectX, Visual C++): let it finish, then start the game again.'] },
+      { text: 'Start it once from Steam, then quit from its menu. That makes its settings and its `cfg` folder.', see: 'The game\'s main menu.', trouble: [{ text: 'Steam installs a few things the first time (DirectX, Visual C++): let it finish, then start the game again.', unverified: true }] },
       { text: 'Find its folder: in Steam, right-click Codename CURE › **Manage** › **Browse local files**.', see: '`cure.exe`, and next to it a `cure` folder with the game\'s files (its `cfg` folder is in there).' },
     ],
     start: '',
@@ -774,7 +791,7 @@ const CURE: Lesson[] = [
     task: 'Add the line, then look at what each player starts with in Try it.',
     notes: [
       { kind: 'odd', text: 'Launch Options you set in Steam don\'t reach these copies: Nucleus starts `cure.exe` itself, without Steam.' },
-      { kind: 'alt', text: 'A word that starts with `+` runs one of the game\'s console commands at start, like `+fps_max 60`. Lesson 4 uses one.' },
+      { kind: 'alt', text: 'A word that starts with `+` runs one of the game\'s console commands at start, after its config files, like `+fps_max 60`. Lesson 4 uses one.' },
     ],
     start: C_BASE + '\n// How every copy starts\n',
     solution: C_ARGS,
@@ -846,6 +863,7 @@ const CURE: Lesson[] = [
     notes: [
       { kind: 'try', text: 'Once it works, take the quotes off the values: `[60, 30, 90, 120, 144]`. What does Check say? Then put them back.', answer: 'Check warns that with a saved profile Nucleus gives the option back as text. Adding it to the arguments would still work, as it becomes text there anyway; comparing it (`=== 60`) wouldn\'t. Lesson 7 has that mistake.' },
       { kind: 'why', text: 'The key (`"fps"`) is how the code finds the choice; the name and description are what players read. Keep the key once the handler is out: saved profiles use it.' },
+      { kind: 'why', text: 'Why the arguments, and not a config file? A Source game runs its saved settings (`config.cfg`) first, then `valve.rc`, which runs `autoexec.cfg` and after it the `+` commands from the arguments. So `+fps_max` runs last and wins over a value saved in either file.' },
     ],
     start: C_ARGS + C_OPT.replace(C_OPT_L, '') + C_PLAY + C_SIZE + '};\n',
     solution: C_OPTION,
@@ -905,6 +923,7 @@ const CURE: Lesson[] = [
     title: 'Keyboard or controller',
     kind: 'code',
     minutes: 3,
+    optional: { skip: 'Skip: no controllers', invite: 'Have a controller? Do this one: 3 minutes, and in the test each controller plays its own copy. No controllers, or not today? Skip it: the next lessons work either way.' },
     text: [
       'Source turns controller support on or off with `joystick`. Turn it on for the controller players, and off for the keyboard player, whose copy then reads only the keyboard and mouse.',
       '`Player` is this player\'s own details (`Context` is about their copy): `Player.IsKeyboardPlayer` is `true` for the one on the keyboard and mouse. `lines.push(…)` adds a line to the list.',
@@ -969,13 +988,14 @@ const CURE: Lesson[] = [
     kind: 'test',
     minutes: 15,
     text: [
-      'Your handler starts each copy with its own window size and frame rate cap, and writes each its own `autoexec.cfg`. Time to play it. (It\'s the handler before your friend\'s change.)',
+      'Your handler starts each copy with its own window size and frame rate cap, and writes each its own `autoexec.cfg`. Time to play it. (It\'s the handler before your friend\'s change, with lesson 6\'s `joystick` lines in, so controllers work whether you did that lesson or not.)',
+      'No controllers? Test with the keyboard alone: one window, with its size, frame rate cap and `autoexec.cfg`. Each controller adds a player.',
     ],
     steps: [
       { text: 'Download the zip (the button below) and drag it onto Nucleus Co-op. When it asks to add the game, say yes and pick `cure.exe` in the game\'s folder (the overview\'s step 3).', see: '**Codename CURE Tutorial** in Nucleus\' list.', trouble: ['Nucleus can\'t find the game, or picks another .exe: the file is `cure.exe`, next to the `cure` folder.'] },
-      { text: 'Pick it, drag the keyboard icon and a controller onto the screen (hold a button: it lights up), choose a **Frame rate cap** when Nucleus shows it, then **PLAY**.', see: 'One window, sized to its part of the screen, and a message from Nucleus waiting for your OK.', trouble: ['The window is full screen or the wrong size: look at its arguments in Try it (lessons 2 and 3).', 'An error from Nucleus before anything starts: it names the line. Check (lesson 7) should show nothing on your handler.'] },
-      { text: 'In that window, start a local server (any map). Once you\'re in the game, click **OK** in Nucleus.', see: 'The other windows open one by one, 10 seconds apart, each in its part of the screen.', trouble: ['Only the first window, ever: the next copy refused to start. `Game.KillMutex` must be there exactly as written.', 'Windows asks whether `cure.exe` may use the network: allow it. The copies find each other over your network.'] },
-      { text: 'In each other window, open the server browser\'s **LAN** tab and join the server. Click a window to use the keyboard and mouse there.', see: 'Every player in the same game, each in their own window.', trouble: ['The LAN tab stays empty: wait a few seconds and refresh it.', 'A controller moves its player but the buttons do nothing: the game has no controller layout yet (the last lesson).', 'One controller moves two players: chapter 1\'s controller lessons (XInputPlus).'] },
+      { text: 'Pick it, drag the keyboard icon onto the screen, and a controller for each other player if you have them (hold a button: it lights up). Choose a **Frame rate cap** when Nucleus shows it, then **PLAY**.', see: 'One window, sized to its part of the screen, and a message from Nucleus waiting for your OK.', trouble: ['The window is full screen or the wrong size: look at its arguments in Try it (lessons 2 and 3).', 'An error from Nucleus before anything starts: it names the line. Check (lesson 7) should show nothing on your handler.'] },
+      { text: 'In that window, start a local server (any map). Once you\'re in the game, click **OK** in Nucleus.', see: 'With controllers, the other windows open one by one, 10 seconds apart, each in its part of the screen.', trouble: ['Only the first window, ever: the next copy refused to start. `Game.KillMutex` must be there exactly as written.', { text: 'Windows asks whether `cure.exe` may use the network: allow it. The copies find each other over your network.', unverified: true }] },
+      { optional: 'With controllers', text: 'In each other window, open the server browser\'s **LAN** tab and join the server. Click a window to use the keyboard and mouse there.', see: 'Every player in the same game, each in their own window.', trouble: ['The LAN tab stays empty: wait a few seconds and refresh it.', 'A controller moves its player but the buttons do nothing: the game has no controller layout yet (the last lesson).', 'One controller moves two players: chapter 1\'s controller lessons (XInputPlus).'] },
     ],
     start: CURE_FINAL,
     solution: CURE_FINAL,
@@ -984,6 +1004,7 @@ const CURE: Lesson[] = [
       question: 'How did it go?',
       answers: [
         { label: 'Everyone\'s in the same game', reply: 'That\'s a working handler. The last lesson compares it with the one on the Hub.' },
+        { label: 'One window, on the keyboard', reply: 'That\'s what a keyboard alone can test: the window\'s size, the frame rate cap and its `autoexec.cfg`. With a controller you add a player, and the LAN game.' },
         { label: 'The other windows never opened', reply: 'Nucleus waits after the first copy on purpose: click OK in its message once you\'re in the game. Still nothing? Step 3\'s *Not working?*.' },
         { label: 'Something else', reply: 'Each step has a *Not working?* list. Still stuck? Ask in the SplitScreen.Me Discord: the link is under the lesson list.' },
       ],
@@ -998,7 +1019,7 @@ const CURE: Lesson[] = [
     text: [
       'In this chapter you gave each player their own launch arguments in `Game.Play`, a choice that comes back as text, and a config file of their own. Try it showed each player\'s result before you tested it, and Check found mistakes that would only show up in play.',
       'The verified Codename CURE handler on the Hub, by birden, does the same and a little more:',
-      '- **A controller layout.** Its package has a `360controller.cfg` (button bindings) next to `handler.js`. `Game.Play` copies it into each copy\'s `cure\\cfg` with `System.IO.File.Copy(…)`, and its `autoexec.cfg` runs it for controller players (`exec 360controller.cfg`) and undoes it for the keyboard player (`exec undo360controller.cfg`). Packages are a later chapter.\n- **The frame rate in the file.** It writes `fps_max` into `autoexec.cfg` instead of the arguments: either works.\n- **Two more arguments:** `-AlwaysFocus` and `+m_rawinput 1` (the mouse read directly, not through Windows\' pointer).\n- **Goldberg saves:** `GoldbergNoLocalSave = true` and `UserProfileSavePath`, so each player\'s saves are in their own Nucleus folder.\n- **Lines that change nothing here:** `SymlinkExe`, `SymlinkFolders`, `Hook.ForceFocus`, `Hook.DInputEnabled` and `Hook.XInputReroute` set to `false` (the default); `MaxPlayersOneMonitor` (Nucleus never reads it); `DirSymlinkExclusions` (with `SymlinkFolders` off, Nucleus makes every folder anyway: only files are links).',
+      '- **A controller layout.** Its package has a `360controller.cfg` (button bindings) next to `handler.js`. `Game.Play` copies it into each copy\'s `cure\\cfg` with `System.IO.File.Copy(…)`, and its `autoexec.cfg` runs it for controller players (`exec 360controller.cfg`) and undoes it for the keyboard player (`exec undo360controller.cfg`). Packages are a later chapter.\n- **The frame rate in the file.** It writes `fps_max` into `autoexec.cfg` instead of the arguments. That works too, as long as the arguments have no `+fps_max`: those run after `autoexec.cfg`, and would win.\n- **Two more arguments:** `-AlwaysFocus` and `+m_rawinput 1` (the mouse read directly, not through Windows\' pointer).\n- **Goldberg saves:** `GoldbergNoLocalSave = true` and `UserProfileSavePath`, so each player\'s saves are in their own Nucleus folder.\n- **Lines that change nothing here:** `SymlinkExe`, `SymlinkFolders`, `Hook.ForceFocus`, `Hook.DInputEnabled` and `Hook.XInputReroute` set to `false` (the default); `MaxPlayersOneMonitor` (Nucleus never reads it); `DirSymlinkExclusions` (with `SymlinkFolders` off, Nucleus makes every folder anyway: only files are links).',
     ],
     start: CURE_FINAL,
     solution: CURE_FINAL,
@@ -1042,7 +1063,22 @@ export const solutionErrors = (l: Lesson) => (l.kind === 'code' || l.kind === 't
 /** Where a link points: learn/#<chapter>/<lesson>. */
 export function findLesson(hash: string): { chapter: Chapter; index: number } {
   const [c, l] = hash.replace(/^#/, '').split('/');
-  const chapter = CHAPTERS.find((x) => x.id === c) ?? CHAPTERS[0];
+  const chapter = CHAPTERS.find((x) => x.id === c) ?? CHAPTERS.find((x) => x.formerIds?.includes(c)) ?? CHAPTERS[0];
   const index = Math.max(0, chapter.lessons.findIndex((x) => x.id === l));
   return { chapter, index };
+}
+/** Is a lesson done on the learner's PC (not in the browser)? */
+export const isLocal = (l: Lesson) => (l.kind === 'setup' || l.kind === 'test') && !!l.steps?.length;
+/** A chapter's minutes for the overview: the lessons everyone does (`total`, `local` of them on the learner's PC) and
+ *  the optional ones apart. */
+export function chapterMinutes(ch: Chapter): { total: number; local: number; optional: number } {
+  const sum = (ls: Lesson[]) => ls.reduce((n, x) => n + x.minutes, 0);
+  const main = ch.lessons.filter((l) => !l.optional);
+  return { total: sum(main), local: sum(main.filter(isLocal)), optional: sum(ch.lessons.filter((l) => l.optional)) };
+}
+/** Where a lesson's Skip button goes: the next lesson that isn't optional (past the end: the chapter's length). */
+export function skipTo(ch: Chapter, i: number): number {
+  let j = i + 1;
+  while (j < ch.lessons.length && ch.lessons[j].optional) j++;
+  return j;
 }
