@@ -5,7 +5,8 @@
 import * as vscode from 'vscode';
 import { docsPageUrl, docsPage, docsValue, docsView, DocsPage } from './core/docspage';
 import { linkApiNames } from './core/features';
-import { allEntries } from './core/lookup';
+import { allEntries, lookup } from './core/lookup';
+import { FEEDBACK_SITE, voteEventPath, type DocPart } from './core/docvotes';
 import { api } from './core/api';
 import { WORKBENCH_URL } from './core/sharelink';
 
@@ -33,6 +34,21 @@ export function linksSection(workbenchUrl: string): string {
 }
 const BACK = 'splitscreenme.docsBack';
 const SEARCH = 'splitscreenme.docsSearch';
+const VOTE = 'splitscreenme.docsVote';
+type Vote = 'up' | 'down';
+
+/** People's 👍/👎 on a doc page's parts (the doc, and the AI-written "In practice"): command links, since the panel
+ *  runs no scripts. `mine`: this person's votes so far (globalState), so a second click takes a vote back. Exported for tests. */
+export function voteSection(path: string, parts: { part: DocPart; label: string }[], mine: Record<string, Vote | undefined>, canSend: boolean): string {
+  if (!parts.length) return '';
+  const link = (part: DocPart, v: Vote) => `command:${VOTE}?${encodeURIComponent(JSON.stringify([path, part, v]))}`;
+  const rows = parts.map(({ part, label }) => {
+    const cur = mine[`${part}/${path}`];
+    const btn = (v: Vote, icon: string, name: string) => `<a class="vote${cur === v ? ' on' : ''}" href="${esc(link(part, v))}" role="button" aria-pressed="${cur === v}" title="${esc(cur === v ? `You said: ${name}. Click again to take it back.` : name)}">${icon}</a>`;
+    return `<li><span>${esc(label)}</span> ${btn('up', '👍', 'Right')} ${btn('down', '👎', 'Wrong or unclear')}</li>`;
+  }).join('');
+  return `<section class="votes" aria-labelledby="votes-h"><h2 id="votes-h">Is this right?</h2><ul>${rows}</ul><p class="note">${canSend ? 'Anonymous counts, no account: they show in the docs after their next build. People\'s votes decide "Verified by people".' : 'Votes are off because VS Code telemetry is off (Settings › Telemetry).'}</p></section>`;
+}
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 export const docsCommandLink = (value: string) => `command:${OPEN_DOCS}?${encodeURIComponent(JSON.stringify([value]))}`;
@@ -130,6 +146,10 @@ body.vscode-high-contrast .tk-property, body.vscode-high-contrast .tk-variable {
 body.vscode-high-contrast-light .tk-keyword { color: #0f4a85; } body.vscode-high-contrast-light .tk-string { color: #0f4a85; }
 body.vscode-high-contrast-light .tk-comment { color: #515151; } body.vscode-high-contrast-light .tk-type { color: #185e73; } body.vscode-high-contrast-light .tk-function { color: #5e2cbc; }
 ul { padding-left: 20px; } li { margin: 3px 0; }
+.votes { margin-top: 24px; border-top: 1px solid var(--vscode-panel-border, #8884); padding-top: 8px; } .votes h2 { font-size: 1em; } .votes ul { list-style: none; padding: 0; }
+.votes li { display: flex; gap: 8px; align-items: center; } .votes li span { min-width: 12em; }
+.vote { display: inline-block; padding: 2px 8px; border: 1px solid var(--vscode-button-border, #8886); border-radius: 4px; text-decoration: none; }
+.vote.on { background: var(--vscode-button-background); color: var(--vscode-button-foreground); } .votes .note { opacity: .85; font-size: .9em; }
 </style></head><body>
 <nav aria-label="Where you are in the docs">${canGoBack ? `<a class="back" href="command:${BACK}" title="Back" aria-label="Back">←</a>` : ''}${parts.join('<span class="sep" aria-hidden="true">/</span>')}<span class="end"><a href="command:${SEARCH}" title="Search the docs (names and words)">Search…</a><a href="${esc(web)}" title="The same page on the site, to share or read in the browser">Open on the web</a></span></nav>
 <main>${body}</main>
@@ -141,17 +161,33 @@ export function registerDocsPanel(context: vscode.ExtensionContext) {
   let view = 'home';
   const history: string[] = [];
 
+  const VOTES_KEY = 'splitscreenme.docVotes';
+  const mine = () => context.globalState?.get<Record<string, Vote | undefined>>(VOTES_KEY) ?? {};
+  const votesFor = (path?: string) => {
+    if (!path) return '';
+    const r = lookup(path);
+    const m = r.kind === 'entries' && r.entries.length === 1 ? r.entries[0].member : undefined;
+    if (!m) return '';
+    const parts: { part: DocPart; label: string }[] = [];
+    if (m.doc) parts.push({ part: 'doc', label: m.docBy === 'claude' ? 'The doc (AI-written)' : 'The doc' });
+    if (m.practice) parts.push({ part: 'practice', label: '"In practice" (AI-written)' });
+    return voteSection(path, parts, mine(), vscode.env.isTelemetryEnabled !== false);
+  };
+  /** Sends one people's-vote event to the same anonymous counter as the workbench (GoatCounter); never fails loudly. */
+  const send = async (event: string) => {
+    try { await fetch(`https://${FEEDBACK_SITE}.goatcounter.com/count?p=${encodeURIComponent('/' + event)}&e=true&rnd=${Math.random().toString(36).slice(2)}`); } catch { /* offline: not counted */ }
+  };
   const show = async (next: string, push: boolean) => {
     if (push && panel && next !== view) history.push(view);
     if (history.length > 50) history.shift();
     view = next;
     const page = docsPage(view, docsCommandLink);
     // Names inside the docs open their own page too.
-    const body = fallbackMarkdown(linkApiNames(page.markdown, docsCommandLink)) + (view === 'home' ? linksSection(`${WORKBENCH_URL}?ref=vscode`) : '');
+    const body = fallbackMarkdown(linkApiNames(page.markdown, docsCommandLink)) + (view === 'home' ? linksSection(`${WORKBENCH_URL}?ref=vscode`) : '') + votesFor(page.path);
     if (!panel) {
       panel = vscode.window.createWebviewPanel('splitscreenme.docs', 'Handler Docs', { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true }, {
         enableScripts: false,
-        enableCommandUris: [OPEN_DOCS, BACK, SEARCH],
+        enableCommandUris: [OPEN_DOCS, BACK, SEARCH, VOTE],
         localResourceRoots: [],
       });
       panel.onDidDispose(() => {
@@ -166,6 +202,20 @@ export function registerDocsPanel(context: vscode.ExtensionContext) {
   context.subscriptions.push(
     // From a hover link (a name), Search, or the command palette (the main page).
     vscode.commands.registerCommand(OPEN_DOCS, (value?: string) => show(docsView(typeof value === 'string' ? value : ''), true)),
+    // 👍/👎 on a part: a new vote, a change (the old one taken back), or a second click that takes it back, as in the workbench.
+    vscode.commands.registerCommand(VOTE, async (path: string, part: DocPart, v: Vote) => {
+      if (typeof path !== 'string' || (part !== 'doc' && part !== 'practice') || (v !== 'up' && v !== 'down')) return;
+      if (vscode.env.isTelemetryEnabled === false) return void vscode.window.setStatusBarMessage('Nucleus: votes are off while VS Code telemetry is off', 4000);
+      const all = { ...mine() };
+      const key = `${part}/${path}`;
+      const was = all[key];
+      if (was) await send(voteEventPath('people', part, path, was === 'up' ? 'undo-up' : 'undo-down'));
+      if (was !== v) await send(voteEventPath('people', part, path, v));
+      all[key] = was === v ? undefined : v;
+      await context.globalState?.update(VOTES_KEY, all);
+      vscode.window.setStatusBarMessage(was === v ? 'Nucleus: vote taken back' : 'Nucleus: thanks, your vote is counted', 3000);
+      void show(view, false);
+    }),
     vscode.commands.registerCommand(BACK, () => {
       const v = history.pop();
       if (v !== undefined) void show(v, false);

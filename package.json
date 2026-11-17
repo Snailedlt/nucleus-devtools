@@ -226,6 +226,11 @@
         "category": "Nucleus"
       },
       {
+        "command": "splitscreenme.docsVote",
+        "title": "Docs: Vote",
+        "category": "Nucleus"
+      },
+      {
         "command": "splitscreenme.reportProblem",
         "title": "Report a Problem…",
         "category": "Nucleus"
@@ -356,6 +361,10 @@
         },
         {
           "command": "splitscreenme.docsBack",
+          "when": "false"
+        },
+        {
+          "command": "splitscreenme.docsVote",
           "when": "false"
         },
         {

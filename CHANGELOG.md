@@ -17,6 +17,7 @@ How to write it (people and AI agents read this; the release workflow publishes 
 
 ### ✨ New
 
+- **Vote on docs in VS Code too.** The Docs panel has 👍/👎 for each part of a doc (the doc, and the AI-written "In practice"), counted with the workbench's, anonymously and only while VS Code telemetry is on. Click again to take a vote back.
 - **Report from where you are.** *Nucleus: Report a Problem…* and *Request a Feature…* (Command Palette, the language status's *Feedback*, Notepad++'s plugin menu, `ncdev report`) open the right GitHub form, filled in with the versions and where the handler came from, never its code. You never pick a repository, and you see everything before it's sent.
 - **"This check is wrong" on every problem.** Ctrl+. in VS Code, Alt+Enter in Notepad++, the code actions of other editors and `ncdev report --check <rule>` open a report with the check, the message and the line; the flagged lines' code only if you choose to include it.
 - **"Nucleus did something different" in Try it.** The Try it panel's report button sends what Try it showed (each player's window, arguments, file changes) next to what really happened.

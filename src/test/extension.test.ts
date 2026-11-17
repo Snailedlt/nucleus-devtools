@@ -414,3 +414,12 @@ test('language status: the checks and the game folder beside the handler languag
   assert.deepEqual(checksText([d(m.DiagnosticSeverity.Hint), d(m.DiagnosticSeverity.Information)]), { text: 'No problems', severity: 'ok' });
   assert.deepEqual(checksText([d(m.DiagnosticSeverity.Error), d(m.DiagnosticSeverity.Warning), d(m.DiagnosticSeverity.Error)]), { text: '2 errors, 1 warning', severity: 'error' });
 });
+
+test('Docs panel: 👍/👎 per part as command links; a second click is shown as taking the vote back', async () => {
+  const { voteSection } = await import('../docspanel');
+  const html = voteSection('Game.KillMutex', [{ part: 'doc', label: 'The doc' }, { part: 'practice', label: '"In practice" (AI-written)' }], { 'doc/Game.KillMutex': 'up' }, true);
+  assert.equal((html.match(/command:splitscreenme\.docsVote\?/g) ?? []).length, 4);
+  assert.match(html, /class="vote on"[^>]*aria-pressed="true"[^>]*title="You said: Right/);
+  assert.match(voteSection('Game.KillMutex', [{ part: 'doc', label: 'The doc' }], {}, false), /telemetry is off/);
+  assert.equal(voteSection('Game.KillMutex', [], {}, true), '');
+});
