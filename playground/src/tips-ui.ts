@@ -1,7 +1,7 @@
 // The tip bar under the code. One general tip at a time (Next shows another), and Clippy-style
 // tips that pop up once when the code or the cursor makes them relevant. Off with one click.
 import { voteButtons } from './feedback';
-import { CONTEXT_TIPS, GENERAL_TIPS, Tip, TipContext } from './tips';
+import { CONTEXT_TIPS, GENERAL_TIPS, Tip, TipContext, tipFor } from './tips';
 import { scanHandler, inCallback, Scan } from './lines';
 import { narrow } from './dom';
 
@@ -27,9 +27,12 @@ interface Deps {
   actions: Record<NonNullable<Tip['action']>['run'], () => void>;
   /** The control each action stands for: highlighted while its tip shows, so you learn where it lives. */
   targets?: Partial<Record<NonNullable<Tip['action']>['run'], () => HTMLElement | null>>;
+  /** Who is using the workbench now: only tips for them (or for everyone) show. */
+  audience?: () => 'newcomer' | 'developer';
 }
 
-export function initTips({ editor, actions, toast, targets }: Deps) {
+export function initTips({ editor, actions, toast, targets, audience }: Deps) {
+  const forNow = (t: Tip) => tipFor(t, audience?.() ?? 'newcomer');
   let on = get(ON_KEY) !== '0';
   const seen = new Set<string>(JSON.parse(get(SEEN_KEY) || '[]'));
   let general = Math.floor(Math.random() * GENERAL_TIPS.length);
@@ -73,8 +76,13 @@ export function initTips({ editor, actions, toast, targets }: Deps) {
     }
     bar.hidden = !on;
   }
+  // Next and Back go round the tips for this mode only (Guided or Advanced), skipping the others.
   const showGeneral = (step = 1) => {
-    general = (general + step + GENERAL_TIPS.length) % GENERAL_TIPS.length;
+    const n = GENERAL_TIPS.length;
+    for (let i = 0; i < n; i++) {
+      general = (general + step + n) % n;
+      if (forNow(GENERAL_TIPS[general])) break;
+    }
     render(GENERAL_TIPS[general], false);
   };
 
@@ -87,7 +95,7 @@ export function initTips({ editor, actions, toast, targets }: Deps) {
     const ctx: TipContext = { text, lineText: editor.getLine(cur.line) ?? '', inCallback: scan ? inCallback(scan, editor.indexFromPos(cur)) : false };
     // At most one heads-up every 20 s, each only once.
     if (Date.now() - lastContextAt < 20000) return;
-    const tip = CONTEXT_TIPS.find((t) => !seen.has(t.id) && t.when!(ctx));
+    const tip = CONTEXT_TIPS.find((t) => !seen.has(t.id) && forNow(t) && t.when!(ctx));
     if (!tip) return;
     seen.add(tip.id);
     set(SEEN_KEY, JSON.stringify([...seen]));
@@ -135,6 +143,10 @@ export function initTips({ editor, actions, toast, targets }: Deps) {
     toggle: () => setOn(!on),
     set: (v: boolean) => setOn(v),
     isOn: () => on,
+    /** The mode changed (Guided / Advanced): swap the shown tip if it isn't for this mode. */
+    refresh: () => {
+      if (on && !bar.classList.contains('contextual') && !forNow(GENERAL_TIPS[general])) showGeneral(1);
+    },
     /** Show the heads-up tips again (they are shown once each). */
     reset: () => {
       seen.clear();

@@ -16,7 +16,19 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 ### 🛠️ Improved
 
+- **Identical problems show as one.** In Check, the same problem on lines next to each other (like `Player.ProtoController5` to `16`) is one row with a ×N count and a *Fix all N* button, and F8 steps through the rows.
+- **Fix all leaves harmless lines for you to choose.** *Fix problems automatically* no longer counts or removes lines that only do nothing; afterwards it offers *Also remove N lines that do nothing*, and when those are all that's left, the button offers just them.
+- **Tips for the way you work.** Guided mode shows the tips meant for newcomers and Advanced mode the ones for people who write code; switching mode swaps the tip. Choosing *I write code* at the start no longer turns tips off.
+- **One problem count everywhere.** The Check tab, the Handler/Results switch, the *All* filter and the status line count the same problems (errors, warnings and info), and the phone's strip shows each kind.
 - **The handler has Nucleus Co-op's logo as its file icon.** In the Files panel and the file tabs, `handler.js` shows the logo with a JS tag, as handlers do in VS Code; other files keep their type badge.
+
+### 🐛 Fixed
+
+- **One Escape closes the command palette.** The first one used to only clear the `>`.
+- **After *Fix this*, the keyboard stays in the problem list.** Focus moves to the next problem instead of back to the top of the page.
+- **The page fits the window.** It was a few pixels taller, so the whole page scrolled; with no handler open, the welcome screen also had extra space around it.
+- **On phones, the handler's name shows again.** The row above the code was too wide, so the name shrank to its arrow and the save button was cut off; the name now has its own line.
+- **The *All* filter's count is readable.** On the selected (blue) chip it now has enough contrast.
 
 ---
 

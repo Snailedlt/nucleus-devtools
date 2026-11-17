@@ -19,6 +19,8 @@ export interface Tip {
   topic?: 'Best practice' | 'Pitfall' | 'Shortcut' | 'Setting' | 'Feature';
   /** Clippy-style: shown once, when this is true. */
   when?: (c: TipContext) => boolean;
+  /** Who it's for: newcomers (Guided) or experienced authors (Advanced mode). Unset: both. */
+  for?: 'newcomer' | 'developer';
   /** Optional action button. */
   action?: { label: string; run: 'lines' | 'new' | 'examples' | 'tryit' | 'share' | 'tutorial' };
 }
@@ -202,6 +204,19 @@ const FEATURES_ = T('Feature', [
   { id: 'f-hub', text: 'The examples include the most-downloaded verified Hub handlers. Check and Try it work on them, so you can see how others solved a problem.', action: { label: 'Examples', run: 'examples' } },
   { id: 'f-vscode', text: 'Prefer your own editor? The VS Code extension has the same checks, docs on hover and Try it, for the files in your handlers folder.' },
 ]);
+
+// Who each tip is for (Tip.for). Unset: useful to everyone. Guided shows newcomer tips, Advanced mode
+// developer tips; both show the rest. Things an experienced author already knows (how to get suggestions,
+// VS Code's editing keys, Form and Blocks, the mascots) are for newcomers; power-user shortcuts and
+// workflow settings are for developers.
+const NEWCOMER = new Set(['start', 'in-play', 's-tutorial', 's-suggest', 's-edit', 'c-theme', 'c-editor', 'c-advanced', 'f-form', 'f-blocks', 'f-expand', 'f-mascots', 'f-mascot-modes', 'f-swipe', 'f-gutter', 'f-hover', 'f-votes', 'f-eq-values', 'f-value-pick', 'f-reference', 'f-ref-home', 'f-lines']);
+const DEVELOPER = new Set(['s-find-all', 's-goto', 's-open-keys', 'f-vscode', 'f-custom-theme', 'f-settings-io', 'c-review', 'c-wakatime', 'f-save-nucleus', 'f-ai-providers']);
+for (const t of [...CONTEXT_TIPS, ...PITFALLS, ...SHORTCUTS, ...BEST, ...FEATURES_, ...SETTINGS]) {
+  if (NEWCOMER.has(t.id)) t.for = 'newcomer';
+  else if (DEVELOPER.has(t.id)) t.for = 'developer';
+}
+/** Is this tip for someone in this mode? */
+export const tipFor = (t: Tip, who: 'newcomer' | 'developer') => !t.for || t.for === who;
 
 const GROUPS = [PITFALLS, SHORTCUTS, BEST, FEATURES_, SETTINGS];
 /** Every general tip, the topics taking turns, so Next goes round them. */

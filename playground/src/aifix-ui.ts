@@ -129,9 +129,14 @@ export function initFixes(deps: FixesDeps): void {
   // Fix all: the deterministic, offline fixes (the same as `nucleus lint --fix` and the extension).
   $('#fix-all').addEventListener('click', () => {
     deps.used('fix-all');
+    // Harmless cleanups (lines that do nothing) wait unless they are all there is: the result offers them.
+    const onlyCleanups = ($('#fix-all') as HTMLButtonElement).dataset.cleanupsOnly === '1';
+    runFixAll(onlyCleanups);
+  });
+  function runFixAll(cleanups: boolean) {
     const base = editor.getValue();
     const before = counts(base, deps.lintCtx());
-    const r = fixAll(base, deps.lintCtx());
+    const r = fixAll(base, { ...deps.lintCtx(), cleanups });
     aiBox.hidden = false;
     boxShows = null;
     if (r.code === base) {
@@ -139,8 +144,8 @@ export function initFixes(deps: FixesDeps): void {
       return;
     }
     const changes = [...new Set(r.applied.map((a) => `${a.title} (line ${a.line})`))];
-    showProposal(base, r.code, changes, before, 'Fix all');
-  });
+    showProposal(base, r.code, changes, before, 'Fix all', r.cleanups);
+  }
 
   // The fix box shows a before/after of one version of the handler: once the code moves on (you keep
   // typing), it would be stale, so it closes and the list below is what counts.
@@ -156,7 +161,7 @@ export function initFixes(deps: FixesDeps): void {
     fixWithNucli(editor, code, () => doc.replaceRange(code, doc.posFromIndex(0), doc.posFromIndex(doc.getValue().length), '+ai-fix'));
   }
 
-  function showProposal(base: string, code: string, changes: string[], before: { errors: number; warnings: number }, source: 'AI' | 'Fix all' = 'AI') {
+  function showProposal(base: string, code: string, changes: string[], before: { errors: number; warnings: number }, source: 'AI' | 'Fix all' = 'AI', cleanupsLeft = 0) {
     const after = counts(code, deps.lintCtx());
     const edited = editor.getValue() !== base;
     const better = after.errors < before.errors || (after.errors === before.errors && after.warnings < before.warnings);
@@ -200,6 +205,7 @@ export function initFixes(deps: FixesDeps): void {
     const applied = () => `<div class="fix-done">
       <span class="fix-ok" aria-hidden="true">✓</span>
       <span class="fix-msg"><strong>${source === 'Fix all' ? `Fixed ${fixedCount} problem${fixedCount === 1 ? '' : 's'}` : 'Applied the AI fix'}</strong>${remaining ? ` · ${remaining} need${remaining === 1 ? 's' : ''} your decision, below` : ' · nothing left to fix'}. Changed lines are highlighted in the code.</span>
+      ${cleanupsLeft ? `<button class="btn" id="fix-cleanups" type="button" title="Lines Nucleus ignores, such as Player.ProtoController5 and up: harmless, so Fix all leaves them">Also remove ${cleanupsLeft} line${cleanupsLeft === 1 ? '' : 's'} that do${cleanupsLeft === 1 ? 'es' : ''} nothing</button>` : ''}
       <button class="btn" id="ai-undo" type="button">Undo</button>
       <button class="btn icon" id="ai-close" type="button" aria-label="Close">×</button>
       <details class="fix-more"><summary>What changed (+${added} −${removed} lines)</summary>${changeList}${delta}${diffTable}</details></div>`;
@@ -220,6 +226,7 @@ export function initFixes(deps: FixesDeps): void {
         }
       });
       $('#ai-close').addEventListener('click', () => (aiBox.hidden = true));
+      document.getElementById('fix-cleanups')?.addEventListener('click', () => runFixAll(true));
     };
     // Fix with AI changes kept, for the credit lines (credit.ts); Undo takes one back.
     const countAi = (kind: 'direct' | 'reviewed', d: number) => {

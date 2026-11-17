@@ -36,6 +36,7 @@ try { var d = document.documentElement, ls = localStorage;
 /*THEMES*/
 
 html, body { height: 100%; }
+body { margin: 0; }
 
 /* Dev bar (src/devbar.ts): its own fixed colours, so it reads the same in every theme. */
 .devbar { position: fixed; left: calc(12px + env(safe-area-inset-left, 0px)); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 80; max-width: calc(100vw - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
@@ -82,7 +83,7 @@ header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
 /* v3: colour means a player. Player cards in Try it carry their player's colour. */
 .player.p1 { --pc: var(--p1); } .player.p2 { --pc: var(--p2); } .player.p3 { --pc: var(--p3); } .player.p4 { --pc: var(--p4); }
 .player.p5 { --pc: var(--p5); } .player.p6 { --pc: var(--p6); } .player.p7 { --pc: var(--p7); } .player.p8 { --pc: var(--p8); }
-.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: -1px; }
 h1 { font: var(--display-weight) 19px/1.1 var(--font-display); font-stretch: var(--display-stretch); letter-spacing: -.01em; margin: 0; text-wrap: balance; }
 .sub { color: var(--muted); font-size: 12.5px; }
 .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; align-items: center; }
@@ -97,19 +98,19 @@ a.btn { text-decoration: none; color: var(--fg); display: inline-block; }
 :root { accent-color: var(--accent); }
 
 html.no-handler #main { display: none; }
-.no-handler { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 24px 16px; text-align: center; }
-.no-handler[hidden] { display: none; }
+div.no-handler { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 24px 16px; text-align: center; }
+div.no-handler[hidden] { display: none; }
 html.no-handler #no-handler[hidden] { display: flex !important; } /* set before first paint (see <head>) */
-.no-handler h2 { margin: 0; font-size: 20px; }
-.no-handler .nh-drop { margin: 10px 0 0; font-size: var(--fs-sm); }
-.no-handler .nh-acts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px; }
-.no-handler .nh-intro { max-width: 920px; }
-.no-handler .nh-intro p { max-width: 640px; margin-left: auto; margin-right: auto; }
-.no-handler .nh-intro p { margin: 8px 0 0; }
+div.no-handler h2 { margin: 0; font-size: 20px; }
+div.no-handler .nh-drop { margin: 10px 0 0; font-size: var(--fs-sm); }
+div.no-handler .nh-acts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px; }
+div.no-handler .nh-intro { max-width: 920px; }
+div.no-handler .nh-intro p { max-width: 640px; margin-left: auto; margin-right: auto; }
+div.no-handler .nh-intro p { margin: 8px 0 0; }
 .nh-steps { list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 18px; margin: 12px 0 0; padding: 0; font-size: 14px; }
 .nh-steps b { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--surface-2); color: var(--muted); font-size: 12px; margin-right: 4px; }
 /* Advanced mode starts compact: just the ways on. */
-:root[data-mode="dev"] .no-handler .nh-intro { display: none; }
+:root[data-mode="dev"] div.no-handler .nh-intro { display: none; }
 .main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.15fr) 12px minmax(0, 1fr); gap: 0; }
 @media (min-width: 861px) { .main:has(#lines:not([hidden])) { grid-template-columns: minmax(0, 1.5fr) 12px minmax(0, 1fr); } }
 /* Resizable panes: a size set by dragging wins over the defaults above (double-click resets) */
@@ -1028,12 +1029,13 @@ kbd { font: 11px var(--font-mono); border: 1px solid var(--line); border-bottom-
 .filter { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 2px 10px; font-size: 12px; cursor: pointer; }
 .filter[aria-pressed=true] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 .filter span { opacity: .8; font-variant-numeric: tabular-nums; }
+.filter[aria-pressed=true] span { opacity: 1; } /* white on the accent: .8 fell under 4.5:1 */
 .tip-line { font-size: 11.5px; margin-left: auto; }
 .problem.current { outline: 2px solid var(--accent); outline-offset: 1px; }
 .fixable { font-size: 11px; color: var(--ok); font-weight: 600; }
 /* Getting started on the home page: its intro unfolds where it lives. */
 @keyframes welcome-in { from { opacity: 0; transform: scaleY(.6); } }
-:root:not([data-motion-ui="off"]) .no-handler.welcome-in .nh-intro { animation: welcome-in .35s cubic-bezier(.2, .8, .2, 1); transform-origin: top; }
+:root:not([data-motion-ui="off"]) div.no-handler.welcome-in .nh-intro { animation: welcome-in .35s cubic-bezier(.2, .8, .2, 1); transform-origin: top; }
 .banner-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 /* A notice at the top of the code pane (src/toast.ts notice()): problems that need reading stay there until dismissed. */
 #notice { display: flex; align-items: flex-start; gap: 10px; margin: 8px 10px 0; padding: 8px 8px 8px 12px; border: 1px solid var(--line); border-left: 3px solid var(--tk); border-radius: var(--r-pane); background: var(--surface-2); font-size: 13.5px; line-height: 1.4; }
@@ -1443,6 +1445,7 @@ kbd { font: 11px var(--font-mono); border: 1px solid var(--line); border-bottom-
   #probstrip .ps-count { display: flex; gap: 6px; flex: none; font-weight: 700; }
   #probstrip .ps-count .e { color: var(--err); }
   #probstrip .ps-count .w { color: var(--warn); }
+  #probstrip .ps-count .i { color: var(--info, var(--muted)); }
   #probstrip .ps-msg { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pane:has(#probstrip:not([hidden])) #tipbar { display: none; }
   #line-pop { left: 8px; right: 8px; }
@@ -1638,6 +1641,13 @@ header #app-menu-open { width: var(--hdr-ctl); }
   :root[data-layout="rail"] header .brand, :root[data-layout="rail"] header .toolbar { display: flex; }
   .htabs-wrap { display: none; }
   .phone-name { display: inline-flex !important; }
+  /* Too narrow for the name and the view buttons in one row: the name gets its own, the buttons wrap under it. */
+  .doc-title { flex-wrap: wrap; row-gap: 4px; }
+  #doc-switch { flex: 1 1 calc(100% - 60px); justify-content: flex-start; }
+  #doc-switch #doc-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .doc-title > * { order: 2; }
+  .doc-title > #doc-switch, .doc-title > #doc-edited { order: 0; }
+  .doc-title > #code-menu-phone { order: 1; margin-left: auto; }
   #doc-edited:not([hidden]) { display: inline !important; }
   #app-menu-open svg { display: none; }
   #app-menu-open .phone-dots { display: inline; font-size: 18px; }
@@ -2055,6 +2065,7 @@ details[open] > .fv-group-title::before { transform: rotate(45deg); }
 #gf-dialog { width: min(560px, calc(100vw - 32px)); }
 
 /* ---- Packages: the Files panel, the file tabs, file icons, the second editor ---- */
+.problem .times { font-size: .85em; font-weight: 700; padding: 0 5px; border-radius: 8px; background: var(--chip-bg, rgba(127,127,127,.15)); margin-left: 4px; white-space: nowrap; }
 .fi-logo { width: 18px; height: 18px; flex: none; margin-right: 5px; vertical-align: -3px; }
 .fi-badge { display: inline-grid; place-items: center; min-width: 22px; height: 16px; padding: 0 3px; border-radius: 4px; font: 700 9px/1 var(--font-mono); color: #fff; background: #64748b; flex: none; letter-spacing: -.2px; margin-right: 5px; }
 .fi-js { background: #e0b100; color: #1b1f2a; } .fi-ini, .fi-cfg { background: #57657a; } .fi-json { background: #0f766e; } .fi-xml, .fi-toml, .fi-yaml { background: #9a3412; } .fi-txt { background: #6b7280; } .fi-bat { background: #166534; } .fi-ps1 { background: #1e3a8a; } .fi-lua { background: #1e40af; } .fi-reg { background: #57657a; } .fi-vdf { background: #374151; } .fi-dll { background: #6d28d9; } .fi-exe { background: #b91c1c; } .fi-img { background: #be185d; } .fi-bin { background: #475569; }

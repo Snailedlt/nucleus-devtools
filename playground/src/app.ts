@@ -213,6 +213,8 @@ let pkgUI: ReturnType<typeof initPackageUI> | null = null;
 let filter: 'all' | 'error' | 'warning' | 'info' | 'hint' = 'all';
 let problemIndex = -1;
 let shownProblems: Diagnostic[] = [];
+/** For each of shownProblems, the row (grouped problems share one) it is shown in. */
+let shownRowOf: number[] = [];
 
 // Advanced mode (off by default) only ADDS detail to the same screens: exact positions, rule ids,
 // severity filters and suggestions, technical messages expanded, recorded calls, engine probes.
@@ -227,7 +229,7 @@ try {
 document.documentElement.dataset.mode = mode;
 
 // Lint in a Web Worker so typing never waits; fall back to the main thread if workers are unavailable.
-type Analysis = { diagnostics: Diagnostic[]; fixable: number };
+type Analysis = { diagnostics: Diagnostic[]; fixable: number; cleanups?: number };
 let worker: Worker | null = null;
 let reqId = 0;
 type Ctx = { plugins?: string[]; published?: { version?: number; guid?: string } };
@@ -242,7 +244,10 @@ function lintCtx(): Ctx {
   return { plugins: lintPlugins(), published };
 }
 const pending = new Map<number, { text: string; ctx: Ctx; resolve: (a: Analysis) => void }>();
-const analyzeHere = (text: string, ctx: Ctx): Analysis => ({ diagnostics: lint(text, ctx), fixable: fixAll(text, ctx).applied.length });
+const analyzeHere = (text: string, ctx: Ctx): Analysis => {
+  const r = fixAll(text, { ...ctx, cleanups: false });
+  return { diagnostics: lint(text, ctx), fixable: r.applied.length, cleanups: r.cleanups };
+};
 /** Game.GUID's string value in a handler source. */
 const guidOf = (src: string): string | undefined => {
   const m = src.match(/^\s*Game\.GUID\s*=\s*("(?:[^"\\\r\n]|\\.)*")/m);
@@ -302,7 +307,7 @@ const editor = CodeMirror($('#editor'), {
         currentText = text;
         folderProblems = gameFolder ? checkAgainstFolder(text, gameFolder) : [];
         pkgProblems = pkgUI ? pkgUI.problems() : [];
-        setFixCount(r.fixable);
+        setFixCount(r.fixable, r.cleanups ?? 0);
         renderProblems(text);
         if (formView && viewMode === 'form') formView.refresh();
         if (blocksView && viewMode === 'blocks') blocksView.refresh();
@@ -883,17 +888,19 @@ function renderProblems(text: string) {
   shownProblems = list;
   problemIndex = -1;
   queueMicrotask(renderStrip);
-  const serious = counts.error + counts.warning;
-  $('#count-problems').textContent = String(serious);
-  $('#count-switch').textContent = String(serious);
-  $('#f-all').textContent = String(counts.error + counts.warning + counts.info);
+  // One count everywhere (tab, phone switch, filter, summary, phone strip): every problem the list shows,
+  // errors, warnings and info. Hints (outdated options) are counted on their own.
+  const total = counts.error + counts.warning + counts.info;
+  $('#count-problems').textContent = String(total);
+  $('#count-switch').textContent = String(total);
+  $('#f-all').textContent = String(total);
   for (const k of ['error', 'warning', 'info', 'hint']) $(`#f-${k}`).textContent = String(counts[k]);
   const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
-  const tally = simple ? '' : ` <span class="muted">(${plural(counts.error, 'error')}, ${plural(counts.warning, 'warning')}, ${counts.info} info)</span>`;
+  const tally = simple ? '' : ` <span class="muted">(${[counts.error && plural(counts.error, 'error'), counts.warning && plural(counts.warning, 'warning'), counts.info && `${counts.info} info`].filter(Boolean).join(', ')})</span>`;
   $('#status').innerHTML = !editor.getValue().trim()
     ? `<span class="pill">No code yet</span>`
     : counts.error
-    ? `<span class="pill error">Nucleus can't use this handler yet</span><span>${plural(serious, 'thing')} to fix${tally}</span>`
+    ? `<span class="pill error">Nucleus can't use this handler yet</span><span>${plural(total, 'problem')}${tally}</span>`
     : counts.warning
       ? `<span class="pill ok">Nucleus can use this handler</span><span>but ${plural(counts.warning, 'setting')} may not work as intended${tally}</span>`
       : `<span class="pill ok">Ready for Nucleus</span><span>Next: <button class="link" type="button" id="v-try">try it</button>${tally}</span>`;
@@ -919,23 +926,29 @@ function renderProblems(text: string) {
   // Settings › General › Check: compact (one row each, open for more), comfortable, detailed (everything open).
   const density = checkDensity();
   el.dataset.density = density;
-  el.innerHTML = list
-    .map((d, i) => {
+  // The same problem on many lines (12 copies of a ProtoController line) is one row: "×12, lines 197–208",
+  // with one fix for all of them, as Try it already groups them.
+  const groups = groupProblems(list);
+  shownRowOf = groups.flatMap((g, i) => g.map(() => i));
+  el.innerHTML = groups
+    .map((g, i) => {
+      const d = g[0];
       const line = lineOf(text, d.start) + 1;
+      const lastLine = lineOf(text, g[g.length - 1].start) + 1;
       const col = d.start - (text.lastIndexOf('\n', d.start - 1) + 1) + 1;
       const plain = plainFor(d);
       const about = d.message.match(/`([^`]+)`/)?.[1];
       const ordered = (d.fixes ?? []).map((f, j) => ({ f, j })).sort((a, z) => Number(!!z.f.preferred) - Number(!!a.f.preferred));
       const fixBtn = ({ f, j }: { f: NonNullable<Diagnostic['fixes']>[number]; j: number }, main: boolean) =>
-        `<button class="fix${main ? ' primary' : ''}" data-d="${i}" data-f="${j}" type="button" title="${esc(f.title.replace(/`/g, ''))}">${main && f.preferred ? 'Fix this' : esc(f.title.replace(/`/g, ''))}</button>`;
+        `<button class="fix${main ? ' primary' : ''}" data-d="${i}" data-f="${j}" type="button" title="${esc(f.title.replace(/`/g, ''))}${g.length > 1 ? ` (all ${g.length})` : ''}">${main && f.preferred ? (g.length > 1 ? `Fix all ${g.length}` : 'Fix this') : esc(f.title.replace(/`/g, ''))}</button>`;
       const key = `${d.rule}:${line}:${about ?? ''}`;
       const open = density !== 'compact' || openProblems.has(key);
       // Advanced adds (never replaces): the column, severity, rule id and the technical message expanded.
       const extra = simple ? '' : `<span class="chip ${sevClass[d.severity]}">${d.severity}</span><span class="rule" title="${esc(RULES[d.rule].description)}">${d.rule}</span>`;
       const bodyId = `pb-${i}`;
       return `<li class="problem ${sevClass[d.severity]}" data-i="${i}"><div class="pcard${open ? ' open' : ''}" data-key="${esc(key)}">
-        <div class="prow"><span class="sev-ico" aria-hidden="true">${SEV_ICON[d.severity]}</span><button class="loc" data-jump="${d.start}" type="button" title="Show this line">Line ${line}${simple ? '' : `:${col}`}</button>
-          <span class="plain-title">${esc(plain.title)}${about ? `: <code>${esc(about)}</code>` : ''}</span>
+        <div class="prow"><span class="sev-ico" aria-hidden="true">${SEV_ICON[d.severity]}</span><button class="loc" data-jump="${d.start}" type="button" title="Show this line">${g.length > 1 ? `Lines ${line}–${lastLine}` : `Line ${line}${simple ? '' : `:${col}`}`}</button>
+          <span class="plain-title">${esc(plain.title)}${about ? `: <code>${esc(g.length > 1 ? rangeOfNames(g) : about)}</code>` : ''}${g.length > 1 ? ` <span class="times" title="${g.length} times">×${g.length}</span>` : ''}</span>
           <span class="row-fix">${ordered[0] ? fixBtn(ordered[0], true) : ''}</span>
           <button class="ptoggle" type="button" aria-expanded="${open}" aria-controls="${bodyId}" aria-label="More about line ${line}: ${esc(plain.title)}"></button></div>
         <div class="body" id="${bodyId}"${open ? '' : ' hidden'}><p class="plain-why">${esc(plain.why)}</p>
@@ -957,18 +970,49 @@ function renderProblems(text: string) {
   });
   el.querySelectorAll<HTMLButtonElement>('.fix').forEach((b) =>
     b.addEventListener('click', () => {
-      const fix = list[Number(b.dataset.d)].fixes![Number(b.dataset.f)];
-      fixWithNucli(editor, applyEditsToText(editor.getValue(), fix.edits), () =>
+      // A grouped row fixes every problem in it: the same fix (by position) of each.
+      const g = groups[Number(b.dataset.d)], j = Number(b.dataset.f);
+      const fix = g[0].fixes![j];
+      const edits = g.flatMap((x) => x.fixes?.[j]?.edits ?? []);
+      fixWithNucli(editor, applyEditsToText(editor.getValue(), edits), () =>
         editor.operation(() => {
-          for (const e of [...fix.edits].sort((a, z) => z.start - a.start)) editor.replaceRange(e.text, editor.posFromIndex(e.start), editor.posFromIndex(e.end));
+          for (const e of [...edits].sort((a, z) => z.start - a.start)) editor.replaceRange(e.text, editor.posFromIndex(e.start), editor.posFromIndex(e.end));
         }),
       );
-      codeNote(editor, editor.posFromIndex(Math.min(...fix.edits.map((e) => e.start))).line, `Fixed: ${fix.title.replace(/`/g, '')}.`, { action: undoAction });
+      codeNote(editor, editor.posFromIndex(Math.min(...edits.map((e) => e.start))).line, `Fixed${g.length > 1 ? ` ${g.length}×` : ''}: ${fix.title.replace(/`/g, '')}.`, { action: undoAction });
+      // Keep the keyboard in the list: focus the problem that is now where this one was (the list re-renders).
+      const at = Number(b.dataset.d);
+      setTimeout(() => {
+        const rows = [...el.querySelectorAll<HTMLElement>('.problem')];
+        (rows[Math.min(at, rows.length - 1)]?.querySelector<HTMLElement>('.fix, .loc') ?? document.querySelector<HTMLElement>('#status button, #problems button'))?.focus();
+      }, 60);
     }),
   );
   el.querySelectorAll<HTMLButtonElement>('[data-jump]').forEach((b) => b.addEventListener('click', () => jumpTo(Number(b.dataset.jump))));
 }
 const openProblems = new Set<string>();
+/** Groups problems that say the same thing (same rule, severity and message with the numbers ignored, same
+ *  fixes) and are next to each other in the sorted list. */
+function groupProblems(list: Diagnostic[]): Diagnostic[][] {
+  const sig = (d: Diagnostic) => `${d.rule}|${d.severity}|${d.message.replace(/\d+/g, '#')}|${(d.fixes ?? []).map((f) => f.title.replace(/\d+/g, '#')).join('|')}`;
+  const out: Diagnostic[][] = [];
+  for (const d of list) {
+    const last = out[out.length - 1];
+    if (last && sig(last[0]) === sig(d)) last.push(d);
+    else out.push([d]);
+  }
+  return out;
+}
+/** `Player.ProtoController5–16` for a group whose names differ only in a number. */
+function rangeOfNames(g: Diagnostic[]): string {
+  const names = g.map((d) => d.message.match(/`([^`]+)`/)?.[1] ?? '');
+  const m = names.map((n) => /^(.*?)(\d+)$/.exec(n));
+  if (m.every((x) => x && x[1] === m[0]![1])) {
+    const nums = m.map((x) => Number(x![2])).sort((a, b) => a - b);
+    return `${m[0]![1]}${nums[0]}–${nums[nums.length - 1]}`;
+  }
+  return names[0];
+}
 type Density = 'compact' | 'comfortable' | 'detailed';
 const DENSITY_KEY = 'nucleus-workbench-check-density';
 function checkDensity(): Density {
@@ -1098,9 +1142,10 @@ function renderStrip() {
   if (!list.length) return;
   stripIndex = Math.min(stripIndex, list.length - 1);
   const d = list[stripIndex];
-  const errors = list.filter((x) => x.severity === 'error').length;
+  const n = (sev: string) => list.filter((x) => x.severity === sev).length;
+  const errors = n('error'), warnings = n('warning'), infos = n('info');
   const line = lineOf(editor.getValue(), d.start) + 1;
-  $('#ps-text').innerHTML = `<span class="ps-count">${errors ? `<span class="e">✖ ${errors}</span>` : ''}${list.length - errors ? `<span class="w">⚠ ${list.length - errors}</span>` : ''}</span><span class="ps-msg">Line ${line}: ${esc(plainFor(d).title)}</span>`;
+  $('#ps-text').innerHTML = `<span class="ps-count">${errors ? `<span class="e" title="Errors">✖ ${errors}</span>` : ''}${warnings ? `<span class="w" title="Warnings">⚠ ${warnings}</span>` : ''}${infos ? `<span class="i" title="Info">ℹ ${infos}</span>` : ''}</span><span class="ps-msg">Line ${line}: ${esc(plainFor(d).title)}</span>`;
 }
 function stripStep(dir: number) {
   if (!shownProblems.length) return;
@@ -1156,7 +1201,7 @@ function stepProblem(dir: 1 | -1) {
   selectTab('problems');
   problemIndex = (problemIndex + dir + shownProblems.length) % shownProblems.length;
   document.querySelectorAll('.problem.current').forEach((e) => e.classList.remove('current'));
-  const li = document.querySelector(`.problem[data-i="${problemIndex}"]`);
+  const li = document.querySelector(`.problem[data-i="${shownRowOf[problemIndex] ?? problemIndex}"]`);
   li?.classList.add('current');
   li?.scrollIntoView({ block: 'nearest' });
   jumpTo(shownProblems[problemIndex].start);
@@ -1170,11 +1215,14 @@ function setFilter(f: typeof filter) {
 document.querySelectorAll<HTMLButtonElement>('.filter').forEach((b) => b.addEventListener('click', () => setFilter(b.dataset.filter as typeof filter)));
 
 // "Fix problems" shows how many it can fix (counted in the worker along with the lint).
-function setFixCount(n: number) {
+// Harmless cleanups (lines that do nothing) aren't counted: Fix all offers them afterwards, and when
+// they are all that's left the button offers just them.
+function setFixCount(n: number, cleanups = 0) {
   const btn = $('#fix-all') as HTMLButtonElement;
   // Nothing to fix: no button (the bar goes too unless Fix with AI is there; CSS :has).
-  btn.hidden = n === 0;
-  btn.textContent = `Fix ${n} problem${n === 1 ? '' : 's'} automatically`;
+  btn.hidden = n === 0 && cleanups === 0;
+  btn.dataset.cleanupsOnly = n === 0 && cleanups > 0 ? '1' : '';
+  btn.textContent = n ? `Fix ${n} problem${n === 1 ? '' : 's'} automatically` : `Remove ${cleanups} line${cleanups === 1 ? '' : 's'} that do${cleanups === 1 ? 'es' : ''} nothing`;
 }
 
 // ---------------------------------------------------------------------------
@@ -2127,6 +2175,8 @@ $('#open-q').addEventListener('keydown', (e: KeyboardEvent) => {
   else if (e.key === 'Home' && browsing) { e.preventDefault(); setActive(0); }
   else if (e.key === 'End' && browsing) { e.preventDefault(); setActive(shownEntries.length - 1); }
   else if (e.key === 'Enter') { e.preventDefault(); runEntry(activeEntry); }
+  // A search field's first Escape only clears it (the ">" too): one Escape closes, as in VS Code.
+  else if (e.key === 'Escape') { e.preventDefault(); openDialog.close(); }
 });
 openDialog.addEventListener('click', (e) => {
   if (e.target === openDialog) openDialog.close(); // click on the backdrop
@@ -2246,6 +2296,8 @@ const lines = initLines({
 const tips = initTips({
   editor,
   toast,
+  // Advanced mode gets the tips for experienced authors, Guided the newcomer ones (both get the rest).
+  audience: () => (mode === 'dev' ? 'developer' : 'newcomer'),
   actions: {
     lines: () => lines.show(),
     new: () => ($('#new-open') as HTMLButtonElement).click(),
@@ -2645,6 +2697,11 @@ function setMode(m: Mode) {
   if (m === 'simple' && active === 'probes') selectTab('problems');
   (editor as any).performLint();
   if (active === 'simulate') runSim();
+  try {
+    tips.refresh();
+  } catch {
+    /* the tip bar isn't set up yet (page start) */
+  }
 }
 const advanced = $('#advanced') as HTMLInputElement;
 advanced.checked = mode === 'dev';
@@ -2790,8 +2847,8 @@ const firstRun = initFirstRun($('#firstrun-dialog') as HTMLDialogElement, {
       if (exp && lay) use(`firstrun/layout-${lay}`);
     }
     if (exp === 'developer') {
-      // "I write code" starts compact: no tip bar (a click away in Settings), and a home page without the intro.
-      tips.set(false);
+      // "I write code" starts compact: a home page without the intro. Tips stay on, but only the ones for
+      // experienced authors show in Advanced mode (tips.ts: Tip.for).
       try {
         localStorage.setItem(WELCOME_KEY, '1');
       } catch {
