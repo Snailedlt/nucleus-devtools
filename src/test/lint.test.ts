@@ -382,6 +382,25 @@ Game.Play = function () {
   assert.equal(apply(src, d[1].fixes![0]).includes('case "1":'), true, 'reading other.length keeps the fix');
 });
 
+test('option-compare: no quoted-case fix when the option array is changed by a method, also by a computed name', () => {
+  const mk = (call: string) =>
+    HEADER +
+    `var answers = ["2", "4"];
+${call}
+Game.AddOption("Players", "", "players", answers);
+Game.Play = function () {
+  switch (Context.Options["players"]) { case 2: break; }
+};
+`;
+  for (const call of ['answers["push"](2);', 'answers.splice(0, 1, 2);']) {
+    const d = only(mk(call), 'option-compare');
+    assert.equal(d.length, 1);
+    assert.equal(d[0].fixes, undefined, call);
+  }
+  const ok = only(mk('var s = answers.join(",");'), 'option-compare');
+  assert.equal(ok[0].fixes?.length, 1, 'a read-only method keeps the fix');
+});
+
 test('unknown-member: a compound write is never the harmless idiom; sequences and for tests pass the value on', () => {
   const src = HEADER + 'Game.Play = function () {\n  if (Context.filePath -= 1) {}\n  if (System.IO.File.Exists((0, (Context.filePathB = "x")))) {}\n  for (; (Context.filePathC = 1); ) { break; }\n};\n';
   const d = only(src, 'unknown-member');

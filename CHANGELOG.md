@@ -12,6 +12,23 @@ How to write it (people and AI agents read this; the release workflow publishes 
 - At release: rename "## Unreleased" to "## <version> · <yyyy-mm-dd>". A `---` line separates releases.
 -->
 
+## Unreleased
+
+### ✨ New
+
+- **Handlers have their own file icon.** Handler files show Nucleus Co-op's logo in the Explorer, tabs and breadcrumbs, so you can tell them from other JavaScript at a glance (and see when one wasn't detected). It shows with VS Code's default file icons and other icon themes that don't set their own icon for the language.
+  <details><summary>Screenshot</summary>
+
+  ![The VS Code Explorer in light and dark: Demo.js, a handler, has the Nucleus Co-op logo as its icon, helpers.js keeps the JavaScript icon](https://raw.githubusercontent.com/Snailedlt/splitscreenme-vscode/main/docs/images/changelog/0.9.0-file-icon.png)
+
+  </details>
+
+### 🐛 Fixed
+
+- **No wrong "quote the case" fix for option lists changed later.** `option-compare` no longer offers `case "2":` when the option's list is changed by a method call, also one written with brackets (`answers["push"]`), since a fresh pick could then be a number. Found by CodeRabbit.
+
+---
+
 ## 0.8.0 · 2026-11-17
 
 ### ⚠️ Changed

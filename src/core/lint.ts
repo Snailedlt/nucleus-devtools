@@ -433,7 +433,8 @@ class Analyzer {
         if (m?.type !== 'MemberExpression' || m.object !== r.node) return false;
         const g = sc.parentOf.get(m);
         return (g?.type === 'AssignmentExpression' && g.left === m) || (g?.type === 'UpdateExpression' && g.argument === m) ||
-          (g?.type === 'CallExpression' && g.callee === m && !m.computed && /^(push|unshift|splice|fill|reverse|sort|copyWithin|pop|shift)$/.test(m.property.name));
+          // any method call on it, except read-only ones called by name (`answers["push"](2)` counts too)
+          (g?.type === 'CallExpression' && g.callee === m && (m.computed || !/^(slice|indexOf|lastIndexOf|join|concat|toString|map|filter|forEach|some|every|reduce|reduceRight)$/.test(m.property.name)));
       }) ||
       // Escapes (`var alias = answers`, `f(answers)`): it may be changed where we don't follow it. Reading
       // `answers[i]` / `answers.length` and passing it to Game.AddOption are fine.
