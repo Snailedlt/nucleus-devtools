@@ -271,3 +271,18 @@ test("Link the Game's Folder keeps the link on this PC, never in a settings file
   m.window.activeTextEditor = undefined;
   fs.rmSync(game, { recursive: true, force: true });
 });
+
+test('the palette shows Nucleus commands only where they work', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+  const when = Object.fromEntries(pkg.contributes.menus.commandPalette.map((e: { command: string; when: string }) => [e.command.replace('splitscreenme.', ''), e.when]));
+  for (const c of ['tryIt', 'explainLine', 'fixAll', 'packageHandler', 'installHandler', 'testInNucleus', 'linkGameFolder', 'unlinkGameFolder']) assert.match(when[c], /splitscreenme\.isHandler/, c);
+  assert.match(when.unlinkGameFolder, /splitscreenme\.gameFolderLinked/);
+  assert.equal(when.formatHandler, 'false', 'Format Document does the same');
+  for (const e of pkg.contributes.menus['explorer/context']) assert.match(e.when, /resourcePath in splitscreenme\.handlerFiles/, e.command);
+});
+
+test('each command has at most one palette entry (VS Code ORs them)', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+  const ids = pkg.contributes.menus.commandPalette.map((e: { command: string }) => e.command);
+  assert.deepEqual(ids.filter((c: string, i: number) => ids.indexOf(c) !== i), []);
+});

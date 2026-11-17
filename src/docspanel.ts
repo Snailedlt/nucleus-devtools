@@ -8,7 +8,7 @@ import { linkApiNames } from './core/features';
 import { allEntries } from './core/lookup';
 import { api } from './core/api';
 
-export const OPEN_DOCS = 'splitscreenme.showDocs'; // not openDocs: that is "Open Documentation…" (external links)
+export const OPEN_DOCS = 'splitscreenme.showDocs'; // not openDocs: that is "Docs: Web Links…"
 const BACK = 'splitscreenme.docsBack';
 const SEARCH = 'splitscreenme.docsSearch';
 

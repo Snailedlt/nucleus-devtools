@@ -99,7 +99,7 @@ export function activate(context: vscode.ExtensionContext) {
         const files = doc.uri.scheme === 'file' && config().get('lint.packageChecks', true) ? packageFilesFor(doc.uri.fsPath) : undefined;
         const problems = files ? checkPackage(text, files) : [];
         diags.push(...problems.filter((p) => !p.file && p.start !== undefined).map((p) => pkgDiagnostic(p, new vscode.Range(doc.positionAt(p.start!), doc.positionAt(p.end ?? p.start!)), doc.version)));
-        // The game folder linked to this handler (Nucleus: Link the Game's Folder…), if any.
+        // The game folder linked to this handler (Nucleus: Game Folder: Link…), if any.
         diags.push(...gameFolderDiagnostics(doc, SOURCE, SEVERITY));
         collection.set(doc.uri, diags);
         for (const u of pkgUris.get(key) ?? []) pkgCollection.delete(u);

@@ -42,6 +42,16 @@ export function gameFolderDiagnostics(doc: vscode.TextDocument, source: string, 
 
 export function registerGameFolders(context: vscode.ExtensionContext, isHandler: (d: vscode.TextDocument) => boolean, selector: vscode.DocumentSelector, recheck: (d: vscode.TextDocument) => void) {
   store = context.globalState;
+  // Unlink shows in the palette only when the open handler has a folder linked.
+  const markLinked = () => {
+    const doc = vscode.window.activeTextEditor?.document;
+    void vscode.commands.executeCommand('setContext', 'splitscreenme.gameFolderLinked', !!doc && isHandler(doc) && !!linkedFolder(doc));
+  };
+  markLinked();
+  context.subscriptions.push(
+    vscode.window.onDidChangeActiveTextEditor(markLinked),
+    vscode.workspace.onDidChangeConfiguration((e) => e.affectsConfiguration('splitscreenme.gameFolders') && markLinked()),
+  );
   /** Links (or, with no folder, unlinks) the handler. Returns whether anything was linked before. */
   const save = async (doc: vscode.TextDocument, dir: string | undefined): Promise<boolean> => {
     const links = { ...linksOf() };
@@ -87,6 +97,7 @@ export function registerGameFolders(context: vscode.ExtensionContext, isHandler:
       forgetFolder(dir);
       const folder = folderAt(dir)!;
       await save(doc, dir);
+      markLinked();
       recheck(doc);
       const sum = folderSummary(folder, doc.getText());
       const facts = sum.facts.map((f) => f.title).join(', ');
@@ -100,6 +111,7 @@ export function registerGameFolders(context: vscode.ExtensionContext, isHandler:
       const doc = active();
       if (!doc) return;
       const had = await save(doc, undefined);
+      markLinked();
       recheck(doc);
       vscode.window.setStatusBarMessage(had ? `Unlinked ${keyOf(doc)} from its game's folder.` : `${keyOf(doc)} isn't linked to a game's folder.`, 4000);
     }),

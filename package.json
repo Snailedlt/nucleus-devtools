@@ -133,7 +133,7 @@
       },
       {
         "command": "splitscreenme.fixAll",
-        "title": "Fix All Auto-fixable Problems",
+        "title": "Fix All Problems That Can Be Fixed",
         "category": "Nucleus"
       },
       {
@@ -181,12 +181,12 @@
       },
       {
         "command": "splitscreenme.lintWorkspace",
-        "title": "Lint All Handlers in Workspace",
+        "title": "Check All Handlers in the Workspace",
         "category": "Nucleus"
       },
       {
         "command": "splitscreenme.openDocs",
-        "title": "Open Documentation…",
+        "title": "Docs: Web Links…",
         "category": "Nucleus"
       },
       {
@@ -196,22 +196,22 @@
       },
       {
         "command": "splitscreenme.linkGameFolder",
-        "title": "Link the Game's Folder…",
+        "title": "Game Folder: Link…",
         "category": "Nucleus"
       },
       {
         "command": "splitscreenme.unlinkGameFolder",
-        "title": "Unlink the Game's Folder",
+        "title": "Game Folder: Unlink",
         "category": "Nucleus"
       },
       {
         "command": "splitscreenme.showDocs",
-        "title": "Docs (Every Option and Function)",
+        "title": "Docs: Open (Every Option and Function)",
         "category": "Nucleus"
       },
       {
         "command": "splitscreenme.docsSearch",
-        "title": "Search the Docs…",
+        "title": "Docs: Search…",
         "category": "Nucleus"
       },
       {
@@ -288,10 +288,6 @@
           "when": "splitscreenme.isHandler"
         },
         {
-          "command": "splitscreenme.formatHandler",
-          "when": "splitscreenme.isHandler"
-        },
-        {
           "command": "splitscreenme.packageHandler",
           "when": "splitscreenme.isHandler"
         },
@@ -309,7 +305,7 @@
         },
         {
           "command": "splitscreenme.unlinkGameFolder",
-          "when": "splitscreenme.isHandler && !isWeb"
+          "when": "splitscreenme.isHandler && splitscreenme.gameFolderLinked && !isWeb"
         },
         {
           "command": "splitscreenme.setupAgents",
@@ -317,6 +313,10 @@
         },
         {
           "command": "splitscreenme.docsBack",
+          "when": "false"
+        },
+        {
+          "command": "splitscreenme.formatHandler",
           "when": "false"
         }
       ]
@@ -418,7 +418,7 @@
           "additionalProperties": {
             "type": "string"
           },
-          "markdownDescription": "The game's install folder for each handler (file name → folder), set by hand. **Nucleus: Link the Game's Folder…** keeps its links on this PC instead (not in a settings file), and they come first. The handler is then checked against the real files (`ExecutableName`, `BinariesFolder`, the symlink and copy lists…), and those lists suggest the game's files. Only names and sizes are read; nothing leaves your PC."
+          "markdownDescription": "The game's install folder for each handler (file name → folder), set by hand. **Nucleus: Game Folder: Link…** keeps its links on this PC instead (not in a settings file), and they come first. The handler is then checked against the real files (`ExecutableName`, `BinariesFolder`, the symlink and copy lists…), and those lists suggest the game's files. Only names and sizes are read; nothing leaves your PC."
         },
         "splitscreenme.lint.rules": {
           "type": "object",
@@ -1131,7 +1131,7 @@
           {
             "id": "folder",
             "title": "Link the game's folder",
-            "description": "Point it at where the game is installed and the checks can see the real files: the exe's name, the folders to link or copy, the files to suggest.\n[Link the Game's Folder…](command:splitscreenme.linkGameFolder)",
+            "description": "Point it at where the game is installed and the checks can see the real files: the exe's name, the folders to link or copy, the files to suggest.\n[Game Folder: Link…](command:splitscreenme.linkGameFolder)",
             "media": {
               "markdown": "media/walkthrough/folder.md"
             },

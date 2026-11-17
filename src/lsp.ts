@@ -326,7 +326,7 @@ export class Server {
         };
       }
       case 'initialized':
-        // Every handler in the workspace, opened or not (like VS Code's Lint All Handlers), and on-disk changes.
+        // Every handler in the workspace, opened or not (like VS Code's Check All Handlers), and on-disk changes.
         this.updateWatchers(0);
         setTimeout(() => this.scanWorkspace(), 0);
         return undefined;

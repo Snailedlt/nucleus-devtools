@@ -26,11 +26,12 @@ How to write it (people and AI agents read this; the release workflow publishes 
 ### 🛠️ Improved
 
 - **Nucleus commands only where they work.** The command palette shows Try It, Fix All, Format Handler, Explain This Line, Package, Install, Test in Nucleus Co-op and the game folder commands while a handler is open, and the Explorer's right-click menu offers Package and Install on handlers only, not on every `.js` file.
+- **Clearer command names that sort together.** In the palette, related commands now sit side by side: *Docs: Open*, *Docs: Search…* and *Docs: Web Links…* (was *Open Documentation…*); *Game Folder: Link…* and *Game Folder: Unlink* (shown only when a folder is linked). *Lint All Handlers in Workspace* is now *Check All Handlers in the Workspace*, and *Fix All Auto-fixable Problems* is *Fix All Problems That Can Be Fixed*. *Format Handler* leaves the palette, since Format Document (Shift+Alt+F) does the same in a handler; its keybinding stays. Keybindings to the old commands keep working.
 - **Fix all leaves harmless lines for you to choose.** `fixAll` in the shared checks can skip cleanups (lines that do nothing, such as `Player.ProtoController5`); the workbench uses it and offers them afterwards.
 
 ### 🐛 Fixed
 
-- **Linking a game's folder no longer writes your PC's path into the project.** *Link the Game's Folder…* keeps the link in VS Code's own storage on this PC instead of `.vscode/settings.json`, so it can't end up in a shared repository; links made before still work. *Unlink* now says what it did, and with nothing linked it no longer creates an empty settings file.
+- **Linking a game's folder no longer writes your PC's path into the project.** *Game Folder: Link…* (was *Link the Game's Folder…*) keeps the link in VS Code's own storage on this PC instead of `.vscode/settings.json`, so it can't end up in a shared repository; links made before still work. *Unlink* now says what it did, and with nothing linked it no longer creates an empty settings file.
 - **No wrong "quote the case" fix for option lists changed later.** `option-compare` no longer offers `case "2":` when the option's list is changed by a method call, also one written with brackets (`answers["push"]`), since a fresh pick could then be a number. Found by CodeRabbit.
 
 ---

@@ -90,10 +90,10 @@ One engine runs underneath all of them, so the checks, suggestions and docs are 
 | **Nucleus: Install Handler into Nucleus Co-op** | Copies `Game.js` and `Game/` into `<Nucleus>/handlers/`. Asks for your Nucleus folder once (`splitscreenme.nucleusPath`). |
 | **Nucleus: Browse Handlers on the Hub…** | Searches hub.splitscreen.me; opens a handler's source or its Hub page. |
 | **Nucleus: Set Up Type Definitions** | Writes `.vscode/nucleus.d.ts` and a `jsconfig.json` (ES5 lib), then hands completion over to the TypeScript service and keeps the folder's handlers in JavaScript mode. Add `// @ts-check` to a handler for type errors. |
-| **Nucleus: Fix All Auto-fixable Problems** | Applies every safe fix to the open handler. To run it on save, add `"editor.codeActionsOnSave": { "source.fixAll.nucleus": "explicit" }`. |
-| **Nucleus: Lint All Handlers in Workspace** | Lints every handler in the workspace, not just open files. |
-| **Nucleus: Docs (Every Option and Function)** | Opens **Nucleus Docs** beside the editor: every option and function with its docs, by group or by search (**Nucleus: Search the Docs…**). API names in hovers, parameter hints and suggestions open their page here; *Open in the workbench* shows the same page in the browser. |
-| **Nucleus: Open Documentation…** | Quick links to the handler API, guides, Proto Input, FAQ, Hub and PCGamingWiki. |
+| **Nucleus: Fix All Problems That Can Be Fixed** | Applies every safe fix to the open handler. To run it on save, add `"editor.codeActionsOnSave": { "source.fixAll.nucleus": "explicit" }`. |
+| **Nucleus: Check All Handlers in the Workspace** | Checks every handler in the workspace, not just open files. |
+| **Nucleus: Docs: Open (Every Option and Function)** | Opens **Nucleus Docs** beside the editor: every option and function with its docs, by group or by search (**Nucleus: Docs: Search…**). API names in hovers, parameter hints and suggestions open their page here; *Open in the workbench* shows the same page in the browser. |
+| **Nucleus: Docs: Web Links…** | Quick links to the handler API, guides, Proto Input, FAQ, Hub and PCGamingWiki. |
 | **Nucleus: Open in the Browser Workbench** | The handler you're editing, in the [browser workbench](https://snailedlt.github.io/nucleuscoop-handler-testbench/?ref=vscode-readme-md) (its visual editor, Lines, Test all), through a share link. |
 
 Package and Install both refuse to continue if the handler has lint errors, unless you confirm.
@@ -288,7 +288,7 @@ The linter runs over the 150 most-downloaded handlers on the Hub with **no error
 | `splitscreenme.lint.packageChecks` | `true` | Check the files in the handler's `<Name>/` folder as they'd go into the .nc (Windows names, overwrites, broken INI/JSON, missing files). |
 | `splitscreenme.format.quotes` | `double` | Quotes when formatting: `double` (what the Hub install reads best), `single` or `keep`. A string containing the chosen quote keeps its own. |
 | `splitscreenme.format.semicolons` | `add` | Semicolons when formatting: `add` or `keep`. |
-| `splitscreenme.gameFolders` | `{}` | The game's install folder per handler (file name → folder), set by hand. **Nucleus: Link the Game's Folder…** keeps its links on this PC instead, so no path ends up in a shared `.vscode/settings.json`. |
+| `splitscreenme.gameFolders` | `{}` | The game's install folder per handler (file name → folder), set by hand. **Nucleus: Game Folder: Link…** keeps its links on this PC instead, so no path ends up in a shared `.vscode/settings.json`. |
 | `splitscreenme.completion.enable` | `true` | The extension's completion/hover/signature help. Turned off by **Set Up Type Definitions**, because TypeScript then provides them. |
 | `splitscreenme.nucleusPath` | | Your Nucleus Co-op folder, used by Install. |
 | `splitscreenme.showWhatsNew` | `true` | After an update, a short note with what's new. **Nucleus: What's New** opens the changelog any time. |
