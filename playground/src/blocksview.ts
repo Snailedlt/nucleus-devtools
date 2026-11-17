@@ -19,7 +19,7 @@ import { memberCard } from './doccard';
 import { CodeField, codeFieldOf, type Mark } from './codefield';
 import { fit, growField, setGrowDoc } from './growfield';
 import type { FormHost } from './formview';
-import { findRuns, stepShape } from './blockgroups';
+import { findRuns, stepShape, type GroupRule } from './blockgroups';
 import { hlCode } from './codehl';
 import USAGE from './usage.json';
 
@@ -605,6 +605,24 @@ export function mountBlocksView(container: HTMLElement, host: BlocksHost): Block
   // A heading for the view, so the callbacks' headings (h3) follow one (screen readers' heading list).
   root.append(h('h2', 'sr-only', {}, 'Blocks'), bar, banner, sectionsEl, elsewhere);
   container.append(root);
+  // The kind picker of the value with the focus floats below it, like a suggestion list, or above it when there
+  // isn't room below in the view; never over the value itself. It stays first in the value's tab order.
+  const placeKind = (t: EventTarget | null) => {
+    const v = t instanceof Element ? t.closest<HTMLElement>('.bv-val') : null;
+    if (!v) return;
+    const k = v.querySelector<HTMLElement>(':scope > .bv-kind');
+    if (!k) return;
+    const box = root.getBoundingClientRect();
+    const r = v.getBoundingClientRect();
+    const need = (k.offsetHeight || 26) + 6;
+    const bottom = Math.min(box.bottom, window.innerHeight);
+    v.classList.toggle('bv-kind-up', r.bottom + need > bottom && r.top - need >= Math.max(box.top, 0));
+  };
+  root.addEventListener('focusin', (ev) => {
+    placeKind(ev.target);
+    requestAnimationFrame(() => placeKind(document.activeElement)); // again once the row has settled
+  });
+  root.addEventListener('input', (ev) => placeKind(ev.target));
 
   let model: Model = { callbacks: [], optionNames: [], varNames: [] };
   let text = '';
@@ -982,9 +1000,45 @@ export function mountBlocksView(container: HTMLElement, host: BlocksHost): Block
     if (!s) d.hidden = true;
     return d;
   }
-  const noteEl = (note: string) => {
+  // Comments above a step. A long one (more than NOTE_LINES lines) folds to its first line and "… N more lines", which
+  // unfolds it (a button, so the keyboard reaches it); the mouse sees the whole comment on hover.
+  const NOTE_LINES = 3;
+  const notesToggled = new Set<string>();
+  const noteOpen = (id: string) => ((host.density?.() ?? 'compact') === 'detailed') !== notesToggled.has(id);
+  const noteEl = (note: string, key: string) => {
     const n = h('div', 'bv-note');
-    n.append(h('span', 'bv-sr', {}, 'Comment: '), document.createTextNode(note));
+    const lines = note.split('\n');
+    if (lines.length <= NOTE_LINES) {
+      n.append(h('span', 'bv-sr', {}, 'Comment: '), document.createTextNode(note));
+      return n;
+    }
+    const id = `${key}|${note}`;
+    const restId = idOf(`${key}:note`);
+    const more = lines.length - 1;
+    n.classList.add('bv-note-long');
+    const rest = h('span', 'bv-note-rest', { id: restId }, `\n${lines.slice(1).join('\n')}`);
+    const btn = h('button', 'bv-note-more', { type: 'button', 'aria-controls': restId, 'data-bv': `${key}:note`, id: idOf(`${key}:note:btn`) });
+    const pop = h('div', 'bv-note-pop', { 'aria-hidden': 'true' }, note);
+    const set = (open: boolean) => {
+      n.classList.toggle('bv-note-open', open);
+      rest.hidden = !open;
+      btn.setAttribute('aria-expanded', String(open));
+      btn.textContent = open ? 'Show less' : `… ${more} more line${more === 1 ? '' : 's'}`;
+    };
+    btn.addEventListener('click', () => {
+      const open = !n.classList.contains('bv-note-open');
+      if (notesToggled.has(id)) notesToggled.delete(id); else notesToggled.add(id);
+      set(open);
+    });
+    // The hover card opens below the first line, or above it near the bottom of the view.
+    n.addEventListener('mouseenter', () => {
+      const box = root.getBoundingClientRect();
+      const r = n.getBoundingClientRect();
+      const need = Math.min(pop.scrollHeight || 200, window.innerHeight * 0.4) + 8;
+      n.classList.toggle('bv-pop-up', r.bottom + need > Math.min(box.bottom, window.innerHeight) && r.top - need >= Math.max(box.top, 0));
+    });
+    n.append(h('span', 'bv-sr', {}, 'Comment: '), h('span', 'bv-note-first', {}, lines[0]), rest, btn, pop);
+    set(noteOpen(id));
     return n;
   };
   const pathLabel = (p: string) => {
@@ -1000,11 +1054,11 @@ export function mountBlocksView(container: HTMLElement, host: BlocksHost): Block
     const el = part(`row:${s.key}`, sig, () => {
       const li = h('li', `bv-row bv-k-${s.kind === 'if' ? 'if' : s.kind === 'code' ? 'code' : 'action'}`, { 'data-key': s.key });
       if (s.kind === 'if') {
-        if (s.note) li.append(noteEl(s.note));
+        if (s.note) li.append(noteEl(s.note, s.key));
         li.append(h('div', 'bv-clauses'));
         return li;
       }
-      if (s.note) li.append(noteEl(s.note));
+      if (s.note) li.append(noteEl(s.note, s.key));
       const head = h('div', 'bv-line');
       // Only code steps carry a tag: the sentence ("Do …", "Set …") already says what an action is.
       const tag = s.kind === 'code' ? h('span', 'bv-tag', {}, 'Code') : undefined;
@@ -1193,7 +1247,7 @@ export function mountBlocksView(container: HTMLElement, host: BlocksHost): Block
     // Repeated steps next to each other: one group with a count and a line per step (blockgroups.ts).
     const kids: HTMLElement[] = [];
     let i = 0;
-    for (const r of findRuns(b.stmts.map((s) => (codeEditing.has(s.key) ? undefined : stepShape(s))))) {
+    for (const r of findRuns(b.stmts.map((s) => (codeEditing.has(s.key) ? undefined : stepShape(s))), groupRule())) {
       while (i < r.start) kids.push(rows[i++]);
       const n = r.period * r.reps;
       kids.push(renderGroup(b.stmts.slice(i, i + n), rows.slice(i, i + n), r.period, r.reps));
@@ -1207,13 +1261,26 @@ export function mountBlocksView(container: HTMLElement, host: BlocksHost): Block
 
   // --- groups of repeated steps ---------------------------------------------------------
 
+  // TEMPORARY (the maintainer compares these before deciding; no UI): localStorage `nucleus-workbench-blocks-groupopen`
+  // `collapsed` (default: a line of code per step), `open` (every step a row), `hybrid` (up to HYBRID_OPEN steps open,
+  // bigger groups closed to one summary line naming the steps); `nucleus-workbench-blocks-grouprule`: blockgroups.ts
+  // GroupRule. Remove the losers once decided.
+  const exp = (k: string) => { try { return localStorage.getItem(`nucleus-workbench-blocks-${k}`) ?? ''; } catch { return ''; } };
+  const groupStart = () => exp('groupopen') || 'collapsed';
+  const groupRule = () => (exp('grouprule') || 'current') as GroupRule;
+  const HYBRID_OPEN = 4;
+  const gSize = new Map<string, number>();
   const gToggled = new Set<string>();
-  const groupOpen = (key: string) => ((host.density?.() ?? 'compact') === 'detailed') !== gToggled.has(key);
+  const groupOpen = (key: string) => {
+    const mode = groupStart();
+    const base = (host.density?.() ?? 'compact') === 'detailed' || mode === 'open' || (mode === 'hybrid' && (gSize.get(key) ?? 0) <= HYBRID_OPEN);
+    return base !== gToggled.has(key);
+  };
   function setGroupOpen(g: HTMLElement, open: boolean) {
     g.classList.toggle('bv-g-open', open);
     g.querySelector(':scope > .bv-g-head > .bv-g-toggle')?.setAttribute('aria-expanded', String(open));
     (g.querySelector(':scope > .bv-g-list') as HTMLElement).hidden = !open;
-    (g.querySelector(':scope > .bv-g-digest') as HTMLElement).hidden = open;
+    (g.querySelector(':scope > .bv-g-digest') as HTMLElement).hidden = open || groupStart() === 'hybrid';
   }
   /** Opens the group around `el` (a control about to get the focus), so nothing focused is hidden. */
   function revealIn(el: Element) {
@@ -1246,6 +1313,14 @@ export function mountBlocksView(container: HTMLElement, host: BlocksHost): Block
       const t = first.path ?? first.calleeText!;
       title = `<span class="bv-word">Set values on</span> <span class="bv-name">${esc(t.slice(0, t.lastIndexOf('.')) || t)}</span>`;
     } else title = `<span class="bv-word">New variable</span> <span class="bv-name">${esc(first.varName!)}</span>`;
+    // TEMPORARY: the names of the steps in the title (rule objects5 for values on an object; hybrid for every closed group).
+    const names = (rule: boolean) => {
+      if (!rule || period > 1) return '';
+      const ns = ss.map((s) => (s.kind === 'set' ? (s.path ?? s.calleeText!).slice((s.path ?? s.calleeText!).lastIndexOf('.') + 1) : s.kind === 'call' ? (s.args ?? []).map((a) => a.src).join(', ') : s.varName ?? ''));
+      return `<span class="bv-g-names">: ${esc(ns.join(', '))}</span>`;
+    };
+    if (first.kind === 'set') title += names(groupRule() === 'objects5' || groupStart() === 'hybrid');
+    gSize.set(key, n);
     const count = period > 1 ? `${reps} times, ${n} steps` : `${n} steps`;
     const g = part(`grp:${key}`, `${title}|${count}`, () => {
       const li = h('li', 'bv-group', { 'data-group': key });
@@ -1267,7 +1342,7 @@ export function mountBlocksView(container: HTMLElement, host: BlocksHost): Block
         if (!row) return;
         revealIn(row);
         row.scrollIntoView?.({ block: 'nearest' });
-        row.querySelector<HTMLElement>('[data-bv]:not(.bv-kind):not([disabled]), .CodeMirror textarea')?.focus();
+        row.querySelector<HTMLElement>('[data-bv]:not(.bv-kind):not(.bv-note-more):not([disabled]), .CodeMirror textarea')?.focus();
       });
       const list = h('ol', 'bv-list bv-g-list', { id: listId, 'aria-label': `${n} repeated steps` });
       li.append(head, digest, list);

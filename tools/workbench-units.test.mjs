@@ -494,6 +494,11 @@ test('Blocks: repeated steps group (the same call, values on one object, a short
   // A condition or code between breaks a run; runs never overlap.
   assert.deepEqual(runs([msf, msf, { kind: 'if' }, msf, msf, msf, set('Game.A'), set('Game.B'), set('Game.C')]), [{ start: 3, period: 1, reps: 3 }, { start: 6, period: 1, reps: 3 }]);
   assert.deepEqual(runs([]), []);
+  // TEMPORARY rules being compared (blockgroups.ts GroupRule): only the same call; values on one object from five on.
+  const sets = (k) => Array.from({ length: k }, (_, j) => set(`Game.O${j}`));
+  assert.deepEqual(bg.findRuns([...sets(4), ...copy, ...copy, msf, msf, msf].map(bg.stepShape), 'identical'), [{ start: 10, period: 1, reps: 3 }]);
+  assert.deepEqual(bg.findRuns(sets(4).map(bg.stepShape), 'objects5'), []);
+  assert.deepEqual(bg.findRuns([...sets(5), msf, msf, msf].map(bg.stepShape), 'objects5'), [{ start: 0, period: 1, reps: 5 }, { start: 5, period: 1, reps: 3 }]);
 });
 
 test('docs: "Insert into handler" puts an example where it belongs (lines.ts placeExample)', async () => {

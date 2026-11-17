@@ -2001,10 +2001,13 @@ details[open] > .fv-group-title::before { transform: rotate(45deg); }
 /* Value slots: a kind picker and the value */
 .bv-val { display: inline-flex; align-items: flex-start; min-width: 0; max-width: 100%; flex-wrap: nowrap; }
 .bv-v-opt, .bv-v-enum { flex-wrap: wrap; align-items: center; gap: 4px; }
-/* The kind picker (Text, Number, Property, …) shows only for the value that has the focus, above it, so it takes no room
-   in the row; it stays in the tab order (Shift+Tab from a value reaches it) and appears when it gets the focus. */
+/* The kind picker (Text, Number, Property, …) shows only for the value that has the focus, below it like a suggestion
+   list (above it, .bv-kind-up, when there isn't room below in the view: blocksview.ts placeKind), so it takes no room in
+   the row and never covers the value; it stays in the tab order (Shift+Tab from a value reaches it) and appears when it
+   gets the focus. */
 .bv-val { position: relative; }
-.bv-kind { position: absolute; left: 0; bottom: calc(100% + 2px); z-index: 3; height: 26px; min-height: 26px; font-size: 12px !important; color: var(--fg) !important; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 0 2px 0 6px; cursor: pointer; box-shadow: 0 2px 8px rgb(0 0 0 / .16); opacity: 0; pointer-events: none; }
+.bv-val.bv-kind-up > .bv-kind { top: auto; bottom: calc(100% + 2px); }
+.bv-kind { position: absolute; left: 0; top: calc(100% + 2px); z-index: 3; height: 26px; min-height: 26px; font-size: 12px !important; color: var(--fg) !important; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 0 2px 0 6px; cursor: pointer; box-shadow: 0 2px 8px rgb(0 0 0 / .16); opacity: 0; pointer-events: none; }
 .bv-val:focus-within:not(:has(.bv-val:focus-within)) > .bv-kind { opacity: 1; pointer-events: auto; }
 .bv-input, .bv-select { font: 13px var(--font-mono) !important; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 4px 7px; min-height: 30px; min-width: 0; }
 .bv-input { width: 16em; max-width: 100%; }
@@ -2034,6 +2037,8 @@ details[open] > .fv-group-title::before { transform: rotate(45deg); }
 .bv-g-title { font: 600 13.5px/1.35 var(--font-mono); overflow-wrap: anywhere; min-width: 0; }
 .bv-g-title .bv-word { font-family: var(--font-body); font-weight: 400; }
 .bv-g-count { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.bv-g-title:has(.bv-g-names) { flex: 1 1 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.bv-g-names { font-weight: 400; color: var(--muted); } /* TEMPORARY: the step names in the title (blocksview.ts groupStart/groupRule) */
 .bv-g-probs { font-size: 12px; color: var(--muted); }
 .bv-g-digest { list-style: none; margin: 0 0 2px 7px; padding: 3px 4px 3px 8px; border-left: 2px solid var(--line); border-radius: 0 var(--r-ctl) var(--r-ctl) 0; }
 .bv-g-line { display: flex; align-items: flex-start; gap: 6px; padding: 1px 4px; border-radius: 4px; cursor: pointer; min-width: 0; }
@@ -2126,6 +2131,18 @@ details[open] > .fv-group-title::before { transform: rotate(45deg); }
 .bv-note { font: italic 12.5px/1.4 var(--font-body); color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; margin: 0 0 4px 2px; }
 .bv-note::before { content: "// "; font-style: normal; font-family: var(--font-mono); }
 .bv-k-if > .bv-note { margin: 0 0 4px 4px; }
+/* A long comment folds to its first line and "… N more lines" (a button that unfolds it); hovering shows it in full. */
+.bv-note-long { position: relative; }
+.bv-note-long:not(.bv-note-open) { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.bv-note-long:not(.bv-note-open)::before { flex: none; }
+.bv-note-long:not(.bv-note-open) > .bv-note-first { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.bv-note-more { flex: none; font: 12px var(--font-body); font-style: normal; color: color-mix(in srgb, var(--accent) 78%, var(--fg)); background: transparent; border: 0; border-radius: var(--r-ctl); padding: 1px 4px; margin-left: 2px; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; min-height: 24px; }
+.bv-note-more:hover { background: var(--surface-2); }
+.bv-note-open > .bv-note-more { display: inline-block; margin: 2px 0 0 8px; }
+.bv-note-pop { position: absolute; left: 0; top: calc(100% + 2px); z-index: 4; width: max-content; max-width: min(48em, 100%); max-height: 40vh; overflow: auto; white-space: pre-wrap; font: 12.5px/1.45 var(--font-body); font-style: normal; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 8px 10px; box-shadow: 0 4px 16px rgb(0 0 0 / .18); visibility: hidden; opacity: 0; transition: opacity .12s, visibility 0s .12s; }
+.bv-note.bv-pop-up > .bv-note-pop { top: auto; bottom: calc(100% + 2px); }
+.bv-note-long:not(.bv-note-open):hover > .bv-note-pop { visibility: visible; opacity: 1; transition: opacity .12s .35s, visibility 0s .35s; }
+@media (hover: none) { .bv-note-pop { display: none; } }
 
 #extra-problems { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 #extra-problems .xp-h { font-size: 12px; font-weight: 700; color: var(--muted); margin: 8px 2px 2px; display: flex; gap: 6px; align-items: center; }
