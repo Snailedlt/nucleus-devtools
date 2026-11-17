@@ -34,6 +34,8 @@ button.link { background: none; border: 0; padding: 0; font: inherit; color: var
 .cm-s-default .cm-comment, .hl .cm-comment { color: var(--hl-c); font-style: italic; }
 .cm-s-default .cm-number, .hl .cm-number { color: var(--hl-s); }
 .cm-s-default .cm-def, .hl .cm-def { color: var(--accent); }
+/* A function's own variables (lines, autoexec): the code's text colour, as in the workbench (CodeMirror's #05a is unreadable on dark). */
+.cm-s-default .cm-variable-2, .hl .cm-variable-2 { color: var(--code-fg, var(--fg)); }
 
 /* The bar: back to the workbench, the chapter, where you are, the lesson list. */
 .top { flex: none; display: flex; align-items: center; gap: 12px; padding: 8px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
@@ -121,7 +123,7 @@ details.note.long > p { margin: 6px 0 0; }
 .note .answer summary { cursor: pointer; color: var(--accent); font-weight: 600; }
 .note .answer p { margin: 6px 0 0; }
 .steps { padding-left: 0; list-style: none; counter-reset: step; margin: 14px 0; }
-.steps li { counter-increment: step; margin: 0 0 8px; }
+.steps > li { counter-increment: step; margin: 0 0 8px; }
 .steps label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
 .steps input { margin-top: 5px; width: 18px; height: 18px; flex: none; }
 .steps label > span::before { content: counter(step) ". "; font-weight: 700; }
@@ -140,6 +142,14 @@ details.note.long > p { margin: 6px 0 0; }
 .ov-no { flex: none; width: 1.6em; text-align: right; color: var(--muted); font-size: 13px; }
 .ov-title { flex: 1; min-width: 0; }
 .ov-pc { flex: none; font-size: 12px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+/* Optional lessons and steps (Lesson.optional, Step.optional): a quiet tag, and the lesson's invitation with its Skip. */
+.opt-tag { flex: none; display: inline-block; font-size: 12px; font-weight: 600; padding: 0 7px; border-radius: 999px; border: 1px dashed var(--muted); color: var(--muted); line-height: 1.6; }
+.d-section a .opt-tag { font-size: 11px; font-weight: 400; }
+.optional-note { margin: 0 0 14px; font-size: 15px; }
+.optional-note .btn { margin-left: 4px; white-space: nowrap; }
+/* "Different for you? Tell us" after a tip nobody has checked on a real PC (Tip.unverified): small and quiet. */
+.rep-btn.unverified { font-size: 13px; color: var(--muted); padding: 0 4px; vertical-align: baseline; }
+.rep-btn.unverified:hover, .rep-btn.unverified:focus-visible { color: var(--accent); }
 .ov-min { flex: none; color: var(--muted); font-size: 13px; white-space: nowrap; }
 .ask { margin: 16px 0; border: 1px solid var(--line); border-radius: var(--r-pane); padding: 10px 14px; }
 .ask legend { font-weight: 700; padding: 0 4px; }

@@ -46,6 +46,9 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 ### 🛠️ Improved
 
+- **Controllers are optional in Learn's second chapter.** The *Keyboard or controller* lesson is marked optional in the lesson list and the overview (its minutes counted apart), and *Skip: no controllers* goes past it in one click; the test says what a keyboard alone can check. Have a controller? The lesson invites you to do it and try it in the game.
+- **"Different for you? Tell us" next to Learn's untested tips.** Tips we haven't checked on every PC (allowing `cure.exe` through the firewall, Steam's first-start installs) have a small report button with the lesson and the tip filled in.
+- **Why the frame rate cap goes in the arguments.** The option lesson explains that a Source game runs `config.cfg`, then `autoexec.cfg`, then the `+` commands from the arguments, so `+fps_max` wins; the recap says when the Hub handler's way (in `autoexec.cfg`) works.
 - **Form names options in plain words.** In Guided mode each option shows a plain name (*Handler update interval*) with its API name (`Game.HandlerInterval`) under it, so you learn the names the code uses; Advanced mode keeps the API name first, with the plain name on hover. Numbers show their unit where the docs make it certain (*100 ms*, *25 seconds*), and *Add an option* finds options by their plain names too.
 - **Blocks is more compact.** Repeated steps next to each other (several `Context.RunAdditionalFiles`, a dozen `Game.X = …` lines, the same copy-a-file lines again and again) are one group with a count and one line per step; a click on a line opens the group at that step. The *Action* and *Condition* tags are gone, and a value's kind picker (Text, Number, Property, …) shows only when that value is selected. Long Hub handlers are about a third shorter.
 - **Learn's Check and Try it show the task apart from the problems.** "Task: 1 of 2 lines" sits above the problem list, so *No problems* no longer reads as done before the lesson's task is.
@@ -62,6 +65,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 ### 🐛 Fixed
 
+- **Learn's step numbers count steps only.** A step after a *Not working?* list no longer skips numbers, and a function's own variables in Learn's code are readable in dark mode.
 - **One Escape closes the command palette.** The first one used to only clear the `>`.
 - **After *Fix this*, the keyboard stays in the problem list.** Focus moves to the next problem instead of back to the top of the page.
 - **The page fits the window.** It was a few pixels taller, so the whole page scrolled; with no handler open, the welcome screen also had extra space around it.

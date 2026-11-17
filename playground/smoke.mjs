@@ -852,10 +852,14 @@ await m.ctx.close();
   // Learn (learn/): the intro scene step by step; a lesson ticks when its code is done; Solve; Try it; the test
   // lesson's download; the lesson list; axe in light and dark; nothing cut off on a phone. #learn in the workbench
   // leads there.
+  // Chapter 2's id, from the lesson list (it's written once, in lessons.ts' CHAPTERS).
+  let CH2 = '';
   for (const theme of ['light', 'dark']) {
     const s = await page(theme, { viewport: { width: 1366, height: 800 } });
     await s.p.goto(BASE + 'learn/#first-handler/why');
     await s.p.waitForTimeout(500);
+    CH2 ||= await s.p.evaluate(() => document.querySelectorAll('#drawer-list .d-chapter')[1]?.querySelector('a')?.getAttribute('href')?.replace(/^#/, '').split('/')[0] ?? '');
+    check(!!CH2, `learn ${theme}: chapter 2 is in the lesson list`);
     check(await s.p.isVisible('#scene [data-scene=next]'), `learn ${theme}: the intro starts with one step`);
     for (let i = 0; i < 3; i++) { await s.p.click('#scene [data-scene=next]'); await s.p.waitForTimeout(150); }
     await s.p.waitForTimeout(1200); // the list's fade-in
@@ -919,7 +923,7 @@ await m.ctx.close();
     await s.p.click('#drawer-toggle');
     // Hint: folded until asked for, then what's still to do; chapter 2's Try it draws each player's window, and its
     // quiz counts the mistakes left apart from the problems.
-    await s.p.goto(BASE + 'learn/#launch-options/window-size');
+    await s.p.goto(BASE + `learn/#${CH2}/window-size`);
     await s.p.waitForTimeout(500);
     check(!(await s.p.isVisible('.hint-box')) && (await s.p.isVisible('#hint')), `learn ${theme}: Hint is a button, its text hidden until asked for`);
     await s.p.click('#hint');
@@ -929,13 +933,28 @@ await m.ctx.close();
     await s.p.waitForTimeout(700);
     check((await s.p.$$('#try-out .screen .swin')).length === Number(await s.p.inputValue('#try-players')) && /-w 960 -h (1080|540)/.test(await s.p.textContent('#try-out')) && /Task done/.test(await s.p.textContent('#pane')), `learn ${theme}: chapter 2's Try it shows each window and its arguments`);
     await axe(s.p, `${theme}, learn chapter 2 Try it`);
-    await s.p.goto(BASE + 'learn/#launch-options/fix-it');
+    await s.p.goto(BASE + `learn/#${CH2}/fix-it`);
     await s.p.waitForTimeout(500);
     check(/0 of 3 mistakes/.test(await s.p.textContent('#pane')), `learn ${theme}: the quiz's task line counts the mistakes`);
-    await s.p.goto(BASE + 'learn/#launch-options/overview');
+    await s.p.goto(BASE + `learn/#${CH2}/overview`);
     await s.p.waitForTimeout(400);
     check((await s.p.$$('.ov-list li')).length >= 8 && (await s.p.isVisible('.steps .trouble summary')), `learn ${theme}: chapter 2's overview lists its lessons, and steps say what to do if it doesn't work`);
     await axe(s.p, `${theme}, learn overview`);
+    // Optional lessons: tagged in the overview, and skipped in one click. Unverified tips: a quiet report button.
+    check((await s.p.$$('.ov-list .opt-tag')).length >= 1 && /optional/.test(await s.p.textContent('.ov-h .muted')), `learn ${theme}: the overview marks the optional lesson and counts its minutes apart`);
+    await s.p.click('.steps .trouble summary >> nth=0');
+    check(await s.p.isVisible('.rep-btn.unverified'), `learn ${theme}: an unverified tip has "Different for you? Tell us"`);
+    await s.p.click('.rep-btn.unverified >> nth=0');
+    await s.p.waitForTimeout(300);
+    check(await s.p.isVisible('#report-dialog[open]'), `learn ${theme}: "Different for you?" opens the report`);
+    await s.p.keyboard.press('Escape');
+    await s.p.goto(BASE + `learn/#${CH2}/keyboard-or-controller`);
+    await s.p.waitForTimeout(500);
+    check(await s.p.isVisible('.optional-note #skip'), `learn ${theme}: the optional lesson invites, with a Skip`);
+    await axe(s.p, `${theme}, learn optional lesson`);
+    await s.p.click('#skip');
+    await s.p.waitForTimeout(400);
+    check(/\/fix-it$/.test(s.p.url()), `learn ${theme}: Skip goes past the optional lesson (${s.p.url()})`);
     check(!s.errors.length, `learn ${theme}: no page errors ${s.errors.join(' ')}`);
     await s.ctx.close();
   }
@@ -943,7 +962,7 @@ await m.ctx.close();
     const s = await page('light', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
     for (const width of [390, 360]) {
       await s.p.setViewportSize({ width, height: 844 });
-      for (const l of ['first-handler/why', 'first-handler/name', 'first-handler/settings-file', 'first-handler/test', 'launch-options/overview', 'launch-options/keyboard-or-controller', 'launch-options/fix-it']) {
+      for (const l of ['first-handler/why', 'first-handler/name', 'first-handler/settings-file', 'first-handler/test', `${CH2}/overview`, `${CH2}/keyboard-or-controller`, `${CH2}/fix-it`]) {
         await s.p.goto(BASE + `learn/#${l}`);
         await s.p.waitForTimeout(400);
         const wide = await s.p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
