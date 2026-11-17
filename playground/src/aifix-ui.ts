@@ -204,8 +204,8 @@ export function initFixes(deps: FixesDeps): void {
       ${diffTable}`;
     const applied = () => `<div class="fix-done">
       <span class="fix-ok" aria-hidden="true">✓</span>
-      <span class="fix-msg"><strong>${source === 'Fix all' ? `Fixed ${fixedCount} problem${fixedCount === 1 ? '' : 's'}` : 'Applied the AI fix'}</strong>${remaining ? ` · ${remaining} need${remaining === 1 ? 's' : ''} your decision, below` : ' · nothing left to fix'}. Changed lines are highlighted in the code.</span>
-      ${cleanupsLeft ? `<button class="btn" id="fix-cleanups" type="button" title="Lines Nucleus ignores, such as Player.ProtoController5 and up: harmless, so Fix all leaves them">Also remove ${cleanupsLeft} line${cleanupsLeft === 1 ? '' : 's'} that do${cleanupsLeft === 1 ? 'es' : ''} nothing</button>` : ''}
+      <span class="fix-msg"><strong>${source === 'Fix all' ? `Fixed ${fixedCount} problem${fixedCount === 1 ? '' : 's'}` : 'Applied the AI fix'}</strong>${remaining ? (remaining === cleanupsLeft ? ` · ${remaining === 1 ? 'the one left is' : `the ${remaining} left are`} harmless` : ` · ${remaining} need${remaining === 1 ? 's' : ''} your decision, below`) : ' · nothing left to fix'}. Changed lines are highlighted in the code.</span>
+      ${cleanupsLeft ? `<button class="btn" id="fix-cleanups" type="button" title="Lines that do nothing, such as Player.ProtoController5 and up: harmless, so Fix all leaves them for you to choose">Also fix ${cleanupsLeft} harmless warning${cleanupsLeft === 1 ? '' : 's'}</button>` : ''}
       <button class="btn" id="ai-undo" type="button">Undo</button>
       <button class="btn icon" id="ai-close" type="button" aria-label="Close">×</button>
       <details class="fix-more"><summary>What changed (+${added} −${removed} lines)</summary>${changeList}${delta}${diffTable}</details></div>`;

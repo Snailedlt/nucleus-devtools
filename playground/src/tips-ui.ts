@@ -1,12 +1,13 @@
 // The tip bar under the code. One general tip at a time (Next shows another), and Clippy-style
 // tips that pop up once when the code or the cursor makes them relevant. Off with one click.
 import { voteButtons } from './feedback';
-import { CONTEXT_TIPS, GENERAL_TIPS, Tip, TipContext, tipFor } from './tips';
+import { CONTEXT_TIPS, GENERAL_TIPS, Tip, TipContext, TipShow, tipShown } from './tips';
 import { scanHandler, inCallback, Scan } from './lines';
 import { narrow } from './dom';
 
 const ON_KEY = 'nucleus-workbench-tips';
 const SEEN_KEY = 'nucleus-workbench-tips-seen';
+const SHOW_KEY = 'nucleus-workbench-tips-show';
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
 const get = (k: string) => {
   try {
@@ -32,7 +33,8 @@ interface Deps {
 }
 
 export function initTips({ editor, actions, toast, targets, audience }: Deps) {
-  const forNow = (t: Tip) => tipFor(t, audience?.() ?? 'newcomer');
+  let show = (get(SHOW_KEY) as TipShow | null) ?? 'mode';
+  const forNow = (t: Tip) => tipShown(t, show, audience?.() ?? 'newcomer');
   let on = get(ON_KEY) !== '0';
   const seen = new Set<string>(JSON.parse(get(SEEN_KEY) || '[]'));
   let general = Math.floor(Math.random() * GENERAL_TIPS.length);
@@ -46,7 +48,9 @@ export function initTips({ editor, actions, toast, targets, audience }: Deps) {
 
   function render(tip: Tip, contextual: boolean) {
     bar.classList.toggle('contextual', contextual);
-    label.textContent = contextual ? 'Heads up' : tip.topic ?? 'Tip';
+    // Testers looking at other audiences' tips see whom each is for.
+    const whom = show === 'mode' ? '' : ` · for ${tip.for === 'newcomer' ? 'newcomers' : tip.for === 'developer' ? 'developers' : 'everyone'}`;
+    label.textContent = (contextual ? 'Heads up' : tip.topic ?? 'Tip') + whom;
     body.textContent = '';
     // `code` spans
     tip.text.split(/(`[^`]+`)/).forEach((part) => {
@@ -143,6 +147,13 @@ export function initTips({ editor, actions, toast, targets, audience }: Deps) {
     toggle: () => setOn(!on),
     set: (v: boolean) => setOn(v),
     isOn: () => on,
+    /** Which tips show (Settings › Testing). */
+    show: () => show,
+    setShow: (v: TipShow) => {
+      show = v;
+      set(SHOW_KEY, v);
+      if (on) showGeneral(1);
+    },
     /** The mode changed (Guided / Advanced): swap the shown tip if it isn't for this mode. */
     refresh: () => {
       if (on && !bar.classList.contains('contextual') && !forNow(GENERAL_TIPS[general])) showGeneral(1);

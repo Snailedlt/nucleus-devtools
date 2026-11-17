@@ -8,6 +8,8 @@ import { applyTheme } from './devbar';
 import { initKeyboard, keyboard, onKeyboard } from './keyboard';
 import { CODE_THEMES, codeThemeTokens, currentCodeTheme, pickCodeTheme, addLook, BUILT_IN_LOOKS, lookAbout, contrastProblems, currentLook, customLooks, lookName, lookTokens, parseTheme, pickLook, removeLook, themeFile } from './customtheme';
 import { narrow } from './dom';
+import { BETA } from './testplan';
+import type { TipShow } from './tips';
 
 const EDITOR_KEY = 'nucleus-workbench-editor';
 const THEME_KEY = 'nucleus-workbench-dev-mode'; // shared with the dev bar
@@ -31,7 +33,7 @@ interface Deps {
   editor: any;
   hint: () => void;
   lines: { set(o: boolean): void; isOpen(): boolean; openSettings(): void; show(): void };
-  tips: { set(v: boolean): void; isOn(): boolean; reset(): void };
+  tips: { set(v: boolean): void; isOn(): boolean; reset(): void; show(): TipShow; setShow(v: TipShow): void };
   advanced: HTMLInputElement;
   devBar: { toggle(): void; isOn(): boolean };
   toast: (s: string) => void;
@@ -59,6 +61,7 @@ export function initSettings(d: Deps) {
     ($('#set-wrap') as HTMLInputElement).checked = ed.wrap;
     ($('#set-keybar') as HTMLInputElement).checked = ed.keybar;
     ($('#set-tips') as HTMLInputElement).checked = d.tips.isOn();
+    ($('#set-tips-show') as HTMLSelectElement).value = d.tips.show();
     ($('#set-lines') as HTMLInputElement).checked = d.lines.isOpen();
     ($('#set-advanced') as HTMLInputElement).checked = d.advanced.checked;
     ($('#set-devbar') as HTMLInputElement).checked = d.devBar.isOn();
@@ -215,6 +218,14 @@ export function initSettings(d: Deps) {
   $('#set-wrap').addEventListener('change', (e) => ((ed.wrap = (e.target as HTMLInputElement).checked), save(), applyEditor()));
   $('#set-keybar').addEventListener('change', (e) => ((ed.keybar = (e.target as HTMLInputElement).checked), save(), placeKeybar()));
   $('#set-tips').addEventListener('change', (e) => d.tips.set((e.target as HTMLInputElement).checked));
+  // Settings › Testing: beta only (testplan.ts BETA).
+  if (!BETA) document.querySelectorAll<HTMLElement>('#settings-dialog [data-beta]').forEach((e) => e.remove());
+  $('#set-tips-show').addEventListener('change', (e) => {
+    const v = (e.target as HTMLSelectElement).value as TipShow;
+    if (v !== 'mode') d.tips.set(true); // reading them needs the tip bar
+    d.tips.setShow(v);
+    sync();
+  });
   $('#set-heads').addEventListener('click', () => (d.tips.set(true), d.tips.reset(), sync(), confirmOn($('#set-heads'), 'Heads-ups will show again ✓', 'Heads-ups will show again.')));
   // Motion: a preset, and the switches it sets; changing a switch makes it "Custom".
   const mv = { preset: $('#set-motion') as HTMLSelectElement, ui: $('#set-motion-ui') as HTMLInputElement, masc: $('#set-motion-masc') as HTMLSelectElement, edit: $('#set-motion-edit') as HTMLInputElement, news: $('#set-motion-news') as HTMLInputElement };

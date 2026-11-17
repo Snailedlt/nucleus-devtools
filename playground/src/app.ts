@@ -1215,14 +1215,15 @@ function setFilter(f: typeof filter) {
 document.querySelectorAll<HTMLButtonElement>('.filter').forEach((b) => b.addEventListener('click', () => setFilter(b.dataset.filter as typeof filter)));
 
 // "Fix problems" shows how many it can fix (counted in the worker along with the lint).
-// Harmless cleanups (lines that do nothing) aren't counted: Fix all offers them afterwards, and when
+// Harmless warnings (lines that do nothing, tagged unnecessary) aren't counted: Fix all offers them afterwards, and when
 // they are all that's left the button offers just them.
 function setFixCount(n: number, cleanups = 0) {
   const btn = $('#fix-all') as HTMLButtonElement;
   // Nothing to fix: no button (the bar goes too unless Fix with AI is there; CSS :has).
   btn.hidden = n === 0 && cleanups === 0;
   btn.dataset.cleanupsOnly = n === 0 && cleanups > 0 ? '1' : '';
-  btn.textContent = n ? `Fix ${n} problem${n === 1 ? '' : 's'} automatically` : `Remove ${cleanups} line${cleanups === 1 ? '' : 's'} that do${cleanups === 1 ? 'es' : ''} nothing`;
+  btn.textContent = n ? `Fix ${n} problem${n === 1 ? '' : 's'} automatically` : `Fix ${cleanups} harmless warning${cleanups === 1 ? '' : 's'}`;
+  btn.title = n ? '' : 'Lines that do nothing, such as Player.ProtoController5 and up: removing them is safe';
 }
 
 // ---------------------------------------------------------------------------

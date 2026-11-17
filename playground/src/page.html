@@ -2314,6 +2314,7 @@ footer .made-by { margin-left: auto; }
       <span class="set-g" role="presentation">More</span>
       <button type="button" role="tab" id="st-general" data-st="general" aria-controls="sp-general">Updates and backup</button>
       <button type="button" role="tab" id="st-advanced" data-st="advanced" aria-controls="sp-advanced">Advanced</button>
+      <button type="button" role="tab" id="st-testing" data-st="testing" aria-controls="sp-testing" data-beta>Testing</button>
     </div>
   </nav>
   <div class="set-panels">
@@ -2442,6 +2443,18 @@ footer .made-by { margin-left: auto; }
       </div>
       <p class="muted small" id="ai-help"></p>
     </div>
+  </div>
+  <div class="set-panel" role="tabpanel" id="sp-testing" aria-labelledby="st-testing" data-label="Testing" data-beta hidden>
+    <p class="muted small" style="margin:0 0 10px">For testers of this beta: ways to see parts of the workbench you wouldn't otherwise. Gone at the full release.</p>
+    <div class="set-sec"><h3>Tips</h3>
+      <label class="set-field">Tips to show <small>Normally only the tips for your mode show (Guided: for newcomers, Advanced: for people who write code), plus the ones for everyone. Pick another to read them; each tip then says whom it's for.</small>
+        <select id="set-tips-show">
+          <option value="mode">For my mode (normal)</option>
+          <option value="all">Every tip</option>
+          <option value="newcomer">Only tips for newcomers</option>
+          <option value="developer">Only tips for developers</option>
+          <option value="everyone">Only tips for everyone</option>
+        </select></label></div>
   </div>
   <div class="set-panel" role="tabpanel" id="sp-advanced" aria-labelledby="st-advanced" data-label="Advanced" hidden>
 

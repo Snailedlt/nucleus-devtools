@@ -218,6 +218,11 @@ for (const t of [...CONTEXT_TIPS, ...PITFALLS, ...SHORTCUTS, ...BEST, ...FEATURE
 /** Is this tip for someone in this mode? */
 export const tipFor = (t: Tip, who: 'newcomer' | 'developer') => !t.for || t.for === who;
 
+/** Which tips show (Settings › Testing): the ones for your mode, or, to test them, all or one audience. */
+export type TipShow = 'mode' | 'all' | 'newcomer' | 'developer' | 'everyone';
+export const tipShown = (t: Tip, show: TipShow, who: 'newcomer' | 'developer') =>
+  show === 'mode' ? tipFor(t, who) : show === 'all' ? true : show === 'everyone' ? !t.for : t.for === show;
+
 const GROUPS = [PITFALLS, SHORTCUTS, BEST, FEATURES_, SETTINGS];
 /** Every general tip, the topics taking turns, so Next goes round them. */
 export const GENERAL_TIPS: Tip[] = Array.from({ length: Math.max(...GROUPS.map((g) => g.length)) }, (_, i) => GROUPS.map((g) => g[i])).flat().filter(Boolean);

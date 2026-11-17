@@ -17,8 +17,8 @@ How to write it (people and AI agents read this, and the workbench shows it):
 ### 🛠️ Improved
 
 - **Identical problems show as one.** In Check, the same problem on lines next to each other (like `Player.ProtoController5` to `16`) is one row with a ×N count and a *Fix all N* button, and F8 steps through the rows.
-- **Fix all leaves harmless lines for you to choose.** *Fix problems automatically* no longer counts or removes lines that only do nothing; afterwards it offers *Also remove N lines that do nothing*, and when those are all that's left, the button offers just them.
-- **Tips for the way you work.** Guided mode shows the tips meant for newcomers and Advanced mode the ones for people who write code; switching mode swaps the tip. Choosing *I write code* at the start no longer turns tips off.
+- **Fix all leaves harmless lines for you to choose.** *Fix problems automatically* no longer counts or removes lines that only do nothing; afterwards it offers *Also fix N harmless warnings*, and when those are all that's left, the button says *Fix N harmless warnings*.
+- **Tips for the way you work.** Guided mode shows the tips meant for newcomers and Advanced mode the ones for people who write code; switching mode swaps the tip. Choosing *I write code* at the start no longer turns tips off. Testers can read every tip, or one audience's, in the new **Settings › Testing** (beta only).
 - **One problem count everywhere.** The Check tab, the Handler/Results switch, the *All* filter and the status line count the same problems (errors, warnings and info), and the phone's strip shows each kind.
 - **The handler has Nucleus Co-op's logo as its file icon.** In the Files panel and the file tabs, `handler.js` shows the logo with a JS tag, as handlers do in VS Code; other files keep their type badge.
 
