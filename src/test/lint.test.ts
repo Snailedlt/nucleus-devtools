@@ -337,6 +337,36 @@ function f(Context) { return Context.Options["x"] === 1; }
   assert.deepEqual(only(src, 'option-compare'), []);
 });
 
+test('option-compare: review cases (loose boolean with "1", mutated arrays, comments, catch scope, p = p)', () => {
+  const src =
+    HEADER +
+    `Game.AddOption("Enabled", "", "enabled", ["0", "1"]);
+var answers = ["2", "4"];
+answers[0] = 2;
+Game.AddOption("Players", "", "players", answers);
+Game.Play = function () {
+  if (Context.Options["enabled"] == true) {}
+  var p = Context.Options["players"];
+  try { throw 0; } catch (p) { p = 1; }
+  switch (p) { case 2: break; }
+  if (p /* === */ === 4) {}
+  var r = Context.Options["players"];
+  r = r; r = r; r = r; r = r; r = r; r = r; r = r; r = r; r = r; r = r; r = r; r = r;
+  if (r === 4) {}
+};
+`;
+  const d = only(src, 'option-compare');
+  assert.equal(d.length, 2, d.map((x) => x.message).join('\n'));
+  assert.equal(d[0].fixes, undefined, 'answers[0] = 2: the values may not stay text');
+  assert.equal(apply(src, d[1].fixes![0]).includes('if (p /* === */ == 4)'), true);
+});
+
+test('unknown-member: a compound write is never the harmless idiom; sequences and for tests pass the value on', () => {
+  const src = HEADER + 'Game.Play = function () {\n  if (Context.filePath -= 1) {}\n  if (System.IO.File.Exists((0, (Context.filePathB = "x")))) {}\n  for (; (Context.filePathC = 1); ) { break; }\n};\n';
+  const d = only(src, 'unknown-member');
+  assert.deepEqual(d.map((x) => x.severity), ['warning', 'hint', 'hint']);
+});
+
 test('member names follow Jint: first letter case-insensitive, the rest exact', () => {
   const src = HEADER + 'Game.symlinkGame = true;\nGame.IgnoreWindowBordercheck = true;\nGame.Play = function () { var w = Context.width; };\n';
   const d = only(src, 'unknown-member');

@@ -427,13 +427,26 @@ class Analyzer {
     if (!/\bOptions\b/.test(this.text)) return;
     const sc = analyzeScopes(this.program);
     const values = new Map<string, Node[]>();
+    const mutated = (b: Binding) =>
+      b.reads.some((r) => {
+        const m = sc.parentOf.get(r.node);
+        if (m?.type !== 'MemberExpression' || m.object !== r.node) return false;
+        const g = sc.parentOf.get(m);
+        return (g?.type === 'AssignmentExpression' && g.left === m) || (g?.type === 'UpdateExpression' && g.argument === m) ||
+          (g?.type === 'CallExpression' && g.callee === m && !m.computed && /^(push|unshift|splice|fill|reverse|sort|copyWithin|pop|shift)$/.test(m.property.name));
+      });
     visit(this.program, (x) => {
       if (x.type !== 'CallExpression' || this.chainOf(x.callee) !== 'Game.AddOption' || sc.bindingOf.get(x.callee.object)) return;
       const k = x.arguments[2];
       let v = x.arguments[3];
-      if (v?.type === 'Identifier') v = singleValue(sc.bindingOf.get(v));
+      if (v?.type === 'Identifier') {
+        const b = sc.bindingOf.get(v);
+        // `answers[0] = 2` or `answers.push(2)` later: the values may not stay text.
+        v = b && !mutated(b) ? singleValue(b) : undefined;
+      }
       if (k?.type === 'Literal' && typeof k.value === 'string' && v?.type === 'ArrayExpression') values.set(k.value, v.elements.filter(Boolean));
     });
+    const onPath = new Set<Binding>(); // `p = p`: stop instead of expanding every write again
     const opt = (n: Node, depth = 0): { key?: string } | undefined => {
       if (depth > 8) return undefined;
       if (n.type === 'MemberExpression' && n.computed && this.chainOf(n.object) === 'Context.Options' && !sc.bindingOf.get(n.object.object)) {
@@ -442,7 +455,10 @@ class Analyzer {
       if (n.type !== 'Identifier') return undefined;
       const b = sc.bindingOf.get(n);
       if (!b || b.kind !== 'var' || !b.writes.length || b.writes.some((w) => !w.plain || !w.value)) return undefined;
+      if (onPath.has(b)) return undefined;
+      onPath.add(b);
       const all = b.writes.map((w) => opt(w.value!, depth + 1));
+      onPath.delete(b);
       if (all.some((o) => !o)) return undefined;
       return { key: all.every((o) => o!.key === all[0]!.key) ? all[0]!.key : undefined };
     };
@@ -472,10 +488,16 @@ class Analyzer {
           const o = k && opt(a);
           if (!o) continue;
           if (k === 'boolean') {
+            // `== true` with "1"/"0" values: loose equality turns both into numbers, so it can match.
+            const v = o.key === undefined ? undefined : values.get(o.key);
+            if (x.operator.length === 2 && v?.some((e) => e.type === 'Literal' && typeof e.value === 'string' && e.value.trim() !== '' && !isNaN(Number(e.value)))) continue;
             report(x, `\`${src(a)}\` is text when the player starts from a saved profile ("True" or "False"), and text never equals \`${b.raw}\`. Give the option text values (such as "Yes" and "No") and compare with those.`);
           } else if (x.operator.length === 3) {
             const loose = x.operator === '===' ? '==' : '!=';
-            const opAt = this.text.indexOf(x.operator, x.left.end);
+            // The operator between the operands, not one inside a comment there.
+            const between = this.text.slice(x.left.end, x.right.start).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, (c) => ' '.repeat(c.length));
+            const i = between.indexOf(x.operator);
+            const opAt = i < 0 ? -1 : x.left.end + i;
             report(
               x,
               `\`${src(a)}\` is text${allText(o.key) ? ' (the option\'s values are text)' : ' when the player starts from a saved profile'}, and \`${x.operator}\` never matches text with a number, so \`${src(x)}\` is ${x.operator === '===' ? 'never true' : 'always true'}${allText(o.key) ? '' : ' then'}. With \`${loose}\` it matches both "${src(b)}" and ${src(b)}.`,
@@ -1156,8 +1178,9 @@ class Analyzer {
       // goes for an assignment whose value a call, a condition or another assignment uses
       // (`File.Exists((Context.filePath = ...))`, 1 Hub handler; issue #26).
       const assign = ctx.parent;
-      const user = isWrite && assign ? this.parentOf.get(assign) : undefined;
-      const receiver = user ? valueReceiver(user, assign!) : undefined;
+      // Only `=`: `Context.filePath -= 1` reads the missing property, so its value is NaN, not harmless.
+      const user = isWrite && assign?.type === 'AssignmentExpression' && assign.operator === '=' ? this.parentOf.get(assign) : undefined;
+      const receiver = user ? valueReceiver(user, assign!, (n) => this.parentOf.get(n)) : undefined;
       const valueUsed = !!receiver;
       // ...unless the name is a typo of a real member: then the handler likely meant that one, and it isn't set.
       if (valueUsed && s && !known && !digitsOnly) {
@@ -2012,7 +2035,7 @@ function singleValue(b: Binding | undefined): Node | undefined {
 }
 
 /** Who uses the value of an assignment `a = v` whose parent is `user`, in words; undefined when nothing does. */
-function valueReceiver(user: Node, assign: Node): string | undefined {
+function valueReceiver(user: Node, assign: Node, parentOf: (n: Node) => Node | undefined): string | undefined {
   switch (user.type) {
     case 'VariableDeclarator':
       return user.init === assign ? 'the variable' : undefined;
@@ -2026,9 +2049,14 @@ function valueReceiver(user: Node, assign: Node): string | undefined {
     case 'DoWhileStatement':
     case 'ConditionalExpression':
       return user.test === assign ? 'the condition' : user.type === 'ConditionalExpression' ? 'the expression' : undefined;
-    case 'ExpressionStatement':
-    case 'SequenceExpression':
+    case 'SequenceExpression': {
+      // `(0, (a = v))`: only the last operand's value goes on.
+      const up = user.expressions[user.expressions.length - 1] === assign ? parentOf(user) : undefined;
+      return up ? valueReceiver(up, user, parentOf) : undefined;
+    }
     case 'ForStatement':
+      return user.test === assign ? 'the condition' : undefined;
+    case 'ExpressionStatement':
     case 'ForInStatement':
     case 'ForOfStatement':
       return undefined;

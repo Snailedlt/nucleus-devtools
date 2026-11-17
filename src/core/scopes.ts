@@ -59,6 +59,9 @@ export function analyzeScopes(program: Node): Scopes {
   const declared = new Map<Node, Map<string, Binding>>();
   const bindings: Binding[] = [];
   const bindingOf = new WeakMap<Node, Binding>();
+  const catchScopes = new Map<Node, Map<string, Binding>>();
+  /** The catch clauses around the node being visited in pass 2, innermost last. */
+  const catches: { fn: Node; m: Map<string, Binding> }[] = [];
 
   const declare = (scope: Node, name: string, kind: Binding['kind'], decl?: Node): Binding => {
     if (!declared.has(scope)) declared.set(scope, new Map());
@@ -80,7 +83,16 @@ export function analyzeScopes(program: Node): Scopes {
       if (n.id.type === 'Identifier') declare(fn, n.id.name, 'var', n);
       else for (const id of patternIds(n.id)) declare(fn, id.name, 'other');
     } else if (n.type === 'FunctionDeclaration' && n.id) declare(fn, n.id.name, 'function', n);
-    else if (n.type === 'CatchClause' && n.param) for (const id of patternIds(n.param)) declare(fn, id.name, 'catch');
+    else if (n.type === 'CatchClause' && n.param) {
+      // The catch parameter lives in its own scope (the catch body); a `var` in that body stays function-scoped.
+      const m = new Map<string, Binding>();
+      for (const id of patternIds(n.param)) {
+        const b: Binding = { name: id.name, kind: 'catch', scope: fn, decls: [], writes: [], reads: [] };
+        m.set(id.name, b);
+        bindings.push(b);
+      }
+      catchScopes.set(n, m);
+    }
     const inner = isFn(n) ? n : fn;
     if (isFn(n)) {
       if (n.type !== 'FunctionDeclaration' && n.id) declare(n, n.id.name, 'function', n);
@@ -96,6 +108,7 @@ export function analyzeScopes(program: Node): Scopes {
 
   const lookup = (name: string, fn: Node): Binding | undefined => {
     for (let s: Node | undefined = fn; s; s = s === program ? undefined : fnOf.get(s)) {
+      for (let i = catches.length - 1; i >= 0; i--) if (catches[i].fn === s && catches[i].m.has(name)) return catches[i].m.get(name);
       const b = declared.get(s)?.get(name);
       if (b) return b;
     }
@@ -134,7 +147,10 @@ export function analyzeScopes(program: Node): Scopes {
         if (b) b.writes.push({ node: d.id, plain: false, fn: fnOf.get(d)! });
       }
     }
+    const cs = n.type === 'CatchClause' ? catchScopes.get(n) : undefined;
+    if (cs) catches.push({ fn: fnOf.get(n)!, m: cs });
     for (const c of children(n)) pass2(c);
+    if (cs) catches.pop();
   };
   pass2(program);
   return { bindingOf, parentOf, fnOf, bindings };

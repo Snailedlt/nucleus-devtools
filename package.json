@@ -315,6 +315,7 @@
         },
         "splitscreenme.languageMode": {
           "type": "string",
+          "scope": "resource",
           "enum": [
             "handler",
             "javascript"
@@ -933,6 +934,7 @@
         },
         "splitscreenme.completion.enable": {
           "type": "boolean",
+          "scope": "resource",
           "default": true,
           "description": "Provide completion, hover and signature help for the Nucleus API. Turned off automatically by \"Set Up Type Definitions\", since TypeScript then provides them."
         },

@@ -25,7 +25,7 @@ export function languageFor(o: {
 }
 
 export function registerHandlerMode(context: vscode.ExtensionContext, looksLikeHandler: (doc: vscode.TextDocument) => boolean) {
-  const mode = () => vscode.workspace.getConfiguration('splitscreenme').get<LanguageMode>('languageMode', 'handler');
+  const mode = (doc?: vscode.TextDocument) => vscode.workspace.getConfiguration('splitscreenme', doc?.uri).get<LanguageMode>('languageMode', 'handler');
   // A file switched back to JavaScript by hand (the status bar's language picker) is left alone this session.
   // Changing a document's language closes it and opens it again at once, so a handler document that closes and
   // opens as JavaScript within a moment was switched by the user (or by us, when the setting says javascript).
@@ -35,7 +35,7 @@ export function registerHandlerMode(context: vscode.ExtensionContext, looksLikeH
   const apply = (doc: vscode.TextDocument) => {
     if (doc.isClosed || (doc.uri.scheme !== 'file' && doc.uri.scheme !== 'untitled')) return;
     const key = doc.uri.toString();
-    const to = languageFor({ languageId: doc.languageId, mode: mode(), isHandler: doc.languageId === 'javascript' && looksLikeHandler(doc), userChoseJavaScript: userChoseJavaScript.has(key) });
+    const to = languageFor({ languageId: doc.languageId, mode: mode(doc), isHandler: doc.languageId === 'javascript' && looksLikeHandler(doc), userChoseJavaScript: userChoseJavaScript.has(key) });
     if (!to) return;
     ours.add(key);
     vscode.languages.setTextDocumentLanguage(doc, to).then(undefined, () => ours.delete(key));
