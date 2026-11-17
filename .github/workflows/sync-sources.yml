@@ -2,7 +2,9 @@ name: Sync with Nucleus and the docs
 # Once a day, a tiny check (git ls-remote, a few hundred bytes) whether Nucleus Co-op's source or the
 # splitscreen.me docs moved past the commits data/nucleus-api.json was generated from. Only then: clone
 # both, regenerate the API model, docs and skill files, test, and open (or update) a pull request with
-# the diff, so new or changed options show up for review instead of silently.
+# the diff, so new or changed options show up for review instead of silently. The same pull request carries
+# the docs' vote counts (data/doc-votes.json, which make "Verified by people" labels) and the Hub handlers' usage
+# (data/hub-examples.json: the docs' Hub examples and counts), both from the testbench's data branch.
 # Needs: Settings > Actions > General > "Allow GitHub Actions to create and approve pull requests".
 on:
   schedule:
@@ -36,13 +38,26 @@ jobs:
           if [ $same_n = 1 ] && [ $same_w = 1 ]; then echo "changed=false" >> "$GITHUB_OUTPUT"; else echo "changed=true" >> "$GITHUB_OUTPUT"; fi
           n=$(echo "$n" | cut -c1-7); w=$(echo "$w" | cut -c1-7)
           echo "nucleus=$n" >> "$GITHUB_OUTPUT"; echo "www=$w" >> "$GITHUB_OUTPUT"
-      - if: steps.check.outputs.changed == 'true'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: The docs' votes and the Hub handlers' usage (the testbench's data branch)
+        id: data
+        run: |
+          node scripts/doc-votes.mjs || echo "::warning::No votes report: data/doc-votes.json stays."
+          if git clone -q --depth 1 --branch data --filter=blob:none https://github.com/Snailedlt/nucleuscoop-handler-testbench.git ../hubdata; then
+            npm ci --ignore-scripts --no-audit --no-fund >/dev/null
+            node scripts/hub-examples.mjs --hub ../hubdata || echo "::warning::hub-examples failed: data/hub-examples.json stays."
+          fi
+          # Only the date moved in hub-examples.json: nothing to review.
+          if git diff --numstat -- data/hub-examples.json | awk '{ if ($1 > 1) found=1 } END { exit !found }' || ! git diff --quiet -- data/doc-votes.json; then echo "changed=true" >> "$GITHUB_OUTPUT"; else git checkout -- data/hub-examples.json; echo "changed=false" >> "$GITHUB_OUTPUT"; fi
+      - if: steps.check.outputs.changed == 'true' || steps.data.outputs.changed == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - name: Regenerate
-        if: steps.check.outputs.changed == 'true'
+        if: steps.check.outputs.changed == 'true' || steps.data.outputs.changed == 'true'
         run: |
           git clone --quiet --depth 1 --filter=blob:none https://github.com/SplitScreen-Me/splitscreenme-nucleus ../splitscreenme-nucleus
           git clone --quiet --depth 1 --filter=blob:none https://github.com/SplitScreen-Me/splitscreenme-www ../splitscreenme-www
@@ -52,7 +67,7 @@ jobs:
           npm run build
           npm test
       - name: Open or update the pull request
-        if: steps.check.outputs.changed == 'true'
+        if: steps.check.outputs.changed == 'true' || steps.data.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -60,7 +75,7 @@ jobs:
           if git diff --quiet -- . ':(exclude)data/nucleus-api.json' ':(exclude)types/nucleus.d.ts' && [ "$(git diff --numstat | awk '{s+=$1} END {print s+0}')" -le 2 ]; then echo "Upstream moved, but no option or doc changed."; exit 0; fi
           branch=sync/upstream
           git switch -C "$branch"
-          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -qam "API model from Nucleus ${{ steps.check.outputs.nucleus }} and docs ${{ steps.check.outputs.www }}"
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -qam "API model from Nucleus ${{ steps.check.outputs.nucleus }} and docs ${{ steps.check.outputs.www }}, with the docs' votes and Hub usage"
           git push -qf origin "$branch"
           body="Nucleus Co-op's source or the splitscreen.me docs changed, so the generated API model, type definitions and skill reference were regenerated (tests pass).
 

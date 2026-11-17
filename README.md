@@ -153,7 +153,8 @@ The skill loads automatically when you ask about Nucleus handlers.
 | `nucleus_simulate` | Try it: each player's window, launch arguments and file changes |
 | `nucleus_debug` | Stop at breakpoints (with conditions) and errors: variables, call stack, watches |
 | `nucleus_explain` | What one line does: its names' docs and its problems |
-| `nucleus_api` / `nucleus_api_search` | Type, default and docs of an option; search by words |
+| `nucleus_api` / `nucleus_api_search` | Type, default and docs of an option (the doc, its AI-written "In practice" part, an example); search by words |
+| `nucleus_vote_doc` | Say whether a doc is right after checking it against Nucleus' source; counted as an AI vote, apart from people's (also `ncdev docs vote`) |
 | `nucleus_new_handler` | A lint-clean handler from the templates |
 | `nucleus_hub_search` / `nucleus_hub_handler` | Find Hub handlers; read a verified one as an example |
 | `nucleus_rules` | What each check does; with a rule id, why it matters, the fix and examples |

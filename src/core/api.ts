@@ -3,6 +3,7 @@ import raw from '../../data/nucleus-api.json';
 import { JS_FUNCTIONS, JS_GLOBAL_OBJECTS, JS_OBJECTS, isJsBuiltin, mdnUrl } from './jsbuiltins';
 import { DOTNET_OBJECTS } from './dotnet';
 import { prettyCode, prettySignature } from './pretty';
+import { DocPart, partVotes, verifiedLabel, votesLine } from './docvotes';
 
 export type SimpleType =
   | 'string'
@@ -53,6 +54,21 @@ export interface Member {
   docCheckedBy?: string;
   docCheckedOn?: string;
   example?: string;
+  /** Where the example comes from when not the official docs: 'claude' (AI-written, data/claude-practice.json), 'hub'
+   *  (the most common value or call in Hub handlers, data/hub-examples.json) or 'generated' (from its type). */
+  exampleBy?: 'claude' | 'hub' | 'generated';
+  /** What a 'hub' or 'generated' example is ("The most common value in Hub handlers: 564 of the 889 that set it."). */
+  exampleNote?: string;
+  /** Where the example goes in a handler: 'top' (the top level), 'Game.Play' or another callback. */
+  exampleIn?: string;
+  /** "In practice": what it really does in Nucleus' source and how Hub handlers use it, written by Claude (AI) from
+   *  them (data/claude-practice.json), apart from `doc`. */
+  practice?: string;
+  practiceBasis?: string;
+  practiceCheckedBy?: string;
+  practiceCheckedOn?: string;
+  /** How many of the verified Hub handlers use it (api.hubHandlers.count of them). */
+  hubUse?: number;
   category?: string;
   deprecated?: string;
   /** Legacy input option the Proto Input guide says to set to false. */
@@ -96,6 +112,8 @@ export interface ApiModel {
   objects: Record<string, ApiObject>;
   enums: Record<string, EnumInfo>;
   nucleusClasses: Record<string, NucleusClass>;
+  /** The verified Hub handlers `hubUse` counts are from (data/hub-examples.json). */
+  hubHandlers?: { count: number; takenAt: string };
 }
 
 /** The model as objects without a prototype: a name typed in a handler (`toString`, `constructor`, `__proto__`) is
@@ -391,13 +409,32 @@ export const claudeNote = (m: { docBy?: string; docBasis?: string; docCheckedBy?
 export const docReviewUrl = (path: string) =>
   `https://github.com/Snailedlt/splitscreenme-vscode/issues/new?template=doc-review.yml&title=${encodeURIComponent(`Doc review: ${path}`)}&member=${encodeURIComponent(path)}`;
 
+/** The label of an AI-written "In practice" part (empty without one). */
+export const practiceNote = (m: Member) =>
+  !m.practice ? ''
+  : `AI-written, based on ${m.practiceBasis}.${m.practiceCheckedBy ? ` Checked by ${m.practiceCheckedBy}${m.practiceCheckedOn ? ` on ${m.practiceCheckedOn}` : ''}.` : ''}`;
+/** "Used by 564 of 899 Hub handlers" (empty when no Hub handler uses it). */
+export const hubUseText = (m: Member) => (m.hubUse && api.hubHandlers ? `Used by ${m.hubUse} of ${api.hubHandlers.count} Hub handlers` : '');
+/** Where an example comes from, in a few words ('' for the official docs'). */
+export const exampleSource = (m: Member) => (m.exampleBy === 'claude' ? 'AI-written' : m.exampleBy ? m.exampleNote ?? '' : '');
+
+/** The votes and the verified label of one doc part, as a Markdown line ('' with no votes). */
+function votesMarkdown(path: string, part: DocPart, aiWritten: boolean): string {
+  const v = partVotes(path, part);
+  const verified = aiWritten ? verifiedLabel(v) : '';
+  return [verified ? `**✓ ${verified}**` : '', votesLine(v)].filter(Boolean).join(' · ');
+}
+
 export function memberMarkdown(owner: string, name: string, m: Member): string {
   const parts: string[] = [];
   // Each overload laid out as prettier would (one parameter per line when it's long), the example too.
   parts.push('```ts\n' + memberSignature(owner, name, m).map((x) => prettySignature(x)).join('\n') + '\n```');
   if (m.deprecated) parts.push(`**${m.deprecated}**`);
   if (m.doc) parts.push(m.doc);
-  if (claudeNote(m)) parts.push(`_✎ ${claudeNote(m)}_${m.docCheckedBy ? '' : ` [Is it wrong? Tell us](${docReviewUrl(`${ownerLabel(owner)}.${name}`)})`}`);
+  const path = `${ownerLabel(owner)}${ownerLabel(owner) ? '.' : ''}${name}`;
+  if (claudeNote(m)) parts.push(`_✎ ${claudeNote(m)}_${m.docCheckedBy ? '' : ` [Is it wrong? Tell us](${docReviewUrl(path)})`}`);
+  const docVotes = m.doc ? votesMarkdown(path, 'doc', m.docBy === 'claude') : '';
+  if (docVotes) parts.push(docVotes);
   // What to pass for each parameter (every name once, from whichever overload has it).
   const params = new Map<string, Param>();
   for (const o of m.overloads ?? []) for (const p of o.params) if (p.doc && !params.has(p.name)) params.set(p.name, p);
@@ -407,7 +444,12 @@ export function memberMarkdown(owner: string, name: string, m: Member): string {
   if (m.category) meta.push(`Category: ${m.category}`);
   if (m.required) meta.push('**Required**');
   if (meta.length) parts.push(meta.join(' · '));
-  if (m.example) parts.push('```js\n' + prettyCode(m.example) + '\n```');
+  // "In practice": AI-written, its own label and votes, apart from the doc above.
+  if (m.practice) {
+    const pv = votesMarkdown(path, 'practice', true);
+    parts.push(`**In practice** _(AI-written)_\n\n${m.practice}\n\n_✎ ${practiceNote(m)}${hubUseText(m) ? ` ${hubUseText(m)}.` : ''}_${m.practiceCheckedBy ? '' : ` [Is it wrong? Tell us](${docReviewUrl(path)})`}${pv ? `\n\n${pv}` : ''}`);
+  }
+  if (m.example) parts.push((exampleSource(m) ? `_Example: ${exampleSource(m)}_\n\n` : '') + '```js\n' + prettyCode(m.example) + '\n```');
   parts.push(isJsBuiltin(owner) ? `[MDN: ${owner ? `${owner}.` : ''}${name}](${mdnUrl(owner, name)})` : `[Handler API docs](${DOCS_URL})`);
   return parts.join('\n\n');
 }

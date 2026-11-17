@@ -16,6 +16,9 @@ How to write it (people and AI agents read this; the release workflow publishes 
 
 ### ✨ New
 
+- **"In practice" in the docs.** For the 79 most used options and calls, the docs now have a second part, written by AI from Nucleus Co-op's source and the Hub handlers: what the option really does (`Game.Hook.ForceFocus` only matters with the custom XInput DLL; Nucleus replaces `Game.LockInputToggleKey` with your own lock key) and how Hub handlers use it. It's labelled AI-written in hovers, suggestions, the Docs panel, `ncdev api` and the `.d.ts`, apart from the doc above it.
+- **An example for most options.** Docs show an example for 611 of the 750 options and calls: the official docs' own, else the value most Hub handlers use, an AI-written one, or one made from the type, each saying where it comes from.
+- **Vote on docs, people and AIs apart.** 👍/👎 on both parts of a doc (the doc and "In practice"). AI agents can vote too (`ncdev docs vote`, the MCP tool `nucleus_vote_doc`), counted apart; an AI-written part with at least 10 votes from people, 90% 👍, is labelled *Verified by people*. The docs show the counts.
 - **One Run button above a handler.** The editor title's Run button (▷) now holds *Test in Nucleus Co-op* (Windows), *Try It* and the new *Debug Handler*, as the Python extension does, instead of two separate ▷ icons. Debug steps through the handler, simulated, and pauses on its first line when it has no breakpoint.
 - **The handler's status beside its language.** Hover **{} Nucleus Co-op handler** in the status bar for its checks (the problem count, or OK) and its game folder, with *Link…* or *Unlink*, as TypeScript and Python show theirs. Nothing new sits on screen.
 - **A SplitScreen.Me output channel.** *View › Output › SplitScreen.Me* logs what the extension did (packaged, installed, linked, tested) and every error, with *Show Log* on error messages.
@@ -44,6 +47,7 @@ How to write it (people and AI agents read this; the release workflow publishes 
 
 ### 🐛 Fixed
 
+- **Docs attached to the wrong option.** Some Proto Input docs came from the line next to them in the official docs (`InjectRuntime_EasyHookStealthMethod` said "Automatically locks input once the instances are set up", `BlockedMessages` had Block Raw Input's text), and a few options had the next option's line of code as their doc (`IgnoreDeleteFilesPrompt`, `DeleteFiles`, `CopyFoldersTo`, `CMDStartArgsInside`). Each doc now belongs to its own option, and `HexEditFileAddress`, `RenameAndOrMoveFiles`, `CopyEnvFoldersToNucleusAccounts` and `CMDBatchClose` got theirs.
 - **Linking a game's folder no longer writes your PC's path into the project.** *Game Folder: Link…* (was *Link the Game's Folder…*) keeps the link in VS Code's own storage on this PC instead of `.vscode/settings.json`, so it can't end up in a shared repository; links made before still work. *Unlink* now says what it did, and with nothing linked it no longer creates an empty settings file.
 - **No wrong "quote the case" fix for option lists changed later.** `option-compare` no longer offers `case "2":` when the option's list is changed by a method call, also one written with brackets (`answers["push"]`), since a fresh pick could then be a number. Found by CodeRabbit.
 

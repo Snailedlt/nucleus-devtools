@@ -30,7 +30,7 @@ This skill ships a self-contained Node CLI at `${CLAUDE_SKILL_DIR}/scripts/nucle
 | `node .../nucleus.js package <file.js>` | Build the `.nc` package for hub.splitscreen.me. `lint` already checks the files in the handler's `<Name>/` folder next to it, as they go into the package. |
 | `node .../nucleus.js install <file.js> --nucleus <folder>` / `test …` | Install the handler into the user's Nucleus Co-op, or install and start Nucleus with it selected. They change the user's Nucleus folder (and `test` closes a running Nucleus), so only with the user's OK. |
 
-Through MCP instead of a shell (`node .../nucleus.js mcp`), the same tools are `nucleus_lint`, `nucleus_fix`, `nucleus_format`, `nucleus_simulate`, `nucleus_debug`, `nucleus_explain`, `nucleus_rules`, `nucleus_api`, `nucleus_api_search`, `nucleus_new_handler`, `nucleus_hub_search` and `nucleus_hub_handler`.
+Through MCP instead of a shell (`node .../nucleus.js mcp`), the same tools are `nucleus_lint`, `nucleus_fix`, `nucleus_format`, `nucleus_simulate`, `nucleus_debug`, `nucleus_explain`, `nucleus_rules`, `nucleus_api`, `nucleus_api_search`, `nucleus_new_handler`, `nucleus_hub_search`, `nucleus_hub_handler` and `nucleus_vote_doc` (after you checked a doc against the Nucleus source: 👍 or 👎, counted apart from people's votes).
 
 If `node` is unavailable, read [reference/api.md](reference/api.md) (grep for `### Game.Name`) and apply the rules below by hand.
 

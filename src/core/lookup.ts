@@ -1,6 +1,14 @@
 // API lookup/search for agents and the CLI (`nucleus api ...`), and the
 // Markdown API reference shipped with the agent skill.
-import { api, claudeNote, Member, memberSignature, ownerLabel, suggest } from './api';
+import { api, claudeNote, exampleSource, hubUseText, Member, memberSignature, ownerLabel, practiceNote, suggest } from './api';
+import { prettyCode } from './pretty';
+import { DocPart, partVotes, verifiedLabel, votesLine } from './docvotes';
+
+/** ' Verified by people (12 votes).' for an AI-written part that is ('' otherwise). */
+const verifiedText = (path: string, part: DocPart, aiWritten: boolean) => {
+  const l = aiWritten ? verifiedLabel(partVotes(path, part)) : '';
+  return l ? ` ${l}.` : '';
+};
 
 export interface Entry {
   /** Display path, e.g. "Game.Hook.ForceFocus". */
@@ -171,8 +179,13 @@ export function formatEntry(e: Entry, verbose = true): string {
   if (meta.length) lines.push(`  (${meta.join('; ')})`);
   if (m.deprecated) lines.push(`  ${m.deprecated}`);
   if (verbose && m.doc) lines.push(...m.doc.split('\n').map((l) => `  ${l}`));
-  if (verbose && claudeNote(m)) lines.push(`  [${claudeNote(m)}]`);
-  if (verbose && m.example) lines.push(`  Example: ${m.example}`);
+  if (verbose && claudeNote(m)) lines.push(`  [${claudeNote(m)}${verifiedText(e.path, 'doc', m.docBy === 'claude')}]`);
+  if (verbose && m.practice) lines.push('  In practice (AI-written):', ...m.practice.split('\n').map((l) => `  ${l}`), `  [${practiceNote(m)}${hubUseText(m) ? ` ${hubUseText(m)}.` : ''}${verifiedText(e.path, 'practice', true)}]`);
+  if (verbose) for (const [part, label] of [['doc', 'Doc'], ['practice', 'In practice']] as const) {
+    const v = votesLine(partVotes(e.path, part));
+    if (v && (part === 'doc' ? m.doc : m.practice)) lines.push(`  Votes on the ${label === 'Doc' ? 'doc' : '"In practice" part'}: ${v}`);
+  }
+  if (verbose && m.example) lines.push(`  Example${exampleSource(m) ? ` (${exampleSource(m)})` : ''}:`, ...prettyCode(m.example).split('\n').map((l) => `    ${l}`));
   return lines.join('\n');
 }
 
@@ -203,8 +216,9 @@ export function markdownReference(): string {
       if (meta.length) out.push(meta.join(' · '));
       if (m.deprecated) out.push(`**${m.deprecated}**`);
       if (m.doc) out.push(m.doc);
-      if (claudeNote(m)) out.push(`_✎ ${claudeNote(m)}_`);
-      if (m.example) out.push('Example: `' + m.example + '`');
+      if (claudeNote(m)) out.push(`_✎ ${claudeNote(m)}${verifiedText(e.path, 'doc', m.docBy === 'claude')}_`);
+      if (m.practice) out.push(`In practice (AI-written): ${m.practice}`, `_✎ ${practiceNote(m)}${hubUseText(m) ? ` ${hubUseText(m)}.` : ''}${verifiedText(e.path, 'practice', true)}_`);
+      if (m.example) out.push('Example' + (exampleSource(m) ? ` (${exampleSource(m)})` : '') + ': `' + m.example + '`');
       out.push('');
     }
   }

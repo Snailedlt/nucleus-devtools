@@ -1,6 +1,7 @@
 // `ncdev` (Nucleus Co-op dev tools): command-line tools for Nucleus Co-op handlers, for people, CI and AI agents.
 // Also a standalone .exe (#18, scripts/sea.mjs). `nucleus` is its old name and still works; `nucleus-lint <paths>`
 // is kept as a shortcut for `ncdev lint <paths>`.
+import { sendAiVote } from './aivote';
 import { installHandler } from './install';
 import { AFTER_START, debugLogOn, debugLogPath, nucleusStatus, setDebugLog, stopNucleus, testInNucleus } from './nucleusrun';
 import { lintPluginsFor } from './plugins';
@@ -47,6 +48,9 @@ Commands:
                               "Context.ModifySaveFile", "KillMutex", "Nucleus.Folder"
   api --search <words>        Search API names and docs, e.g. "api --search mutex"
   api --markdown              Print the full API reference as Markdown
+  docs vote <name> <doc|practice> <up|down>
+                              For AI agents: vote on a doc you checked against Nucleus' source (counted
+                              apart from people's votes; part "practice" is the AI-written "In practice")
   simulate <handler.js> [--players N] [--resolution 1920x1080] [--keyboard 1|all|none]
                               "Try it": load the handler and run Game.Play for each player the
                               way Nucleus would (emulating its Jint engine), without Nucleus or
@@ -160,7 +164,7 @@ async function main(argv: string[]): Promise<number> {
       rl.close();
     }
   }
-  const commands = ['lint', 'format', 'simulate', 'api', 'hub', 'new', 'install', 'test', 'package', 'init-agent', 'rules', 'mcp', 'lsp', 'dap', 'setup', 'workbench', 'debug', 'explain', 'update', 'version'];
+  const commands = ['lint', 'format', 'simulate', 'api', 'docs', 'hub', 'new', 'install', 'test', 'package', 'init-agent', 'rules', 'mcp', 'lsp', 'dap', 'setup', 'workbench', 'debug', 'explain', 'update', 'version'];
   let cmd = argv[0] && commands.includes(argv[0]) ? argv.shift()! : undefined;
   if (!cmd && (argv[0] === '--version' || argv[0] === '-v')) cmd = 'version';
   if (path.basename(process.argv[1] ?? '').startsWith('nucleus-lint')) cmd ??= 'lint';
@@ -196,6 +200,8 @@ async function main(argv: string[]): Promise<number> {
       return cmdExplain(args, json);
     case 'api':
       return cmdApi(args, json);
+    case 'docs':
+      return cmdDocs(args, json);
     case 'hub':
       return cmdHub(args, json);
     case 'new':
@@ -391,6 +397,15 @@ function cmdDebug(args: Args, json: boolean): number {
   const r = runDebug(src, opts, { breakpoints, watches: args.flags.get('--watch') ?? [], step: has(args, '--step') });
   print(json, { file, ...r.data }, () => r.text);
   return r.failed ? 1 : 0;
+}
+
+/** `ncdev docs vote <name> <doc|practice> <up|down>`: an AI agent's vote on a doc it checked (src/aivote.ts). */
+async function cmdDocs(args: Args, json: boolean): Promise<number> {
+  const [sub, name, part, vote] = args.positional;
+  if (sub !== 'vote' || !name || !part || !vote) throw new Usage('docs: "ncdev docs vote <name> <doc|practice> <up|down>", e.g. "ncdev docs vote Game.KillMutex practice up" (for AI agents that checked it)');
+  const r = await sendAiVote(name, part, vote, VERSION);
+  print(json, r, () => r.message);
+  return r.ok ? 0 : 1;
 }
 
 function cmdApi(args: Args, json: boolean): number {

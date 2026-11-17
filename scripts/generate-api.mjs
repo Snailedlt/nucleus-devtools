@@ -314,11 +314,17 @@ function parseHandlerApiMdx() {
       category = h[1].trim();
       flush();
     } else if (/^---\s*$/.test(line)) flush();
-    else if (/^Game(\.\w+)+\s*;?\s*\/\//.test(line)) {
-      // A bare `Game.X; // description` line outside a code block (handler-api.mdx has one for
-      // GamePlayAfterLaunch): its own doc, not prose for the next block.
-      const m = line.match(/^(Game(?:\.\w+)*)\.(\w+)\s*;?\s*\/\/\s*(.*)$/);
-      if (m) setDoc(`${m[1]}.${m[2]}`, { doc: m[3].trim(), category });
+    else if (/^Game(\.\w+)+\b[^/]*\/\//.test(line)) {
+      // A bare `Game.X; // description` or `Game.X = value; // description` line outside a code block (handler-api.mdx
+      // has them for GamePlayAfterLaunch, HexEditFileAddress, RenameAndOrMoveFiles, CMDBatchClose, ...): its own doc,
+      // not prose for the next block (that gave IgnoreDeleteFilesPrompt the line about HexEditFileAddress).
+      const m = line.match(/^(Game(?:\.\w+)*)\.(\w+)\s*([^/]*?)\s*\/\/\s*(.*)$/);
+      if (m) {
+        const value = m[3].replace(/;\s*$/, '').replace(/^=\s*/, '').trim();
+        const doc = m[4].trim();
+        // `Game.CMDBatchClose ["cmd1", "cmd2"];` lacks its `=`: the example has it.
+        setDoc(`${m[1]}.${m[2]}`, { doc: undocumented(doc) ? '' : doc, example: value ? `${m[1]}.${m[2]} = ${value};` : undefined, category });
+      }
     } else prose.push(line);
   }
 }
@@ -366,13 +372,54 @@ function parseProtoInputMd() {
     if (!cell) continue;
     const pieces = cell.split(/<br\s*\/?>\s*<br\s*\/?>/);
     const desc = cleanMd(pieces.slice(1).join('\n\n'));
-    for (const m of cell.matchAll(/`(Game\.ProtoInput\.(\w+)\s*=[^`]*?);?`/g)) {
+    // Only the options the cell starts with: its description can mention others (Block Raw Input's says to add
+    // `Game.ProtoInput.BlockedMessages = [ 0x00FF ];`), and those must not get this row's description.
+    for (const m of pieces[0].matchAll(/`(Game\.ProtoInput\.(\w+)\s*=[^`]*?);?`/g)) {
       setDoc(`Game.ProtoInput.${m[2]}`, { doc: desc, example: m[1].trim() + ';', category: 'Proto Input' });
     }
   }
-  // Code blocks: `Game.ProtoInput.X = ...; // comment`
-  for (const m of text.matchAll(/^\s*(Game\.ProtoInput\.(\w+)\s*=[^;\n]*;)\s*(?:\/\/\s*(.*))?$/gm)) {
-    setDoc(`Game.ProtoInput.${m[2]}`, { example: m[1], doc: m[3], category: 'Proto Input' });
+  // Code blocks: `Game.ProtoInput.X = ...; // comment`. A comment describes an option when it is on the same line, or
+  // directly above it with no other option before the next blank line (`// This is identical to the setting in
+  // ProtoInputHost...` above FreezeExternalInputWhenInputNotLocked); a comment above a group of options describes
+  // the group, and one after a blank line belongs to the next option, not this one (the old `\s*` reached it:
+  // "Automatically locks input once the instances are set up" became InjectRuntime_EasyHookStealthMethod's doc).
+  // A block with one option takes the paragraph just above it ("Enable this for games that don't have an in-game
+  // cursor"). From "Multiple controller indices" on, the blocks are example code whose comments describe that
+  // code ("This is set in the input locking"): examples only there.
+  const lines = text.split('\n');
+  const examplesFrom = lines.findIndex((l) => /^#{2,4}\s+(Multiple controller indices|Advanced scripting)/.test(l));
+  const OPT = /^[ \t]*(Game\.ProtoInput\.(\w+)[ \t]*=[^;\n]*;)[ \t]*(?:\/\/[ \t]*(.*))?$/;
+  for (let i = 0; i < lines.length; i++) {
+    if (!/^```js/.test(lines[i])) continue;
+    let end = i + 1;
+    while (end < lines.length && !/^```/.test(lines[end])) end++;
+    const body = lines.slice(i + 1, end);
+    const docsHere = examplesFrom < 0 || i < examplesFrom;
+    const opts = body.map((l, k) => [l.match(OPT), k]).filter(([m]) => m);
+    // A block with one option: the paragraph just above it (and one right below it, with no blank line between)
+    // describes that option. A group's paragraph is about the group ("These options should always be enabled"),
+    // too general for each option's own doc.
+    let para = '';
+    if (docsHere && opts.length === 1) {
+      const prose = (l) => l.trim() && !/^(#|```|\|)/.test(l);
+      const above = [];
+      const below = [];
+      for (let k = lines[i - 1]?.trim() ? i - 1 : i - 2; k >= 0 && prose(lines[k]); k--) above.unshift(lines[k]);
+      for (let k = end + 1; k < lines.length && prose(lines[k]); k++) below.push(lines[k]);
+      para = cleanMd([above.join(' '), below.join(' ')].filter(Boolean).join('\n\n'));
+    }
+    for (const [m, k] of opts) {
+      let doc = docsHere ? m[3] : undefined;
+      if (docsHere && !doc) {
+        const above = [];
+        for (let a = k - 1; a >= 0 && /^\s*\/\//.test(body[a]); a--) above.unshift(body[a].replace(/^\s*\/\/\s*/, ''));
+        let alone = true;
+        for (let b = k + 1; b < body.length && body[b].trim(); b++) if (OPT.test(body[b]) || /^\s*Game\./.test(body[b])) alone = false;
+        if (above.length && alone) doc = above.join(' ');
+      }
+      setDoc(`Game.ProtoInput.${m[2]}`, { example: m[1], doc: para || doc || undefined, category: 'Proto Input' });
+    }
+    i = end;
   }
 }
 
@@ -719,6 +766,65 @@ for (const [k, m] of Object.entries(model.objects.Context.members)) {
 for (const [obj, prefix] of [['Hub', 'Hub'], ['HubHandler', 'Hub.Handler'], ['HubMaintainer', 'Hub.Maintainer']]) {
   for (const [name, m] of Object.entries(model.objects[obj].members)) Object.assign(m, pickDoc(`${prefix}.${name}`, ''), m.doc && !claudeDocs[`${prefix}.${name}`] ? { doc: m.doc } : {});
 }
+// "In practice" (data/claude-practice.json): what a member really does in Nucleus' source and how Hub handlers use it,
+// written by Claude (AI) and kept apart from the doc above (human or AI), so each part is labelled and voted on by
+// itself. Examples: the official docs' (human) first; else one Claude wrote (claude-practice.json "example"); else,
+// mechanically, the most common value or call in the verified Hub handlers (data/hub-examples.json,
+// scripts/hub-examples.mjs), when enough of them agree on it. `exampleIn` says where it goes in a handler (the top
+// level, Game.Play or the callback most Hub handlers call it from), for the workbench's "Insert into handler".
+const practiceFile = JSON.parse(fs.readFileSync(path.join(root, 'data', 'claude-practice.json'), 'utf8')).practice;
+const hubFile = JSON.parse(fs.readFileSync(path.join(root, 'data', 'hub-examples.json'), 'utf8'));
+const usedPractice = new Set();
+const LABELS = { Game: 'Game', GameHook: 'Game.Hook', GameProtoInput: 'Game.ProtoInput', Context: 'Context', PlayerInfo: 'Player', ProtoInputRuntime: 'ProtoInput', ProtoInputValues: 'ProtoInput.Values' };
+const CALLBACKS = /^(Game\.(Play|OnFinishedSetup|OnStop|PrePlay)|Game\.ProtoInput\.(OnInputLocked|OnInputUnlocked))$/;
+for (const [obj, label] of Object.entries(LABELS)) {
+  for (const [name, m] of Object.entries(model.objects[obj].members)) {
+    const key = `${label}.${name}`;
+    const hub = hubFile.members[key];
+    if (hub && !m.internal) m.hubUse = hub.n;
+    const p = practiceFile[key];
+    if (p) {
+      usedPractice.add(key);
+      Object.assign(m, { practice: p.text, practiceBasis: p.basis }, p.checkedBy ? { practiceCheckedBy: p.checkedBy, practiceCheckedOn: p.checkedOn } : {});
+    }
+    if (m.internal || m.kind === 'object') continue;
+    // Where it goes: options at the top level; Context, Player and ProtoInput calls in the callback Hub handlers use
+    // most (Game.Play when they don't say).
+    const where = hub?.where?.find(([w]) => CALLBACKS.test(w))?.[0];
+    const inCallback = label === 'Context' || label === 'Player' || label === 'ProtoInput' || label === 'ProtoInput.Values';
+    const exampleIn = p?.exampleIn ?? (m.kind === 'method' ? where ?? (inCallback ? 'Game.Play' : 'top') : inCallback ? where ?? 'Game.Play' : 'top');
+    if (m.example) {
+      m.exampleIn = exampleIn;
+      continue;
+    }
+    if (p?.example) {
+      Object.assign(m, { example: p.example, exampleBy: 'claude', exampleIn });
+      continue;
+    }
+    // The most common value (options) or call (methods), when at least 5 handlers and a fifth of its users agree.
+    const [top, count] = (m.kind === 'method' ? hub?.calls : !inCallback && !m.readonly ? hub?.values : undefined)?.[0] ?? [];
+    if (top && count >= 5 && count >= hub.n / 5) {
+      const code = m.kind === 'method' ? `${top};` : `${key} = ${top};`;
+      Object.assign(m, { example: code, exampleBy: 'hub', exampleNote: m.kind === 'method' ? `The most common call in Hub handlers: ${count} of the ${hub.n} that use it.` : `The most common value in Hub handlers: ${count} of the ${hub.n} that set it.`, exampleIn });
+      continue;
+    }
+    // Otherwise, mechanically from the type: a switch set to the value that changes something (the opposite of its
+    // default), a value a member's readers get. Said so where it shows ("Generated from its type").
+    if (m.kind === 'method') continue;
+    const generated = (code) => Object.assign(m, { example: code, exampleBy: 'generated', exampleNote: 'Generated from its type and default, not from the docs or Hub handlers.', exampleIn });
+    if (m.readonly || inCallback) {
+      if (label !== 'ProtoInput.Values') generated(`var ${name[0].toLowerCase()}${name.slice(1)} = ${key};`);
+      // A hook or filter id goes to the call that takes it, in the callback Hub handlers use for it.
+      else if (/HookI[Dd]$|CursorInfoID$/.test(name)) Object.assign(generated(`ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ${key});`), { exampleIn: 'Game.ProtoInput.OnInputLocked' });
+      else if (/FilterID$/.test(name)) Object.assign(generated(`ProtoInput.EnableMessageFilter(player.ProtoInputInstanceHandle, ${key});`), { exampleIn: 'Game.ProtoInput.OnInputLocked' });
+    } else if (m.type === 'boolean') generated(`${key} = ${m.default === 'true' ? 'false' : 'true'};`);
+    else if (m.type === 'number' && m.default !== undefined && /^-?\d+(\.\d+)?$/.test(m.default) && m.default !== '0') generated(`${key} = ${m.default};`);
+  }
+}
+const unusedPractice = Object.keys(practiceFile).filter((k) => !usedPractice.has(k));
+if (unusedPractice.length) throw new Error(`data/claude-practice.json: no such member: ${unusedPractice.join(', ')}`);
+model.hubHandlers = { count: hubFile.handlers, takenAt: hubFile.takenAt };
+
 const unusedClaude = Object.keys(claudeDocs).filter((k) => !usedClaude.has(k));
 if (unusedClaude.length) console.log(`data/claude-docs.json entries not used (a human doc exists now, or no such member): ${unusedClaude.join(', ')}`);
 const unusedParamDocs = Object.keys(claudeParamDocs).filter((k) => !usedParamDocs.has(k));
@@ -731,6 +837,9 @@ fs.writeFileSync(path.join(root, 'data', 'nucleus-api.json'), JSON.stringify(mod
 // ---------------------------------------------------------------------------
 
 const claudeNote = (m) => (m.docBy === 'claude' ? [`(AI-written, based on ${m.docBasis}.${m.docCheckedBy ? ` Checked by ${m.docCheckedBy}${m.docCheckedOn ? ` on ${m.docCheckedOn}` : ''}.` : ' Not from the official docs.'})`] : []);
+const exampleTag = (m) => (m.exampleBy === 'claude' ? ' (AI-written example)' : m.exampleBy === 'hub' ? ` (${m.exampleNote})` : '');
+// The AI-written "In practice" part, as a paragraph of its own with its label.
+const practiceNote = (m) => (m.practice ? ['', `In practice: ${m.practice}`, `(AI-written, based on ${m.practiceBasis}.${m.practiceCheckedBy ? ` Checked by ${m.practiceCheckedBy}.` : ''})`] : []);
 const jsdoc = (doc, extra = [], indent = '  ') => {
   const lines = [...(doc ? doc.split('\n') : []), ...extra].map((l) => l.replace(/\*\//g, '*\\/'));
   if (!lines.length) return '';
@@ -748,14 +857,14 @@ function iface(name, obj) {
         if (o.params.some((p) => p.rest)) variants.push(o.params.map((p) => `${safeIdent(p.name)}${p.optional ? '?' : ''}: ${p.rest ? `(${p.type})[]` : p.type}`));
         for (const params of variants) {
           const paramTags = o.params.filter((p) => p.doc).map((p) => `@param ${safeIdent(p.name)} ${p.doc}${p.docBy === 'claude' ? ' (AI-written)' : ''}`);
-          s += jsdoc(m.doc, [...claudeNote(m), ...paramTags, ...(m.internal ? ['@internal'] : [])]);
+          s += jsdoc(m.doc, [...claudeNote(m), ...practiceNote(m), ...paramTags, ...(m.example ? [`@example ${m.example}${exampleTag(m)}`] : []), ...(m.internal ? ['@internal'] : [])]);
           s += `  ${k}(${params.join(', ')}): ${o.returns};\n`;
         }
       }
     } else {
-      const extra = [...claudeNote(m)];
+      const extra = [...claudeNote(m), ...practiceNote(m)];
       if (m.default !== undefined) extra.push(`@default ${m.default}`);
-      if (m.example) extra.push(`@example ${m.example}`);
+      if (m.example) extra.push(`@example ${m.example}${exampleTag(m)}`);
       if (m.deprecated) extra.push(`@deprecated ${m.deprecated}`);
       s += jsdoc(m.doc, extra);
       let t = m.ts;
