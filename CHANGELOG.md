@@ -17,6 +17,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 ### 🛠️ Improved
 
 - **Code colours that tell Nucleus names apart.** The default code colours (now called *Nucleus (follows the look)*) give `Game`, `Context` and `Nucleus`, option groups like `Game.Hook`, fixed choices like `Nucleus.Folder.InstancedGameFolder`, and callbacks like `Game.Play` each their own colour, matched to your look. Pick a VS Code or JetBrains code theme in Settings to colour them as that editor colours JavaScript.
+- **New screenshots on the start page.** Every picture in the gallery, for the workbench, VS Code and Notepad++, shows the tools as they are today, with the new code colours and real Hub handlers. The READMEs now show the same pictures.
 
 ### ⚠️ Changed
 

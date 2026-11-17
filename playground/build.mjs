@@ -650,11 +650,28 @@ const renderSitePage = (src, section) =>
     })());
 fs.writeFileSync(path.join(startDir, 'index.html'), renderSitePage(startSrc, 'start/'));
 fs.writeFileSync(path.join(toolsDir, 'index.html'), renderSitePage(toolsSrc, 'tools/'));
-// The gallery's screenshots (docs/images/gallery: <tool>-<view>-light/dark.webp, the workbench's looks as
-// workbench-look-<look>-…): each view in light and dark, compared with the slider on the page.
+// The gallery's screenshots (<tool>-<view>-light/dark.webp, the workbench's looks as workbench-look-<look>-…): each
+// view in light and dark, compared with the slider on the page. One set, also shown by the READMEs: the workbench's
+// (workbench-*) from this repo's docs/images/gallery, the editors' (vscode-*, notepadpp-*) from splitscreenme-vscode's.
 fs.rmSync(path.join(startDir, 'gallery'), { recursive: true, force: true });
 fs.mkdirSync(path.join(startDir, 'gallery'), { recursive: true });
-for (const f of fs.readdirSync(path.join(here, '..', 'docs', 'images', 'gallery'))) if (f.endsWith('.webp')) fs.copyFileSync(path.join(here, '..', 'docs', 'images', 'gallery', f), path.join(startDir, 'gallery', f));
+{
+  const startSrcText = fs.readFileSync(path.join(here, 'src', 'start.html'), 'utf8');
+  const tools = startSrcText.match(/var TOOLS = \[([\s\S]*?)\n  \];/);
+  const looks = startSrcText.match(/var LOOKS = (\[.*\]);/);
+  if (!tools || !looks) throw new Error('build: the gallery\'s TOOLS or LOOKS list in start.html has moved; update build.mjs to match.');
+  const names = [];
+  for (const t of tools[1].matchAll(/\{ id: '([a-z]+)', label: [^\n]*views: \[([\s\S]*?)\]\] \}/g))
+    for (const v of t[2].matchAll(/\['([a-z0-9-]+)', '/g))
+      names.push(...(v[1] === 'look' ? JSON.parse(looks[1].replace(/'/g, '"')).map(([l]) => `${t[1]}-look-${l}`) : [`${t[1]}-${v[1]}`]));
+  const dirs = { workbench: path.join(here, '..', 'docs', 'images', 'gallery'), vscode: path.join(coreRepo, 'docs', 'images', 'gallery'), notepadpp: path.join(coreRepo, 'docs', 'images', 'gallery') };
+  for (const n of names) for (const f of [`${n}-light.webp`, `${n}-dark.webp`]) {
+    const dir = dirs[n.split('-')[0]];
+    // The start page shows each of these: a missing one would ship as a broken picture, so stop here.
+    if (!dir || !fs.existsSync(path.join(dir, f))) throw new Error(`build: ${dir ? path.join(dir, f) : f} is missing (the start page's gallery shows it). The VS Code and Notepad++ screenshots come from splitscreenme-vscode's docs/images/gallery.`);
+    fs.copyFileSync(path.join(dir, f), path.join(startDir, 'gallery', f));
+  }
+}
 fs.copyFileSync(path.join(here, '..', 'docs', 'images', 'og.png'), path.join(startDir, 'og.png'));
 // One page per check (rules/<id>/) and the list of them (rules/), from the core's core/ruledocs.ts (rules-pages.mjs).
 // The checks for the docs list's Checks section (rules-pages.mjs), handed to the docs pages below.
