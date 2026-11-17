@@ -1705,6 +1705,15 @@ details[open] > .fv-group-title::before { transform: rotate(45deg); }
 .fv-head { min-width: 0; }
 .fv-label { display: block; font: 600 13.5px/1.35 var(--font-mono); overflow-wrap: anywhere; min-width: 0; }
 .fv-owner { color: var(--muted); font-weight: 400; font-size: .86em; }
+/* Plain names (formlabels.ts): Guided shows the plain name with the API name under it, Advanced the API name (the plain
+   one in the tooltip and for screen readers). */
+.fv-sep { display: none; }
+.fv-plain, .fv-pick-plain { font: 600 13.5px/1.3 var(--font-body); overflow-wrap: anywhere; }
+:root:not([data-mode=dev]) .fv-label:has(.fv-plain) .fv-api, :root:not([data-mode=dev]) .fv-pick-name:has(.fv-pick-plain) .fv-api { display: block; font-size: 11.5px; font-weight: 400; color: var(--muted); }
+:root:not([data-mode=dev]) .fv-label:has(.fv-plain) .fv-owner { font-size: 1em; }
+:root[data-mode=dev] .fv-plain, :root[data-mode=dev] .fv-pick-plain { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.fv-label { position: relative; }
+.fv-unit { flex: none; font-size: 12.5px; color: var(--muted); text-decoration: none; cursor: help; margin-left: -2px; }
 .fv-doc { display: none; font-size: 12px; line-height: 1.35; color: var(--muted); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fv[data-density=comfortable] .fv-row:not(.fv-open) .fv-doc { display: block; }
 .fv-doc .fv-ai, .fv-doc-full .fv-ai { width: .95em; height: .95em; vertical-align: -0.12em; }
@@ -1822,7 +1831,7 @@ details[open] > .fv-group-title::before { transform: rotate(45deg); }
 .fv-pick-group ul { list-style: none; margin: 0; padding: 0; }
 .fv-pick { display: grid; grid-template-columns: 1fr auto; gap: 0 12px; width: 100%; text-align: left; padding: 6px 8px; border: 1px solid transparent; border-radius: var(--r-ctl); background: transparent; cursor: pointer; }
 .fv-pick:hover, .fv-pick:focus-visible { background: var(--surface-2); border-color: var(--line); }
-.fv-pick-name { font: 600 13px var(--font-mono); overflow-wrap: anywhere; }
+.fv-pick-name { position: relative; font: 600 13px var(--font-mono); overflow-wrap: anywhere; }
 .fv-pick-meta { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
 .fv-pick-doc { grid-column: 1 / -1; font-size: 12px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
@@ -1934,21 +1943,19 @@ details[open] > .fv-group-title::before { transform: rotate(45deg); }
 /* Branches: a list of rows; nested ones are indented with a rail on the left */
 .bv-branch { position: relative; }
 .bv-clauses > .bv-branch { margin: 0 0 4px 14px; padding-left: 12px; border-left: 3px solid var(--line); }
-.bv-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.bv-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .bv-branch.bv-empty > .bv-list { display: none; }
-.bv-add { margin-top: 6px; font-size: 13px; color: color-mix(in srgb, var(--accent) 78%, var(--fg)); background: transparent; border: 1px dashed var(--line); border-radius: var(--r-ctl); padding: 4px 10px; cursor: pointer; min-height: 30px; }
+.bv-add { margin-top: 4px; font-size: 13px; color: color-mix(in srgb, var(--accent) 78%, var(--fg)); background: transparent; border: 1px dashed var(--line); border-radius: var(--r-ctl); padding: 2px 10px; cursor: pointer; min-height: 28px; }
 .bv-add:hover, .bv-add[aria-expanded="true"] { background: var(--surface-2); border-style: solid; }
 
 /* A row: tag, sentence, tools; the docs line under it */
-.bv-row { border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--surface); padding: 6px 8px; min-width: 0; }
+.bv-row { border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--surface); padding: 3px 6px 3px 8px; min-width: 0; }
 .bv-row.bv-k-if { padding: 0; border-color: transparent; background: transparent; }
 .bv-row.bv-k-code { background: var(--surface-2); }
 .bv-row.bv-has-err, .bv-clause.bv-has-err { box-shadow: inset 3px 0 0 var(--err); }
 .bv-row.bv-has-warn, .bv-clause.bv-has-warn { box-shadow: inset 3px 0 0 var(--warn); }
 .bv-line { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
 .bv-tag { flex: none; font: 600 10.5px/1 var(--font-body); letter-spacing: .05em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 4px 7px; margin-top: 5px; }
-.bv-k-action .bv-tag { color: var(--accent); border-color: currentColor; }
-.bv-tag-if { color: var(--info); border-color: currentColor; }
 .bv-sentence { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
 .bv-word { color: var(--muted); }
 .bv-kw { font-weight: 600; }
@@ -1964,7 +1971,7 @@ details[open] > .fv-group-title::before { transform: rotate(45deg); }
 .bv-hint { flex-basis: 100%; font-size: 12px; color: var(--warn); }
 
 /* Condition parts: If … then / Otherwise, if … / Otherwise */
-.bv-clause { border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--surface); padding: 6px 8px; margin: 0 0 4px; }
+.bv-clause { border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--surface); padding: 3px 6px 3px 8px; margin: 0 0 4px; }
 .bv-cond { border-left: 3px solid var(--info); }
 .bv-else { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; border-left: 3px solid var(--info); }
 .bv-else .bv-tools { margin-left: auto; }
@@ -1973,15 +1980,18 @@ details[open] > .fv-group-title::before { transform: rotate(45deg); }
 /* Value slots: a kind picker and the value */
 .bv-val { display: inline-flex; align-items: flex-start; min-width: 0; max-width: 100%; flex-wrap: nowrap; }
 .bv-v-opt, .bv-v-enum { flex-wrap: wrap; align-items: center; gap: 4px; }
-.bv-kind { height: 30px; align-self: flex-start; font-size: 11.5px !important; color: var(--muted) !important; background: var(--surface-2); border: 1px solid var(--line); border-right: 0; border-radius: var(--r-ctl) 0 0 var(--r-ctl); padding: 0 2px 0 4px; min-height: 30px; cursor: pointer; max-width: 6.5em; }
-.bv-kind + .bv-input, .bv-kind + .bv-select, .bv-kind + .xf > .bv-input, .bv-kind + .cf .cf-ta, .bv-kind + .cf .CodeMirror { border-radius: 0 var(--r-ctl) var(--r-ctl) 0; }
-.bv-v-join > .bv-kind { border-right: 1px solid var(--line); border-radius: var(--r-ctl); margin-right: 4px; }
-.bv-v-opt .bv-kind + .bv-word, .bv-v-enum .bv-kind + .bv-word { margin-left: 4px; }
+/* The kind picker (Text, Number, Property, …) shows only for the value that has the focus, above it, so it takes no room
+   in the row; it stays in the tab order (Shift+Tab from a value reaches it) and appears when it gets the focus. */
+.bv-val { position: relative; }
+.bv-kind { position: absolute; left: 0; bottom: calc(100% + 2px); z-index: 3; height: 26px; min-height: 26px; font-size: 12px !important; color: var(--fg) !important; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 0 2px 0 6px; cursor: pointer; box-shadow: 0 2px 8px rgb(0 0 0 / .16); opacity: 0; pointer-events: none; }
+.bv-val:focus-within:not(:has(.bv-val:focus-within)) > .bv-kind { opacity: 1; pointer-events: auto; }
 .bv-input, .bv-select { font: 13px var(--font-mono) !important; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 4px 7px; min-height: 30px; min-width: 0; }
 .bv-input { width: 16em; max-width: 100%; }
 @supports (field-sizing: content) {
   .bv-val > .bv-input { field-sizing: content; width: auto; min-width: 5em; max-width: min(36em, 100%); }
   .bv-val > .bv-num { min-width: 4em; }
+  /* Pickers as wide as their value, not their longest choice */
+  .bv-val > .bv-select, .bv-op { field-sizing: content; }
 }
 .bv-num { width: 6em; }
 .bv-v-code .bv-input { width: 20em; }
@@ -1990,6 +2000,28 @@ details[open] > .fv-group-title::before { transform: rotate(45deg); }
 .bv-op { font-family: var(--font-body) !important; color: var(--info) !important; font-weight: 600; }
 .bv-input[aria-invalid="true"] { border-color: var(--err); }
 .bv-codeblock { display: block; width: 100%; }
+
+/* Repeated steps (blockgroups.ts): a title with the count, then a line per step; the steps themselves open with it. */
+.bv-group { border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--surface); padding: 0 6px 4px 8px; min-width: 0; }
+.bv-group.bv-g-open { padding-bottom: 6px; }
+.bv-group.bv-has-err { box-shadow: inset 3px 0 0 var(--err); }
+.bv-group.bv-has-warn { box-shadow: inset 3px 0 0 var(--warn); }
+.bv-g-toggle { display: flex; align-items: center; flex-wrap: wrap; gap: 2px 8px; width: 100%; min-height: 32px; padding: 3px 2px; text-align: left; background: transparent; border: 0; border-radius: var(--r-ctl); cursor: pointer; }
+.bv-g-toggle:hover { background: var(--surface-2); }
+.bv-g-toggle::before { content: ""; flex: none; width: 7px; height: 7px; margin: 0 4px 0 2px; border: solid currentColor; border-width: 0 1.6px 1.6px 0; color: var(--muted); transform: rotate(-45deg); transition: transform .15s; }
+.bv-g-toggle[aria-expanded=true]::before { transform: rotate(45deg); }
+.bv-g-title { font: 600 13.5px/1.35 var(--font-mono); overflow-wrap: anywhere; min-width: 0; }
+.bv-g-title .bv-word { font-family: var(--font-body); font-weight: 400; }
+.bv-g-count { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.bv-g-probs { font-size: 12px; color: var(--muted); }
+.bv-g-digest { list-style: none; margin: 0 0 2px 7px; padding: 3px 4px 3px 8px; border-left: 2px solid var(--line); border-radius: 0 var(--r-ctl) var(--r-ctl) 0; }
+.bv-g-line { display: flex; align-items: flex-start; gap: 6px; padding: 1px 4px; border-radius: 4px; cursor: pointer; min-width: 0; }
+.bv-g-line:hover { background: color-mix(in srgb, var(--fg) 7%, transparent); }
+.bv-g-line > code { font: 12.5px/1.45 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; background: none; padding: 0; }
+.bv-g-line .bv-sev { width: 14px; height: 14px; margin-top: 2px; font-size: 10px; }
+.bv-g-rep { margin-top: 5px; }
+.bv-g-list { margin: 4px 0 0; }
+@media (prefers-reduced-motion: reduce) { .bv-g-toggle::before { transition: none; } }
 
 /* Small square buttons and links */
 .bv-tools { display: inline-flex; align-items: center; gap: 2px; flex: none; margin-left: auto; }

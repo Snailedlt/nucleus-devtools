@@ -591,10 +591,35 @@ for (const theme of ['light', 'dark']) {
     await p.keyboard.press('Escape');
     await p.waitForTimeout(400);
     await axe(p, `${theme}, Blocks with a code editor`);
+    // Blocks, compact (#25): no Action tags, kind pickers only on the value with the focus, repeated steps grouped.
+    {
+      const before = await p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue());
+      const rep = 'Game.GUID = "Demo";\nGame.GameName = "Demo";\nGame.ExecutableName = "demo.exe";\nGame.Play = function () {\n    Context.StartArguments = "-windowed";\n' + [1, 2, 3, 4].map((i) => `    Context.CopyScriptFolder("a${i}");\n`).join('') + '};\n';
+      await p.evaluate((c) => document.querySelector('.CodeMirror').CodeMirror.setValue(c), rep);
+      await p.waitForTimeout(900);
+      const g = '#blocksview .bv-group';
+      check((await p.$$(g)).length === 1 && /4 steps/.test(await p.innerText(`${g} .bv-g-toggle`)) && (await p.$$(`${g} .bv-g-line`)).length === 4 && (await p.getAttribute(`${g} .bv-g-toggle`, 'aria-expanded')) === 'false', `${theme}: four Context.CopyScriptFolder steps are one group with a count and a line each`);
+      check(!/\bAction\b/i.test(await p.innerText('#blocksview')), `${theme}: Blocks has no Action tags`);
+      const shownKinds = () => p.$$eval('#blocksview .bv-kind', (ks) => ks.filter((k) => getComputedStyle(k).opacity !== '0').length);
+      check((await shownKinds()) === 0, `${theme}: no kind pickers while nothing is selected`);
+      await p.click(`${g} .bv-g-line >> nth=2`);
+      await p.waitForTimeout(200);
+      check((await p.getAttribute(`${g} .bv-g-toggle`, 'aria-expanded')) === 'true' && (await p.evaluate(() => document.activeElement?.closest('.bv-row')?.getAttribute('data-key'))) === 'Play/3' && (await shownKinds()) === 1, `${theme}: a click on a line opens the group at that step, and only its value shows the kind picker`);
+      await axe(p, `${theme}, Blocks with a group open`);
+      await p.keyboard.press('ControlOrMeta+a');
+      await p.keyboard.type('b3');
+      await p.waitForTimeout(400);
+      check((await p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue())) === rep.replace('"a3"', '"b3"'), `${theme}: editing a step in a group changes only that value in the code`);
+      await p.evaluate((c) => document.querySelector('.CodeMirror').CodeMirror.setValue(c), before);
+      await p.waitForTimeout(600);
+    }
     // Form: a long Game.Description is readable in full, and expands (Alt+Enter) with its docs; Esc goes back.
     await p.click('[data-view-mode=form]');
     await p.waitForTimeout(600);
     const desc = '#formview .fv-row[data-key^="Game.Description"] textarea';
+    // Plain names (#24): the plain label and the API name both in the label.
+    const lab = await p.innerText('#formview .fv-row[data-key^="Game.GameName"] .fv-label');
+    check(/Game name/.test(lab) && /Game\.GameName/.test(lab), `${theme}: Form names an option in plain words and keeps its API name (${lab.replace(/\s+/g, ' ')})`);
     const full = await p.$eval(desc, (t) => t.value.length > 100 && t.scrollHeight <= t.clientHeight + 2 && t.getBoundingClientRect().height > 40);
     check(full && (await p.isVisible('#formview .fv-row[data-key^="Game.Description"] .xf-btn')), `${theme}: a long Game.Description wraps in Form and shows in full, with an expand button`);
     check((await p.$$('#formview .fv-row[data-key^="Game.HandlerInterval"] .fv-src.hl .cm-number')).length > 0, `${theme}: a code value in Form is coloured like the code`);
