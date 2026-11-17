@@ -58,8 +58,8 @@
         "aliases": ["Nucleus Co-op handler", "nucleus-handler"],
         "configuration": "./syntaxes/nucleus-handler.language-configuration.json",
         "icon": {
-          "light": "./media/nucleus-original.svg",
-          "dark": "./media/nucleus-original.svg"
+          "light": "./media/nucleus-handler.svg",
+          "dark": "./media/nucleus-handler.svg"
         }
       }
     ],

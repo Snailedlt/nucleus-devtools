@@ -16,10 +16,10 @@ How to write it (people and AI agents read this; the release workflow publishes 
 
 ### ✨ New
 
-- **Handlers have their own file icon.** Handler files show Nucleus Co-op's logo in the Explorer, tabs and breadcrumbs, so you can tell them from other JavaScript at a glance (and see when one wasn't detected). It shows with VS Code's default file icons and other icon themes that don't set their own icon for the language.
+- **Handlers have their own file icon.** Handler files show Nucleus Co-op's logo with a JS tag in the Explorer, tabs and breadcrumbs, so you can tell them from other JavaScript at a glance (and see when one wasn't detected). It shows with VS Code's default file icons; icon themes that pick icons by file extension, such as Material Icon Theme, keep their JavaScript icon.
   <details><summary>Screenshot</summary>
 
-  ![The VS Code Explorer in light and dark: Demo.js, a handler, has the Nucleus Co-op logo as its icon, helpers.js keeps the JavaScript icon](https://raw.githubusercontent.com/Snailedlt/splitscreenme-vscode/main/docs/images/changelog/0.9.0-file-icon.png)
+  ![The VS Code Explorer in light and dark: Demo.js, a handler, has the Nucleus Co-op logo with a JS tag as its icon, helpers.js keeps the JavaScript icon](https://raw.githubusercontent.com/Snailedlt/splitscreenme-vscode/main/docs/images/changelog/0.9.0-file-icon.png)
 
   </details>
 

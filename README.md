@@ -297,7 +297,7 @@ The linter runs over the 150 most-downloaded handlers on the Hub with **no error
 
 Handlers open in a language mode of their own, **Nucleus Co-op handler**. It uses JavaScript's grammar, so colours, brackets, comments and folding look the same as in any `.js` file. VS Code's built-in JavaScript and TypeScript features don't run on it, though: their suggestions would otherwise mix with the handler's, and many of them are wrong for Nucleus (browser globals like `document`, and newer methods such as `Array.prototype.includes` that Nucleus' engine, Jint 2.11.58, doesn't have).
 
-- Handler files get Nucleus Co-op's logo as their file icon (in the Explorer, tabs and breadcrumbs) with file icon themes that don't set their own icon for the language, such as VS Code's default Seti. The status bar shows the mode. Click it to switch one file back to JavaScript; that file stays JavaScript for the session.
+- Handler files get their own file icon, Nucleus Co-op's logo with a JS tag, in the Explorer, tabs and breadcrumbs. It shows with VS Code's default file icons (Seti) and icon themes that don't claim `.js` files themselves; Material Icon Theme and vscode-icons pick an icon by file extension first, so there a handler keeps their JavaScript icon (the status bar still says **Nucleus Co-op handler**). The status bar shows the mode. Click it to switch one file back to JavaScript; that file stays JavaScript for the session.
 - `"splitscreenme.languageMode": "javascript"` keeps all handlers as JavaScript.
 - **Nucleus: Set Up Type Definitions** sets that for its folder, because `// @ts-check` needs the TypeScript service.
 - Formatters, linters, snippets and keybindings you set up for `javascript` (Prettier, ESLint, …) don't apply to handler files. Add `nucleus-handler` to their languages, or use JavaScript mode. The extension's own formatter, snippets and debugger work in both.
@@ -494,7 +494,7 @@ scripts/generate-api.mjs
 
 ## Credits
 
-The handler file icon (`media/nucleus-original.svg`, with one-colour `nucleus-plain.svg` and `nucleus-line.svg`) is [Nucleus Co-op](https://github.com/SplitScreen-Me/splitscreenme-nucleus)'s logo, redrawn as a vector from its `icon.ico` and theme `logo.png` (`scripts/nucleus-logo/`).
+The handler file icon (`media/nucleus-handler.svg`) is [Nucleus Co-op](https://github.com/SplitScreen-Me/splitscreenme-nucleus)'s logo with a JS tag. The logo (`media/nucleus-original.svg`, with one-colour `nucleus-plain.svg` and `nucleus-line.svg`) is redrawn as a vector from Nucleus Co-op's `icon.ico` and theme `logo.png` (`scripts/nucleus-logo/`).
 
 ## Links
 
