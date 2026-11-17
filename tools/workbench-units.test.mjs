@@ -495,3 +495,45 @@ test('Blocks: repeated steps group (the same call, values on one object, a short
   assert.deepEqual(runs([msf, msf, { kind: 'if' }, msf, msf, msf, set('Game.A'), set('Game.B'), set('Game.C')]), [{ start: 3, period: 1, reps: 3 }, { start: 6, period: 1, reps: 3 }]);
   assert.deepEqual(runs([]), []);
 });
+
+test('docs: "Insert into handler" puts an example where it belongs (lines.ts placeExample)', async () => {
+  const L = await load('playground/src/lines.ts');
+  const h = 'Game.GUID = "x";\nGame.ProtoInput.InjectStartup = false;\nGame.KillMutex = [];\n\nGame.Play = function () {\n  Context.StartArguments = "-w";\n};\n';
+  // An option: after the last one of the same object, before the callbacks.
+  let r = L.placeExample(h, 'Game.ProtoInput.BlockedMessages', 'Game.ProtoInput.BlockedMessages = [0x0008];');
+  assert.equal(r.action, 'insert');
+  assert.equal(r.text.split('\n')[2], 'Game.ProtoInput.BlockedMessages = [0x0008];');
+  // Set already: its value changes, nothing is added twice; the same value changes nothing.
+  r = L.placeExample(h, 'Game.KillMutex', 'Game.KillMutex = ["a"];');
+  assert.deepEqual([r.action, r.text.match(/KillMutex/g).length, r.line], ['update', 1, 2]);
+  assert.match(r.text, /Game\.KillMutex = \["a"\];/);
+  assert.equal(L.placeExample(h, 'Game.KillMutex', 'Game.KillMutex = [ ];').action, 'same');
+  // A call: at the end of Game.Play, indented like the code there; `player.` is `Player.` there.
+  r = L.placeExample(h, 'Context.Wait', 'Context.Wait(1500);', 'Game.Play');
+  assert.match(r.text, /  Context\.StartArguments = "-w";\n  Context\.Wait\(1500\);\n\};/);
+  // Proto Input callbacks are called once, with no arguments: the call goes in a loop over PlayerList (the one there, or a new one).
+  r = L.placeExample(h, 'ProtoInput.InstallHook', 'ProtoInput.InstallHook(player.ProtoInputInstanceHandle, 1);', 'Game.ProtoInput.OnInputLocked');
+  assert.equal(r.action, 'callback');
+  assert.match(r.text, /Game\.ProtoInput\.OnInputLocked = function \(\) \{\n  for \(var i = 0; i < PlayerList\.Count; i\+\+\) \{\n    var player = PlayerList\[i\];\n    ProtoInput\.InstallHook\(player\.ProtoInputInstanceHandle, 1\);\n  \}\n\};\n$/);
+  const looped = 'Game.ProtoInput.OnInputLocked = function() {\n    for (var i = 0; i < PlayerList.Count; i++) {\n        var p = PlayerList[i];\n        ProtoInput.X(p.ProtoInputInstanceHandle);\n    }\n};\n';
+  r = L.placeExample(looped, 'ProtoInput.InstallHook', 'ProtoInput.InstallHook(player.ProtoInputInstanceHandle, 1);', 'Game.ProtoInput.OnInputLocked');
+  assert.match(r.text, /        ProtoInput\.X\(p\.ProtoInputInstanceHandle\);\n        ProtoInput\.InstallHook\(p\.ProtoInputInstanceHandle, 1\);\n    \}/);
+  // A handler that doesn't parse: no guessing.
+  assert.equal(L.placeExample('Game.Play = function( {', 'Context.Wait', 'Context.Wait(1);', 'Game.Play'), undefined);
+  // Every example in the docs goes somewhere in an empty handler and in a typical one, and the result still parses.
+  const { api } = await load(path.join(coreDir, 'src/core/api.ts'));
+  const { parseLikeJint } = await load(path.join(coreDir, 'src/core/jsparse.ts'));
+  const { prettyCode } = await load(path.join(coreDir, 'src/core/pretty.ts'));
+  const LABEL = { Game: 'Game', GameHook: 'Game.Hook', GameProtoInput: 'Game.ProtoInput', Context: 'Context', PlayerInfo: 'Player', ProtoInputRuntime: 'ProtoInput', ProtoInputValues: 'ProtoInput.Values' };
+  let n = 0;
+  for (const [o, label] of Object.entries(LABEL)) for (const [k, m] of Object.entries(api.objects[o].members)) {
+    if (!m.example || !m.exampleBy) continue;
+    for (const base of ['', h]) {
+      const p = L.placeExample(base, `${label}.${k}`, prettyCode(m.example), m.exampleIn ?? 'top');
+      assert.ok(p && p.action !== 'same', `${label}.${k}`);
+      assert.doesNotThrow(() => parseLikeJint(p.text, { ecmaVersion: 'latest' }), `${label}.${k}: ${p.text}`);
+      n++;
+    }
+  }
+  assert.ok(n > 400, `${n} examples placed`);
+});

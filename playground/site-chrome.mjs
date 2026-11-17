@@ -32,12 +32,13 @@ export const SITE_HEADER_CSS = `
 `;
 
 /**
- * 👍/👎 and the report link under a docs page (kind 'doc') or a check's page (kind 'rule'). Votes go where the
+ * 👍/👎 and the report link under a docs page (kind 'doc'; kind 'practice' for its AI-written "In practice" part,
+ * voted on apart) or a check's page (kind 'rule'). A page can have several; one script serves them all. Votes go where the
  * workbench's go: a GoatCounter event "vote/doc/<name>/up" ("vote/rule/<id>/up") (only when the build names a site, never with Do Not Track or after Settings › Feedback is
  * switched off), and each browser's own vote is kept in the same storage, so the buttons agree with the workbench.
  */
-export function docFeedback(name, reportUrl, esc, kind = 'doc') {
-  return `<div class="doc-fb" data-kind="${kind}" data-doc="${esc(name)}"><span>Is this right?</span>
+export function docFeedback(name, reportUrl, esc, kind = 'doc', question = 'Is this right?') {
+  return `<div class="doc-fb" data-kind="${kind}" data-doc="${esc(name)}"><span>${esc(question)}</span>
 <button type="button" class="vote-btn" data-vote="up" aria-pressed="false" aria-label="Correct" title="Correct">👍</button><button type="button" class="vote-btn" data-vote="down" aria-pressed="false" aria-label="Wrong or unclear" title="Wrong or unclear">👎</button>
 <a href="${esc(reportUrl)}" target="_blank" rel="noopener">Tell us what's wrong</a><span class="doc-fb-thanks" role="status"></span></div>`;
 }
@@ -51,13 +52,15 @@ export const DOC_FEEDBACK_CSS = `
 export function docFeedbackScript(site) {
   return `<script>
 (function () {
-  var box = document.querySelector('.doc-fb'); if (!box) return;
-  var KEY = 'nucleus-workbench-votes', id = (box.dataset.kind || 'doc') + '/' + box.dataset.doc;
+  var KEY = 'nucleus-workbench-votes';
   function get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  document.querySelectorAll('.doc-fb').forEach(function (box) {
+  var id = (box.dataset.kind || 'doc') + '/' + box.dataset.doc;
   function votes() { try { return JSON.parse(get(KEY) || '{}'); } catch (e) { return {}; } }
   function show() { var v = votes()[id]; box.querySelectorAll('[data-vote]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.vote === v)); }); }
   var site = ${JSON.stringify(site)};
-  function off() { return !site || navigator.doNotTrack === '1' || navigator.globalPrivacyControl === true || get('nucleus-workbench-feedback-off') === '1' || get('skipgc') === 't'; }
+  // navigator.webdriver: a browser driven by a program (tests, an AI agent's browser) never counts as a person.
+  function off() { return !site || navigator.webdriver === true || navigator.doNotTrack === '1' || navigator.globalPrivacyControl === true || get('nucleus-workbench-feedback-off') === '1' || get('skipgc') === 't'; }
   function send(path) {
     if (off()) return;
     var url = 'https://' + site + '.goatcounter.com/count?p=' + encodeURIComponent('/' + path) + '&e=true&rnd=' + Math.random().toString(36).slice(2);
@@ -73,6 +76,7 @@ export function docFeedbackScript(site) {
     show();
   });
   show();
+  });
 })();
 </script>`;
 }

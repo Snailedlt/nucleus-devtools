@@ -1,5 +1,7 @@
 // The anonymous votes and feature counts (playground/src/feedback.ts and the docs pages send them to GoatCounter as
-// events: "vote/doc/<name>/up", "vote/tip/<id>/down", "vote/rule/<id>/up", "use/<feature>"), summed for the maintainers: which docs people
+// events: "vote/doc/<name>/up", "vote/practice/<name>/up" (a doc's AI-written "In practice" part), "vote/tip/<id>/down",
+// "vote/rule/<id>/up", "use/<feature>"; AI agents' votes, from `ncdev docs vote` and the MCP tool nucleus_vote_doc, as
+// "aivote/doc/<name>/up" and "aivote/practice/<name>/up", kept apart from people's), summed for the maintainers: which docs people
 // find wrong, which tips help, which features get used. Read from GoatCounter's API with a token, so the counts stay
 // in one place; nothing personal is in them (feedback.ts says what is sent).
 //
@@ -59,27 +61,32 @@ async function allHits() {
 }
 const hits = await allHits();
 /** vote/<kind>/<id>/<up|down|undo-up|undo-down> → per item: up and down, undos taken off. */
-const votes = { doc: new Map(), tip: new Map(), rule: new Map() };
+const votes = { doc: new Map(), practice: new Map(), tip: new Map(), rule: new Map(), aidoc: new Map(), aipractice: new Map() };
 const use = [];
 for (const { path: p, count } of hits) {
-  const v = /^vote\/(doc|tip|rule)\/(.+)\/(up|down|undo-up|undo-down)$/.exec(p);
+  const v = /^(ai)?vote\/(doc|practice|tip|rule)\/(.+)\/(up|down|undo-up|undo-down)$/.exec(p);
   if (v) {
-    const m = votes[v[1]];
-    const it = m.get(v[2]) ?? { id: v[2], up: 0, down: 0 };
-    if (v[3] === 'up') it.up += count; else if (v[3] === 'down') it.down += count; else if (v[3] === 'undo-up') it.up -= count; else it.down -= count;
-    m.set(v[2], it);
+    const [, ai, kind, id, dir] = v;
+    // AIs vote on docs only.
+    if (ai && kind !== 'doc' && kind !== 'practice') continue;
+    const m = votes[(ai ?? '') + kind];
+    const it = m.get(id) ?? { id, up: 0, down: 0 };
+    if (dir === 'up') it.up += count; else if (dir === 'down') it.down += count; else if (dir === 'undo-up') it.up -= count; else it.down -= count;
+    m.set(id, it);
     continue;
   }
   const u = /^use\/(.+)$/.exec(p);
   if (u) use.push({ feature: u[1], count });
 }
 const sorted = (m) => [...m.values()].map((x) => ({ ...x, up: Math.max(0, x.up), down: Math.max(0, x.down) })).sort((a, b) => b.down - a.down || b.up - a.up || a.id.localeCompare(b.id));
-const report = { takenAt: new Date().toISOString(), from: day(start), to: day(end), site, docs: sorted(votes.doc), tips: sorted(votes.tip), rules: sorted(votes.rule), use: use.sort((a, b) => b.count - a.count) };
+// docs/practice: people's votes; aiDocs/aiPractice: AIs', never mixed (only people's make an AI-written doc "Verified by
+// people": splitscreenme-vscode core/docvotes.ts).
+const report = { takenAt: new Date().toISOString(), from: day(start), to: day(end), site, docs: sorted(votes.doc), practice: sorted(votes.practice), aiDocs: sorted(votes.aidoc), aiPractice: sorted(votes.aipractice), tips: sorted(votes.tip), rules: sorted(votes.rule), use: use.sort((a, b) => b.count - a.count) };
 fs.mkdirSync(out, { recursive: true });
 fs.writeFileSync(path.join(out, 'votes.json'), JSON.stringify(report, null, 1) + '\n');
-console.log(`votes-report: ${report.docs.length} docs, ${report.tips.length} tips, ${report.rules.length} checks, ${report.use.length} features (${report.from} to ${report.to}).`);
+console.log(`votes-report: ${report.docs.length} docs, ${report.practice.length} "In practice" parts, ${report.aiDocs.length + report.aiPractice.length} with AI votes, ${report.tips.length} tips, ${report.rules.length} checks, ${report.use.length} features (${report.from} to ${report.to}).`);
 
 if (process.env.GITHUB_STEP_SUMMARY) {
   const rows = (list) => list.slice(0, 30).map((x) => `| \`${x.id}\` | ${x.up} | ${x.down} |`).join('\n');
-  fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## Votes, last 12 months\n\nMost 👎 first. The full list is \`votes.json\` on the \`data\` branch, and on the site's votes/ page.\n\n### Docs\n\n| Name | 👍 | 👎 |\n|---|---|---|\n${rows(report.docs)}\n\n### Tips\n\n| Tip | 👍 | 👎 |\n|---|---|---|\n${rows(report.tips)}\n\n### Checks\n\n| Check | 👍 | 👎 |\n|---|---|---|\n${rows(report.rules)}\n`);
+  fs.appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## Votes, last 12 months\n\nMost 👎 first. The full list is \`votes.json\` on the \`data\` branch, and on the site's votes/ page.\n\n### Docs\n\n| Name | 👍 | 👎 |\n|---|---|---|\n${rows(report.docs)}\n\n### In practice (AI-written)\n\n| Name | 👍 | 👎 |\n|---|---|---|\n${rows(report.practice)}\n\n### AI votes (apart from people's)\n\n| Part | 👍 | 👎 |\n|---|---|---|\n${rows([...report.aiDocs.map((x) => ({ ...x, id: `doc/${x.id}` })), ...report.aiPractice.map((x) => ({ ...x, id: `practice/${x.id}` }))])}\n\n### Tips\n\n| Tip | 👍 | 👎 |\n|---|---|---|\n${rows(report.tips)}\n\n### Checks\n\n| Check | 👍 | 👎 |\n|---|---|---|\n${rows(report.rules)}\n`);
 }

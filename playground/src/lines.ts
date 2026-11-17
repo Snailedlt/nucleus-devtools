@@ -239,3 +239,128 @@ export function matches(l: Line, q: string, shorthand = true): boolean {
   };
   return fit(0, 0, 0);
 }
+
+// ---------------------------------------------------------------------------
+// A doc's example, put into the handler (Docs' "Insert into handler")
+
+export interface Placed {
+  /** The handler with the example in it. */
+  text: string;
+  /** 'update': the option was set, its value replaced; 'insert': added; 'callback': added with a new callback around it;
+   *  'same': the handler already has exactly this (nothing changes). */
+  action: 'update' | 'insert' | 'callback' | 'same';
+  /** The 0-based line the example starts on, in `text`. */
+  line: number;
+  /** Where it went, for the message ("Game.Play", "the top level"). */
+  where: string;
+}
+
+const lineStart = (t: string, at: number) => t.lastIndexOf('\n', at - 1) + 1;
+const lineEnd = (t: string, at: number) => {
+  const e = t.indexOf('\n', at);
+  return e < 0 ? t.length : e;
+};
+const indentOf = (t: string, at: number) => /^[ \t]*/.exec(t.slice(lineStart(t, at)))![0];
+const unitOf = (t: string) => (/^\t/m.test(t) && !/^ {2}/m.test(t) ? '\t' : /^ {4}\S/m.test(t) && !/^ {2}\S/m.test(t) ? '    ' : '  ');
+const lineAt = (t: string, at: number) => t.slice(0, at).split('\n').length - 1;
+const norm = (s: string) => s.replace(/\s+/g, '').replace(/;$/, '');
+
+/**
+ * Where a doc's example goes, as Lines (scanHandler) sees the handler: an option assignment at the top level, replacing
+ * the one already there (the value changes, nothing is added twice); anything else (Context, Player and ProtoInput
+ * calls, reading a value) at the end of the callback it belongs in (`where`: Game.Play, Game.ProtoInput.OnInputLocked,
+ * ...), made when the handler has none. `player.` in the example follows the callback's own parameter name.
+ * Undefined when the handler doesn't parse (fix that first).
+ */
+export function placeExample(text: string, path: string, example: string, where = 'top'): Placed | undefined {
+  const scan = scanHandler(text);
+  if (!scan) return undefined;
+  const program = parseLikeJint(text, { ecmaVersion: 'latest', sourceType: 'script', allowReturnOutsideFunction: true }).program as any;
+  const unit = unitOf(text);
+  const top = program.body as any[];
+  const assignOf = (s: any) => (s?.type === 'ExpressionStatement' && s.expression.type === 'AssignmentExpression' && s.expression.operator === '=' ? s.expression : undefined);
+  const pathOfStmt = (s: any) => {
+    const a = assignOf(s);
+    return a && a.left.type === 'MemberExpression' ? pathOf(a.left) : undefined;
+  };
+  const isFn = (s: any) => /Function/.test(assignOf(s)?.right?.type ?? '');
+  const block = (code: string, ind: string) => code.split('\n').map((l) => (l ? ind + l : l)).join('\n');
+  const insertAt = (at: number, code: string, label: string, action: Placed['action'] = 'insert'): Placed => {
+    const out = text.slice(0, at) + code + text.slice(at);
+    return { text: out, action, line: lineAt(out, at + (code.startsWith('\n') ? 1 : 0)), where: label };
+  };
+
+  if (where === 'top') {
+    // Set already: the (last) top-level assignment gets the example's value.
+    const have = top.filter((s) => pathOfStmt(s) === path);
+    let mine: any;
+    try {
+      mine = assignOf((parseLikeJint(example, { ecmaVersion: 'latest', sourceType: 'script' }).program as any).body[0]);
+    } catch { /* not one statement: inserted as it is */ }
+    if (have.length && mine) {
+      const s = have[have.length - 1];
+      const a = assignOf(s);
+      const value = example.slice(mine.right.start, mine.right.end);
+      if (norm(text.slice(a.right.start, a.right.end)) === norm(value)) return { text, action: 'same', line: lineAt(text, s.start), where: 'the top level' };
+      const out = text.slice(0, a.right.start) + value + text.slice(a.right.end);
+      return { text: out, action: 'update', line: lineAt(out, s.start), where: 'the top level' };
+    }
+    // New: after the last top-level option of the same object (Game.ProtoInput with Game.ProtoInput, ...), else after
+    // the last option before the first callback, else before the first callback, else at the end.
+    const owner = path.slice(0, path.lastIndexOf('.'));
+    const firstFn = top.find(isFn);
+    const options = top.filter((s) => pathOfStmt(s) && !isFn(s) && (!firstFn || s.start < firstFn.start));
+    const same = top.filter((s) => { const p = pathOfStmt(s); return p && !isFn(s) && p.slice(0, p.lastIndexOf('.')) === owner; });
+    const after = same[same.length - 1] ?? options[options.length - 1];
+    if (after) {
+      const at = lineEnd(text, after.end);
+      return insertAt(at, `\n${block(example, indentOf(text, after.start))}`, 'the top level');
+    }
+    if (firstFn) return insertAt(lineStart(text, firstFn.start), `${example}\n\n`, 'the top level');
+    return insertAt(text.length, `${text && !text.endsWith('\n') ? '\n' : ''}${example}\n`, 'the top level');
+  }
+
+  // In a callback: the top-level `Game.Play = function () { ... }` (or the one named). `player.` in an example is the
+  // player whose instance it is: `Player` in Game.Play; in the other callbacks (Game.ProtoInput.OnInputLocked, ...,
+  // which Nucleus calls once, with no arguments) each player in turn, inside the loop over PlayerList that Hub handlers
+  // write there (made when the callback has none).
+  const usesPlayer = /\bplayer\./.test(example);
+  const loop = (code: string, ind: string) => `${ind}for (var i = 0; i < PlayerList.Count; i++) {\n${ind}${unit}var player = PlayerList[i];\n${block(code, ind + unit)}\n${ind}}`;
+  const fnStmt = top.filter((s) => pathOfStmt(s) === where && isFn(s)).pop();
+  if (!fnStmt) {
+    const inner = usesPlayer && where !== 'Game.Play' ? loop(example, unit) : block(where === 'Game.Play' ? example.replace(/\bplayer\./g, 'Player.') : example, unit);
+    const code = `${where} = function () {\n${inner}\n};\n`;
+    const at = text.length;
+    const lead = !text ? '' : text.endsWith('\n\n') ? '' : text.endsWith('\n') ? '\n' : '\n\n';
+    const out = text + lead + code;
+    return { text: out, action: 'callback', line: lineAt(out, at + lead.length) + 1, where };
+  }
+  const fn = assignOf(fnStmt).right;
+  let code = example;
+  let body = fn.body;
+  let wrap = false;
+  if (usesPlayer && where === 'Game.Play') code = code.replace(/\bplayer\./g, 'Player.');
+  else if (usesPlayer) {
+    // The callback's own loop over PlayerList (`var p = PlayerList[i];` in a for loop's body), else a new one.
+    const forLoop = (fn.body.body as any[]).filter((s) => s.type === 'ForStatement' && s.body.type === 'BlockStatement').map((s) => {
+      const decl = s.body.body.find((d: any) => d.type === 'VariableDeclaration' && d.declarations.some((x: any) => x.init?.type === 'MemberExpression' && x.init.computed && x.init.object.type === 'Identifier' && x.init.object.name === 'PlayerList'));
+      return decl ? { s, name: decl.declarations.find((x: any) => x.init?.object?.name === 'PlayerList').id.name } : undefined;
+    }).filter(Boolean).pop();
+    if (forLoop) {
+      body = forLoop.s.body;
+      if (forLoop.name !== 'player') code = code.replace(/\bplayer\./g, `${forLoop.name}.`);
+    } else wrap = true;
+  }
+  const stmts = body.body as any[];
+  if (stmts.some((s) => norm(text.slice(s.start, s.end)) === norm(code))) return { text, action: 'same', line: lineAt(text, stmts.find((s) => norm(text.slice(s.start, s.end)) === norm(code)).start), where };
+  const outer = indentOf(text, body === fn.body ? fnStmt.start : body.start);
+  const last = stmts[stmts.length - 1];
+  const ind = last && lineStart(text, last.start) > body.start ? indentOf(text, last.start) : outer + unit;
+  if (wrap) code = loop(code, '');
+  const close = body.end - 1;
+  const cls = lineStart(text, close);
+  if (cls > body.start && /^\s*$/.test(text.slice(cls, close))) return insertAt(cls, `${block(code, ind)}\n`, where);
+  // `function () {}` or `{ a(); }` on one line: open it up.
+  const out = text.slice(0, body.start + 1) + text.slice(body.start + 1, close).replace(/^\s+|\s+$/g, '').replace(/^(.+)$/, `\n${ind}$1`) + `\n${block(code, ind)}\n${outer}` + text.slice(close);
+  return { text: out, action: 'insert', line: lineAt(out, body.start) + (stmts.length ? 2 : 1), where };
+}

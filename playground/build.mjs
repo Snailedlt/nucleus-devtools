@@ -340,7 +340,18 @@ const feedbackSite = (() => {
 const logoFile = path.join(coreRepo, 'media', 'nucleus-handler.svg');
 const handlerLogo = fs.existsSync(logoFile) ? 'data:image/svg+xml,' + encodeURIComponent(fs.readFileSync(logoFile, 'utf8').trim()) : null;
 if (!handlerLogo) console.warn(`No ${logoFile}: the handler keeps the JS badge.`);
-const build = { bench: rev(path.join(here, '..')), core: rev(coreRepo), nucleus: apiModel.source?.nucleus ?? null, jint: apiModel.jint ?? null, feedback: feedbackSite, logo: handlerLogo };
+// The votes on the docs (people's and AIs', apart), from the newest votes report (votes.json on the data branch, or
+// --votes <file>): the counts the docs show and their "Verified by people" labels (core/docvotes.ts). Without one, the
+// core's own snapshot (data/doc-votes.json) stays.
+const votesFile = (() => {
+  const a = process.argv.indexOf('--votes');
+  const f = a > 0 ? path.resolve(process.argv[a + 1]) : hubData ? path.join(hubData, 'votes.json') : null;
+  return f && fs.existsSync(f) ? f : null;
+})();
+const docVotes = votesFile
+  ? (await import('data:text/javascript;base64,' + Buffer.from((await esbuild.build({ entryPoints: [path.join(coreRepo, 'src', 'core', 'docvotes.ts')], bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'warning' })).outputFiles[0].text).toString('base64'))).snapshotFromReport(JSON.parse(fs.readFileSync(votesFile, 'utf8')))
+  : null;
+const build = { bench: rev(path.join(here, '..')), core: rev(coreRepo), nucleus: apiModel.source?.nucleus ?? null, jint: apiModel.jint ?? null, feedback: feedbackSite, logo: handlerLogo, docVotes };
 // What's new, from ../CHANGELOG.md: dated sections ("## 2026-11-05"), newest first, in emoji groups
 // ("### ✨ New"); each bullet starts with a **short summary**, and may have a screenshot under it
 // ("  ![alt](docs/images/changelog/x-light.png)", plus x-dark.png beside it, copied to changes/ next to the page). "Unreleased" is only
@@ -750,8 +761,10 @@ let checksNav = [];
 // and searchable, each with "Open in the workbench".
 let docValues = [];
 {
-  const mod = await esbuild.build({ stdin: { contents: "export { docsPage, docsView, docsValue, DOCS_GROUPS } from './docspage'; export { allEntries } from './lookup'; export { api, docReviewUrl } from './api';", resolveDir: path.join(coreRepo, 'src', 'core'), loader: 'ts' }, bundle: true, format: 'esm', platform: 'node', write: false, nodePaths: [path.join(coreRepo, 'node_modules')], logLevel: 'warning', banner: { js: `import { createRequire as __cr } from 'node:module'; const require = __cr(${JSON.stringify(import.meta.url)});` } });
+  const mod = await esbuild.build({ stdin: { contents: "export { docsPage, docsView, docsValue, DOCS_GROUPS } from './docspage'; export { allEntries } from './lookup'; export { api, docReviewUrl } from './api'; export { setDocVotes } from './docvotes';", resolveDir: path.join(coreRepo, 'src', 'core'), loader: 'ts' }, bundle: true, format: 'esm', platform: 'node', write: false, nodePaths: [path.join(coreRepo, 'node_modules')], logLevel: 'warning', banner: { js: `import { createRequire as __cr } from 'node:module'; const require = __cr(${JSON.stringify(import.meta.url)});` } });
   const D = await import('data:text/javascript;base64,' + Buffer.from(mod.outputFiles[0].text).toString('base64'));
+  // The pages show the votes and the "Verified by people" labels from the newest votes report too.
+  D.setDocVotes(docVotes);
   const { writeDocPages } = await import('./docs-pages.mjs');
   docValues = writeDocPages({ hl: hlSem, checks: checksNav, outDir: path.join(here, 'dist', 'pages', 'docs'), startHtml: fs.readFileSync(path.join(here, 'src', 'start.html'), 'utf8'), docsPage: D.docsPage, docsView: D.docsView, docsValue: D.docsValue, allEntries: D.allEntries, groups: D.DOCS_GROUPS, enums: Object.keys(D.api.enums), docReviewUrl: D.docReviewUrl, feedbackSite, base: PAGES_BASE, preview: PREVIEW, noindex: NOINDEX });
   // Each docs page in the sitemap too (written with the rule pages above).
@@ -768,9 +781,8 @@ if (TEST_BUILD && fs.existsSync(path.join(here, 'test-guide.md'))) {
 // votes/: the anonymous votes for the maintainers (votes-page.mjs), from votes.json on the data branch
 // (tools/votes-report.mjs, daily in hub-sync.yml), or --votes <file>. Unlisted and not for search engines.
 {
-  const argVotes = process.argv.indexOf('--votes');
-  const file = argVotes > 0 ? path.resolve(process.argv[argVotes + 1]) : argData > 0 ? path.join(path.resolve(process.argv[argData + 1]), 'votes.json') : null;
-  if (file && fs.existsSync(file)) {
+  const file = votesFile;
+  if (file) {
     const { writeVotesPage } = await import('./votes-page.mjs');
     writeVotesPage({ outDir: path.join(here, 'dist', 'pages', 'votes'), startHtml: fs.readFileSync(path.join(here, 'src', 'start.html'), 'utf8'), votes: JSON.parse(fs.readFileSync(file, 'utf8')) });
   }
