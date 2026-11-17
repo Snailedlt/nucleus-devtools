@@ -63,11 +63,12 @@ export function registerHandlerMode(context: vscode.ExtensionContext, looksLikeH
     vscode.workspace.onDidSaveTextDocument(apply),
     vscode.workspace.onDidChangeConfiguration((e) => {
       if (!e.affectsConfiguration('splitscreenme.languageMode') && !e.affectsConfiguration('splitscreenme.detection')) return;
-      for (const doc of vscode.workspace.textDocuments) {
-        // Back to "handler" for this document's folder: forget a by-hand JavaScript choice there only.
-        if (e.affectsConfiguration('splitscreenme.languageMode', doc.uri) && mode(doc) === 'handler') userChoseJavaScript.delete(doc.uri.toString());
-        apply(doc);
+      // Back to "handler" for a file's folder: forget the by-hand JavaScript choices there only (open or closed files).
+      for (const key of [...userChoseJavaScript]) {
+        const uri = vscode.Uri.parse(key);
+        if (e.affectsConfiguration('splitscreenme.languageMode', uri) && vscode.workspace.getConfiguration('splitscreenme', uri).get<LanguageMode>('languageMode', 'handler') === 'handler') userChoseJavaScript.delete(key);
       }
+      vscode.workspace.textDocuments.forEach(apply);
     }),
   );
   vscode.workspace.textDocuments.forEach(apply);
