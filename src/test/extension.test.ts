@@ -409,7 +409,7 @@ test('quiet results: a handler that can\'t be formatted, and Fix all with nothin
 test('language status: the checks and the game folder beside the handler language', () => {
   assert.ok(m.__languageStatus['splitscreenme.checks'] && m.__languageStatus['splitscreenme.gameFolder']);
   assert.deepEqual(m.__languageStatus['splitscreenme.checks'].selector, [{ language: 'nucleus-handler' }], 'only for handlers');
-  const d = (sev: number) => new m.Diagnostic(new m.Range(new m.Position(0, 0), new m.Position(0, 1)), 'x', sev);
+  const d = (sev: number) => new m.Diagnostic(new m.Range(new m.Position(0, 0), new m.Position(0, 1)), 'x', sev) as any;
   assert.deepEqual(checksText([]), { text: 'No problems', severity: 'ok' });
   assert.deepEqual(checksText([d(m.DiagnosticSeverity.Hint), d(m.DiagnosticSeverity.Information)]), { text: 'No problems', severity: 'ok' });
   assert.deepEqual(checksText([d(m.DiagnosticSeverity.Error), d(m.DiagnosticSeverity.Warning), d(m.DiagnosticSeverity.Error)]), { text: '2 errors, 1 warning', severity: 'error' });
