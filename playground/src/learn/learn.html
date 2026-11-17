@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Learn: making your first Nucleus Co-op handler</title>
-<meta name="description" content="Learn to write a Nucleus Co-op handler step by step, in your browser: a few lines at a time, checked as you type, ending with a handler for the free Steam game “Boring Man”, that you test in Nucleus Co-op.">
+<title>Learn: making Nucleus Co-op handlers</title>
+<meta name="description" content="Learn to write Nucleus Co-op handlers step by step, in your browser: a few lines at a time, checked as you type, for the free Steam games “Boring Man” and “Codename CURE”, then tested in Nucleus Co-op.">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#10a3e8">
 <link rel="icon" type="image/png" href="../icon.png">
@@ -106,11 +106,18 @@ button.link { background: none; border: 0; padding: 0; font: inherit; color: var
 .task { margin: 16px 0; padding: 12px 14px; border-radius: var(--r-pane); border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line)); background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
 .task.ok { border-color: #2e8540; background: color-mix(in srgb, #2e8540 10%, var(--surface)); }
 .task .hint { display: block; margin-top: 6px; font-size: 14px; color: var(--muted); }
+.task .hint-box { display: block; margin-top: 8px; padding-top: 8px; border-top: 1px dashed color-mix(in srgb, var(--accent) 45%, var(--line)); font-size: 15px; }
+.help-btns { display: inline-flex; gap: 8px; }
 .note { margin: 12px 0; padding: 10px 14px; border-left: 4px solid var(--line); background: var(--bg); border-radius: 0 var(--r-ctl) var(--r-ctl) 0; font-size: 15px; }
 .note strong:first-child { display: block; font-size: 13px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); margin-bottom: 2px; }
 .note.pitfall { border-left-color: #c47a00; } .note.odd { border-left-color: #8a5cd0; } .note.why { border-left-color: var(--accent); } .note.alt { border-left-color: #2e8540; } .note.check { border-left-color: var(--muted); }
 .note.try { border-left-color: #2e8540; }
 .note .answer { margin-top: 8px; }
+details.note.long > summary { cursor: pointer; list-style: none; }
+details.note.long > summary::-webkit-details-marker { display: none; }
+details.note.long > summary .more { color: var(--accent); font-weight: 600; font-size: 14px; white-space: nowrap; }
+details.note.long[open] > summary .more { display: none; }
+details.note.long > p { margin: 6px 0 0; }
 .note .answer summary { cursor: pointer; color: var(--accent); font-weight: 600; }
 .note .answer p { margin: 6px 0 0; }
 .steps { padding-left: 0; list-style: none; counter-reset: step; margin: 14px 0; }
@@ -119,6 +126,21 @@ button.link { background: none; border: 0; padding: 0; font: inherit; color: var
 .steps input { margin-top: 5px; width: 18px; height: 18px; flex: none; }
 .steps label > span::before { content: counter(step) ". "; font-weight: 700; }
 .steps input:checked + span { color: var(--muted); text-decoration: line-through; }
+.steps .see, .steps .trouble { margin: 4px 0 0 28px !important; font-size: 15px; }
+.steps .see strong { font-weight: 600; }
+.steps .trouble summary { cursor: pointer; color: var(--accent); font-weight: 600; font-size: 14px; }
+.steps .trouble ul { margin: 4px 0 0; padding-left: 18px; }
+.steps .trouble li { margin: 0 0 4px; }
+/* A chapter's overview: what you'll build, what you need, the lessons with their minutes. */
+.ov-h { font-size: 17px; margin: 20px 0 8px; }
+.ov-list { list-style: none; padding: 0; margin: 0 0 12px; max-width: 62ch; border-top: 1px solid var(--line); }
+.ov-list a { display: flex; gap: 10px; align-items: baseline; padding: 6px 4px; border-bottom: 1px solid var(--line); color: var(--fg); text-decoration: none; font-size: 15px; }
+.ov-list a:hover .ov-title { text-decoration: underline; }
+.ov-list a[aria-current] { font-weight: 600; }
+.ov-no { flex: none; width: 1.6em; text-align: right; color: var(--muted); font-size: 13px; }
+.ov-title { flex: 1; min-width: 0; }
+.ov-pc { flex: none; font-size: 12px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+.ov-min { flex: none; color: var(--muted); font-size: 13px; white-space: nowrap; }
 .ask { margin: 16px 0; border: 1px solid var(--line); border-radius: var(--r-pane); padding: 10px 14px; }
 .ask legend { font-weight: 700; padding: 0 4px; }
 .ask label { display: flex; gap: 8px; align-items: center; margin: 4px 0; cursor: pointer; }
@@ -144,13 +166,32 @@ button.link { background: none; border: 0; padding: 0; font: inherit; color: var
 .prob.info .sev { color: #0b5cad; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .prob.info .sev { color: #6cb6ff; } }
 :root[data-theme="dark"] .prob.info .sev { color: #6cb6ff; }
-#pane { flex: none; max-height: 42%; overflow: auto; border-top: 1px solid var(--line); background: var(--surface); padding: 10px 16px 14px; font-size: 15px; }
+#pane { flex: none; max-height: 48%; overflow: auto; border-top: 1px solid var(--line); background: var(--surface); padding: 10px 16px 14px; font-size: 15px; }
 .pane-title { font-size: 15px; margin: 0 0 8px; }
 .probs { list-style: none; padding: 0; margin: 0; }
 .prob { padding: 6px 0; border-bottom: 1px solid var(--line); }
 .prob .sev { font-weight: 700; } .prob.error .sev { color: #d32f2f; } .prob.warning .sev { color: #8a5000; }
 .prob .about { font-size: 13px; margin-left: 6px; }
 .ok-line { color: #2e8540; font-weight: 600; margin: 0; }
+/* The task line, apart from the problems: the task can be unfinished while nothing is wrong. */
+.task-line { margin: 0 0 6px; display: flex; flex-wrap: wrap; gap: 0 6px; align-items: baseline; }
+.task-line .tl-dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--accent); align-self: center; flex: none; }
+.task-line.done { color: #2e8540; font-weight: 600; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .task-line.done { color: #7ee787; } }
+:root[data-theme="dark"] .task-line.done { color: #7ee787; }
+/* Try it's screen: each player's window where Nucleus puts it, like a tutorial's output pane. */
+.try-res { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
+.try-res .players { flex: 1 1 260px; min-width: 0; }
+.screen { flex: 0 1 300px; display: grid; grid-template-columns: repeat(var(--cols), 1fr); grid-auto-rows: 1fr; gap: 2px; width: 300px; max-width: 100%; aspect-ratio: 16 / 9; margin: 0; border: 6px solid #2b2f36; border-radius: 8px; background: #0f1720; overflow: hidden; }
+.swin { display: flex; flex-direction: column; min-width: 0; min-height: 0; color: #fff; background: linear-gradient(160deg, #1e5fbf, #2aa0e8); }
+.swin.p2 { background: linear-gradient(160deg, #b8380e, #f08a1c); } .swin.p3 { background: linear-gradient(160deg, #1d7a3a, #3fb565); } .swin.p4 { background: linear-gradient(160deg, #5b2fa8, #9364e0); }
+.swin.bad { filter: grayscale(.85) brightness(.75); }
+.swin .wt { flex: none; font: 11px/1.4 var(--mono); padding: 1px 6px; background: rgba(0, 0, 0, .35); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.swin .wb { flex: 1; display: flex; flex-wrap: wrap; gap: 0 6px; align-items: center; justify-content: center; align-content: center; text-align: center; font-size: 13px; padding: 2px 4px; }
+.swin .wb small { flex-basis: 100%; font: 11px var(--mono); opacity: .9; }
+.player .args code, .player .file-name code { overflow-wrap: anywhere; }
+.player .args, .player .file-name { margin: 0 0 4px; }
+.file-lines { margin: 0 0 6px; padding: 4px 8px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-sm); font: 12.5px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
 .bad-line { color: #d32f2f; font-weight: 600; }
 .players { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
 .player { border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 8px 12px; }
@@ -161,13 +202,17 @@ button.link { background: none; border: 0; padding: 0; font: inherit; color: var
 :root[data-theme="dark"] .bad-line, :root[data-theme="dark"] .prob.error .sev { color: #ff7b72; } :root[data-theme="dark"] .ok-line { color: #7ee787; } :root[data-theme="dark"] .prob.warning .sev { color: #e3b341; }
 
 /* Code blocks in the lessons: the lines to add highlighted (Svelte's diff), and the same lines in the editor after Show me. */
-.lesson-code { margin: 0 0 14px; padding: 10px 0; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-ctl); font: 13px/1.55 var(--mono); overflow-x: auto; white-space: pre; }
-.lesson-code { display: grid; grid-template-columns: minmax(100%, max-content); }
-.lesson-code .ln { display: block; padding: 0 12px; min-height: 1.55em; }
+/* Long lines wrap, the rest of the line indented under its start, so nothing is cut off at the right. */
+.lesson-code { margin: 0 0 14px; padding: 10px 0; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-ctl); font: 13px/1.55 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.lesson-code .ln { display: block; padding: 0 12px 0 calc(12px + 4ch); text-indent: -4ch; min-height: 1.55em; }
+.code-wrap { position: relative; }
+.code-wrap > .lesson-code { padding-right: 56px; }
+.copy-code { position: absolute; top: 6px; right: 6px; font: 600 12px/1 var(--font); padding: 5px 8px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); color: var(--fg); cursor: pointer; min-height: 26px; }
+.copy-code:hover, .copy-code:focus-visible { border-color: var(--accent); }
+.lesson-list { margin: 0 0 12px; padding-left: 20px; max-width: 62ch; }
+.lesson-list li { margin: 0 0 8px; }
 .lesson-code .ln.add { background: color-mix(in srgb, #2e8540 16%, transparent); box-shadow: inset 3px 0 #2e8540; }
 .lesson-code .ln.gap { color: var(--muted); }
-/* The site-wide Copy button (site-chrome.mjs) sits in the top right corner: a row of its own here, so it covers no code. */
-.copy-wrap > .lesson-code { padding-top: 34px; padding-right: 0; }
 .lesson-code .ln.del { background: color-mix(in srgb, #d32f2f 14%, transparent); box-shadow: inset 3px 0 #d32f2f; text-decoration: line-through; text-decoration-color: color-mix(in srgb, #d32f2f 60%, transparent); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .diff-add { background: color-mix(in srgb, #2e8540 18%, transparent); }
@@ -276,7 +321,8 @@ li.CodeMirror-hint-active .h-detail { color: inherit; opacity: .85; }
     <div id="lesson"><div id="lesson-body"></div></div>
     <nav class="lesson-nav" aria-label="Lessons">
       <button type="button" class="btn" id="back">‹ Back</button>
-      <button type="button" class="btn show" id="show" data-act="show" hidden>Show me</button>
+      <span class="help-btns"><button type="button" class="btn" id="hint" aria-expanded="false" aria-controls="task" hidden>Hint</button>
+      <button type="button" class="btn show" id="show" data-act="show" hidden>Show me</button></span>
       <button type="button" class="btn" id="next">Next ›</button>
     </nav>
   </section>
@@ -290,6 +336,7 @@ li.CodeMirror-hint-active .h-detail { color: inherit; opacity: .85; }
   </section>
 </main>
 <div id="tip" role="tooltip" hidden></div>
+<span id="copy-live" class="sr-only" role="status"></span>
 <noscript><p style="padding:16px">The lessons run in your browser and need JavaScript.</p></noscript>
 <script>/*LEARN_JS*/</script>
 </body>

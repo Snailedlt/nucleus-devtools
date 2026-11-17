@@ -23,7 +23,8 @@ import { RULE_DOCS } from '@core/ruledocs';
 import { zipBytes } from '@core/zipbytes';
 import { md, esc } from '../dom';
 import { hlHtml, hlCode } from '../codehl';
-import { CHAPTERS, FILE_NAME, findLesson, listed, lessonNumber, problems, run, type Chapter, type Lesson, type NoteKind } from './lessons';
+import { CHAPTERS, findLesson, hintFor, listed, lessonNumber, problems, progress, run, textWrites, type Chapter, type Lesson, type NoteKind, type Step } from './lessons';
+import type { SimResult } from '@core/sim';
 
 const KEY = 'nucleus-learn';
 interface Saved { done: string[]; last?: string; drawer?: boolean; open?: string[] }
@@ -38,18 +39,50 @@ const $ = <T extends HTMLElement = HTMLElement>(s: string) => document.querySele
 const inline = (t: string) => hlHtml(esc(t)
   .replace(/`([^`]+)`/g, '<code>$1</code>')
   .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-  .replace(/(^|[\s(])\*([^*]+)\*(?=$|[\s.,)])/g, '$1<em>$2</em>')
+  .replace(/(^|[\s(])\*([^*]+)\*(?=$|[\s.,:;)])/g, '$1<em>$2</em>')
   .replace(/\[([^\]]+)\]\((https?:[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>'));
 /** A lesson paragraph: text, or a ```js code block whose "+ " lines are the ones to add (Svelte's diff view). */
 function para(p: string): string {
   const m = /^```\w*\n([\s\S]*?)\n?```$/.exec(p.trim());
-  if (!m) return `<p>${inline(p)}</p>`;
-  const lines = m[1].split('\n').map((l) => {
+  if (!m) {
+    // Lines that all start with "- " are a list.
+    const items = p.split('\n');
+    if (items.length > 1 && items.every((l) => l.startsWith('- '))) return `<ul class="lesson-list">${items.map((l) => `<li>${inline(l.slice(2))}</li>`).join('')}</ul>`;
+    return `<p>${inline(p)}</p>`;
+  }
+  const raw = m[1].split('\n');
+  // Copy takes the lines to add (all of them in a block without any), never the "…" and the context around them;
+  // a diff (lines left out) has nothing to copy.
+  const adds = raw.filter((l) => l.startsWith('+ ')).map((l) => l.slice(2));
+  const copy = raw.some((l) => l.startsWith('- ')) ? '' : (adds.length ? adds : raw.filter((l) => l.trim() !== '…')).join('\n');
+  const lines = raw.map((l) => {
     const add = l.startsWith('+ '), del = l.startsWith('- ');
     const text = add || del ? l.slice(2) : l;
     return `<span class="ln${add ? ' add' : ''}${del ? ' del' : ''}${text.trim() === '…' ? ' gap' : ''}">${add ? '<span class="sr-only">Added: </span>' : del ? '<span class="sr-only">Left out: </span>' : ''}${hlCode(text) || ' '}</span>`;
   });
-  return `<pre class="lesson-code hl cm-s-default" tabindex="0" aria-label="Code to add (highlighted lines)">${lines.join('')}</pre>`;
+  const pre = `<pre class="lesson-code no-copy hl cm-s-default" tabindex="0" aria-label="${adds.length ? 'Code to add (highlighted lines)' : 'Code'}">${lines.join('')}</pre>`;
+  return copy ? `<div class="code-wrap">${pre}<button type="button" class="copy-code" data-copy="${esc(copy)}" aria-label="${adds.length ? 'Copy the lines to add' : 'Copy the code'}">Copy</button></div>` : pre;
+}
+/** A note: short ones whole; a long one shows its first sentence, the rest folded (opened on request). */
+function noteHtml(x: { kind: NoteKind; text: string; answer?: string }): string {
+  const answer = x.answer ? `<details class="answer"><summary>What happens, and why</summary><p>${inline(x.answer)}</p></details>` : '';
+  const m = x.text.length > 220 ? /^([\s\S]{20,160}?[.!?])\s+([\s\S]+)$/.exec(x.text) : null;
+  if (!m) return `<div class="note ${x.kind}"><strong>${NOTE[x.kind]}</strong> ${inline(x.text)}${answer}</div>`;
+  return `<details class="note ${x.kind} long"><summary><strong>${NOTE[x.kind]}</strong> ${inline(m[1])} <span class="more">More</span></summary><p>${inline(m[2])}</p>${answer}</details>`;
+}
+/** A step on the learner's PC: what to do, what they should see, and fixes (folded) if they don't. */
+function stepHtml(st: Step, i: number): string {
+  const o = typeof st === 'string' ? { text: st } : st;
+  return `<li><label><input type="checkbox" data-step="${i}"> <span>${inline(o.text)}</span></label>${o.see ? `<p class="see"><strong>You should see:</strong> ${inline(o.see)}</p>` : ''}${o.trouble?.length ? `<details class="trouble"><summary>Not working?</summary><ul>${o.trouble.map((t) => `<li>${inline(t)}</li>`).join('')}</ul></details>` : ''}</li>`;
+}
+/** Is a lesson done on the learner's PC (not in the browser)? */
+const isLocal = (l: Lesson) => (l.kind === 'setup' || l.kind === 'test') && !!l.steps?.length;
+/** The overview lesson: what you'll build, what you need first (the steps), and the lessons with their minutes. */
+function overviewHtml(l: Lesson, steps: string): string {
+  const total = chapter.lessons.reduce((n, x) => n + x.minutes, 0);
+  const local = chapter.lessons.filter(isLocal).reduce((n, x) => n + x.minutes, 0);
+  const list = chapter.lessons.map((x, i) => `<li><a href="#${chapter.id}/${x.id}"${x === l ? ' aria-current="page"' : ''}><span class="ov-no">${i + 1}</span><span class="ov-title">${esc(x.title)}</span>${isLocal(x) ? '<span class="ov-pc">on your PC</span>' : ''}<span class="ov-min">${x.minutes} min</span></a></li>`).join('');
+  return `<h2 class="ov-h">What you'll build</h2><p>${inline(chapter.build)}</p><h2 class="ov-h">What you need first</h2>${l.text.map(para).join('')}${steps}${l.footnote ? `<p class="footnote">${inline(l.footnote)}</p>` : ''}<h2 class="ov-h">The lessons <span class="muted">· about ${total} minutes, ${local} of them on your PC</span></h2><ol class="ov-list">${list}</ol>`;
 }
 const NOTE: Record<NoteKind, string> = { pitfall: 'Pitfall', why: 'Why this way', alt: 'Another way', odd: 'If you see something odd', check: 'What Check says', try: 'Try this' };
 const testEvent = (name: string, detail: string) => { try { (window as any).goatcounter?.count?.({ path: `learn-${name}-${detail}`, title: `Learn: ${name}`, event: true }); } catch { /* no counter */ } };
@@ -83,6 +116,9 @@ const editor = CodeMirror($('#code'), {
   autoCloseBrackets: true,
   lineWrapping: true,
   screenReaderLabel: 'Handler code',
+  // The input is the code itself (not a hidden textarea beside it): screen readers read the lines, and the scrolling
+  // area has something to focus.
+  inputStyle: 'contenteditable',
   configureMouse: vscodeMouse,
 } as any);
 // The workbench's keys (keybindings.ts, VS Code's: Ctrl+/, Alt+Up, Ctrl+D, Ctrl+F…), plus the ones that show things here.
@@ -271,7 +307,7 @@ function showSignature() {
   const i = p ? s0.label.indexOf(p) : -1;
   const label = i >= 0 ? `${esc(s0.label.slice(0, i))}<b>${esc(p)}</b>${esc(s0.label.slice(i + p.length))}` : esc(s0.label);
   const pdoc = s0.parameterDocs?.[h.activeParameter];
-  sig.innerHTML = `<code>${label}</code>${h.signatures.length > 1 ? ` <span class="muted">(${h.activeSignature + 1} of ${h.signatures.length})</span>` : ''}${pdoc ? `<div class="sig-doc">${md(pdoc)}</div>` : ''}`;
+  sig.innerHTML = `<code class="sig-label">${label}</code>${h.signatures.length > 1 ? ` <span class="muted">(${h.activeSignature + 1} of ${h.signatures.length})</span>` : ''}${pdoc ? `<div class="sig-doc">${md(pdoc)}</div>` : ''}`;
   sig.hidden = false;
   const c = editor.cursorCoords(true, 'window');
   sig.style.left = `${Math.max(8, Math.min(c.left, innerWidth - 460))}px`;
@@ -303,7 +339,16 @@ function ruleDoc(id: string): string {
   const code = (c?: string) => (c ? `<pre class="doc-code hl cm-s-default">${hlCode(c)}</pre>` : '');
   return `<div class="rule-doc"><p><strong>${inline(d.title)}.</strong> ${inline(d.why)}</p>${d.bad ? `<p class="muted small">Wrong:</p>${code(d.bad)}` : ''}${d.good ? `<p class="muted small">Right:</p>${code(d.good)}` : ''}<p>${inline(d.fix)}</p></div>`;
 }
-function renderCheck(text: string) {
+/** The task line at the top of Check and Try it: how far the lesson's task is, apart from whether there are problems
+ *  (no problems isn't the same as done). */
+function taskLine(l: Lesson, text: string, miss: string | null): string {
+  if (miss === null) return '<p class="task-line done"><span aria-hidden="true">✓</span> Task done</p>';
+  const p = progress(l, text);
+  const where = p ? `${p.done} of ${p.total} ${p.unit}` : 'not done yet';
+  const why = p && p.done === p.total && miss ? ` <span class="muted">· ${inline(miss)}</span>` : '';
+  return `<p class="task-line"><span class="tl-dot" aria-hidden="true"></span><strong>Task:</strong> ${where}${why}</p>`;
+}
+function renderCheck(text: string, miss: string | null = null) {
   const l = lesson();
   const blocking = problems(text, l);
   const rank = { error: 0, warning: 1, info: 2, hint: 3 } as Record<string, number>;
@@ -316,7 +361,7 @@ function renderCheck(text: string) {
   // it says "nothing wrong so far", not that Nucleus can load it.
   // A handler without its name and exe can't load, even before Check starts asking for them (lessons 3 and 4).
   const hidden = lint(text).some((d) => d.severity === 'error') || !['GUID', 'GameName', 'ExecutableName'].every((k) => new RegExp(`^\\s*Game\\.${k}\\s*=\\s*"[^"]+"`, 'm').test(text));
-  $('#pane').innerHTML = `<h2 class="pane-title">Check</h2>${!blocking.length ? (hidden ? '<p class="ok-line">✓ Nothing wrong so far.</p>' : '<p class="ok-line">✓ No problems: Nucleus can load this handler.</p>') : ''}${ds.length ? `<ul class="probs">${ds.map((d, i) => `<li class="prob ${d.severity}"><button type="button" class="link goto" data-i="${i}">Line ${editor.posFromIndex(d.start).line + 1}</button> <span class="sev">${d.severity === 'error' ? 'Error' : d.severity === 'warning' ? 'Warning' : 'Note'}</span> ${inline(d.message)}${d.fixes?.length ? ` <button type="button" class="link fix" data-i="${i}">${inline(d.fixes[0].title)}</button>` : ''}${RULE_DOCS[d.rule] ? ` <button type="button" class="link about" data-rule="${esc(d.rule)}" aria-expanded="${openDocs.has(d.rule)}">${openDocs.has(d.rule) ? 'Less' : 'Why?'}</button>${openDocs.has(d.rule) ? ruleDoc(d.rule) : ''}` : ''}</li>`).join('')}</ul>` : ''}`;
+  $('#pane').innerHTML = `<h2 class="pane-title">Check</h2>${taskLine(l, text, miss)}${!blocking.length ? (hidden ? '<p class="ok-line">✓ Nothing wrong so far.</p>' : '<p class="ok-line">✓ No problems: Nucleus can load this handler.</p>') : ''}${ds.length ? `<ul class="probs">${ds.map((d, i) => `<li class="prob ${d.severity}"><button type="button" class="link goto" data-i="${i}">Line ${editor.posFromIndex(d.start).line + 1}</button> <span class="sev">${d.severity === 'error' ? 'Error' : d.severity === 'warning' ? 'Warning' : 'Note'}</span> ${inline(d.message)}${d.fixes?.length ? ` <button type="button" class="link fix" data-i="${i}">${inline(d.fixes[0].title)}</button>` : ''}${RULE_DOCS[d.rule] ? ` <button type="button" class="link about" data-rule="${esc(d.rule)}" aria-expanded="${openDocs.has(d.rule)}">${openDocs.has(d.rule) ? 'Less' : 'Why?'}</button>${openDocs.has(d.rule) ? ruleDoc(d.rule) : ''}` : ''}</li>`).join('')}</ul>` : ''}`;
   $('#pane').querySelectorAll<HTMLElement>('.goto').forEach((b) => b.addEventListener('click', () => {
     editor.focus();
     editor.setCursor(editor.posFromIndex(ds[Number(b.dataset.i)].start));
@@ -325,25 +370,53 @@ function renderCheck(text: string) {
   $('#pane').querySelectorAll<HTMLElement>('.about').forEach((b) => b.addEventListener('click', () => {
     const id = b.dataset.rule!;
     if (openDocs.has(id)) openDocs.delete(id); else openDocs.add(id);
-    renderCheck(editor.getValue());
+    renderCheck(editor.getValue(), lesson().check?.(editor.getValue()) ?? null);
     $('#pane').querySelector<HTMLElement>(`.about[data-rule="${CSS.escape(id)}"]`)?.focus();
   }));
 }
 let tryPlayers = 2, tryKeyboard = true;
-function renderTryIt(text: string) {
+/** The name on each window's title bar: the window name Nucleus looks for, else the game's name. */
+const windowTitle = (text: string) => /^\s*Game\.Hook\.ForceFocusWindowName\s*=\s*"([^"]*)"/m.exec(text)?.[1] || /^\s*Game\.GameName\s*=\s*"([^"]*)"/m.exec(text)?.[1] || 'The game';
+/** The screen: each player's window where Nucleus puts it (Try it's layout: side by side for 2, quarters for 3 or 4),
+ *  in the colours of the first lesson's scene. Like an output pane, it shows the result at a glance; the cards
+ *  under it have the details. */
+function screenHtml(r: SimResult, text: string): string {
+  const n = r.players.length, cols = n <= 2 ? n : 2;
+  const title = esc(windowTitle(text));
+  return `<div class="screen" style="--cols:${cols}" role="img" aria-label="The screen: ${n} window${n === 1 ? '' : 's'}, one per player">${r.players.map((p, i) => {
+    const size = /(\d+) × (\d+)$/.exec(p.window);
+    return `<div class="swin p${i + 1}${p.error ? ' bad' : ''}"><div class="wt">${title}</div><div class="wb"><strong>Player ${i + 1}</strong> <span>${i === 0 && tryKeyboard ? '⌨' : '🎮'}</span>${size ? `<small>${size[1]} × ${size[2]}</small>` : ''}</div></div>`;
+  }).join('')}</div>`;
+}
+function renderTryIt(text: string, miss: string | null = null) {
   if (lesson().pane !== 'tryit') return;
   const pane = $('#pane');
   if (!pane.querySelector('.try-opts')) {
     pane.innerHTML = `<div class="try-head"><h2 class="pane-title">Try it <span class="muted">· runs Game.Play in your browser</span></h2>
       <div class="try-opts"><label>Players <select id="try-players">${[1, 2, 3, 4].map((n) => `<option${n === tryPlayers ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
-      <label><input type="checkbox" id="try-kb"${tryKeyboard ? ' checked' : ''}> Player 1 on the keyboard</label></div></div><div id="try-out" aria-live="polite"></div>`;
-    pane.querySelector<HTMLSelectElement>('#try-players')!.addEventListener('change', (e) => { tryPlayers = Number((e.target as HTMLSelectElement).value); renderTryIt(editor.getValue()); });
-    pane.querySelector<HTMLInputElement>('#try-kb')!.addEventListener('change', (e) => { tryKeyboard = (e.target as HTMLInputElement).checked; renderTryIt(editor.getValue()); });
+      <label><input type="checkbox" id="try-kb"${tryKeyboard ? ' checked' : ''}> Player 1 on the keyboard</label></div></div><div id="try-task"></div><div id="try-out" aria-live="polite"></div>`;
+    const again = () => renderTryIt(editor.getValue(), lesson().check?.(editor.getValue()) ?? null);
+    pane.querySelector<HTMLSelectElement>('#try-players')!.addEventListener('change', (e) => { tryPlayers = Number((e.target as HTMLSelectElement).value); again(); });
+    pane.querySelector<HTMLInputElement>('#try-kb')!.addEventListener('change', (e) => { tryKeyboard = (e.target as HTMLInputElement).checked; again(); });
   }
+  pane.querySelector<HTMLElement>('#try-task')!.innerHTML = taskLine(lesson(), text, miss);
   const r = run(text, tryPlayers, tryKeyboard);
   const out = pane.querySelector<HTMLElement>('#try-out')!;
   if (!r.loaded) { out.innerHTML = `<p class="bad-line">The handler doesn't load: ${esc(r.loadError ?? 'see the problem marked in the code')}</p>`; return; }
-  out.innerHTML = `<div class="players">${r.players.map((p, i) => `<section class="player"><h3>Player ${i + 1} <span class="muted">· ${i === 0 && tryKeyboard ? 'keyboard &amp; mouse' : 'controller'}</span></h3><p class="muted">Window: ${esc(p.window)}</p>${p.error ? `<p class="bad-line">${esc(p.error)}</p>` : ''}${p.effects.length ? `<ul>${p.effects.map((e) => `<li>${esc(e)}</li>`).join('')}</ul>` : `<p class="muted">${r.hasPlay ? 'Game.Play changes nothing for this player.' : 'No Game.Play yet: nothing changes before the game starts.'}</p>`}</section>`).join('')}</div>${r.sessionEnded ? `<p class="bad-line">${esc(r.sessionEnded.reason)}</p>` : ''}`;
+  // Without Game.Play Try it leaves the players out (they're all the same): draw them anyway, with Try it's layout
+  // and the arguments every copy gets.
+  if (!r.hasPlay) {
+    const cols = tryPlayers <= 2 ? tryPlayers : 2, rows = Math.ceil(tryPlayers / cols);
+    const args = /^\s*Game\.StartArguments\s*=\s*"((?:[^"\\]|\\.)*)"/m.exec(text)?.[1] ?? '';
+    r.players = Array.from({ length: tryPlayers }, (_, i) => ({ index: i, startArguments: args, calls: [], effects: [], window: `${Math.floor(1920 / cols)} × ${Math.floor(1080 / rows)}` }));
+  }
+  const card = (p: SimResult['players'][number], i: number) => {
+    // A text file Game.Play writes is shown as its lines; other changes as Try it words them.
+    const files = textWrites(r, i);
+    const effects = p.effects.filter((e) => !(/^Writes \S.* \(\d+ lines?\)$/.test(e) && files.length));
+    return `<section class="player"><h3>Player ${i + 1} <span class="muted">· ${i === 0 && tryKeyboard ? 'keyboard &amp; mouse' : 'controller'}</span></h3>${p.error ? `<p class="bad-line">${esc(p.error)}</p>` : ''}${p.startArguments.trim() ? `<p class="args"><span class="muted">Starts with</span> <code class="out">${esc(p.startArguments.trim())}</code></p>` : ''}${effects.length ? `<ul>${effects.map((e) => `<li>${esc(e)}</li>`).join('')}</ul>` : ''}${files.map((f) => `<p class="file-name"><span class="muted">Writes</span> <code class="out">${esc(f.file)}</code></p><pre class="file-lines no-copy">${esc(f.lines.join('\n'))}</pre>`).join('')}${!p.startArguments.trim() && !p.effects.length ? `<p class="muted">${r.hasPlay ? 'Game.Play ran: it changes nothing for this player yet.' : 'No Game.Play yet: nothing changes before the game starts.'}</p>` : ''}</section>`;
+  };
+  out.innerHTML = `<div class="try-res">${screenHtml(r, text)}<div class="players">${r.players.map(card).join('')}</div></div>${r.sessionEnded ? `<p class="bad-line">${esc(r.sessionEnded.reason)}</p>` : ''}`;
 }
 
 // ------------------------------------------------------------------------------------------------------------
@@ -361,22 +434,32 @@ function syncShow() {
   b.style.visibility = done ? 'hidden' : '';
   b.setAttribute('aria-hidden', String(done));
   b.tabIndex = done ? -1 : 0;
+  // Hint: in code lessons until the task is done (it then has nothing to say); keeps its place like Show me.
+  const h = $('#hint');
+  h.hidden = l.kind !== 'code';
+  const solved = l.kind === 'code' && l.check?.(editor.getValue()) === null;
+  h.style.visibility = solved ? 'hidden' : '';
+  h.setAttribute('aria-hidden', String(solved));
+  h.tabIndex = solved ? -1 : 0;
+  h.setAttribute('aria-expanded', String(hintOpen && !solved));
 }
+/** The Hint is open (until the lesson changes): it follows the code, so it always says what's still to do. */
+let hintOpen = false;
 function status() {
   const l = lesson();
   syncShow();
   if (l.kind !== 'code' || !l.check) return;
   const text = editor.getValue();
-  renderCheck(text);
-  renderTryIt(text);
   const miss = l.check(text);
   const ok = miss === null;
+  renderCheck(text, miss);
+  renderTryIt(text, miss);
   if (ok && !saved.done.includes(keyOf(l))) { saved.done.push(keyOf(l)); save(); testEvent('done', l.id); renderDrawer(); }
   const task = $('#task');
   task.classList.toggle('ok', ok);
   task.innerHTML = kbdify(ok
     ? `<strong>✓ Done.</strong> ${l.pane === 'tryit' ? 'Look at what each player gets in Try it, then go on.' : 'Go on when you\'re ready.'}`
-    : `<strong>Your turn:</strong> ${inline(l.task!)}${miss && touched ? `<span class="hint">${inline(miss)}</span>` : ''}`);
+    : `<strong>Your turn:</strong> ${inline(l.task!)}${hintOpen ? `<span class="hint-box"><strong>Hint:</strong> ${inline(hintFor(l, text))}</span>` : miss && touched ? `<span class="hint">${inline(miss)}</span>` : ''}`);
   $('#next').classList.toggle('primary', ok);
   const cp = document.getElementById('checkpoint');
   if (cp) cp.hidden = !ok;
@@ -396,35 +479,40 @@ function download(kind: 'js' | 'zip', code: string) {
   const blob = kind === 'js' ? new Blob([data], { type: 'text/javascript' }) : new Blob([zipBytes([{ name: 'handler.js', data }]) as BlobPart], { type: 'application/zip' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `${FILE_NAME}.${kind}`;
+  a.download = `${chapter.fileName}.${kind}`;
   document.body.append(a);
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   testEvent('download', kind);
 }
-const dlLabel = (kind: 'js' | 'zip') => `⬇ Download ${FILE_NAME}.${kind}`;
+const dlLabel = (kind: 'js' | 'zip') => `⬇ Download ${chapter.fileName}.${kind}`;
 
 function renderLesson(focus = false) {
   const l = lesson();
   const n = chapter.lessons.length;
   hideTip();
   touched = false;
+  hintOpen = false;
   openDocs.clear();
   document.title = `${l.title} · ${chapter.title} · Learn`;
   $('#chapter-title').textContent = chapter.title;
   $('#count').textContent = `${index + 1} of ${n}`;
   $('#bar').style.width = `${Math.round(((index + 1) / n) * 100)}%`;
-  const notes = (l.notes ?? []).map((x) => `<div class="note ${x.kind}"><strong>${NOTE[x.kind]}</strong> ${inline(x.text)}${x.answer ? `<details class="answer"><summary>What happens, and why</summary><p>${inline(x.answer)}</p></details>` : ''}</div>`).join('');
-  const steps = l.steps ? `<ol class="steps">${l.steps.map((s, i) => `<li><label><input type="checkbox" data-step="${i}"> <span>${inline(s)}</span></label></li>`).join('')}</ol>` : '';
+  const notes = (l.notes ?? []).map(noteHtml).join('');
+  const steps = l.steps ? `<ol class="steps">${l.steps.map(stepHtml).join('')}</ol>` : '';
   const dl = l.download ? `<p><button type="button" class="btn primary" id="download">${dlLabel(l.download)}</button></p>` : '';
   const ask = l.ask ? `<fieldset class="ask"><legend>${inline(l.ask.question)}</legend>${l.ask.answers.map((a, i) => `<label><input type="radio" name="ask" value="${i}"> ${inline(a.label)}</label>`).join('')}<p class="ask-reply" role="status"></p></fieldset>` : '';
   const checkpoint = l.checkpoint ? `<details class="checkpoint" id="checkpoint" hidden><summary>Try it in Nucleus Co-op now</summary><ol>${l.checkpoint.steps.map((s) => `<li>${inline(s)}</li>`).join('')}</ol><p><button type="button" class="btn primary" id="cp-download">${dlLabel(l.checkpoint.download)}</button></p><p><strong>You should see:</strong> ${inline(l.checkpoint.see)}</p></details>` : '';
-  const end = index === n - 1 ? `<div class="end"><h2>You've made a handler 🎉</h2><p>Each player gets their own folder, settings, Steam, window and controller. More chapters are on the way: finding out what a game needs, the tools, Proto Input, emulators, and more.</p></div>` : '';
-  $('#lesson-body').innerHTML = kbdify(`<p class="kicker">${esc(l.section)}</p><h1 id="lesson-title" tabindex="-1">${inline(l.title)}</h1>${l.text.map(para).join('')}${steps}${l.footnote ? `<p class="footnote">${inline(l.footnote)}</p>` : ''}${dl}${ask}${(l.after ?? []).map(para).join('')}${l.kind === 'code' ? '<div id="task" class="task" role="status"></div>' : ''}${checkpoint}${notes}${end}`);
-  $('#back').toggleAttribute('disabled', index === 0);
-  $('#next').textContent = index === n - 1 ? 'Done' : 'Next ›';
-  $('#next').toggleAttribute('disabled', index === n - 1);
+  const next = CHAPTERS[CHAPTERS.indexOf(chapter) + 1];
+  const end = index === n - 1 ? `<div class="end"><h2>${inline(chapter.end.title)}</h2><p>${inline(chapter.end.text)}</p>${next ? `<p><a class="btn primary" href="#${next.id}/${next.lessons[0].id}">Next chapter: ${esc(next.title)} ›</a></p>` : ''}</div>` : '';
+  const body = l.overview ? overviewHtml(l, steps) : `${l.text.map(para).join('')}${steps}${l.footnote ? `<p class="footnote">${inline(l.footnote)}</p>` : ''}`;
+  $('#lesson-body').innerHTML = kbdify(`<p class="kicker">${esc(l.section)}</p><h1 id="lesson-title" tabindex="-1">${inline(l.title)}</h1>${body}${dl}${ask}${(l.after ?? []).map(para).join('')}${l.kind === 'code' ? '<div id="task" class="task" role="status"></div>' : ''}${checkpoint}${notes}${end}`);
+  $('#back').toggleAttribute('disabled', index === 0 && CHAPTERS.indexOf(chapter) === 0);
+  const last = index === n - 1, nextChapter = CHAPTERS[CHAPTERS.indexOf(chapter) + 1];
+  $('#next').textContent = last ? (nextChapter ? 'Next chapter ›' : 'Done') : 'Next ›';
+  $('#next').toggleAttribute('disabled', last && !nextChapter);
+  $('.code-bar .file').textContent = `${chapter.fileName}.js`;
   $('#next').classList.toggle('primary', l.kind !== 'code');
   // The right side: the code (code and test lessons); the scene takes the whole page (intro); a setup lesson is
   // the lesson alone.
@@ -467,6 +555,10 @@ function renderLesson(focus = false) {
 }
 
 function go(i: number, focus = true) {
+  // Past the end of a chapter: the next one's start (and back from a chapter's start: the last one's end).
+  const at = CHAPTERS.indexOf(chapter);
+  if (i >= chapter.lessons.length && CHAPTERS[at + 1]) { chapter = CHAPTERS[at + 1]; i = 0; }
+  else if (i < 0 && CHAPTERS[at - 1]) { chapter = CHAPTERS[at - 1]; i = chapter.lessons.length - 1; }
   index = Math.max(0, Math.min(chapter.lessons.length - 1, i));
   const hash = `#${chapter.id}/${lesson().id}`;
   if (location.hash !== hash) history.replaceState(null, '', hash);
@@ -584,6 +676,15 @@ function reset() {
   editor.focus();
 }
 $('#show').addEventListener('click', () => { showMe(); status(); });
+$('#hint').addEventListener('click', () => { hintOpen = !hintOpen; status(); if (hintOpen) testEvent('hint', lesson().id); });
+// Copy, on the code blocks in a lesson: the lines to add (para()).
+$('#lesson-body').addEventListener('click', (e) => {
+  const b = (e.target as HTMLElement).closest<HTMLButtonElement>('.copy-code');
+  if (!b) return;
+  const done = () => { b.textContent = 'Copied'; $('#copy-live').textContent = 'Copied'; setTimeout(() => { b.textContent = 'Copy'; $('#copy-live').textContent = ''; }, 1500); };
+  navigator.clipboard?.writeText(b.dataset.copy ?? '').then(done, () => {});
+  testEvent('copy', lesson().id);
+});
 $('#reset').addEventListener('click', () => { reset(); status(); });
 
 // ------------------------------------------------------------------------------------------------------------
@@ -593,8 +694,8 @@ addEventListener('hashchange', () => { const f = findLesson(location.hash); chap
 // Alt+← / Alt+→ go back and on (in the editor too).
 addEventListener('keydown', (e) => {
   if (!e.altKey || e.ctrlKey || e.metaKey) return;
-  if (e.key === 'ArrowRight' && index < chapter.lessons.length - 1) { e.preventDefault(); go(index + 1); }
-  else if (e.key === 'ArrowLeft' && index > 0) { e.preventDefault(); go(index - 1); }
+  if (e.key === 'ArrowRight' && !$('#next').hasAttribute('disabled')) { e.preventDefault(); go(index + 1); }
+  else if (e.key === 'ArrowLeft' && !$('#back').hasAttribute('disabled')) { e.preventDefault(); go(index - 1); }
 });
 
 {
