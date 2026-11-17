@@ -19,7 +19,7 @@ The tools serve experienced developers, handler authors, Nucleus Co-op experts a
 
 ## Name and brand
 
-**SplitScreen.Me is the umbrella brand** for these tools (the maintainer's decision; don't make them remind you). Nucleus Co-op is the tool they serve today; later they will also serve other split-screen projects (PartyDeck, UniversalSplitScreen, Proto Input). So names, titles, categories, messages and docs say **SplitScreen.Me**; say **Nucleus Co-op** only where something is specifically about it (a Nucleus handler, Test in Nucleus Co-op, Nucleus' engine). Ids, keys and links that already exist keep working (see "Links live for ever" in splitscreenme-vscode's AGENTS.md).
+**These are Nucleus Co-op tools under the SplitScreen.Me umbrella** (the maintainer's decision; don't make them remind you). The extension, the workbench, `ncdev` and the Notepad++ plugin are for Nucleus Co-op handlers, so they say **Nucleus** where people look for them: command categories (*Nucleus: Try It*), messages, the output channel, status items, titles. **SplitScreen.Me** is the organisation they belong to: the publisher, the Discord, "part of SplitScreen.Me" in descriptions, About text and footers; settings keys stay `splitscreenme.*`. Tools for other split-screen projects (PartyDeck, UniversalSplitScreen, Proto Input) would be separate extensions/tools under the same umbrella, not more commands in these. Ids, keys and links that already exist keep working (see "Links live for ever").
 
 ## Related repositories
 
