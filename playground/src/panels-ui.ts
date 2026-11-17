@@ -1,11 +1,13 @@
 // Resizable panels: the code and results panes, the Lines list's width, and (on phones) the Lines
 // sheet's height. Sizes are kept per browser; nothing changes until you drag. Double-click an edge
-// to reset it, or Settings > Reset panel sizes for all of them. Arrow keys work on a focused edge.
+// to reset it, or Settings > Reset panel sizes for all of them. Arrow keys work on a focused edge. Right-click an edge
+// (or the Menu key / Shift+F10 on a focused one) for its layout menu: reset, move to the other side, hide.
 const KEY = 'nucleus-workbench-panels';
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
 interface Sizes { main?: number; lines?: number; files?: number; sheet?: number; filesSide?: "left" | "right"; linesSide?: "left" | "right" } // main: share of the code pane (0..1); lines: px; sheet: vh
 
-export function initPanels(opts: { refresh: () => void; toast: (s: string) => void }) {
+export type PanelEdge = 'main' | 'lines' | 'files';
+export function initPanels(opts: { refresh: () => void; toast: (s: string) => void; menu?: (edge: PanelEdge, at: { x: number; y: number }) => void }) {
   let sizes: Sizes = {};
   try {
     sizes = JSON.parse(localStorage.getItem(KEY) || '{}');
@@ -139,8 +141,27 @@ export function initPanels(opts: { refresh: () => void; toast: (s: string) => vo
     sizes.sheet = Math.round(clamp(((bottom - y) / window.innerHeight) * 100, 25, 85));
   }, () => delete sizes.sheet);
 
+  // Right-click (or the keyboard's menu key) on an edge: its layout menu, where the pointer is.
+  for (const [el, edge] of [[splitMain, 'main'], [splitLines, 'lines'], [$('#split-files'), 'files']] as const) {
+    el.addEventListener('contextmenu', (e) => {
+      if (!opts.menu) return;
+      e.preventDefault();
+      const r = el.getBoundingClientRect();
+      const kb = e.clientX === 0 && e.clientY === 0; // opened from the keyboard
+      opts.menu(edge, { x: kb ? r.left + r.width / 2 : e.clientX, y: kb ? r.top + Math.min(r.height / 2, 120) : e.clientY });
+    });
+  }
+
   apply();
   return {
+    /** Resets one edge to its default size. */
+    resetOne(edge: PanelEdge) {
+      delete sizes[edge];
+      save();
+      apply();
+    },
+    /** Which side Files or Lines is on. */
+    side: (which: 'files' | 'lines') => (which === 'files' ? sizes.filesSide : sizes.linesSide) ?? 'right',
     /** Moves Files or Lines to the other side of the code. */
     flip(which: 'files' | 'lines') {
       const key = which === 'files' ? 'filesSide' : 'linesSide';

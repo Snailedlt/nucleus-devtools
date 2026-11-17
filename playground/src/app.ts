@@ -37,7 +37,7 @@ import { initTips } from './tips-ui';
 import { initSettings } from './settings-ui';
 import { announceLine, hoverDelay, initA11y } from './a11y';
 import { initNews } from './news';
-import { initPanels } from './panels-ui';
+import { initPanels, type PanelEdge } from './panels-ui';
 import { initTouchTitles } from './touch-titles';
 import { mascot } from './mascots';
 import { fixWithNucli, applyEditsToText } from './fixfx';
@@ -2339,7 +2339,35 @@ const settings = initSettings({
   toast,
 });
 const news = initNews();
-const panels = initPanels({ refresh: () => editor.refresh(), toast });
+const panels = initPanels({ refresh: () => editor.refresh(), toast, menu: (edge, at) => edgeMenu(edge, at) });
+/** The right-click menu of a resize handle (panels-ui.ts): reset it, move or hide its panel, the layout. Opens where
+ *  the pointer is, from a small anchor (menus.ts places a menu by its anchor). */
+function edgeMenu(edge: PanelEdge, at: { x: number; y: number }) {
+  let anchor = document.getElementById('edge-anchor');
+  if (!anchor) {
+    anchor = document.createElement('span');
+    anchor.id = 'edge-anchor';
+    anchor.style.cssText = 'position:fixed;width:1px;height:1px;pointer-events:none';
+    document.body.append(anchor);
+  }
+  anchor.style.left = `${at.x}px`;
+  anchor.style.top = `${at.y}px`;
+  const side = (w: 'files' | 'lines') => (panels.side(w) === 'left' ? 'right' : 'left');
+  const items: MenuItem[] = edge === 'main'
+    ? [{ label: 'Reset to the default split', hint: 'Double-click', run: () => panels.resetOne('main') }]
+    : [
+        { label: `Reset the ${edge === 'lines' ? 'Lines' : 'Files'} width`, hint: 'Double-click', run: () => panels.resetOne(edge) },
+        { label: `Move ${edge === 'lines' ? 'Lines' : 'Files'} to the ${side(edge)}`, run: () => { panels.flip(edge); requestAnimationFrame(() => editor.refresh()); } },
+        { label: `Hide ${edge === 'lines' ? 'Lines' : 'Files'}`, hint: edge === 'lines' ? keyLabel(binding('lines')) : undefined, run: () => (edge === 'lines' ? lines.toggle() : ($('#files-toggle') as HTMLButtonElement).click()) },
+      ];
+  openMenu(anchor, 'Layout', [
+    ...items,
+    { kind: 'separator', label: '' },
+    { label: 'Reset all panel sizes', run: () => panels.reset() },
+    { label: 'Tools in a side rail', checked: layout() === 'rail', run: () => setLayout(layout() === 'rail' ? 'bar' : 'rail') },
+    { label: 'Layout settings…', run: () => settings.open('layout') },
+  ], 'right');
+}
 $('#set-reset-sizes').addEventListener('click', () => (panels.reset(), confirmOn($('#set-reset-sizes'), 'Back to defaults ✓', 'Panel sizes are back to their defaults.')));
 const moreDialog = $('#more-dialog') as HTMLDialogElement;
 $('#more-open').addEventListener('click', () => moreDialog.showModal());

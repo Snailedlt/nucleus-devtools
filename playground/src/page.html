@@ -931,6 +931,7 @@ a { color: var(--accent); }
 .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px; }
 .rule { font: 11.5px var(--font-mono); color: var(--muted); cursor: help; }
 .fix { font-size: 12px; background: var(--surface); border: 1px solid var(--accent); color: var(--accent); border-radius: 5px; padding: 1px 8px; cursor: pointer; }
+.problem .fix { max-width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* a long fix title ends in … (its tooltip has all of it) */
 .fix:hover { background: var(--accent); color: var(--accent-fg); }
 
 .banner { border-radius: var(--r-ctl); padding: 8px 12px; margin-bottom: 12px; overflow-wrap: anywhere; }
@@ -1343,7 +1344,7 @@ kbd { font: 11px var(--font-mono); border: 1px solid var(--line); border-bottom-
 .ptoggle:hover { background: var(--surface-2); color: var(--fg); }
 .pcard .plain-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pcard.open .plain-title { white-space: normal; }
-.pcard .row-fix { flex: none; }
+.pcard .row-fix { flex: 0 1 auto; min-width: 0; max-width: 45%; display: flex; } /* a long fix title shrinks and ends in … */
 .pcard .row-fix .fix { white-space: nowrap; }
 .pcard .loc { flex: none; }
 .pcard .body { padding: 4px 0 6px 26px; }
@@ -2240,9 +2241,9 @@ footer .made-by { margin-left: auto; }
         <div id="blocksview" hidden></div>
         <div id="file-editor" hidden></div>
         <div id="file-card" hidden></div>
-        <section id="files-panel" aria-label="Files in this package" hidden><div class="splitter" id="split-files" role="separator" aria-orientation="vertical" aria-label="Resize the Files panel (double-click to reset)" title="Drag to resize · double-click to reset" tabindex="0"></div><div id="files-list"></div></section>
+        <section id="files-panel" aria-label="Files in this package" hidden><div class="splitter" id="split-files" role="separator" aria-orientation="vertical" aria-label="Resize the Files panel (double-click to reset, menu key for layout)" title="Drag to resize · double-click to reset · right-click for layout" tabindex="0"></div><div id="files-list"></div></section>
         <section id="lines" aria-label="Names a handler can use" hidden>
-          <div class="splitter" id="split-lines" role="separator" aria-orientation="vertical" aria-label="Resize the Lines list (double-click to reset)" title="Drag to resize · double-click to reset" tabindex="0"></div>
+          <div class="splitter" id="split-lines" role="separator" aria-orientation="vertical" aria-label="Resize the Lines list (double-click to reset, menu key for layout)" title="Drag to resize · double-click to reset · right-click for layout" tabindex="0"></div>
           <div class="sheet-grip" id="split-sheet" role="separator" aria-orientation="horizontal" aria-label="Resize the list (double-click to reset)" title="Drag to resize · double-tap to reset" tabindex="0"></div>
           <div class="lines-head">
             <input id="lines-q" type="search" placeholder="Filter: mutex, Width…" aria-label="Filter the names" autocomplete="off" data-1p-ignore data-lpignore="true" data-form-type="other">
@@ -2278,7 +2279,7 @@ footer .made-by { margin-left: auto; }
       </div>
     </section>
 
-    <div class="splitter" id="split-main" role="separator" aria-orientation="vertical" aria-label="Resize the code and results panes (double-click to reset)" title="Drag to resize · double-click to reset" tabindex="0"></div>
+    <div class="splitter" id="split-main" role="separator" aria-orientation="vertical" aria-label="Resize the code and results panes (double-click to reset, menu key for layout)" title="Drag to resize · double-click to reset · right-click for layout" tabindex="0"></div>
     <section class="pane side" aria-label="Analysis">
       <div class="pane-head" role="tablist">
         <button role="tab" data-tab="problems" type="button">Check <span class="count" id="count-problems">0</span></button>

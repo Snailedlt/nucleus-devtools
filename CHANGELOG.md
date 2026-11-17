@@ -14,7 +14,10 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 - **The start page shows the workbench at work.** *Try it in the browser* opens the handler with common mistakes, so Check has something to show at once, and *Make your first handler* is a button that says what it takes.
 
-### 🐛 Fixed · ### ⚡ Faster · ### ⚠️ Changed (what users must do differently) · ### 🙏 Thanks
+- **Right-click a pane's edge for its layout menu.** Reset that pane's size (double-click still does it too), move Files or Lines to the other side, hide it, reset every size, or switch to the side rail. The Menu key or Shift+F10 opens it on a focused edge.
+
+### 🐛 Fixed ·- **A long fix button in Check stays in its row.** It ends in … and its tooltip has the whole title.
+ ### ⚡ Faster · ### ⚠️ Changed (what users must do differently) · ### 🙏 Thanks
 - 🙏 Thanks: one line per person who tested, reported a bug or contributed to this release, e.g. "- **Horah** for reporting …". When it came through GitHub (an issue, a pull request, a review), link their profile: "- **[name](https://github.com/name)** for …". Credit them inline too ("Reported by Horah.").
 - One line per change: a **short summary** in bold (the update note shows only that), then one or two plain sentences.
 - A screenshot (or other media) for big, visible changes, folded away in a `<details><summary>Screenshot</summary>` block indented under its line, with a blank line before and after the image and the closing `  </details>`; the image line: `  ![What it shows](docs/images/changelog/<date>-<name>-light.png)` (≈700–1000 px wide), with `<date>-<name>-dark.png` beside it: What's new shows the one for the viewer's theme (`tools/screenshots.cjs` takes both). An animation is a `.gif` (or `.mp4`/`.webm`, smaller) with a `.png` still of the same name beside it (`x-light.gif` + `x-light.png`, and the dark pair): What's new shows the still until the item is opened, then plays it, unless the device asks for less motion. Keep each under ~300 KB; summary `Animation`.
