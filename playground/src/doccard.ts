@@ -1,6 +1,7 @@
 // The docs of an API member as a card: a coloured signature (owner dim, name bold, parameters and types in their own
 // colours), the description, small facts (default, read-only, required, category), "In practice" (AI-written, apart),
-// an example (with "Insert into handler" in Docs), and, for docs Claude wrote, a footer saying so and what they're
+// where an engine's handlers differ ("By engine", counted from Hub handlers), an example (with "Insert into handler" in
+// Docs), and, for docs Claude wrote, a footer saying so and what they're
 // based on. Each part (the doc, "In practice") has its own 👍/👎, its votes (people's and AIs' apart) and, for an
 // AI-written part people verified, "Verified by people (N votes)" (core/docvotes.ts). Used by the hover card and Docs.
 import { appNote, withContext } from './report';
@@ -51,6 +52,7 @@ export function memberCard(owner: string, name: string, m: Member, opts: { head?
       + (fact ? `<p class="dc-fact">${fact}</p>` : '')
       + (note ? `<p class="dc-ai" title="${esc(note)}"><span class="ai-spark" aria-hidden="true"></span><span>${m.docCheckedBy ? `AI-written, checked by ${esc(m.docCheckedBy)}` : 'AI-written'}</span>${verified(path, 'doc')}${voteButtons('doc', path, { up: 'Correct', down: 'Wrong or unclear' })}<a href="${esc(withContext(docReviewUrl(path), { Doc: path }))}" target="_blank" rel="noopener">Report</a></p>` : '')
       + (m.practice ? `<p class="dc-pr-h"><strong>In practice</strong></p>${paras(m.practice)}<p class="dc-ai" title="${esc(practiceNote(m))}"><span class="ai-spark" aria-hidden="true"></span><span>AI-written</span>${verified(path, 'practice')}${voteButtons('practice', path, { up: 'Correct', down: 'Wrong or unclear' })}</p>` : '')
+      + (m.byEngine ? `${m.practice ? '' : '<p class="dc-pr-h"><strong>In practice</strong></p>'}${engineLine(m.byEngine)}` : '')
       + `</div></div>`);
   }
   return hlHtml(`<div class="dc">`
@@ -61,12 +63,16 @@ export function memberCard(owner: string, name: string, m: Member, opts: { head?
     // Every doc gets its votes, human-written or not: people say whether it's right either way.
     + (m.doc ? checkRow(path, 'doc', !!note) : '')
     + (m.practice ? `<section class="dc-practice" aria-label="In practice (AI-written)"><h4 class="dc-pr-h"><span class="ai-spark" aria-hidden="true"></span>In practice <span class="dc-tag">AI-written</span></h4>${paras(m.practice)}`
-      + `<p class="dc-pr-basis">Based on ${esc(m.practiceBasis ?? '')}.${hubUseText(m) ? ` ${esc(hubUseText(m))}.` : ''}${m.practiceCheckedBy ? ` Checked by ${esc(m.practiceCheckedBy)}.` : ''}</p>${checkRow(path, 'practice', true)}</section>` : '')
+      + `<p class="dc-pr-basis">Based on ${esc(m.practiceBasis ?? '')}.${hubUseText(m) ? ` ${esc(hubUseText(m))}.` : ''}${m.practiceCheckedBy ? ` Checked by ${esc(m.practiceCheckedBy)}.` : ''}</p>${checkRow(path, 'practice', true)}${m.byEngine ? engineLine(m.byEngine) : ''}</section>`
+      // Only the counted "By engine" line, no AI-written text: under the same heading, marked counted.
+      : m.byEngine ? `<section class="dc-practice counted" aria-label="In practice (counted from Hub handlers)"><h4 class="dc-pr-h">In practice <span class="dc-tag">Counted</span></h4>${engineLine(m.byEngine)}</section>` : '')
     + (m.example ? `<div class="dc-example"><div class="dc-ex-head"><span class="dc-ex-t">Example</span>${exampleSource(m) ? `<span class="dc-ex-src">${esc(exampleSource(m))}</span>` : ''}${opts.insert ? `<button type="button" class="btn small dc-insert" data-insert="${esc(path)}">Insert into handler</button>` : ''}</div><pre class="doc-code">${esc(prettyCode(m.example))}</pre></div>` : '')
     + (facts.length ? `<div class="dc-facts">${facts.join('')}</div>` : '')
     + `</div>`);
 }
 
+/** "By engine: Unity games 74% of 203 handlers (all Hub handlers 20%). Counted from …": mechanical, not AI-written. */
+const engineLine = (text: string) => `<p class="dc-engine">${esc(text)}</p>`;
 const paras = (text: string) => text.split(/\n{2,}/).map((p) => `<p>${inline(p)}</p>`).join('');
 /** "✓ Verified by people (12 votes)" for an AI-written part people verified ('' otherwise). */
 const verified = (path: string, part: DocPart) => {
