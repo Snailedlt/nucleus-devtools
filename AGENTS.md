@@ -17,6 +17,10 @@ The tools serve experienced developers, handler authors, Nucleus Co-op experts a
 - **Desktop first.** Over 90% of people write handlers on a desktop or laptop: design and test for that (mouse, keyboard, a wide screen). Phones are supported but not tailored: nothing broken, cut off or untappable, checked by the smoke test's phone checks. No phone-only features, no phone layouts driving a design, no manual phone testing or phone screenshots for every change.
 - **The check for every new feature:** does it add anything on screen for someone who didn't ask for it? If so, put it behind a hover, tap or key, or a setting.
 
+## Name and brand
+
+**SplitScreen.Me is the umbrella brand** for these tools (the maintainer's decision; don't make them remind you). Nucleus Co-op is the tool they serve today; later they will also serve other split-screen projects (PartyDeck, UniversalSplitScreen, Proto Input). So names, titles, categories, messages and docs say **SplitScreen.Me**; say **Nucleus Co-op** only where something is specifically about it (a Nucleus handler, Test in Nucleus Co-op, Nucleus' engine). Ids, keys and links that already exist keep working (see "Links live for ever" in splitscreenme-vscode's AGENTS.md).
+
 ## Related repositories
 
 Where to look things up, and which to trust when they disagree (current code first, then these facts, then history). CodeRabbit reaches them through DeepWiki; an agent can clone them next to this repo.
