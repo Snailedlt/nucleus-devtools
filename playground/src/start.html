@@ -215,7 +215,9 @@ pre.cfg code { background: none; padding: 0; font-size: inherit; }
 .ticks { list-style: none; padding: 0; margin: 0 0 6px; display: grid; gap: 6px; font-size: 16px; }
 .ticks li { display: flex; align-items: flex-start; }
 .ticks li::before { flex: none; margin-top: 2px; content: "✓"; display: inline-grid; place-items: center; width: 20px; height: 20px; margin-right: 10px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); font-weight: 800; font-size: 12px; }
-.hero-learn { margin: 4px 0 0; font-size: 15px; }
+.hero-learn { margin: 10px 0 0; font-size: 15px; }
+.hero-learn .learn-btn { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+.hero-learn .learn-btn small { font-weight: 400; color: var(--muted); }
 .disclaimer-line { margin: 14px 0 0; color: var(--muted); max-width: 60ch; }
 .hero-visual { position: relative; }
 .demo { position: relative; border: 1px solid var(--line); border-radius: 12px; background: var(--code-bg); box-shadow: var(--sh-2), 0 20px 50px -24px color-mix(in srgb, var(--accent) 60%, transparent); overflow: hidden; min-height: 300px; }
@@ -269,10 +271,10 @@ pre.cfg code { background: none; padding: 0; font-size: inherit; }
     <li>Each player's setup, before you press Play</li>
   </ul>
   <div class="ctas">
-    <a class="btn primary" href="../?ref=start">Try it in the browser</a>
+    <a class="btn primary" href="../?ref=start#example-mistakes" title="Opens a handler with the mistakes Nucleus trips over most, so Check shows what it does at once">Try it in the browser</a>
     <a class="btn" href="../tools/">Get the tools</a>
   </div>
-  <p class="hero-learn">New to handlers? <a href="../learn/">Make your first one, step by step →</a></p>
+  <p class="hero-learn"><a class="btn learn-btn" href="../learn/"><span aria-hidden="true">📘</span> Make your first handler <small>short steps · a free game · mostly in your browser</small></a></p>
   <p class="disclaimer-line small"><span aria-hidden="true">🤖</span> <strong>Vibe-coded, and early:</strong> written mostly by an AI with a person steering, tested against Nucleus' real script engine. Expect rough edges, and <a href="https://github.com/Snailedlt/nucleuscoop-handler-testbench/issues/new?template=feedback.yml">tell us what you find</a>.</p>
   </div>
   <div class="hero-visual">

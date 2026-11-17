@@ -12,6 +12,8 @@ How to write it (people and AI agents read this, and the workbench shows it):
 - **Long file names in Files wrap** to a second line instead of being cut off.
 - **Share and Save wait for a handler.** With nothing open they're greyed out and say why.
 
+- **The start page shows the workbench at work.** *Try it in the browser* opens the handler with common mistakes, so Check has something to show at once, and *Make your first handler* is a button that says what it takes.
+
 ### 🐛 Fixed · ### ⚡ Faster · ### ⚠️ Changed (what users must do differently) · ### 🙏 Thanks
 - 🙏 Thanks: one line per person who tested, reported a bug or contributed to this release, e.g. "- **Horah** for reporting …". When it came through GitHub (an issue, a pull request, a review), link their profile: "- **[name](https://github.com/name)** for …". Credit them inline too ("Reported by Horah.").
 - One line per change: a **short summary** in bold (the update note shows only that), then one or two plain sentences.
