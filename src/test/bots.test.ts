@@ -169,8 +169,11 @@ test('bots: every report link fills fields its form has, and the copied text use
 });
 
 test('bots: the release comments only on this repository\'s fixed issues, once', async () => {
-  const notes = '- **A thing** (#3)\n- see #4 for more\n### 🐛 Fixed\n- **Bug** #9, and Other/repo#7\n### 🙏 Thanks\n- Ann for #10';
+  const notes = '### ✨ New\n- **A thing.** What it does. (#3)\n- **Another.** Related to the old idea in #4.\n### 🐛 Fixed\n- **Bug.** Gone. (#9, Other/repo#7)\n- **Another bug.** #11 in passing\n### 🙏 Thanks\n- **Ann** for reporting it (#10)';
+  assert.deepEqual(bots.deliveredIssues(notes, 'Snailedlt/splitscreenme-vscode'), [{ n: 3, kind: 'added' }, { n: 9, kind: 'fixed' }]);
   assert.deepEqual(bots.fixedIssueNumbers(notes, 'Snailedlt/splitscreenme-vscode'), [3, 9]);
+  assert.match(bots.fixedComment({ tag: 'v1.2.0', url: 'U', reporter: 'ann', owner: 'Snailedlt', kind: 'added' }), /✅ Added in \*\*v1\.2\.0\*\* \(\[release notes\]\(U\)\)\. Thanks @ann for asking for it!/);
+  assert.match(bots.fixedComment({ tag: 'v1.2.0', url: 'U', reporter: 'ann', owner: 'Snailedlt' }), /✅ Fixed in .* Thanks @ann for reporting it!/);
   assert.deepEqual(bots.fixedIssueNumbers('Fixes #12\ncloses Snailedlt/splitscreenme-vscode#13 and Snailedlt/nucleuscoop-handler-testbench#14', 'Snailedlt/splitscreenme-vscode'), [12, 13]);
   const made: number[] = [];
   const github = {

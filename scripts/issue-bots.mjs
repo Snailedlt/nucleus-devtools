@@ -97,62 +97,69 @@ export async function runDocReview({ github, context, docs }) {
 }
 
 // ---------------------------------------------------------------------------------------------------------------------
-// Closing the loop: when a release fixes an issue, say so on it, with the release and a thanks to whoever reported it.
+// Closing the loop: when a release fixes a bug or adds what was asked for, say so on its issue, with the release notes and
+// a thanks to whoever reported or asked.
 // Run by the Release workflow (and the workbench's pages.yml, fetching this file from main). Only issues in the repository
 // the workflow runs in (its token can't write elsewhere, and other repositories aren't ours to comment on); never twice
 // (a marker in the comment); never fails the release (the step is continue-on-error, and every issue is tried alone).
 
 export const FIXED_MARKER = '<!-- fixed-in-bot -->';
 
-/** Issue numbers in `repo` ("owner/name") that a release's notes or commit messages say it fixes: "Fixes #12",
- *  "closes owner/name#12", an issues/12 link, and any reference on a line under a "Fixed" heading or written as "(#12)".
- *  References to other repositories are left out. */
-export function fixedIssueNumbers(text, repo) {
-  const out = new Set();
+/** The issues in `repo` ("owner/name") a release delivers, each with what it was: `fixed` (a bug) or `added` (a
+ *  feature or improvement). Release notes name them inline, at the entry they belong to: "- **Thing.** What changed.
+ *  (#12)"; under a "Fixed" heading that's a fix, elsewhere an addition. Commit messages count with an explicit keyword:
+ *  "Fixes #12", "closes owner/name#12". A number mentioned in passing ("see #4", "Ann for #10") doesn't count, and
+ *  neither do other repositories' issues. */
+export function deliveredIssues(text, repo) {
+  const out = new Map();
   const own = repo.toLowerCase();
-  let fixedGroup = false;
+  let group = '';
+  const add = (n, kind) => { if (n > 0 && out.get(n) !== 'fixed') out.set(n, kind); };
   for (const raw of String(text || '').split(/\r?\n/)) {
-    if (/^#{2,4}\s/.test(raw)) fixedGroup = /fix/i.test(raw);
-    // Other repositories' references and links don't count; take them out first.
-    const refs = [];
-    const line = raw
-      .replace(/https:\/\/github\.com\/([\w.-]+\/[\w.-]+)\/(?:issues|pull)\/(\d+)/gi, (_, r, n) => (refs.push([r.toLowerCase(), n]), ` @@${refs.length - 1} `))
-      .replace(/\b([\w.-]+\/[\w.-]+)#(\d+)/g, (_, r, n) => (refs.push([r.toLowerCase(), n]), ` @@${refs.length - 1} `));
-    const tokens = [];
-    line.replace(/@@(\d+)|(?:^|[^\w&/])#(\d+)\b/g, (m, ref, n, at) => {
-      if (ref !== undefined) { const [r, num] = refs[Number(ref)]; if (r === own) tokens.push({ n: Number(num), at }); }
-      else tokens.push({ n: Number(n), at });
-      return m;
-    });
-    for (const t of tokens) {
-      const before = line.slice(Math.max(0, t.at - 30), t.at + 1);
-      const keyword = /\b(fix(e[sd])?|close[sd]?|resolve[sd]?)\b[\s:]*(the\s+)?(issue\s+)?\S*$/i.test(before);
-      const paren = /\(\s*\[?\s*$/.test(line.slice(Math.max(0, t.at - 3), t.at + 1));
-      if (t.n > 0 && (keyword || paren || (fixedGroup && !/thank/i.test(raw)))) out.add(t.n);
+    if (/^#{2,4}\s/.test(raw)) { group = raw; continue; }
+    const kind = /fix/i.test(group) ? 'fixed' : 'added';
+    // This repository's references only: "#12", "owner/name#12", an issues/12 link.
+    const ownNums = (s) => {
+      const nums = [];
+      s.replace(/https:\/\/github\.com\/([\w.-]+\/[\w.-]+)\/(?:issues|pull)\/(\d+)|\b([\w.-]+\/[\w.-]+)#(\d+)|(?:^|[^\w&/])#(\d+)\b/gi, (m, r1, n1, r2, n2, n3) => {
+        const r = (r1 ?? r2)?.toLowerCase();
+        if (n3 !== undefined) nums.push(Number(n3)); else if (r === own) nums.push(Number(n1 ?? n2));
+        return m;
+      });
+      return nums;
+    };
+    // "(#12)" or "(#12, #13)" on an entry line (not a Thanks line).
+    if (!/thank/i.test(group)) for (const m of raw.matchAll(/\(([^()]*#\d+[^()]*)\)/g)) for (const n of ownNums(m[1])) add(n, kind);
+    // "Fixes #12" / "closes owner/name#12" / "resolves …" anywhere (commit messages).
+    for (const m of raw.matchAll(/\b(fix(?:e[sd])?|close[sd]?|resolve[sd]?)\b[\s:]+((?:the\s+)?(?:issue\s+)?(?:\S*#\d+|https:\/\/github\.com\/\S+\/(?:issues|pull)\/\d+))/gi)) {
+      for (const n of ownNums(m[2])) add(n, /fix/i.test(m[1]) ? 'fixed' : kind);
     }
   }
-  return [...out].sort((a, b) => a - b);
+  return [...out.entries()].sort((a, b) => a[0] - b[0]).map(([n, kind]) => ({ n, kind }));
 }
+/** Just the numbers (kept for callers that only need those). */
+export const fixedIssueNumbers = (text, repo) => deliveredIssues(text, repo).map((x) => x.n);
 
-/** The comment on a fixed issue: the release, and a thanks to the reporter (not when they're the maintainer or a bot). */
-export function fixedComment({ tag, url, reporter, owner }) {
-  const thanks = reporter && reporter !== owner && !/\[bot\]$/.test(reporter) ? ` Thanks @${reporter} for reporting it!` : '';
-  return `${FIXED_MARKER}\n🎉 This is in **${tag}**: ${url}.${thanks}\n\nIf it isn't fixed for you after updating, say so here and we'll reopen it.`;
+/** The short comment on a delivered issue: fixed or added in which release, the notes, and a thanks to whoever
+ *  reported or asked (not the maintainer or a bot). */
+export function fixedComment({ tag, url, reporter, owner, kind = 'fixed' }) {
+  const thanks = reporter && reporter !== owner && !/\[bot\]$/.test(reporter) ? ` Thanks @${reporter} for ${kind === 'fixed' ? 'reporting it' : 'asking for it'}!` : '';
+  return `${FIXED_MARKER}\n✅ ${kind === 'fixed' ? 'Fixed' : 'Added'} in **${tag}** ([release notes](${url})).${thanks}`;
 }
 
 /** release.yml / pages.yml: comment on every issue the release fixes. `notes`: the release's notes; `commits`: the
  *  commit messages since the previous release (or [] to use the notes only). Returns what it did, for the summary. */
 export async function runFixedComments({ github, context, tag, url, notes, commits = [], core }) {
   const repo = `${context.repo.owner}/${context.repo.repo}`;
-  const nums = fixedIssueNumbers([notes, ...commits].join('\n'), repo).slice(0, 50);
+  const found = deliveredIssues([notes, ...commits].join('\n'), repo).slice(0, 50);
   const done = [];
-  for (const n of nums) {
+  for (const { n, kind } of found) {
     try {
       const { data: issue } = await github.rest.issues.get({ ...context.repo, issue_number: n });
       if (issue.pull_request) continue;
       const comments = await github.paginate(github.rest.issues.listComments, { ...context.repo, issue_number: n });
       if (comments.some((c) => (c.body || '').includes(FIXED_MARKER))) continue;
-      await github.rest.issues.createComment({ ...context.repo, issue_number: n, body: fixedComment({ tag, url, reporter: issue.user?.login, owner: context.repo.owner }) });
+      await github.rest.issues.createComment({ ...context.repo, issue_number: n, body: fixedComment({ tag, url, reporter: issue.user?.login, owner: context.repo.owner, kind }) });
       done.push(n);
     } catch (e) {
       core?.warning?.(`#${n}: ${e.message}`);

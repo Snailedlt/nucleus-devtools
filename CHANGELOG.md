@@ -10,7 +10,7 @@ How to write it (people and AI agents read this; the release workflow publishes 
 - One line per change: a **short summary** in bold (the update note and the Discord post show only that), then one or two plain sentences.
 - A screenshot (or other media) for big, visible changes, folded away in a `<details><summary>Screenshot</summary>` block indented under its line, with a blank line before and after the image and the closing `  </details>`; the image line: `  ![What it shows](https://raw.githubusercontent.com/Snailedlt/splitscreenme-vscode/main/docs/images/changelog/<version>-<name>.png)` (≈1000 px wide, docs/images/changelog/).
 - At release: rename "## Unreleased" to "## <version> · <yyyy-mm-dd>". A `---` line separates releases.
-- A change that settles an issue in this repository: end its line with (#12), or say "Fixes #12" in the commit. On release the issue gets a comment saying which release has it, thanking whoever reported it (scripts/issue-bots.mjs in splitscreenme-vscode).
+- A bug fixed or a request done from an issue in this repository: end that change's own line with "(#12)" (several: "(#12, #14)"), or say "Fixes #12" in the commit. On release the issue gets a short comment, "Fixed in vX.Y.Z" (under 🐛 Fixed) or "Added in vX.Y.Z" (elsewhere), with a link to the release notes and a thanks to whoever reported or asked (scripts/issue-bots.mjs in splitscreenme-vscode). Only "(#12)" counts: a number mentioned in passing ("see #12") or on a Thanks line doesn't.
 -->
 
 ## Unreleased
