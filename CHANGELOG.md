@@ -14,7 +14,19 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 ## Unreleased
 
+### ✨ New
+
+- **Learn has a second chapter: launch options and config files.** Nine short lessons build a handler for Codename CURE, a free Source engine co-op game on Steam: launch arguments, each window's size in `Game.Play`, a choice the players make (and why saved choices come back as text), a config file for each player, a "fix the mistakes" quiz checked by the real Check, a test in Nucleus Co-op and a comparison with the Hub handler.
+- **A Hint button in Learn.** Next to *Show me*, *Hint* says what the lesson's check still misses and where to look (the line under `// The game`, say), and follows your code as you type. Nothing shows until you press it.
+- **Each chapter starts with an overview.** What you'll build, what you need first, and every lesson with its minutes, marking the ones done on your PC.
+
 ### 🛠️ Improved
+
+- **Learn's Check and Try it show the task apart from the problems.** "Task: 1 of 2 lines" sits above the problem list, so *No problems* no longer reads as done before the lesson's task is.
+- **Learn's Try it draws each player's window.** A small screen shows every window where Nucleus puts it, with its size; under it each player's launch arguments, changes and the files they write, line by line.
+- **Lesson code no longer runs off the right edge.** Long lines wrap, indented under their start, and a *Copy* button copies just the lines to add.
+- **Steps done on your PC say what you should see.** Each step of the Nucleus Co-op tests has a *You should see* line and a folded *Not working?* list, and long notes open on request.
+- **The lesson that wrote `Game.Play` in one go is now two.** First the function and each player's path, then the change to the settings file.
 
 - **Identical problems show as one.** In Check, the same problem on lines next to each other (like `Player.ProtoController5` to `16`) is one row with a ×N count and a *Fix all N* button, and F8 steps through the rows.
 - **Fix all leaves harmless lines for you to choose.** *Fix problems automatically* no longer counts or removes lines that only do nothing; afterwards it offers *Also fix N harmless warnings*, and when those are all that's left, the button says *Fix N harmless warnings*.

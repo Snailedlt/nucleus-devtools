@@ -845,7 +845,7 @@ await m.ctx.close();
     await s.p.click('#checkpoint summary');
     const [cpd] = await Promise.all([s.p.waitForEvent('download'), s.p.click('#cp-download')]);
     check(cpd.suggestedFilename() === 'Boring Man Tutorial.zip', `learn ${theme}: the checkpoint downloads the handler so far, zipped for Nucleus`);
-    await s.p.goto(BASE + 'learn/#first-handler/fullscreen');
+    await s.p.goto(BASE + 'learn/#first-handler/settings-file');
     await s.p.waitForTimeout(500);
     check(!(await s.p.isVisible('#task.ok')), `learn ${theme}: a lesson starts from its own code, unfinished`);
     await s.p.click('#show');
@@ -861,7 +861,7 @@ await m.ctx.close();
     check((await s.p.$$('#try-out .player')).length === 4, `learn ${theme}: Try it with the players you pick`);
     await s.p.click('#back');
     await s.p.waitForTimeout(300);
-    check(/#first-handler\/test$/.test(s.p.url()), `learn ${theme}: Back`);
+    check(/#first-handler\/fullscreen$/.test(s.p.url()), `learn ${theme}: Back`);
     await s.p.goto(BASE + 'learn/#first-handler/test');
     await s.p.waitForTimeout(400);
     const [dl] = await Promise.all([s.p.waitForEvent('download'), s.p.click('#download')]);
@@ -873,6 +873,25 @@ await m.ctx.close();
     await s.p.waitForTimeout(300);
     check(!(await s.p.isVisible('#drawer-list a[aria-current]')), `learn ${theme}: the lesson list closes`);
     await s.p.click('#drawer-toggle');
+    // Hint: folded until asked for, then what's still to do; chapter 2's Try it draws each player's window, and its
+    // quiz counts the mistakes left apart from the problems.
+    await s.p.goto(BASE + 'learn/#launch-options/window-size');
+    await s.p.waitForTimeout(500);
+    check(!(await s.p.isVisible('.hint-box')) && (await s.p.isVisible('#hint')), `learn ${theme}: Hint is a button, its text hidden until asked for`);
+    await s.p.click('#hint');
+    await s.p.waitForTimeout(400);
+    check(/Game\.Play/.test(await s.p.textContent('.hint-box')) && (await s.p.getAttribute('#hint', 'aria-expanded')) === 'true', `learn ${theme}: Hint says what's missing`);
+    await s.p.click('#show');
+    await s.p.waitForTimeout(700);
+    check((await s.p.$$('#try-out .screen .swin')).length === Number(await s.p.inputValue('#try-players')) && /-w 960 -h (1080|540)/.test(await s.p.textContent('#try-out')) && /Task done/.test(await s.p.textContent('#pane')), `learn ${theme}: chapter 2's Try it shows each window and its arguments`);
+    await axe(s.p, `${theme}, learn chapter 2 Try it`);
+    await s.p.goto(BASE + 'learn/#launch-options/fix-it');
+    await s.p.waitForTimeout(500);
+    check(/0 of 3 mistakes/.test(await s.p.textContent('#pane')), `learn ${theme}: the quiz's task line counts the mistakes`);
+    await s.p.goto(BASE + 'learn/#launch-options/overview');
+    await s.p.waitForTimeout(400);
+    check((await s.p.$$('.ov-list li')).length >= 8 && (await s.p.isVisible('.steps .trouble summary')), `learn ${theme}: chapter 2's overview lists its lessons, and steps say what to do if it doesn't work`);
+    await axe(s.p, `${theme}, learn overview`);
     check(!s.errors.length, `learn ${theme}: no page errors ${s.errors.join(' ')}`);
     await s.ctx.close();
   }
@@ -880,8 +899,8 @@ await m.ctx.close();
     const s = await page('light', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
     for (const width of [390, 360]) {
       await s.p.setViewportSize({ width, height: 844 });
-      for (const l of ['why', 'name', 'settings', 'test']) {
-        await s.p.goto(BASE + `learn/#first-handler/${l}`);
+      for (const l of ['first-handler/why', 'first-handler/name', 'first-handler/settings-file', 'first-handler/test', 'launch-options/overview', 'launch-options/keyboard-or-controller', 'launch-options/fix-it']) {
+        await s.p.goto(BASE + `learn/#${l}`);
         await s.p.waitForTimeout(400);
         const wide = await s.p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
         check(wide <= 0, `learn phone ${width}px ${l}: no sideways scrolling (${wide}px)`);

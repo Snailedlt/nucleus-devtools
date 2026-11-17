@@ -177,7 +177,7 @@ test("the saved file's name: the folder a Hub install makes (Game.GameName), els
 // are what people copy (no errors); the finished handler has no warnings either; what the notes claim Check says,
 // it says.
 test('learn: every lesson starts unfinished, its solution passes, with no errors', async () => {
-  const { CHAPTERS, FINAL, solutionErrors, findLesson } = await load('playground/src/learn/lessons.ts');
+  const { CHAPTERS, FINAL, solutionErrors, findLesson, hintFor } = await load('playground/src/learn/lessons.ts');
   const { lint } = await load(path.join(coreDir, 'src', 'core', 'lint.ts'));
   const first = CHAPTERS.find((c) => c.id === 'first-handler');
   assert.ok(first && first.lessons.length >= 10, 'the first chapter');
@@ -189,13 +189,28 @@ test('learn: every lesson starts unfinished, its solution passes, with no errors
       assert.ok(l.title && l.text.length, l.id);
       assert.ok((l.notes ?? []).length <= 3, `${l.id}: at most 3 notes`);
       assert.deepEqual(solutionErrors(l), [], `${l.id}: errors in the solution`);
+      assert.ok(Number.isInteger(l.minutes) && l.minutes >= 1 && l.minutes <= 30, `${ch.id}/${l.id}: minutes for the overview`);
+      for (const st of l.steps ?? []) assert.ok(typeof st === 'string' || (st.text && (st.trouble ?? []).length <= 4), `${l.id}: a step with its text and at most 4 fixes`);
       if (l.kind !== 'code') continue;
       assert.ok(l.task && l.check && l.pane, `${l.id}: a task, a check and a pane`);
       assert.notEqual(l.check(l.start), null, `${l.id}: the starting code is already done`);
       assert.equal(l.check(l.solution), null, `${l.id}: the solution doesn't pass: ${l.check(l.solution)}`);
+      // The Hint button: something to say at the start of every code lesson, and nothing once it's done.
+      assert.ok(hintFor(l, l.start).length > 20, `${ch.id}/${l.id}: a hint at the start`);
+      assert.equal(hintFor(l, l.solution), '', `${ch.id}/${l.id}: no hint once done`);
+      // The task line counts goals: not all met at the start, all met in the solution.
+      assert.ok(l.goals?.length, `${ch.id}/${l.id}: goals for the task line`);
+      assert.ok(l.goals.some((g) => !g.ok(l.start)), `${ch.id}/${l.id}: every goal already met at the start`);
+      assert.deepEqual(l.goals.filter((g) => !g.ok(l.solution)).map((g) => g.label), [], `${ch.id}/${l.id}: goals the solution misses`);
     }
     assert.equal(findLesson(`#${ch.id}/${ch.lessons[2].id}`).index, 2);
+    assert.ok(ch.fileName && ch.build && ch.end?.title, `${ch.id}: file name, what you'll build, the end card`);
+    assert.equal(ch.lessons.filter((l) => l.overview).length, 1, `${ch.id}: one overview lesson`);
+    // Every lesson has a section, and a section's lessons sit together (the lesson list groups them).
+    const order = ch.lessons.map((l) => l.section).filter((s, i, a) => s !== a[i - 1]);
+    assert.equal(new Set(order).size, order.length, `${ch.id}: sections out of order: ${order.join(', ')}`);
   }
+  assert.equal(findLesson('#launch-options/window-size').chapter.id, 'launch-options', 'a link into chapter 2');
   assert.equal(findLesson('#nonsense').index, 0, 'an unknown link opens the start');
   const d = lint(FINAL).filter((x) => x.severity === 'error' || x.severity === 'warning');
   assert.deepEqual(d.map((x) => `${x.rule}: ${x.message}`), [], 'the finished handler: no errors or warnings');
@@ -206,9 +221,20 @@ test('learn: every lesson starts unfinished, its solution passes, with no errors
   // The first full test runs without Game.Play (full-screen windows: the bug the next lesson fixes).
   const test1 = first.lessons.find((l) => l.id === 'test'), fix = first.lessons.find((l) => l.id === 'fullscreen');
   assert.ok(!/Game\.Play/.test(test1.solution) && fix.check(test1.solution) !== null && /Game\.Play/.test(FINAL));
-  // Every lesson has a section, and a section's lessons sit together (the lesson list groups them).
-  const order = first.lessons.map((l) => l.section).filter((s, i, a) => s !== a[i - 1]);
-  assert.equal(new Set(order).size, order.length, `sections out of order: ${order.join(', ')}`);
+  // Chapter 2 (Codename CURE): the finished handler is clean, and the quiz starts with exactly the three mistakes
+  // its text names, each found by Check.
+  const { CURE_FINAL } = await load('playground/src/learn/lessons.ts');
+  const second = CHAPTERS.find((c) => c.id === 'launch-options');
+  assert.ok(second && second.lessons.length >= 8, 'the second chapter');
+  assert.deepEqual(lint(CURE_FINAL).filter((x) => x.severity === 'error' || x.severity === 'warning').map((x) => `${x.rule}: ${x.message}`), [], 'chapter 2\'s handler: no errors or warnings');
+  const quiz = second.lessons.find((l) => l.id === 'fix-it');
+  assert.deepEqual(lint(quiz.start).filter((x) => x.severity === 'error' || x.severity === 'warning').map((x) => x.rule).sort(), ['hub-install-parse', 'option-compare', 'unknown-member']);
+  assert.equal(quiz.goals.filter((g) => g.ok(quiz.start)).length, 0, 'no mistake fixed at the start');
+  // Applying Check's own first fix for each mistake finishes the quiz.
+  const applyEditsToText = (text, edits) => [...edits].sort((a, z) => z.start - a.start).reduce((out, e) => out.slice(0, e.start) + e.text + out.slice(e.end), text);
+  let fixed = quiz.start;
+  for (let i = 0; i < 3; i++) { const d = lint(fixed).find((x) => x.fixes?.length && (x.severity === 'error' || x.severity === 'warning')); if (d) fixed = applyEditsToText(fixed, d.fixes[0].edits); }
+  assert.equal(quiz.check(fixed), null, `Check's fixes finish the quiz: ${quiz.check(fixed)}`);
 });
 
 test('Share: the link leads while it carries everything and fits Discord, else the file', async () => {
