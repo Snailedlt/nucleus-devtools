@@ -181,6 +181,7 @@ export function formatEntry(e: Entry, verbose = true): string {
   if (verbose && m.doc) lines.push(...m.doc.split('\n').map((l) => `  ${l}`));
   if (verbose && claudeNote(m)) lines.push(`  [${claudeNote(m)}${verifiedText(e.path, 'doc', m.docBy === 'claude')}]`);
   if (verbose && m.practice) lines.push('  In practice (AI-written):', ...m.practice.split('\n').map((l) => `  ${l}`), `  [${practiceNote(m)}${hubUseText(m) ? ` ${hubUseText(m)}.` : ''}${verifiedText(e.path, 'practice', true)}]`);
+  if (verbose && m.byEngine) lines.push(`  ${m.byEngine}`);
   if (verbose) for (const [part, label] of [['doc', 'Doc'], ['practice', 'In practice']] as const) {
     const v = votesLine(partVotes(e.path, part));
     if (v && (part === 'doc' ? m.doc : m.practice)) lines.push(`  Votes on the ${label === 'Doc' ? 'doc' : '"In practice" part'}: ${v}`);
@@ -218,6 +219,7 @@ export function markdownReference(): string {
       if (m.doc) out.push(m.doc);
       if (claudeNote(m)) out.push(`_✎ ${claudeNote(m)}${verifiedText(e.path, 'doc', m.docBy === 'claude')}_`);
       if (m.practice) out.push(`In practice (AI-written): ${m.practice}`, `_✎ ${practiceNote(m)}${hubUseText(m) ? ` ${hubUseText(m)}.` : ''}${verifiedText(e.path, 'practice', true)}_`);
+      if (m.byEngine) out.push(m.byEngine);
       if (m.example) out.push('Example' + (exampleSource(m) ? ` (${exampleSource(m)})` : '') + ': `' + m.example + '`');
       out.push('');
     }

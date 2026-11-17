@@ -102,8 +102,8 @@
    "basis": "Nucleus GenericGameHandler.cs (post-launch hooks when gen.HookFocus), DllsInjector.cs (Hook GetForegroundWindow); verified Hub handlers, counted 2026-11-17"
   },
   "Game.KillMutex": {
-   "text": "Before it starts the second and later instances, Nucleus closes these named handles in the instance before (mutexes by default; `Game.KillMutexType` picks events, semaphores or sections), because many games refuse to start while another copy holds one. `Game.RenameNotKillMutex` renames them at startup instead. 248 Hub handlers list some; find the names with a tool such as Process Explorer while the game runs.",
-   "basis": "Nucleus GenericGameHandler.cs (the mutex kill before the next instance), ProcessUtil.cs; verified Hub handlers, counted 2026-11-17",
+   "text": "Before it starts the second and later instances, Nucleus closes these named handles in the instance before (mutexes by default; `Game.KillMutexType` picks events, semaphores or sections), because many games refuse to start while another copy holds one. `Game.RenameNotKillMutex` renames them at startup instead. 248 Hub handlers list some; find the names with a tool such as Process Explorer while the game runs. Source games share one: 27 of the 32 Source handlers kill `hl2_singleton_mutex`.",
+   "basis": "Nucleus GenericGameHandler.cs (the mutex kill before the next instance), ProcessUtil.cs; verified Hub handlers, counted 2026-11-17; Source games from data/hub-engines.json",
    "example": "Game.KillMutex = [\"GameMutexName\"];"
   },
   "Game.ProtoInput.InjectRuntime_EasyHookMethod": {
@@ -203,8 +203,8 @@
    "basis": "Nucleus GenericContext.cs (Wait: Thread.Sleep); verified Hub handlers, counted 2026-11-17"
   },
   "Context.EditRegKey": {
-   "text": "Before it first changes a key, Nucleus exports it to utils\\backup\\<key>.reg, which it imports again afterwards (`Context.EditRegKeyNoBackup` skips that); a missing key is created. Only HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE and HKEY_USERS work; anything else, or a null value, is ignored without a word. Hub handlers use it in `Game.Play` (179), often for a game that keeps its resolution or window mode in the registry.",
-   "basis": "Nucleus GenericContext.cs (EditRegKey, ExportRegistry), RegistryUtil.cs (the utils\\backup .reg files); verified Hub handlers, counted 2026-11-17",
+   "text": "Before it first changes a key, Nucleus exports it to utils\\backup\\<key>.reg, which it imports again afterwards (`Context.EditRegKeyNoBackup` skips that); a missing key is created. Only HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE and HKEY_USERS work; anything else, or a null value, is ignored without a word. Hub handlers use it in `Game.Play` (179), often for a game that keeps its resolution or window mode in the registry. Unity games keep their screen settings there (HKEY_CURRENT_USER\\SOFTWARE\\<company>\\<game>): 149 of the 151 Unity handlers that call it set `Screenmanager Resolution Width` and `Height` (the names end in a hash, `_h182942802`).",
+   "basis": "Nucleus GenericContext.cs (EditRegKey, ExportRegistry), RegistryUtil.cs (the utils\\backup .reg files); verified Hub handlers, counted 2026-11-17; Unity games from data/hub-engines.json",
    "example": "Context.EditRegKey(\"HKEY_CURRENT_USER\", \"SOFTWARE\\\\Developer\\\\Game\", \"Screenmanager Resolution Width\", Context.Width, Nucleus.RegType.DWord);",
    "exampleIn": "Game.Play"
   },
@@ -326,8 +326,8 @@
    "example": "Game.ExecutableContext = [\"data\"];"
   },
   "Game.BinariesFolder": {
-   "text": "Where the executable sits inside the game folder (\"bin\", \"Binaries\\\\Win64\"). Nucleus takes it off the executable's folder to find the game's root, so the whole game is linked into each instance, not only the executable's folder. 70 of the 371 Hub handlers that set it leave it empty; \"bin\" (25) and \"Binaries\\\\Win32\" (16) come next.",
-   "basis": "Nucleus GenericGameHandler.cs (rootFolder = the exe folder with gen.BinariesFolder replaced, or StringUtil.GetRootFromBinariesFolder with BinariesFolderPathFix); verified Hub handlers, counted 2026-11-17"
+   "text": "Where the executable sits inside the game folder (\"bin\", \"Binaries\\\\Win64\"). Nucleus takes it off the executable's folder to find the game's root, so the whole game is linked into each instance, not only the executable's folder. 70 of the 371 Hub handlers that set it leave it empty; \"bin\" (25) and \"Binaries\\\\Win32\" (16) come next. Unreal Engine games' handlers nearly all set it: 198 of 223 to the project's \"Binaries\\\\Win64\" (or \"Binaries\\\\Win32\"), older Unreal games' to \"System\".",
+   "basis": "Nucleus GenericGameHandler.cs (rootFolder = the exe folder with gen.BinariesFolder replaced, or StringUtil.GetRootFromBinariesFolder with BinariesFolderPathFix); verified Hub handlers, counted 2026-11-17; Unreal Engine games from data/hub-engines.json"
   },
   "Game.FileSymlinkCopyInstead": {
    "text": "Files Nucleus copies into each instance folder instead of linking them, so an instance can change its own copy (or the game refuses a linked file). Unity games are the usual case in Hub handlers: `[\"UnityPlayer.dll\", \"globalgamemanagers\"]` (16), `[\"globalgamemanagers\"]` (13) and `[\"UnityPlayer.dll\"]` are the most common lists.",

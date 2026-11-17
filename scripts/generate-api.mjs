@@ -10,6 +10,7 @@
 //   https://github.com/SplitScreen-Me/splitscreenme-nucleus
 //   https://github.com/SplitScreen-Me/splitscreenme-www
 
+import { engineLine } from './hub-engines.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
@@ -782,6 +783,13 @@ for (const [obj, label] of Object.entries(LABELS)) {
     const key = `${label}.${name}`;
     const hub = hubFile.members[key];
     if (hub && !m.internal) m.hubUse = hub.n;
+    // Per engine family (data/hub-engines.json, through hub-examples.json): how many of its handlers use it, and the
+    // "By engine" line where a family differs notably from all handlers (scripts/hub-engines.mjs engineLine).
+    if (hub && !m.internal && hubFile.engines) {
+      m.engineUse = Object.fromEntries(Object.keys(hubFile.engines).map((k) => [k, hub.engines?.[k] ?? 0]));
+      const line = engineLine(hub.engines, hub.n, hubFile.engines, hubFile.handlers);
+      if (line) m.byEngine = line;
+    }
     const p = practiceFile[key];
     if (p) {
       usedPractice.add(key);
@@ -823,7 +831,7 @@ for (const [obj, label] of Object.entries(LABELS)) {
 }
 const unusedPractice = Object.keys(practiceFile).filter((k) => !usedPractice.has(k));
 if (unusedPractice.length) throw new Error(`data/claude-practice.json: no such member: ${unusedPractice.join(', ')}`);
-model.hubHandlers = { count: hubFile.handlers, takenAt: hubFile.takenAt };
+model.hubHandlers = { count: hubFile.handlers, takenAt: hubFile.takenAt, ...(hubFile.engines ? { engines: hubFile.engines } : {}) };
 
 const unusedClaude = Object.keys(claudeDocs).filter((k) => !usedClaude.has(k));
 if (unusedClaude.length) console.log(`data/claude-docs.json entries not used (a human doc exists now, or no such member): ${unusedClaude.join(', ')}`);
@@ -839,7 +847,11 @@ fs.writeFileSync(path.join(root, 'data', 'nucleus-api.json'), JSON.stringify(mod
 const claudeNote = (m) => (m.docBy === 'claude' ? [`(AI-written, based on ${m.docBasis}.${m.docCheckedBy ? ` Checked by ${m.docCheckedBy}${m.docCheckedOn ? ` on ${m.docCheckedOn}` : ''}.` : ' Not from the official docs.'})`] : []);
 const exampleTag = (m) => (m.exampleBy === 'claude' ? ' (AI-written example)' : m.exampleBy === 'hub' ? ` (${m.exampleNote})` : '');
 // The AI-written "In practice" part, as a paragraph of its own with its label.
-const practiceNote = (m) => (m.practice ? ['', `In practice: ${m.practice}`, `(AI-written, based on ${m.practiceBasis}.${m.practiceCheckedBy ? ` Checked by ${m.practiceCheckedBy}.` : ''})`] : []);
+const practiceNote = (m) => [
+  ...(m.practice ? ['', `In practice: ${m.practice}`, `(AI-written, based on ${m.practiceBasis}.${m.practiceCheckedBy ? ` Checked by ${m.practiceCheckedBy}.` : ''})`] : []),
+  // The mechanical per-engine counts (not AI-written), after "In practice" or alone.
+  ...(m.byEngine ? ['', m.byEngine] : []),
+];
 const jsdoc = (doc, extra = [], indent = '  ') => {
   const lines = [...(doc ? doc.split('\n') : []), ...extra].map((l) => l.replace(/\*\//g, '*\\/'));
   if (!lines.length) return '';

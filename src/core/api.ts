@@ -69,6 +69,12 @@ export interface Member {
   practiceCheckedOn?: string;
   /** How many of the verified Hub handlers use it (api.hubHandlers.count of them). */
   hubUse?: number;
+  /** Per engine family with enough Hub handlers (api.hubHandlers.engines): how many of its handlers use it. */
+  engineUse?: Record<string, number>;
+  /** "By engine: Unreal Engine games 61% of 223 handlers (all Hub handlers 18%). Counted from …": only where an engine
+   *  family uses it notably more or less than all handlers (scripts/hub-engines.mjs engineLine). Mechanical, not
+   *  AI-written; shown with "In practice", or alone. */
+  byEngine?: string;
   category?: string;
   deprecated?: string;
   /** Legacy input option the Proto Input guide says to set to false. */
@@ -113,7 +119,7 @@ export interface ApiModel {
   enums: Record<string, EnumInfo>;
   nucleusClasses: Record<string, NucleusClass>;
   /** The verified Hub handlers `hubUse` counts are from (data/hub-examples.json). */
-  hubHandlers?: { count: number; takenAt: string };
+  hubHandlers?: { count: number; takenAt: string; /** Handlers per engine family (data/hub-engines.json), families with enough of them. */ engines?: Record<string, number> };
 }
 
 /** The model as objects without a prototype: a name typed in a handler (`toString`, `constructor`, `__proto__`) is
@@ -449,6 +455,8 @@ export function memberMarkdown(owner: string, name: string, m: Member): string {
     const pv = votesMarkdown(path, 'practice', true);
     parts.push(`**In practice** _(AI-written)_\n\n${m.practice}\n\n_✎ ${practiceNote(m)}${hubUseText(m) ? ` ${hubUseText(m)}.` : ''}_${m.practiceCheckedBy ? '' : ` [Is it wrong? Tell us](${docReviewUrl(path)})`}${pv ? `\n\n${pv}` : ''}`);
   }
+  // Where one engine's handlers use it notably more or less: counted, not AI-written, under "In practice" or alone.
+  if (m.byEngine) parts.push(`${m.practice ? '' : '**In practice**\n\n'}_${m.byEngine}_`);
   if (m.example) parts.push((exampleSource(m) ? `_Example: ${exampleSource(m)}_\n\n` : '') + '```js\n' + prettyCode(m.example) + '\n```');
   parts.push(isJsBuiltin(owner) ? `[MDN: ${owner ? `${owner}.` : ''}${name}](${mdnUrl(owner, name)})` : `[Handler API docs](${DOCS_URL})`);
   return parts.join('\n\n');
