@@ -411,3 +411,61 @@ test('Nucleus colouring: every look gives its colours enough contrast, a theme f
   const inherit = { base: looks.a, own: { name: 'Own', base: 'base', light: { obj: '#333333' }, dark: {} } };
   assert.equal(kit.resolve('own', inherit, 'light').group, '#333333', 'a theme that sets only Game\'s colour moves the groups with it');
 });
+
+test('Form labels: plain names for real options, the API name kept, units only where the docs say', async () => {
+  const fl = await load('playground/src/formlabels.ts');
+  const { api } = await load(path.join(coreDir, 'src/core/api.ts'));
+  const owners = { Game: 'Game', 'Game.Hook': 'GameHook', 'Game.ProtoInput': 'GameProtoInput' };
+  const memberOf = (p) => {
+    const i = p.lastIndexOf('.');
+    return api.objects[owners[p.slice(0, i)]]?.members[p.slice(i + 1)];
+  };
+  for (const p of Object.keys(fl.LABELS)) assert.ok(memberOf(p), `${p} is a real option`);
+  // Every option most Hub handlers set has a hand-written label (the ones Form shows most).
+  const usage = JSON.parse(fs.readFileSync(path.join(root, 'playground/src/usage.json'), 'utf8'));
+  const top = Object.entries(usage.counts)
+    .filter(([p]) => /^Game\.((Hook|ProtoInput)\.)?\w+$/.test(p) && memberOf(p) && !['object', 'method'].includes(memberOf(p).kind) && !memberOf(p).internal)
+    .sort((a, b) => b[1] - a[1]).slice(0, 100).map(([p]) => p);
+  const missing = top.filter((p) => !fl.LABELS[p]);
+  assert.ok(missing.length <= 5, `labels for the 100 most used options (missing: ${missing.join(', ')})`);
+  // Units: stated by the docs (or the source, for PauseBetweenStarts); none guessed.
+  const unit = (p) => fl.optionLabel(p, memberOf(p)).unit;
+  assert.equal(unit('Game.HandlerInterval'), 'ms');
+  assert.equal(unit('Game.FakeFocusInterval'), 'ms');
+  assert.equal(unit('Game.ProtoInput.FocusLoopIntervalMilliseconds'), 'ms');
+  assert.equal(unit('Game.PauseBetweenStarts'), 's');
+  assert.equal(unit('Game.PauseBetweenProcessGrab'), 's');
+  assert.equal(unit('Game.KillMutexDelay'), 's');
+  for (const p of ['Game.MaxPlayers', 'Game.LockInputToggleKey', 'Game.Hook.WindowX', 'Game.PlayersPerInstance', 'Game.SteamID', 'Game.GameName']) assert.equal(unit(p), undefined, `${p} has no unit`);
+  // Unknown ones read as words; the label is never the bare API name for a hand-written one.
+  assert.equal(fl.readableName('KillMutexDelayLauncher'), 'Kill mutex delay launcher');
+  assert.equal(fl.readableName('FocusLoop_WM_SETFOCUS'), 'Focus loop WM_SETFOCUS');
+  assert.equal(fl.readableName('UseDInputBlocker'), 'Use DirectInput blocker');
+  assert.equal(fl.readableName('XInputPlusDll'), 'XInput plus DLL');
+  assert.equal(fl.readableName('CreateSteamAppIdByExe'), 'Create Steam app ID by .exe');
+  assert.deepEqual(fl.optionLabel('Game.HandlerInterval', memberOf('Game.HandlerInterval')), { label: 'Handler update interval', written: true, unit: 'ms' });
+  assert.equal(fl.optionLabel('Game.KillMutexDelayLauncher', memberOf('Game.KillMutexDelayLauncher')).written, false);
+});
+
+test('Blocks: repeated steps group (the same call, values on one object, a short sequence again), others stay rows', async () => {
+  const bg = await load('playground/src/blockgroups.ts');
+  const call = (p) => ({ kind: 'call', path: p });
+  const set = (p) => ({ kind: 'set', path: p });
+  const v = (n) => ({ kind: 'var', varName: n });
+  assert.equal(bg.stepShape(call('Context.ModifySaveFile')), 'call Context.ModifySaveFile');
+  assert.equal(bg.stepShape(set('Game.HookGetKeyState')), bg.stepShape(set('Game.SendScrollWheel')), 'values set on Game group together');
+  assert.notEqual(bg.stepShape(set('Game.ProtoInput.XinputHook')), bg.stepShape(set('Game.HookFocus')));
+  assert.equal(bg.stepShape({ kind: 'if' }), undefined);
+  assert.equal(bg.stepShape({ kind: 'code' }), undefined);
+  const runs = (steps) => bg.findRuns(steps.map(bg.stepShape));
+  const msf = call('Context.ModifySaveFile');
+  // Three or more of one call: a group; two: not.
+  assert.deepEqual(runs([v('a'), msf, msf, msf, msf, { kind: 'if' }]), [{ start: 1, period: 1, reps: 4 }]);
+  assert.deepEqual(runs([msf, msf, { kind: 'code' }]), []);
+  // The copy-a-file sequence, three lines again and again.
+  const copy = [v('savePath'), v('savePkgOrigin'), call('System.IO.File.Copy')];
+  assert.deepEqual(runs([call('Context.CopyScriptFolder'), ...copy, ...copy, ...copy, v('x')]), [{ start: 1, period: 3, reps: 3 }]);
+  // A condition or code between breaks a run; runs never overlap.
+  assert.deepEqual(runs([msf, msf, { kind: 'if' }, msf, msf, msf, set('Game.A'), set('Game.B'), set('Game.C')]), [{ start: 3, period: 1, reps: 3 }, { start: 6, period: 1, reps: 3 }]);
+  assert.deepEqual(runs([]), []);
+});
