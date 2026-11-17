@@ -12,6 +12,14 @@ How to write it (people and AI agents read this, and the workbench shows it):
 - When it goes live: rename "## Unreleased" to "## <yyyy-mm-dd>" (add " HH:MM", UTC, for a second release on the same day). A `---` line separates releases.
 -->
 
+## Unreleased
+
+### 🛠️ Improved
+
+- **The handler has Nucleus Co-op's logo as its file icon.** In the Files panel and the file tabs, `handler.js` shows the logo, as handlers do in VS Code; other files keep their type badge.
+
+---
+
 ## 2026-11-17
 
 ### 🛠️ Improved
