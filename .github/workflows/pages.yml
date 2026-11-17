@@ -112,6 +112,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # the GitHub release with the update's notes
+      issues: write # "This is in workbench-<date>" on the issues the update fixes
       pages: write
       id-token: write
     environment:
@@ -148,3 +149,30 @@ jobs:
             gh release create "$tag" --target "$GITHUB_SHA" --title "Workbench update · $RELEASE" --notes-file notes.md --latest
             echo "Published the GitHub release $tag." >> "$GITHUB_STEP_SUMMARY"
           fi
+      # Close the loop: "This is in workbench-<date>" on each issue this update fixes ("Fixes #N" in the commits since
+      # the last update, issues named under Fixed or as (#N) in its notes), this repository's only, once each, with a
+      # thanks to the reporter. The logic is splitscreenme-vscode's scripts/issue-bots.mjs (tested there), as on main.
+      - uses: actions/checkout@v4
+        if: needs.build.outputs.release != ''
+        with:
+          repository: Snailedlt/splitscreenme-vscode
+          ref: main
+          path: devtools
+          sparse-checkout: scripts/issue-bots.mjs
+          sparse-checkout-cone-mode: false
+      - name: Tell the issues it fixes (never fails the deploy)
+        if: needs.build.outputs.release != ''
+        continue-on-error: true
+        uses: actions/github-script@v7
+        env:
+          RELEASE: ${{ needs.build.outputs.release }}
+        with:
+          script: |
+            const { execSync } = require('child_process');
+            const bots = await import(`${process.env.GITHUB_WORKSPACE}/devtools/scripts/issue-bots.mjs`);
+            const tag = execSync(`node tools/release-post.mjs "${process.env.RELEASE}" --tag`).toString().trim();
+            const notes = execSync(`node tools/release-post.mjs "${process.env.RELEASE}" --notes`).toString();
+            const url = `https://github.com/${context.repo.owner}/${context.repo.repo}/releases/tag/${tag}`;
+            const commits = await bots.commitsSincePrevious({ github, context, tag, prefix: 'workbench-' });
+            const done = await bots.runFixedComments({ github, context, tag, url, notes, commits, core });
+            if (done.length) await core.summary.addRaw(`Told the issues it fixes: ${done.map((n) => `#${n}`).join(', ')}\n`).write();

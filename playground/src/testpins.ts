@@ -2,6 +2,7 @@
 // test: what to try and what to look for, the Tried tick, and Report. Only there while something is pinned (help on
 // request). Drag it by its header (or focus the header's move handle and use the arrow keys); collapse it to its
 // header; it remembers where it was. On a narrow screen it docks at the bottom instead.
+import { reportIcon } from '@core/reporticons';
 import { esc, narrow, onNarrowChange } from './dom';
 import { testEvent } from './feedback';
 import { feedbackUrl } from './report';
@@ -64,7 +65,7 @@ export function initTestPins(openGuide: () => void) {
           <button type="button" class="tf-name" data-toggle="${t.id}" aria-expanded="${open.has(t.id)}">${esc(t.title)}</button>
           <button type="button" class="btn icon tf-unpin" data-unpin="${t.id}" aria-label="Unpin ${esc(t.title)}" title="Unpin">×</button></div>
         <div class="tf-body"${open.has(t.id) ? '' : ' hidden'}><p><span class="muted">Try:</span> ${esc(t.steps)}</p><p><span class="muted">Look for:</span> ${esc(t.look)}</p>
-          <a class="small" data-report="${t.id}" href="${esc(report(t))}" target="_blank" rel="noopener">Report what you found</a></div></li>`).join('')}</ol>`;
+          <a class="small" data-report="${t.id}" href="${esc(report(t))}" target="_blank" rel="noopener">${reportIcon('report', 14)} Report what you found</a></div></li>`).join('')}</ol>`;
     place();
   };
 

@@ -1,0 +1,54 @@
+name: I want to do…
+description: Something you're trying to do in the browser workbench, Learn or the site, and what's in the way. Start from the problem; a solution is optional.
+title: "I want to: "
+labels: [feature-request]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Tell us what you're trying to do and what stops you; we'll work out the best way to help. About the **checks, Try it, the docs, VS Code, Notepad++ or ncdev**? That goes to [the extension's form](https://github.com/Snailedlt/splitscreenme-vscode/issues/new?template=feature-request.yml).
+  - type: textarea
+    id: goal
+    attributes:
+      label: What are you trying to do?
+      description: The goal, in your own words, e.g. "finish the lesson on save files" or "compare two handlers".
+    validations:
+      required: true
+  - type: textarea
+    id: blocker
+    attributes:
+      label: What's in the way?
+      description: What you tried, and where it stops.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How could it work? (optional)
+      description: If you have an idea. It's fine to leave this empty.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where
+      options:
+        - Workbench
+        - Learn
+        - Docs and check pages
+        - Home and tools pages
+        - Something else
+  - type: textarea
+    id: code
+    attributes:
+      label: Code (optional)
+      description: A few lines that show it, or your code in a Learn lesson if you chose to include it.
+      render: js
+  - type: input
+    id: version
+    attributes:
+      label: Version
+  - type: textarea
+    id: context
+    attributes:
+      label: Details from the tool
+      description: Filled in for you when you open this from the workbench or Learn (build, browser, settings, the lesson; never your code). Please leave it as it is. A bot keeps a copy as the first comment.
+      render: text

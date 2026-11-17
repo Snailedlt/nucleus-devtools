@@ -51,3 +51,32 @@ test('the feedback links fill fields the forms have', { skip: !core && 'no split
   // withContext adds the details to the doc review link too.
   assert.ok(form('doc-review.yml').ids.has('context'), 'doc-review.yml has a field "context"');
 });
+
+test('the report dialog\'s links (core/report.ts) open the right repository and fill fields its forms have', { skip: !core && 'no splitscreenme-vscode checkout' }, async () => {
+  const report = await load(path.relative(root, path.join(core, 'src/core/report.ts')));
+  const { checksum } = await load('playground/src/checksum.ts');
+  assert.equal(report.checksum(REAL_BLOCK.split('\n')), checksum(REAL_BLOCK.split('\n')), 'core and the workbench agree on the checksum');
+  const cases = [
+    [{ kind: 'problem', tool: 'workbench' }, 'Snailedlt/nucleuscoop-handler-testbench'],
+    [{ kind: 'problem', tool: 'learn' }, 'Snailedlt/nucleuscoop-handler-testbench'],
+    [{ kind: 'error', tool: 'workbench', error: { message: 'x', stack: 'at f (a.js:1:1)' } }, 'Snailedlt/nucleuscoop-handler-testbench'],
+    [{ kind: 'feature', tool: 'workbench', what: 'do a thing' }, 'Snailedlt/nucleuscoop-handler-testbench'],
+    [{ kind: 'stuck', tool: 'learn', lesson: { id: 'first/l1', title: 'One' }, code: 'Game.GUID = "x";' }, 'Snailedlt/nucleuscoop-handler-testbench'],
+    [{ kind: 'check', tool: 'workbench', rule: 'unknown-member', code: 'Game.Foo = 1;' }, 'Snailedlt/splitscreenme-vscode'],
+    [{ kind: 'tryit', tool: 'workbench', sim: 'Try it: 2 players' }, 'Snailedlt/splitscreenme-vscode'],
+    [{ kind: 'docs', tool: 'workbench', query: 'save folder' }, 'Snailedlt/splitscreenme-vscode'],
+  ];
+  for (const [input, repo] of cases) {
+    const r = report.buildReport({ ...input, details: ['Workbench: build x, core y'] });
+    const u = new URL(r.url);
+    assert.equal(u.pathname, `/${repo}/issues/new`, `${input.kind} from ${input.tool}`);
+    const own = repo.endsWith('testbench');
+    const file = path.join(own ? root : core, '.github/ISSUE_TEMPLATE', u.searchParams.get('template'));
+    const y = fs.readFileSync(file, 'utf8');
+    const ids = new Set([...y.matchAll(/^\s+id: (\S+)/gm)].map((m) => m[1]));
+    for (const k of u.searchParams.keys()) if (!['template', 'title'].includes(k)) assert.ok(ids.has(k), `${path.basename(file)} has a field "${k}" (${input.kind})`);
+    const area = u.searchParams.get('area');
+    if (area) assert.ok(y.includes(`- ${area}\n`), `${path.basename(file)}'s Where list has "${area}"`);
+    assert.match(y, /label: Details from the tool/);
+  }
+});

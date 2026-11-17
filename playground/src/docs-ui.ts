@@ -1,5 +1,6 @@
 // Docs: every option, Context member, enum and .NET call, searchable, with the groups to browse and a path to go
 // back along. The address follows it (#docs, #docs-Context, #docs-Context.ModifySaveFile, #docs-mutex: links.ts).
+import { reportButton } from '@core/reporticons';
 import { api } from '@core/api';
 import { allEntries, lookup, search, type Entry } from '@core/lookup';
 import { apiPathOf } from '@core/features';
@@ -203,7 +204,7 @@ export function initDocs(deps: DocsDeps): DocsUI {
     if (exact.kind === 'none' && exact.didYouMean) head = `<p class="muted">"${esc(q)}" isn't part of the handler API. Did you mean <button class="link" data-q="${esc(exact.didYouMean)}">${esc(exact.didYouMean)}</button>?</p>`;
     entries = entries.slice(0, 30);
     el.innerHTML = refBar(crumbs) + head
-      + (entries.length || head ? entries.map(card).join('') : `<p class="empty masc-empty">${mascot('n-calc', { size: 64, zoom: 1.2 })}<span>Nothing matches "${esc(q)}".</span></p>`);
+      + (entries.length || head ? entries.map(card).join('') : `<p class="empty masc-empty">${mascot('n-calc', { size: 64, zoom: 1.2 })}<span>Nothing matches "${esc(q)}". ${reportButton('idea', { text: 'Ask for this to be documented', tip: 'Ask for this to be documented: opens a request with your search filled in', attrs: `data-report-docs="${esc(q)}"` })}</span></p>`);
     wireApiLinks(el);
   }
   $('#api-q').addEventListener('input', (e) => {

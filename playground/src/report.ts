@@ -8,7 +8,7 @@ import { checksum } from './checksum';
 declare const BUILD: { bench?: string; core: string };
 
 export interface ReportState {
-  handler?: { name: string; kind: string; link?: string };
+  handler?: { name: string; kind: string; link?: string; hubId?: string; hubVersion?: string };
   view?: string;
 }
 let state: () => ReportState = () => ({});
@@ -26,8 +26,15 @@ function browser(): string {
   return `${name}${m ? ' ' + m[2] : ''} on ${os}${matchMedia('(pointer: coarse)').matches ? ', touch' : ''}`;
 }
 
-/** The block of lines, ending with its checksum. */
-export function reportContext(extra: Record<string, string | undefined> = {}): string {
+/** What's open, for the reports' "Where the handler is from" (core/report.ts HandlerOrigin): never its code. */
+export function openHandler(): { name: string; kind: string; link?: string; hubId?: string; hubVersion?: string } | undefined {
+  return state().handler;
+}
+/** The version line of a report ("workbench 9589434"). */
+export const workbenchVersion = () => `workbench ${BUILD.bench ?? ''}`.trim();
+
+/** The block's lines, without the checksum (`handler: false` leaves out the open handler: the report says it). */
+export function contextLines(extra: Record<string, string | undefined> = {}, o: { handler?: boolean } = {}): string[] {
   const r = document.documentElement.dataset;
   const s = state();
   const prof = (() => { try { return JSON.parse(get('nucleus-workbench-tester-profile') || 'null'); } catch { return null; } })();
@@ -37,10 +44,15 @@ export function reportContext(extra: Record<string, string | undefined> = {}): s
     `Browser: ${browser()}`,
     `Screen: ${innerWidth}x${innerHeight} (pixel ratio ${devicePixelRatio})`,
     `Settings: look ${r.site ?? 'www'}, ${r.theme ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')}, layout ${r.layout ?? 'bar'}, ${r.mode === 'dev' ? 'advanced' : 'guided'}${s.view ? `, ${s.view} view` : ''}, check ${get('nucleus-workbench-check-density') ?? 'compact'}`,
-    s.handler ? `Open handler: ${s.handler.name} (${s.handler.kind}${s.handler.link ? `, ${s.handler.link}` : ''})` : '',
+    s.handler && o.handler !== false ? `Open handler: ${s.handler.name} (${s.handler.kind}${s.handler.link ? `, ${s.handler.link}` : ''})` : '',
     prof ? `Tester: coding ${prof.coding ?? '?'}, Nucleus ${prof.nucleus ?? '?'}` : '',
     ...Object.entries(extra).map(([k, v]) => (v ? `${k}: ${v}` : '')),
   ].filter(Boolean);
+  return lines;
+}
+/** The block of lines, ending with its checksum. */
+export function reportContext(extra: Record<string, string | undefined> = {}): string {
+  const lines = contextLines(extra);
   return [...lines, `Check: ${checksum(lines)}`].join('\n');
 }
 
@@ -48,7 +60,7 @@ export function reportContext(extra: Record<string, string | undefined> = {}): s
 // have theirs in splitscreenme-vscode.
 const FORM = 'https://github.com/Snailedlt/nucleuscoop-handler-testbench/issues/new';
 /** Phones and tablets only: the GitHub app can catch github.com links, and it opens a blank issue: no form, no details. */
-const onPhone = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
+export const onPhone = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
 export const GH_APP_NOTE = 'Opens GitHub. Use your browser, not the GitHub app: the app leaves out the form and its details.';
 /** The note under a report link, on phones only (empty elsewhere). */
 export function appNote(): string {

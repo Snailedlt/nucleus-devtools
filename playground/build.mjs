@@ -696,6 +696,8 @@ let checksNav = [];
   const learnJs = await esbuild.build({
     entryPoints: [path.join(here, 'src', 'learn', 'learn.ts')],
     bundle: true, format: 'iife', platform: 'browser', target: 'es2020', minify: true, write: false,
+    // The reports' details (report.ts) say which build this is, as the workbench's do.
+    define: { BUILD: JSON.stringify({ bench: build.bench, core: build.core }) },
     alias: { '@core': path.join(coreRepo, 'src', 'core'), 'eslint/universal': path.join(coreRepo, 'src', 'core', 'eslint-stub.ts'), 'node:path': 'path-browserify', path: 'path-browserify' },
     banner: { js: "var process = globalThis.process || { env: {}, argv: [], versions: {}, platform: 'browser', cwd: function () { return '/'; }, emitWarning: function () {}, nextTick: function (f) { Promise.resolve().then(f); } };" },
     nodePaths: [path.join(coreRepo, 'node_modules'), path.join(here, 'node_modules')],
