@@ -597,6 +597,13 @@ for (const theme of ['light', 'dark']) {
     await p.waitForTimeout(400);
     check((await p.$$('#api-results pre.doc-code.hl .cm-number')).length > 0, `${theme}: Docs shows its example coloured like the code`);
     check(/docs\/Game\.PlayersPerInstance\/$/.test((await p.getAttribute('#api-results .api-page a', 'href')) ?? ''), `${theme}: Docs' Open as a page leads to that name's docs page`);
+    // "By engine": counted, under "In practice" (after the AI-written text, or alone in a plain box).
+    await p.fill('#api-q', 'Context.EditRegKey');
+    await p.waitForTimeout(400);
+    check(/By engine: Unity games/.test((await p.textContent('#api-results .dc-practice .dc-engine').catch(() => '')) ?? ''), `${theme}: Docs shows "By engine" with "In practice"`);
+    await p.fill('#api-q', 'Game.ProtoInput.DontShowCursorWhenImageUpdated');
+    await p.waitForTimeout(400);
+    check(await p.isVisible('#api-results .dc-practice.counted .dc-engine'), `${theme}: Docs shows "By engine" alone, marked counted, where there's no AI-written "In practice"`);
     // Blocks: a code step is a small CodeMirror with the colours, and typing in it edits the handler.
     await p.click('[data-view-mode=blocks]');
     await p.waitForTimeout(800);
@@ -816,6 +823,7 @@ await m.ctx.close();
     const s = await page(theme);
     await s.p.goto(BASE + 'docs/Context.ModifySaveFile/');
     check(await s.p.isVisible('.site-nav a[aria-current="page"]') && /Context\.ModifySaveFile/.test(await s.p.textContent('main h1')), `docs page ${theme}: header and the name`);
+    check(/By engine: Source games/.test(await s.p.textContent('main')), `docs page ${theme}: "By engine" under "In practice"`);
     await s.p.click('.doc-fb [data-vote=down]');
     check((await s.p.getAttribute('.doc-fb [data-vote=down]', 'aria-pressed')) === 'true' && /Thanks/.test(await s.p.textContent('.doc-fb-thanks')), `docs page ${theme}: a vote shows as pressed, with thanks`);
     check(/doc-review/.test(await s.p.getAttribute('.doc-fb a', 'href')), `docs page ${theme}: the report link opens the doc review form`);
