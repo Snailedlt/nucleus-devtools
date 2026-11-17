@@ -38,35 +38,35 @@
 <li>Download <a id="ncdev" href="__NCDEV_URL__"><code>ncdev.exe</code></a> and close Notepad++.</li>
 <li>In PowerShell <strong>as administrator</strong>, in its folder: <code class="cmd">.\ncdev setup notepad++</code></li>
 <li>Open a handler: everything is under <strong>Plugins › Nucleus Co-op handlers</strong>.</li></ol><p class="small">A portable Notepad++ (no administrator needed): <code class="cmd">.\ncdev setup notepad++ --path "C:\path\to\Notepad++"</code></p></div><div class="ed-step" id="setup-neovim" hidden><h3>Neovim 0.11+</h3><ol><li>Add to your <code>init.lua</code>:
-<pre class="cfg"><code>vim.lsp.config(<span class="hs">'nucleus'</span>, {
-  cmd = { <span class="hs">'ncdev'</span>, <span class="hs">'lsp'</span> },
-  filetypes = { <span class="hs">'javascript'</span> },
-  root_markers = { <span class="hs">'handlers'</span>, <span class="hs">'.git'</span> },
+<pre class="cfg" data-lang="lua"><code>vim.lsp.config('nucleus', {
+  cmd = { 'ncdev', 'lsp' },
+  filetypes = { 'javascript' },
+  root_markers = { 'handlers', '.git' },
 })
-vim.lsp.enable(<span class="hs">'nucleus'</span>)</code></pre></li>
+vim.lsp.enable('nucleus')</code></pre></li>
 <li>Open a handler: problems show within a second. Older Neovim: <a href="https://github.com/Snailedlt/splitscreenme-vscode#neovim">the setup for it</a>.</li></ol></div><div class="ed-step" id="setup-helix" hidden><h3>Helix</h3><ol><li>Add to <code>languages.toml</code>:
-<pre class="cfg"><code>[<span class="hk">language-server.nucleus</span>]
-command = <span class="hs">"ncdev"</span>
-args = [<span class="hs">"lsp"</span>]
+<pre class="cfg" data-lang="toml"><code>[language-server.nucleus]
+command = "ncdev"
+args = ["lsp"]
 
-[[<span class="hk">language</span>]]
-name = <span class="hs">"javascript"</span>
-language-servers = [<span class="hs">"typescript-language-server"</span>, <span class="hs">"nucleus"</span>]</code></pre></li>
+[[language]]
+name = "javascript"
+language-servers = ["typescript-language-server", "nucleus"]</code></pre></li>
 <li>Open a handler (<code>:lsp-restart</code> if Helix was already open).</li></ol></div><div class="ed-step" id="setup-sublime" hidden><h3>Sublime Text</h3><ol><li>Install the <a href="https://packagecontrol.io/packages/LSP">LSP</a> package (Package Control).</li>
 <li><strong>Preferences › Package Settings › LSP › Settings</strong>, add:
-<pre class="cfg"><code>{ <span class="hs">"clients"</span>: { <span class="hs">"nucleus"</span>: {
-  <span class="hs">"enabled"</span>: <span class="hk">true</span>,
-  <span class="hs">"command"</span>: [<span class="hs">"ncdev"</span>, <span class="hs">"lsp"</span>],
-  <span class="hs">"selector"</span>: <span class="hs">"source.js"</span>
+<pre class="cfg" data-lang="json"><code>{ "clients": { "nucleus": {
+  "enabled": true,
+  "command": ["ncdev", "lsp"],
+  "selector": "source.js"
 } } }</code></pre></li>
 <li>Open a handler.</li></ol></div><div class="ed-step" id="setup-emacs" hidden><h3>Emacs 29+ (eglot)</h3><ol><li>Add to your init file:
-<pre class="cfg"><code>(with-eval-after-load <span class="hs">'eglot</span>
-  (add-to-list <span class="hs">'eglot-server-programs</span>
-               <span class="hs">'((js-mode js-ts-mode) . ("ncdev" "lsp"))</span>))</code></pre></li>
+<pre class="cfg" data-lang="commonlisp"><code>(with-eval-after-load 'eglot
+  (add-to-list 'eglot-server-programs
+               '((js-mode js-ts-mode) . ("ncdev" "lsp"))))</code></pre></li>
 <li>Open a handler and run <kbd>M-x eglot</kbd>.</li></ol></div><div class="ed-step" id="setup-kate" hidden><h3>Kate</h3><ol><li><strong>Settings › Configure Kate › LSP Client › User Server Settings</strong>, add:
-<pre class="cfg"><code>{ <span class="hs">"servers"</span>: { <span class="hs">"nucleus"</span>: {
-  <span class="hs">"command"</span>: [<span class="hs">"ncdev"</span>, <span class="hs">"lsp"</span>],
-  <span class="hs">"highlightingModeRegex"</span>: <span class="hs">"^JavaScript$"</span>
+<pre class="cfg" data-lang="json"><code>{ "servers": { "nucleus": {
+  "command": ["ncdev", "lsp"],
+  "highlightingModeRegex": "^JavaScript$"
 } } }</code></pre></li>
 <li>Open a handler. (Kate runs one server per language: this one takes over <code>.js</code> files.)</li></ol></div><div class="ed-step" id="setup-jetbrains" hidden><h3>JetBrains IDEs</h3><ol><li>Install the <a href="https://plugins.jetbrains.com/plugin/23257-lsp4ij">LSP4IJ</a> plugin.</li>
 <li><strong>Settings › Languages &amp; Frameworks › Language Servers › +</strong>: name <code>Nucleus</code>, command <code>ncdev lsp</code>, and under Mappings the file pattern <code>*.js</code>.</li>
@@ -79,12 +79,12 @@ language-servers = [<span class="hs">"typescript-language-server"</span>, <span 
   <h2 id="command-line" class="has-anchor">The command line: ncdev</h2>
   <p><code>ncdev</code> (Nucleus Co-op dev tools) is the same engine on the command line: check a handler or a whole <code>handlers</code> folder, fix and format it, Try it, look up an option, search the Hub, and package or install a handler. It also runs the servers for other editors and AI agents.</p>
   <p><strong>Windows, nothing else to install:</strong> download <a href="__NCDEV_URL__"><code>ncdev.exe</code></a> and run it from a terminal in its folder (in PowerShell, as <code>.\ncdev</code>). <code>ncdev update</code> keeps it current. <strong>With Node.js 18+:</strong> <code>nucleus.js</code> from <a href="https://github.com/Snailedlt/splitscreenme-vscode/releases">a release</a> does the same (<code>node nucleus.js lint MyGame.js</code>).</p>
-<pre class="cfg" tabindex="0" aria-label="Examples of ncdev commands"><code>ncdev lint MyGame.js            <span class="hc"># every problem, with line and why</span>
-ncdev lint handlers --fix       <span class="hc"># apply the safe fixes in a whole folder</span>
-ncdev format MyGame.js --write  <span class="hc"># indentation and spacing, never what it does</span>
-ncdev simulate MyGame.js        <span class="hc"># Try it: what each player gets</span>
-ncdev api Game.KillMutex        <span class="hc"># an option's type, default and docs</span>
-ncdev hub search "borderlands"  <span class="hc"># how other handlers did it</span></code></pre>
+<pre class="cfg" tabindex="0" aria-label="Examples of ncdev commands" data-lang="shell"><code>ncdev lint MyGame.js            # every problem, with line and why
+ncdev lint handlers --fix       # apply the safe fixes in a whole folder
+ncdev format MyGame.js --write  # indentation and spacing, never what it does
+ncdev simulate MyGame.js        # Try it: what each player gets
+ncdev api Game.KillMutex        # an option's type, default and docs
+ncdev hub search "borderlands"  # how other handlers did it</code></pre>
   <p class="small"><code>ncdev --help</code> lists everything; <a href="https://github.com/Snailedlt/splitscreenme-vscode#the-command-line-tool-ncdev">more in the README</a>. It isn't code-signed yet, so Windows SmartScreen may ask once (<strong>More info › Run anyway</strong>).</p>
   </section>
 

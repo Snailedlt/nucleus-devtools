@@ -16,6 +16,8 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 - **Right-click a pane's edge for its layout menu.** Reset that pane's size (double-click still does it too), move Files or Lines to the other side, hide it, reset every size, or switch to the side rail. The Menu key or Shift+F10 opens it on a focused edge.
 
+- **Code looks the same everywhere.** Every code block on the site (the start page, Tools, Docs, Checks, Learn, the beta test guide) now uses the workbench editor's own colours and background, generated from the same theme, so nothing drifts. The editor setups on the Tools page (Neovim, Helix, Sublime Text, Emacs, Kate) and the `ncdev` commands are coloured for their own language.
+
 ### 🐛 Fixed ·- **A long fix button in Check stays in its row.** It ends in … and its tooltip has the whole title.
  ### ⚡ Faster · ### ⚠️ Changed (what users must do differently) · ### 🙏 Thanks
 - 🙏 Thanks: one line per person who tested, reported a bug or contributed to this release, e.g. "- **Horah** for reporting …". When it came through GitHub (an issue, a pull request, a review), link their profile: "- **[name](https://github.com/name)** for …". Credit them inline too ("Reported by Horah.").

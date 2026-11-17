@@ -664,7 +664,7 @@ for (const theme of ['light', 'dark']) {
   await s.p.focus('.ba-range');
   for (let i = 0; i < 5; i++) await s.p.keyboard.press('ArrowLeft');
   check((await s.p.$eval('.ba-frame', (e) => e.style.getPropertyValue('--pos'))) === '45%', `${theme}: start page gallery: the arrow keys move the slider`);
-  check((await s.p.getAttribute('.ctas a.btn.primary', 'href')) .replace(/\?ref=[\w.-]+$/, '').replace(/index\.html$/, '') === '../', `${theme}: the start page links to its own workbench (by its file in a preview: some hosts don't serve ../)`);
+  check((await s.p.getAttribute('.ctas a.btn.primary', 'href')) .replace(/\?ref=[\w.-]+(#[\w-]+)?$/, '').replace(/index\.html$/, '') === '../', `${theme}: the start page links to its own workbench (by its file in a preview: some hosts don't serve ../)`);
   await axe(s.p, `${theme}, start page`);
   check(!s.errors.length, `${theme}: start page has no page errors`);
   // The tools page: the downloads, a language-server editor's setup on a click, and old start-page links forwarded.

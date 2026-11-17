@@ -574,13 +574,45 @@ const hlStatic = (() => {
     return out;
   };
 })();
-// The code colours of the site's own pages (the www look's, AA on their code background, light and dark), for the
-// highlighted code (.hl) on every page.
-const HL_CSS = `.hl .cm-keyword { color: var(--kw); } .hl .cm-string { color: var(--str); } .hl .cm-number, .hl .cm-atom { color: var(--num); } .hl .cm-property { color: var(--prop); } .hl .cm-comment { color: var(--cmt); }
-:root { --kw: #6f2db8; --str: #b0175a; --num: #0f6f6d; --prop: #0b5c8a; --cmt: #5c636c; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --kw: #ff79c6; --str: #f1fa8c; --num: #bd93f9; --prop: #8be9fd; --cmt: #b0b4ba; } }
-:root[data-theme="dark"] { --kw: #ff79c6; --str: #f1fa8c; --num: #bd93f9; --prop: #8be9fd; --cmt: #b0b4ba; }
+// The code colours of the site's own pages: the workbench editor's, generated from the same sources (the default
+// look's code tokens in src/themes.json, and the token rules in src/page.html), so every code block on the site looks
+// like the editor's code, light and dark. `.hl` is the class of coloured code everywhere (pages, docs, checks, Learn).
+const HL_CSS = await (async () => {
+  const kit = await esbuild.build({ stdin: { contents: "export { resolve, codeTokens } from './themekit';", resolveDir: path.join(here, 'src'), loader: 'ts' }, bundle: true, format: 'esm', platform: 'neutral', write: false, logLevel: 'error' });
+  const { resolve, codeTokens } = await import('data:text/javascript;base64,' + Buffer.from(kit.outputFiles[0].text).toString('base64'));
+  const file = JSON.parse(fs.readFileSync(path.join(here, 'src', 'themes.json'), 'utf8'));
+  const KEYS = ['kw', 'str', 'num', 'prop', 'cmt', 'fn', 'obj', 'group', 'choice', 'op', 'kw-weight', 'op-weight', 'code-fg', 'code-bg', 'code-muted'];
+  const decl = (mode) => Object.entries(codeTokens(resolve(file.default, file.looks, mode))).filter(([k]) => KEYS.includes(k)).map(([k, v]) => `--${k}: ${v};`).join(' ');
+  const L = decl('light'), D = decl('dark');
+  // The editor's token rules, for .hl instead of the editor's .cm-s-default (named code themes are editor-only).
+  const rules = fs.readFileSync(path.join(here, 'src', 'page.html'), 'utf8').split('\n')
+    .filter((l) => /^\.cm-s-default \.cm-/.test(l) || /^:is\(\.cm-s-default, \.hl, \.ct-sample\) span\.cm-nucleus/.test(l))
+    .map((l) => l.replace(/\.cm-s-default \./g, '.hl .').replace(/:is\(\.cm-s-default, \.hl, \.ct-sample\)/g, '.hl'));
+  if (rules.length < 8) throw new Error(`build: found only ${rules.length} code colour rules in page.html`);
+  return `.hl { ${L} }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .hl { ${D} } }
+:root[data-theme="dark"] .hl { ${D} } :root[data-theme="light"] .hl { ${L} }
+pre.hl, pre:has(> code.hl) { background: var(--code-bg); color: var(--code-fg); }
+${rules.join('\n')}
 `;
+})();
+// Code in other languages (the editors' config files, shell commands): `<pre data-lang="lua">` etc., coloured at build
+// time by CodeMirror's mode for it, with the same token classes and colours as the editor (.hl).
+const hlLangBlocks = (() => {
+  const req = createRequire(import.meta.url);
+  const CM = req('codemirror/addon/runmode/runmode.node.js');
+  for (const m of ['lua/lua', 'toml/toml', 'commonlisp/commonlisp', 'shell/shell', 'javascript/javascript']) req(`codemirror/mode/${m}.js`);
+  const MODES = { lua: 'lua', toml: 'toml', commonlisp: 'commonlisp', shell: 'shell', json: { name: 'javascript', json: true }, js: 'javascript' };
+  const unesc = (t) => t.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+  const escT = (t) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  return (html) => html.replace(/<pre class="([^"]*)"([^>]*) data-lang="(\w+)"><code>([^<]*)<\/code><\/pre>/g, (m, cls, attrs, lang, code) => {
+    const mode = MODES[lang];
+    if (!mode) throw new Error(`build: no colouring for data-lang="${lang}"`);
+    let out = '';
+    CM.runMode(unesc(code), mode, (t, style) => { out += style ? `<span class="${style.split(' ').map((x) => `cm-${x}`).join(' ')}">${escT(t)}</span>` : escT(t); });
+    return `<pre class="${cls} hl"${attrs} data-lang="${lang}"><code>${out}</code></pre>`;
+  });
+})();
 // Code coloured like the editors: CodeMirror's tokens, Nucleus names by what they are (src/semhl.ts, the core's
 // semantic tokens). For the start page's inline code, the docs and checks pages' code blocks, and the site pass below.
 const hlSem = await (async () => {
@@ -614,7 +646,7 @@ const toolsSrc = (() => {
     .replace(/(<meta (?:property="og|name="twitter):description" content=")[^"]*"/g, `$1${desc}"`)
     .replace(/__BASE__start\/"/g, '__BASE__tools/"')
     .replace(/(content="__BASE__)tools\/og\.png"/g, '$1start/og.png"')
-    + '<body>\n' + fs.readFileSync(path.join(here, 'src', 'tools.html'), 'utf8');
+    + '<body>\n' + hlLangBlocks(fs.readFileSync(path.join(here, 'src', 'tools.html'), 'utf8'));
 })();
 const toolsDir = path.join(here, 'dist', 'pages', 'tools');
 fs.mkdirSync(toolsDir, { recursive: true });
@@ -787,17 +819,20 @@ for (const f of fs.readdirSync(path.join(here, 'src', 'editor-icons'))) if (f.en
 // on its code blocks and inline commands (site-chrome.mjs COPY_SCRIPT), and the community links where it asks for
 // them (<!--COMMUNITY--> box, <!--COMMUNITY_FOOTER--> links; site-chrome.mjs COMMUNITY).
 {
+  /** `fn` on the HTML outside <script>…</script>; the scripts stay exactly as they are. */
+  const outsideScripts = (html, fn) => html.split(/(<script\b[\s\S]*?<\/script>)/i).map((part, i) => (i % 2 ? part : fn(part))).join('');
   const script = siteVisitScript(feedbackSite);
   const kb = await esbuild.build({ stdin: { contents: "export { kbdify, KEYS_CSS } from './kbd'; export { SEM_STATIC_CSS } from './semcss';", resolveDir: path.join(here, 'src'), loader: 'ts' }, bundle: true, format: 'esm', platform: 'neutral', write: false, logLevel: 'error' });
   const { kbdify, KEYS_CSS, SEM_STATIC_CSS } = await import('data:text/javascript;base64,' + Buffer.from(kb.outputFiles[0].text).toString('base64'));
   const page = (html) => {
     const b = html.search(/<body[^>]*>/i), e = html.lastIndexOf('</body>');
     if (b < 0 || e < 0) return html;
-    // Inline code that is clearly code (Game.Play, a call, a string) coloured like the editor; then the keys.
-    const body = kbdify(withCommunity(html.slice(b, e)).replaceAll('__EDITOR_POLL__', COMMUNITY.editorPoll).replaceAll('__DISCORD_INVITE__', COMMUNITY.discord).replace(/<code>([^<]*)<\/code>/g, (m, inner) => {
+    // Inline code that is clearly code (Game.Play, a call, a string) coloured like the editor; then the keys. Only in
+    // the page's text: a page's own <script> builds HTML in template strings, which must stay as written.
+    const body = outsideScripts(hlLangBlocks(withCommunity(html.slice(b, e)).replaceAll('__EDITOR_POLL__', COMMUNITY.editorPoll).replaceAll('__DISCORD_INVITE__', COMMUNITY.discord)), (part) => kbdify(part.replace(/<code>([^<]*)<\/code>/g, (m, inner) => {
       const t = inner.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
       return hlSem.looksLikeCode(t) ? `<code class="hl">${hlSem(t)}</code>` : m;
-    }));
+    })));
     return html.slice(0, b).replace('</style>', () => `${KEYS_CSS}\n${COPY_CSS}\n${HL_CSS}\n${SEM_STATIC_CSS}\n${COMMUNITY_CSS}</style>`) + body + `${COPY_SCRIPT}\n${script ?? ''}\n` + html.slice(e);
   };
   const add = (d) => {
