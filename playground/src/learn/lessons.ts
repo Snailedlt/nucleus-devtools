@@ -1046,7 +1046,8 @@ export const CHAPTERS: Chapter[] = [
     lessons: FIRST,
   },
   {
-    id: 'launch-options',
+    id: 'launch-options-and-config-files',
+    formerIds: ['launch-options'], // its id until 2026-11-17 (never published, kept so test links still open)
     title: 'Launch options and config files',
     blurb: 'Write a handler for “Codename CURE”, a free co-op shooter on Steam, where each player gets their own launch arguments and config file.',
     build: 'A handler for **Codename CURE**, a free co-op zombie shooter on Steam made with the Source engine (Half-Life 2\'s). Each player gets launch arguments for their window, a frame rate cap the players choose, and a config file of their own. You test it in Nucleus Co-op at the end, and compare it with the Hub\'s.',
