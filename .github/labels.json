@@ -68,5 +68,15 @@
     "name": "area: website",
     "color": "bfd4f2",
     "description": "The start page and other pages"
+  },
+  {
+    "name": "feedback",
+    "color": "fef2c0",
+    "description": "Feedback (from the issue form)"
+  },
+  {
+    "name": "feature-request",
+    "color": "a2eeef",
+    "description": "\"I want to do…\": a goal and what's in the way (from the issue form)"
   }
 ]

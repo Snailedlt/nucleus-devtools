@@ -11,7 +11,7 @@ permissions:
   issues: write
 jobs:
   keep-details:
-    if: contains(github.event.issue.body, '### Details from the workbench')
+    if: contains(github.event.issue.body, '### Details from the tool') || contains(github.event.issue.body, '### Details from the workbench')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

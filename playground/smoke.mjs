@@ -573,7 +573,26 @@ for (const theme of ['light', 'dark']) {
     await p.waitForTimeout(900);
     check(await p.isVisible('#tip') && (await p.$$('#tip code.hl :is(.cm-property, .cm-nucleus-prop)')).length > 0, `${theme}: the hover card shows code in the editor's colours`);
     await p.mouse.move(5, 5);
+    // Reports (reportflow.ts): "This check is wrong" on a problem opens the dialog with the check filled in and the
+    // flagged line shown (nothing is sent); a Docs search with no results offers "Ask for this to be documented".
+    {
+      const before = await p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue());
+      await p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.setValue('Game.GUID = "Demo";\nGame.GameName = "Demo";\nGame.ExecutableName = "demo.exe";\nGame.Hook.ForceFocuss = true;\n'));
+      await p.waitForTimeout(700);
+      await p.click('[role=tab][data-tab=problems]');
+      await p.click('#problems .ptoggle');
+      await p.click('#problems [data-wrong]');
+      await p.waitForSelector('#report-dialog[open]');
+      check((await p.textContent('#report-dialog .rf-pre')).trim() === 'Game.Hook.ForceFocuss = true;' && /Rule: unknown-member/.test(await p.textContent('#rf-block')), `${theme}: This check is wrong shows the flagged line and the check before anything is sent`);
+      await axe(p, `${theme}: the report dialog`);
+      await p.keyboard.press('Escape');
+      await p.evaluate((c) => document.querySelector('.CodeMirror').CodeMirror.setValue(c), before);
+      await p.waitForTimeout(700);
+    }
     await p.click('[role=tab][data-tab=api]');
+    await p.fill('#api-q', 'zzqq no such thing');
+    await p.waitForTimeout(400);
+    check(await p.isVisible('[data-report-docs]'), `${theme}: a Docs search with no results offers Ask for this to be documented`);
     await p.fill('#api-q', 'Game.PlayersPerInstance');
     await p.waitForTimeout(400);
     check((await p.$$('#api-results pre.doc-code.hl .cm-number')).length > 0, `${theme}: Docs shows its example coloured like the code`);

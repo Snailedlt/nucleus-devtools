@@ -864,6 +864,13 @@ a { color: var(--accent); }
 .masc-empty .masc { margin: -6px 0; }
 .masc-banner { display: flex; align-items: center; gap: 10px; }
 .masc-banner { overflow: visible; }
+/* Report buttons (core/reporticons.ts; base look in reportflow.ts): Try it's "Nucleus did something different" in the
+   banner's corner, the hover's flag at the end of its bar, "This check is wrong" with a problem's other links. */
+.masc-banner .sim-differs { margin-left: auto; align-self: flex-start; }
+.hv-bar .hv-wrong { margin-left: auto; }
+.hv-bar .hv-key + .hv-wrong { margin-left: 8px; }
+.problem .meta .pwrong { margin-left: auto; font-size: 12px; }
+.lp-actions .rep-btn { margin-left: auto; }
 /* Game.ProtoInput.BlockedMessages: names after the numbers, and a + to add one (src/wmhints.ts) */
 .CodeMirror .wm-hint { margin: 0 2px 0 6px; padding: 0 5px; border-radius: 4px; font-size: .82em; color: var(--muted); background: var(--surface-2); font-family: var(--font, system-ui), sans-serif; user-select: none; }
 .CodeMirror .wm-hint.bad { color: var(--warning-fg, #b45309); }

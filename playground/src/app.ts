@@ -57,6 +57,9 @@ import { initTestPins } from './testpins';
 import { exportSettings, importSettings } from './settingsio';
 import { BETA } from './testplan';
 import { feedbackUrl, openReport, setReportState } from './report';
+import { openReportFlow, ensureReportStyles } from './reportflow';
+import { initErrorReports } from './errorcatch';
+import { reportButton, REPORT_ACTIONS } from '@core/reporticons';
 import { firstRunDone, initFirstRun } from './firstrun';
 import { countVisit, feedbackAvailable, feedbackBlockedByBrowser, feedbackOn, setFeedback, totalsUrl, use, wireVotes } from './feedback';
 import { blockedItemAt, messageMarkdown } from '@core/wm';
@@ -84,6 +87,14 @@ interface HubExample { id: string; title: string; game: string; owner: string; v
 declare const HUB_EXAMPLES: { takenAt: string | null; handlers: HubExample[]; base: string | null; /** every handler on the Hub (our mirror), not only the most downloaded */ all?: boolean };
 declare const EXAMPLE_PACKAGES: { id: string; title: string; sub: string; name: string; hubId: string; handler: string; files: { name: string; b64: string }[] }[];
 declare const BOT_TEMPLATES: { commit: string | null; templates: { id: string; name: string; source: string }[] };
+// The workbench's own errors: a quiet "Something went wrong. Report it?" instead of nothing (errorcatch.ts).
+initErrorReports();
+ensureReportStyles();
+// A Docs search that finds nothing offers "Ask for this to be documented" (docs-ui.ts).
+document.addEventListener('click', (e) => {
+  const b = (e.target as HTMLElement).closest?.<HTMLElement>('[data-report-docs]');
+  if (b) openReportFlow({ kind: 'docs', query: b.dataset.reportDocs ?? '' });
+});
 
 // The address as the page was opened (start-up loads the last draft, which can rewrite it): a #docs-… link from an
 // editor's hover opens Docs there, over whatever handler is open.
@@ -593,9 +604,12 @@ function showHoverCard(text: string, at: number, list: Diagnostic[], doc: string
   if (!list.length && !doc) return void (tip.hidden = true);
   // Explain this line: on request, a link at the bottom of the card (as in VS Code); not on a gutter marker (at -1).
   tip.classList.remove('explain');
-  const explain = at >= 0 ? `<div class="hv-bar"><button class="hv-link" type="button" data-hc-explain="${at}">Explain this line</button><span class="hv-key">${esc(labelOf('explainLine'))}</span></div>` : '';
+  // "This check is wrong": the flag at the end of the bottom bar, an icon with its tooltip (one per check here).
+  const wrong = [...new Map(list.map((d) => [d.rule, d])).values()].map((d) => reportButton('flag', { label: `${REPORT_ACTIONS.flag.label}: ${d.rule}`, tip: `This check is wrong (${d.rule}): tell us, with the check and the line filled in`, className: 'hv-wrong', attrs: `data-hc-wrong="${list.indexOf(d)}"` })).join('');
+  const explain = at >= 0 ? `<div class="hv-bar"><button class="hv-link" type="button" data-hc-explain="${at}">Explain this line</button><span class="hv-key">${esc(labelOf('explainLine'))}</span>${wrong}</div>` : wrong ? `<div class="hv-bar">${wrong}</div>` : '';
   tip.innerHTML = (list.length ? problemCard(list) : '') + (doc ? `<div class="hv-sec hv-doc">${doc}</div>` : '') + fixBar(list) + explain;
   tip.querySelector<HTMLButtonElement>('[data-hc-explain]')?.addEventListener('click', () => showExplanation(at));
+  tip.querySelectorAll<HTMLButtonElement>('[data-hc-wrong]').forEach((b) => b.addEventListener('click', () => ((tip.hidden = true), reportWrongCheck([list[Number(b.dataset.hcWrong)]]))));
   tip.classList.toggle('has-problems', list.length > 0);
   linkApiNames(tip);
   tip.hidden = false;
@@ -952,7 +966,7 @@ function renderProblems(text: string) {
           <span class="row-fix">${ordered[0] ? fixBtn(ordered[0], true) : ''}</span>
           <button class="ptoggle" type="button" aria-expanded="${open}" aria-controls="${bodyId}" aria-label="More about line ${line}: ${esc(plain.title)}"></button></div>
         <div class="body" id="${bodyId}"${open ? '' : ' hidden'}><p class="plain-why">${esc(plain.why)}</p>
-        <div class="meta">${ordered.slice(1).map((o) => fixBtn(o, false)).join('')}<button class="link" type="button" data-jump="${d.start}">Show me</button>${RULE_DOCS[d.rule] ? `<a class="link" href="${esc(ruleHref(d.rule))}" target="_blank" rel="noopener">About this check</a>` : ''}${extra}</div>
+        <div class="meta">${ordered.slice(1).map((o) => fixBtn(o, false)).join('')}<button class="link" type="button" data-jump="${d.start}">Show me</button>${RULE_DOCS[d.rule] ? `<a class="link" href="${esc(ruleHref(d.rule))}" target="_blank" rel="noopener">About this check</a>` : ''}${extra}${reportButton('flag', { text: true, className: 'pwrong', attrs: `data-wrong="${i}"` })}</div>
         <details class="tech"${density === 'detailed' ? ' open' : ''}><summary>Technical details</summary>${md(d.message).replace(/^<p>|<\/p>$/g, '')}</details></div></div></li>`;
     })
     .join('');
@@ -989,6 +1003,7 @@ function renderProblems(text: string) {
     }),
   );
   el.querySelectorAll<HTMLButtonElement>('[data-jump]').forEach((b) => b.addEventListener('click', () => jumpTo(Number(b.dataset.jump))));
+  el.querySelectorAll<HTMLButtonElement>('[data-wrong]').forEach((b) => b.addEventListener('click', () => reportWrongCheck(groups[Number(b.dataset.wrong)])));
 }
 const openProblems = new Set<string>();
 /** Groups problems that say the same thing (same rule, severity and message with the numbers ignored, same
@@ -1002,6 +1017,16 @@ function groupProblems(list: Diagnostic[]): Diagnostic[][] {
     else out.push([d]);
   }
   return out;
+}
+/** "This check is wrong" for a problem (or a group of the same one): the flagged lines only, at most 20, shown in
+ *  the report dialog with a box to leave them out. */
+function reportWrongCheck(g: Diagnostic[]) {
+  const text = editor.getValue();
+  const d = g[0];
+  const first = lineOf(text, d.start);
+  const last = Math.min(first + 19, lineOf(text, Math.max(...g.map((x) => Math.max(x.start, x.end - 1)))));
+  const code = text.split('\n').slice(first, last + 1).join('\n');
+  openReportFlow({ kind: 'check', rule: d.rule, message: d.message, line: first + 1, code, handlerCode: text });
 }
 /** `Player.ProtoController5–16` for a group whose names differ only in a number. */
 function rangeOfNames(g: Diagnostic[]): string {
@@ -1049,7 +1074,7 @@ function showLineProblems(line: number, at?: number) {
         const plain = plainFor(d);
         const about = d.message.match(/`([^`]+)`/)?.[1];
         const fixes = [...(d.fixes ?? [])].sort((a, z) => Number(!!z.preferred) - Number(!!a.preferred));
-        return `<div class="lp-item ${sevClass[d.severity]}"><div class="lp-title">Line ${line + 1}: ${esc(plain.title)}${about ? `: <code>${esc(about)}</code>` : ''}</div><div class="lp-why">${esc(plain.why)}</div><div class="lp-actions">${fixes.map((f, k) => `<button class="btn${k === 0 ? ' primary' : ''}" type="button" data-lp-fix="${i}:${d.fixes!.indexOf(f)}">${f.preferred && fixes.length === 1 ? 'Fix this' : esc(f.title.replace(/`/g, ''))}</button>`).join('')}<button class="link" type="button" data-lp-more>More in Check</button></div></div>`;
+        return `<div class="lp-item ${sevClass[d.severity]}"><div class="lp-title">Line ${line + 1}: ${esc(plain.title)}${about ? `: <code>${esc(about)}</code>` : ''}</div><div class="lp-why">${esc(plain.why)}</div><div class="lp-actions">${fixes.map((f, k) => `<button class="btn${k === 0 ? ' primary' : ''}" type="button" data-lp-fix="${i}:${d.fixes!.indexOf(f)}">${f.preferred && fixes.length === 1 ? 'Fix this' : esc(f.title.replace(/`/g, ''))}</button>`).join('')}<button class="link" type="button" data-lp-more>More in Check</button>${reportButton('flag', { attrs: `data-lp-wrong="${i}"` })}</div></div>`;
       })
       .join('');
   // Under the line, or above it near the bottom of the editor.
@@ -1072,6 +1097,7 @@ function showLineProblems(line: number, at?: number) {
       codeNote(editor, editor.posFromIndex(Math.min(...fix.edits.map((e) => e.start))).line, `Fixed: ${fix.title.replace(/`/g, '')}.`, { action: undoAction });
     }),
   );
+  linePop.querySelectorAll<HTMLButtonElement>('[data-lp-wrong]').forEach((b) => b.addEventListener('click', () => (hideLinePop(), reportWrongCheck([list[Number(b.dataset.lpWrong)]]))));
   linePop.querySelectorAll('[data-lp-more]').forEach((b) =>
     b.addEventListener('click', () => {
       hideLinePop();
@@ -1919,7 +1945,8 @@ function commandList(): OpenEntry[] {
     c('Compare: open this handler in the previous version', '', 'previous old version compare before beta', () => void hasPrevious().then((ok) => (ok ? openInPrevious() : notice('The previous version is only on the published site (GitHub Pages).', { kind: 'info' })))),
     c('Save into Nucleus Co-op (its handlers folder)', 'Ctrl+Alt+S', 'save install nucleus handlers folder copy into', () => void saveToNucleus()),
     c("Link your game's folder (check paths against it)", '', 'game folder install directory exe path link pick', () => void pickFolder()),
-    c('Send feedback or report a problem', '', 'feedback bug report issue github wrong problem', () => openReport(feedbackUrl())),
+    c('Report a problem…', '', 'send feedback bug report issue github wrong problem broken error', () => openReportFlow({ kind: 'problem', handlerCode: editor.getValue() })),
+    c('Request a feature… (I want to do…)', '', 'feature request idea suggest wish want missing enhancement', () => openReportFlow({ kind: 'feature' })),
     c('About these tools (start page)', '', 'start page about install vscode extension download home site', () => ((document.querySelector('a.start-link') as HTMLAnchorElement).click())),
     c('Show or hide the dev bar', 'Ctrl+Alt+D', 'dev developer contrast colour', () => devBar.toggle()),
   ];
@@ -2603,7 +2630,8 @@ const appItems = (): MenuItem[] => [
   { label: 'Keyboard shortcuts', hint: '?', run: () => helpDialog.showModal() },
   { label: "What's new", run: () => ($('#news-open-2') as HTMLButtonElement).click() },
   { label: 'Getting started', run: () => ($('#welcome-open') as HTMLButtonElement).click() },
-  { label: 'Send feedback…', run: () => openReport(feedbackUrl()) },
+  { label: 'Report a problem…', run: () => openReportFlow({ kind: 'problem', handlerCode: editor.getValue() }) },
+  { label: 'Request a feature…', run: () => openReportFlow({ kind: 'feature' }) },
   { kind: 'separator', label: '' },
   { label: '⌂ Home: about these tools', run: () => (location.href = homeHref()) },
   { label: '📘 Learn: making your first handler', run: () => openLearn() },
@@ -2911,7 +2939,12 @@ try {
 // What feedback forms say about the open handler: its name and where it came from, a link only to an unedited example
 // or Hub handler, never the code itself.
 setReportState(() => ({
-  handler: { name: doc.name, kind: doc.kind === 'draft' || doc.kind === 'new' ? 'own code, not included' : doc.kind, link: doc.hash && editor.getValue() === loadedText ? `${location.origin}${location.pathname}#${doc.hash}` : undefined },
+  handler: {
+    name: doc.name,
+    kind: doc.kind === 'draft' || doc.kind === 'new' ? 'own code, not included' : doc.kind,
+    link: doc.hash && editor.getValue() === loadedText ? `${location.origin}${location.pathname}#${doc.hash}` : undefined,
+    ...(doc.kind === 'hub' && doc.hubIndex !== undefined ? { hubId: HUB_EXAMPLES.handlers[doc.hubIndex].id, hubVersion: String(HUB_EXAMPLES.handlers[doc.hubIndex].version ?? '') || undefined } : {}),
+  },
   view: viewMode,
 }));
 // The very first visit (not someone who has used the workbench before): Nucli's two questions.

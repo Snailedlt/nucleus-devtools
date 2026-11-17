@@ -24,6 +24,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 - One line per change: a **short summary** in bold (the update note shows only that), then one or two plain sentences.
 - A screenshot (or other media) for big, visible changes, folded away in a `<details><summary>Screenshot</summary>` block indented under its line, with a blank line before and after the image and the closing `  </details>`; the image line: `  ![What it shows](docs/images/changelog/<date>-<name>-light.png)` (≈700–1000 px wide), with `<date>-<name>-dark.png` beside it: What's new shows the one for the viewer's theme (`tools/screenshots.cjs` takes both). An animation is a `.gif` (or `.mp4`/`.webm`, smaller) with a `.png` still of the same name beside it (`x-light.gif` + `x-light.png`, and the dark pair): What's new shows the still until the item is opened, then plays it, unless the device asks for less motion. Keep each under ~300 KB; summary `Animation`.
 - When it goes live: rename "## Unreleased" to "## <yyyy-mm-dd>" (add " HH:MM", UTC, for a second release on the same day). A `---` line separates releases.
+- A change that settles an issue in this repository: end its line with (#12), or say "Fixes #12" in the commit. On release the issue gets a comment saying which release has it, thanking whoever reported it (scripts/issue-bots.mjs in splitscreenme-vscode).
 -->
 
 ## Unreleased
@@ -33,6 +34,12 @@ How to write it (people and AI agents read this, and the workbench shows it):
 - **Learn has a second chapter: launch options and config files.** Nine short lessons build a handler for Codename CURE, a free Source engine co-op game on Steam: launch arguments, each window's size in `Game.Play`, a choice the players make (and why saved choices come back as text), a config file for each player, a "fix the mistakes" quiz checked by the real Check, a test in Nucleus Co-op and a comparison with the Hub handler.
 - **A Hint button in Learn.** Next to *Show me*, *Hint* says what the lesson's check still misses and where to look (the line under `// The game`, say), and follows your code as you type. Nothing shows until you press it.
 - **Each chapter starts with an overview.** What you'll build, what you need first, and every lesson with its minutes, marking the ones done on your PC.
+- **Report from where you are.** *Report a problem* and *Request a feature* (menu, Ctrl+Shift+P) open the right form, workbench or extension, filled in with the build, your settings and where the handler came from, never your code. You see everything before it's sent, and you never pick a repository.
+- **"This check is wrong" on every problem.** In Check (open a problem) and as the flag in the hover: the check, its message and the flagged line are filled in, and you can leave the code out.
+- **"Nucleus did something different" in Try it.** The icon in the corner of Try it's result sends a short summary of what it showed (windows, arguments, file changes) next to what really happened.
+- **Ask for what's missing.** A Docs search with no results offers *Ask for this to be documented*, and Learn has *I'm stuck here* (under a task's hint and in the lesson list), with the lesson and, if you want, your code.
+- **Errors aren't silent any more.** When the workbench itself hits an error, a small note asks "Something went wrong. Report it?" with the error filled in. Nothing is sent by itself, and the same error shows once with a count.
+- **Possible duplicates first, and no account needed.** Before a new report, the workbench shows open reports that may be the same, to 👍 instead. No GitHub account? *Copy the report* and paste it in the testers' Discord thread. A problem with one Hub handler goes to its Hub page, Discord or Reddit instead of our forms.
 
 ### 🛠️ Improved
 

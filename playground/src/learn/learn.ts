@@ -23,6 +23,9 @@ import { RULE_DOCS } from '@core/ruledocs';
 import { zipBytes } from '@core/zipbytes';
 import { md, esc } from '../dom';
 import { hlHtml, hlCode } from '../codehl';
+import { reportButton } from '@core/reporticons';
+import { openReportFlow, ensureReportStyles } from '../reportflow';
+import { initErrorReports } from '../errorcatch';
 import { CHAPTERS, findLesson, hintFor, listed, lessonNumber, problems, progress, run, textWrites, type Chapter, type Lesson, type NoteKind, type Step } from './lessons';
 import type { SimResult } from '@core/sim';
 
@@ -459,7 +462,7 @@ function status() {
   task.classList.toggle('ok', ok);
   task.innerHTML = kbdify(ok
     ? `<strong>✓ Done.</strong> ${l.pane === 'tryit' ? 'Look at what each player gets in Try it, then go on.' : 'Go on when you\'re ready.'}`
-    : `<strong>Your turn:</strong> ${inline(l.task!)}${hintOpen ? `<span class="hint-box"><strong>Hint:</strong> ${inline(hintFor(l, text))}</span>` : miss && touched ? `<span class="hint">${inline(miss)}</span>` : ''}`);
+    : `<strong>Your turn:</strong> ${inline(l.task!)}${hintOpen ? `<span class="hint-box"><strong>Hint:</strong> ${inline(hintFor(l, text))}</span>${reportButton('idea', { text: "I'm stuck here", tip: "I'm stuck here: tell us where this lesson loses you (the lesson and, if you want, your code are filled in)", className: 'stuck', attrs: 'data-stuck' })}` : miss && touched ? `<span class="hint">${inline(miss)}</span>` : ''}`);
   $('#next').classList.toggle('primary', ok);
   const cp = document.getElementById('checkpoint');
   if (cp) cp.hidden = !ok;
@@ -685,6 +688,18 @@ $('#lesson-body').addEventListener('click', (e) => {
   navigator.clipboard?.writeText(b.dataset.copy ?? '').then(done, () => {});
   testEvent('copy', lesson().id);
 });
+
+// Reports: "I'm stuck here" (in the task once its hint shows, and in the lesson list), a problem with Learn, and
+// Learn's own errors (errorcatch.ts). The learner's code goes along only if they leave its box ticked.
+initErrorReports('learn');
+ensureReportStyles();
+const stuck = () => {
+  const l = lesson();
+  openReportFlow({ kind: 'stuck', tool: 'learn', lesson: { id: keyOf(l), title: l.title.replace(/`/g, '') }, code: l.kind === 'code' ? editor.getValue() : undefined });
+};
+document.addEventListener('click', (e) => { if ((e.target as HTMLElement).closest?.('[data-stuck]')) stuck(); });
+$('#drawer-report').innerHTML = reportButton('idea', { text: "I'm stuck in this lesson", attrs: 'data-stuck' }) + reportButton('report', { text: 'Report a problem with Learn', attrs: 'id="learn-problem"' });
+$('#learn-problem').addEventListener('click', () => openReportFlow({ kind: 'problem', tool: 'learn', extra: { Lesson: keyOf(lesson()) } }));
 $('#reset').addEventListener('click', () => { reset(); status(); });
 
 // ------------------------------------------------------------------------------------------------------------

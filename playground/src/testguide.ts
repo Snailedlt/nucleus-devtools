@@ -5,6 +5,7 @@
 //      "Everything else". Your answers stay shown at the top, and Change brings the questions back.
 // Each item has what to try, what to look for, a "Tried it" tick kept in this browser, and a Report link that opens
 // the tester feedback form filled in (report.ts).
+import { reportIcon } from '@core/reporticons';
 import { mascot } from './mascots';
 import { appNote, feedbackUrl } from './report';
 import { testEvent, totalsUrl } from './feedback';
@@ -46,7 +47,7 @@ export function initTestGuide(dlg: HTMLDialogElement, openers: HTMLElement[], ho
     <label class="tg-done"><input type="checkbox" data-id="${t.id}"${isDone(t.id) ? ' checked' : ''}><span class="sr-only">Tried: ${esc(t.title)}</span></label>
     <div><div class="tg-title"><strong>${esc(t.title)}</strong><span class="tg-time" title="${esc(e.how)}">${esc(e.label)}</span>${priority(t).need === 3 ? '<span class="tg-need" title="We need this one most">Much needed</span>' : ''}${t.areas.map((a) => `<span class="tg-area a-${a}" title="${esc(AREAS[a].who)}">${esc(AREAS[a].label)}</span>`).join('')}${t.kinds.map((k) => `<span class="tg-kind" title="${esc(KINDS[k].how)}">${esc(KINDS[k].label)}</span>`).join('')}</div>
     <p><span class="muted">Try:</span> ${esc(t.steps)}</p><p><span class="muted">Look for:</span> ${esc(t.look)}</p>
-    <div class="tg-acts"><a class="small tg-report" data-id="${t.id}" href="${esc(report(t))}" target="_blank" rel="noopener">Report what you found</a>
+    <div class="tg-acts"><a class="small tg-report" data-id="${t.id}" href="${esc(report(t))}" target="_blank" rel="noopener">${reportIcon('report', 14)} Report what you found</a>
     <button type="button" class="link small tg-pin" data-pin="${t.id}" aria-pressed="${pin}" title="Keep it in a small window over the workbench while you test">${pin ? '📌 Pinned' : '📌 Pin while testing'}</button></div></div></li>`;
   };
 
