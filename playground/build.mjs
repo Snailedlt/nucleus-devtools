@@ -336,8 +336,8 @@ const feedbackSite = (() => {
   console.warn('FEEDBACK_GOATCOUNTER is set but is not a GoatCounter site code (letters, digits, -) or https://<code>.goatcounter.com: anonymous counts stay off.');
   return null;
 })();
-// Nucleus Co-op's logo (the extension's media/nucleus-original.svg): the handler's file icon, as in VS Code.
-const logoFile = path.join(coreRepo, 'media', 'nucleus-original.svg');
+// Nucleus Co-op's logo (the extension's media/nucleus-handler.svg: the logo with a JS tag): the handler's file icon, as in VS Code.
+const logoFile = path.join(coreRepo, 'media', 'nucleus-handler.svg');
 const handlerLogo = fs.existsSync(logoFile) ? 'data:image/svg+xml,' + encodeURIComponent(fs.readFileSync(logoFile, 'utf8').trim()) : null;
 if (!handlerLogo) console.warn(`No ${logoFile}: the handler keeps the JS badge.`);
 const build = { bench: rev(path.join(here, '..')), core: rev(coreRepo), nucleus: apiModel.source?.nucleus ?? null, jint: apiModel.jint ?? null, feedback: feedbackSite, logo: handlerLogo };
