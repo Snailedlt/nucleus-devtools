@@ -23,6 +23,12 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 ## Unreleased
 
+### ✨ New
+
+- **"In practice" and an example in Docs.** The most used options and calls have a second part, written by AI from Nucleus Co-op's source and the Hub handlers: what the option really does and how Hub handlers use it, labelled AI-written apart from the doc. Most names have an example too, saying where it comes from (the official docs, the value most Hub handlers use, AI-written, or made from the type).
+- **Insert into handler.** Under a doc's example, *Insert into handler* puts it where it belongs: an option at the top with the others (or *Update in handler* when the handler sets it already: only the value changes), a call at the end of `Game.Play` or the Proto Input callback it goes in, inside the loop over `PlayerList`. One Ctrl+Z undoes it, and the changed line lights up.
+- **Vote on both parts of a doc.** 👍/👎 on the doc and on its "In practice" part, here and on the docs pages, with the votes so far. AI-written parts that at least 10 people voted on, 90% 👍, say *Verified by people*; AI agents' votes show apart and never count towards it. A browser driven by a program no longer sends votes.
+
 ### 🛠️ Improved
 
 - **Form names options in plain words.** In Guided mode each option shows a plain name (*Handler update interval*) with its API name (`Game.HandlerInterval`) under it, so you learn the names the code uses; Advanced mode keeps the API name first, with the plain name on hover. Numbers show their unit where the docs make it certain (*100 ms*, *25 seconds*), and *Add an option* finds options by their plain names too.

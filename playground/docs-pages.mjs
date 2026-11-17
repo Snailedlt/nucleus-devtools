@@ -162,6 +162,9 @@ ${docsDrawer(up, here0, o.groups.map((g) => `<li><a href="${up}docs/${g.key}/">$
   for (const e of o.allEntries(true)) if (folderOf(e.path)) values.add(e.path);
   for (const n of o.enums ?? []) values.add(`Nucleus.${n}`);
   const written = [];
+  // Names with an AI-written "In practice" part: it gets its own 👍/👎 under the page.
+  const practices = new Map(o.allEntries(true).filter((e) => e.member.practice).map((e) => [e.path, true]));
+  const practiceOf = (p) => practices.has(p);
   for (const v of values) {
     if (v && !folderOf(v)) continue;
     const up = v ? '../../' : '../';
@@ -182,7 +185,7 @@ ${docsDrawer(up, here0, o.groups.map((g) => `<li><a href="${up}docs/${g.key}/">$
 <h1>${esc(v ? title : 'Docs')}</h1>
 <p class="open-wb"><a href="${up}#docs${v ? `-${encodeURIComponent(v)}` : ''}">Open in the workbench</a> (search, and try it in a handler)</p>
 ${mdToHtml(page.markdown.replace(/^## [^\n]*\n+/, ''), href)}
-${page.path && o.docReviewUrl ? docFeedback(page.path, o.docReviewUrl(page.path), esc) + docFeedbackScript(o.feedbackSite ?? null) : ''}
+${page.path && o.docReviewUrl ? docFeedback(page.path, o.docReviewUrl(page.path), esc, 'doc', 'Is the doc right?') + (practiceOf(page.path) ? docFeedback(page.path, o.docReviewUrl(page.path), esc, 'practice', 'Is "In practice" right?') : '') + docFeedbackScript(o.feedbackSite ?? null) : ''}
 `;
     const dir = v ? path.join(o.outDir, v) : o.outDir;
     fs.mkdirSync(dir, { recursive: true });

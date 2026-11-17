@@ -20,7 +20,7 @@ import { semanticMarks } from './semmarks';
 import { codeHandlers, fixedCodeKeys, foldRange, keysByPosition, lineCommentFold, selectReferences, vscodeMouse } from './keys';
 import { ACTIONS, appActionFor, codeKeyMap, keyLabel, labelOf, binding, onBindingsChange, type Group } from './keybindings';
 import { lint, Diagnostic, RULES, lineOf, pluginGlobals, type TextEdit } from '@core/lint';
-import { api, ownerLabel, Resolved } from '@core/api';
+import { api, ownerLabel, Resolved, type Member } from '@core/api';
 import { resolveAt } from '@core/complete';
 import { completionsAt, explainLine, hoverAt, signatureHelpAt, type CompletionKind, type CompletionEntry } from '@core/features';
 import { currentRunner } from './aiproviders';
@@ -41,6 +41,8 @@ import { initPanels } from './panels-ui';
 import { initTouchTitles } from './touch-titles';
 import { mascot } from './mascots';
 import { fixWithNucli, applyEditsToText } from './fixfx';
+import { placeExample } from './lines';
+import { prettyCode } from '@core/pretty';
 import { codeNote } from './codenote';
 import { initMessageHints } from './wmhints';
 import { initValuePicker } from './valuepick';
@@ -1262,7 +1264,41 @@ $('#sim-debug').addEventListener('click', () => debug.start());
 // ---------------------------------------------------------------------------
 // Docs (docs-ui.ts)
 
-const docs = initDocs({ selectTab, handlerHash: () => doc.hash, used: use, pageUrl: (p) => siteUrl(`docs/${p}/`) });
+// What Insert would do, per handler text (Docs asks again for each card when you come back to it).
+const exampleActions = { text: '', map: new Map<string, string | undefined>() };
+function exampleAction(p: string, m: Member) {
+  const t = editor.getValue();
+  if (t !== exampleActions.text) Object.assign(exampleActions, { text: t, map: new Map() });
+  if (!exampleActions.map.has(p)) exampleActions.map.set(p, placeDocExample(p, m)?.action);
+  return exampleActions.map.get(p);
+}
+const docs = initDocs({ selectTab, handlerHash: () => doc.hash, used: use, pageUrl: (p) => siteUrl(`docs/${p}/`), exampleAction, insertExample });
+
+// Docs' "Insert into handler": the example goes where it belongs (lines.ts placeExample: an option at the top level, or
+// its value updated when the handler sets it already; a call at the end of Game.Play or the callback Hub handlers use),
+// as one edit (one Ctrl+Z), and the changed lines light up as after a fix.
+function placeDocExample(path: string, m: Member) {
+  return m.example ? placeExample(editor.getValue(), path, prettyCode(m.example), m.exampleIn ?? 'top') : undefined;
+}
+function insertExample(path: string, m: Member) {
+  const r = placeDocExample(path, m);
+  if (!r) return toast("The handler doesn't parse, so there's no telling where the example goes. Fix it first (Check lists what's wrong).");
+  if (r.action === 'same') {
+    editor.setCursor({ line: r.line, ch: 0 });
+    editor.scrollIntoView({ line: r.line, ch: 0 }, 80);
+    codeNote(editor, r.line, `The handler has this already (line ${r.line + 1}).`, { mood: 'info' });
+    return;
+  }
+  const before: string = editor.getValue();
+  // The smallest edit that turns the handler into the result: the cursor, marks and the rest stay where they are.
+  let a = 0;
+  while (a < before.length && a < r.text.length && before[a] === r.text[a]) a++;
+  let b = 0;
+  while (b < before.length - a && b < r.text.length - a && before[before.length - 1 - b] === r.text[r.text.length - 1 - b]) b++;
+  fixWithNucli(editor, r.text, () => editor.replaceRange(r.text.slice(a, r.text.length - b), editor.posFromIndex(a), editor.posFromIndex(before.length - b), '+docs-example'));
+  use('docs-insert-example');
+  codeNote(editor, r.line, r.action === 'update' ? `Updated ${path} to the example's value.` : r.action === 'callback' ? `Added ${r.where} with the example in it.` : `Added the example to ${r.where}.`, { action: undoAction });
+}
 
 // ---------------------------------------------------------------------------
 // Probes: real Jint results vs the linter

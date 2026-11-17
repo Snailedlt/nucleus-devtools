@@ -37,6 +37,14 @@ ${siteHeader('../', '')}
 <p class="lede">For maintainers: the anonymous 👍/👎 on the docs, tips and checks, and how often features are used, ${esc(votes.from)} to ${esc(votes.to)} (updated daily). The docs people mark wrong or unclear come first.</p>
 <h2>Docs</h2>
 ${table(votes.docs ?? [], 'docs')}
+<h2>In practice (the AI-written part of a doc)</h2>
+${table(votes.practice ?? [], 'docs')}
+<h2>AI votes</h2>
+<p class="small">From AI agents (<code>ncdev docs vote</code>, the MCP tool <code>nucleus_vote_doc</code>), counted apart: they never make a doc "Verified by people".</p>
+<h3>On docs</h3>
+${table(votes.aiDocs ?? [], 'docs')}
+<h3>On "In practice"</h3>
+${table(votes.aiPractice ?? [], 'docs')}
 <h2>Tips</h2>
 ${table(votes.tips ?? [])}
 <h2>Checks</h2>

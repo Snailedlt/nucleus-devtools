@@ -1,6 +1,6 @@
 // Docs: every option, Context member, enum and .NET call, searchable, with the groups to browse and a path to go
 // back along. The address follows it (#docs, #docs-Context, #docs-Context.ModifySaveFile, #docs-mutex: links.ts).
-import { api } from '@core/api';
+import { api, type Member } from '@core/api';
 import { allEntries, lookup, search, type Entry } from '@core/lookup';
 import { apiPathOf } from '@core/features';
 import USAGE from './usage.json';
@@ -54,6 +54,12 @@ export interface DocsDeps {
   used: (what: string) => void;
   /** The address of a name's own docs page (docs/<name>/ on the site), to link to and share. */
   pageUrl: (path: string) => string;
+  /** What "Insert into handler" would do with a member's example in the open handler now: 'insert', 'update' (the
+   *  option is set: its value changes), 'callback' (added with its callback), 'same' (it's there), or undefined when the
+   *  handler doesn't parse. */
+  exampleAction?: (path: string, m: Member) => string | undefined;
+  /** Puts a member's example into the open handler (app.ts, lines.ts placeExample). */
+  insertExample?: (path: string, m: Member) => void;
 }
 
 export interface DocsUI {
@@ -108,7 +114,39 @@ export function initDocs(deps: DocsDeps): DocsUI {
     wireApiLinks(el);
     el.scrollTop = 0;
   }
+  /** "Insert into handler" says what it will do: "Update in handler" when the handler sets the option already, "In the
+   *  handler" (go there) when it has exactly this. */
+  const insertLabel: Record<string, [string, string]> = {
+    insert: ['Insert into handler', 'Adds this example where it belongs in the open handler. Ctrl+Z undoes it.'],
+    callback: ['Insert into handler', 'Adds this example to the open handler, with the callback it goes in. Ctrl+Z undoes it.'],
+    update: ['Update in handler', 'The handler sets this already: changes its value to the example\'s. Ctrl+Z undoes it.'],
+    same: ['Show in handler', 'The handler has exactly this already: shows where.'],
+  };
+  const memberOf = (p: string) => { const r = lookup(p); return r.kind === 'entries' && r.entries.length === 1 ? r.entries[0].member : undefined; };
+  function labelInserts(el: HTMLElement) {
+    el.querySelectorAll<HTMLButtonElement>('[data-insert]').forEach((b) => {
+      const m = memberOf(b.dataset.insert!);
+      const action = m && deps.exampleAction?.(b.dataset.insert!, m);
+      const [text, title] = action ? insertLabel[action] ?? insertLabel.insert : ['Insert into handler', "The handler doesn't parse yet, so there's no telling where this goes. Fix it first."];
+      b.textContent = text;
+      b.title = title;
+      b.setAttribute('aria-disabled', String(!action));
+    });
+  }
+  // One listener: the buttons are drawn again with each view.
+  $('#api-results').addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-insert]');
+    if (!b) return;
+    const m = memberOf(b.dataset.insert!);
+    if (m) deps.insertExample?.(b.dataset.insert!, m);
+    labelInserts($('#api-results'));
+  });
+  // The handler may change while Docs is open: the labels catch up when you come back to them.
+  $('#api-results').addEventListener('pointerenter', () => labelInserts($('#api-results')));
+  $('#api-results').addEventListener('focusin', () => labelInserts($('#api-results')));
+
   function wireApiLinks(el: HTMLElement) {
+    labelInserts(el);
     el.querySelectorAll<HTMLButtonElement>('[data-q]').forEach((b) => b.addEventListener('click', () => refGo(`q:${b.dataset.q}`)));
     el.querySelectorAll<HTMLButtonElement>('[data-group]').forEach((b) => b.addEventListener('click', () => refGo(`group:${b.dataset.group}`)));
     el.querySelectorAll<HTMLButtonElement>('[data-home]').forEach((b) => b.addEventListener('click', () => refGo('home')));
@@ -177,7 +215,7 @@ export function initDocs(deps: DocsDeps): DocsUI {
     const el = $('#api-results');
     if (!q.trim()) return renderApiHome(el);
     const exact = lookup(q);
-    const card = (e: Entry) => `<article class="api"><h3>${esc(e.path)}${e.member.deprecated ? ' <span class="chip hint">deprecated</span>' : ''}${e.member.required ? ' <span class="chip error">required</span>' : ''}${e.owner.startsWith('Hub') ? ' <span class="chip info">written by the Hub</span>' : ''}</h3>${memberCard(e.owner, e.name, e.member)}</article>`;
+    const card = (e: Entry) => `<article class="api"><h3>${esc(e.path)}${e.member.deprecated ? ' <span class="chip hint">deprecated</span>' : ''}${e.member.required ? ' <span class="chip error">required</span>' : ''}${e.owner.startsWith('Hub') ? ' <span class="chip info">written by the Hub</span>' : ''}</h3>${memberCard(e.owner, e.name, e.member, { insert: !!deps.insertExample })}</article>`;
     // One name: its card, and where it sits (Reference / group / name; the group lists the names next to it).
     const one = exact.kind === 'entries' && exact.entries.length === 1 ? exact.entries[0] : undefined;
     if (one) {
