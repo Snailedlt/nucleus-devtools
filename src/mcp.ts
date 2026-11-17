@@ -2,6 +2,7 @@
 // so any MCP client (Claude Desktop, Claude Code, Cursor, VS Code Copilot, ...) can check, fix,
 // simulate and look up Nucleus Co-op handlers without a shell. Same core as the CLI and the
 // extension. Handler code only ever runs in the isolated simulator (src/sandbox.ts).
+import { sendAiVote } from './aivote';
 import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
@@ -235,6 +236,18 @@ export const TOOLS: Tool[] = [
       if (!Number.isInteger(limit) || limit < 1 || limit > 200) return { text: `limit must be a whole number from 1 to 200 (got ${JSON.stringify(a.limit)}).`, isError: true };
       const hits = search(String(a.query), limit);
       return { text: hits.length ? hits.map((e) => formatEntry(e, false) + (e.member.doc ? `\n  ${e.member.doc.split('\n')[0].slice(0, 160)}` : '')).join('\n') : `No API members match "${a.query}".`, data: hits.map((e) => ({ path: e.path, ...e.member })) };
+    },
+  },
+  {
+    name: 'nucleus_vote_doc',
+    title: 'Vote on a doc (as an AI)',
+    description:
+      'Say whether a handler API doc is right, after you checked it: against the Nucleus Co-op or Proto Input source, or a handler that works in Nucleus. part "doc" is the member\'s doc, "practice" its AI-written "In practice" part (nucleus_api shows both). Counted as an AI vote, shown apart from people\'s votes; it never makes a doc "Verified by people". Vote only on what you checked, once per part. Sends only the name, the part and the vote.',
+    inputSchema: { type: 'object', properties: { name: { type: 'string', description: 'The member, e.g. "Game.KillMutex".' }, part: { type: 'string', enum: ['doc', 'practice'] }, vote: { type: 'string', enum: ['up', 'down'], description: 'up: right; down: wrong or unclear.' } }, required: ['name', 'part', 'vote'] },
+    annotations: { readOnlyHint: false, openWorldHint: true, idempotentHint: true },
+    run: async (a) => {
+      const r = await sendAiVote(a.name, a.part, a.vote, VERSION);
+      return { text: r.message, data: r, isError: !r.ok };
     },
   },
   {
