@@ -33,8 +33,17 @@ export interface Run {
 /** The fewest repeats that make a group: three of one step, or a sequence of two or three steps twice. */
 export const MIN_REPS = (period: number) => (period === 1 ? 3 : 2);
 
+/**
+ * TEMPORARY (for the maintainer's comparison, not decided yet; no UI): which steps group. `current`: as described above;
+ * `identical`: only the same call three or more times; `objects5`: values set on one object only from five on.
+ * Read from localStorage `nucleus-workbench-blocks-grouprule` by blocksview.ts. Remove the others once decided.
+ */
+export type GroupRule = 'current' | 'identical' | 'objects5';
+
 /** The runs of repeated steps, in order, never overlapping; the longest at each place wins (then the shortest period). */
-export function findRuns(shapes: (string | undefined)[]): Run[] {
+export function findRuns(shapes: (string | undefined)[], rule: GroupRule = 'current'): Run[] {
+  if (rule === 'identical') shapes = shapes.map((x) => (x?.startsWith('call ') ? x : undefined));
+  const minReps = (p: number, shape: string | undefined) => (rule === 'objects5' && p === 1 && shape?.startsWith('set ') ? 5 : MIN_REPS(p));
   const runs: Run[] = [];
   const n = shapes.length;
   const same = (a: number, b: number, p: number) => {
@@ -43,13 +52,13 @@ export function findRuns(shapes: (string | undefined)[]): Run[] {
   };
   for (let i = 0; i < n;) {
     let best: Run | undefined;
-    for (let p = 1; p <= 3 && i + p <= n; p++) {
+    for (let p = 1; p <= (rule === 'identical' ? 1 : 3) && i + p <= n; p++) {
       const unit = shapes.slice(i, i + p);
       if (unit.some((x) => !x)) break;
       if (p > 1 && unit.every((x) => x === unit[0])) continue; // that's period 1
       let reps = 1;
       while (i + (reps + 1) * p <= n && same(i, i + reps * p, p)) reps++;
-      if (reps >= MIN_REPS(p) && (!best || reps * p > best.reps * best.period)) best = { start: i, period: p, reps };
+      if (reps >= minReps(p, unit[0]) && (!best || reps * p > best.reps * best.period)) best = { start: i, period: p, reps };
     }
     if (best) {
       runs.push(best);

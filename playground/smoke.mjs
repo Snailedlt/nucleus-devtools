@@ -629,6 +629,18 @@ for (const theme of ['light', 'dark']) {
       await p.keyboard.type('b3');
       await p.waitForTimeout(400);
       check((await p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue())) === rep.replace('"a3"', '"b3"'), `${theme}: editing a step in a group changes only that value in the code`);
+      // The kind picker floats below the value being edited (above only without room below), never over it.
+      check(await p.evaluate(() => { const k = document.activeElement.closest('.bv-val').querySelector(':scope > .bv-kind'); return k.getBoundingClientRect().top >= document.activeElement.getBoundingClientRect().bottom; }), `${theme}: the kind picker shows below the value`);
+      // A long comment folds to its first line and "… N more lines", which unfolds it.
+      const long = 'Game.GUID = "Demo";\nGame.GameName = "Demo";\nGame.ExecutableName = "demo.exe";\nGame.Play = function () {\n    // one\n    // two\n    // three\n    // four\n    // five\n    Context.StartArguments = "-windowed";\n};\n';
+      await p.evaluate((c) => document.querySelector('.CodeMirror').CodeMirror.setValue(c), long);
+      await p.waitForTimeout(700);
+      const more = '#blocksview .bv-note-long .bv-note-more';
+      check((await p.innerText(more)).includes('4 more lines') && (await p.getAttribute(more, 'aria-expanded')) === 'false' && !(await p.isVisible('#blocksview .bv-note-rest')), `${theme}: a five-line comment folds to its first line and "… 4 more lines"`);
+      await p.focus(more);
+      await p.keyboard.press('Enter');
+      await p.waitForTimeout(150);
+      check((await p.getAttribute(more, 'aria-expanded')) === 'true' && (await p.isVisible('#blocksview .bv-note-rest')), `${theme}: Enter on "… 4 more lines" unfolds the comment`);
       await p.evaluate((c) => document.querySelector('.CodeMirror').CodeMirror.setValue(c), before);
       await p.waitForTimeout(600);
     }
