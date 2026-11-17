@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { apiPathOf, hoverAt, linkApiNames, signatureHelpAt, workbenchDocsUrl } from '../core/features';
 import { docsPageUrl, docsPage, docsView, docsValue } from '../core/docspage';
 import { lint } from '../core/lint';
-import { fallbackMarkdown, highlightCode, renderDocsPanel, docsCommandLink } from '../docspanel';
+import { fallbackMarkdown, highlightCode, renderDocsPanel, docsCommandLink, linksSection } from '../docspanel';
 
 const link = (p: string) => `L(${p})`;
 
@@ -88,4 +88,10 @@ test('names from Object.prototype are not API names (no crash, no bogus member)'
   const diags = lint('Game.GUID = "A";\nGame.GameName = "A";\nGame.ExecutableName = "a.exe";\nGame.Play = function () { Context.Constructor = 1; var x = Game.ValueOf; };\n');
   assert.ok(diags.some((d) => /Constructor/.test(d.message)), 'Context.Constructor is unknown');
   assert.ok(diags.some((d) => /ValueOf/.test(d.message)), 'Game.ValueOf is unknown');
+});
+
+test('Docs panel main page: the web links (the old Docs: Web Links… pick) in a Links section', () => {
+  const html = linksSection('https://example.org/wb?ref=vscode');
+  assert.match(html, /<h2 id="links-h">Links<\/h2>/);
+  for (const url of ['https://www.splitscreen.me/docs/handler-api', 'https://hub.splitscreen.me/', 'https://discord.gg/XxGMkqCf4r', 'https://example.org/wb?ref=vscode']) assert.ok(html.includes(`href="${url}"`), url);
 });

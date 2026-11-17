@@ -5,6 +5,7 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import * as mock from './vscode-mock';
 import { activate, isHandler, problemsBesideLint } from '../extension';
+import { checksText } from '../langstatus';
 import { RULES } from '../core/lint';
 
 const m = vscode as unknown as typeof mock;
@@ -54,7 +55,31 @@ test('Restricted Mode: the extension runs, and Install / Test in Nucleus / Set u
 
 test('package.json rule settings match the linter rules', () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
-  assert.deepEqual(Object.keys(pkg.contributes.configuration.properties['splitscreenme.lint.rules'].properties).sort(), Object.keys(RULES).sort());
+  const props = Object.assign({}, ...pkg.contributes.configuration.map((g: any) => g.properties));
+  assert.deepEqual(Object.keys(props['splitscreenme.lint.rules'].properties).sort(), Object.keys(RULES).sort());
+});
+
+test('one name everywhere: the SplitScreen.Me category, settings in titled groups with readable labels', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+  for (const c of pkg.contributes.commands) {
+    assert.equal(c.category, 'SplitScreen.Me', c.command);
+    assert.match(c.command, /^splitscreenme\./, 'command ids stay as they are (keybindings)');
+  }
+  const groups = pkg.contributes.configuration;
+  assert.ok(Array.isArray(groups) && groups.length > 1);
+  assert.deepEqual(groups.map((g: any) => g.order), groups.map((_: any, i: number) => i + 1));
+  for (const g of groups) assert.ok(g.title && Object.keys(g.properties).length, g.title);
+  const props = Object.assign({}, ...groups.map((g: any) => g.properties));
+  for (const [key, p] of Object.entries<any>(props)) {
+    assert.match(key, /^splitscreenme\./);
+    if (p.enum) assert.equal(p.enumItemLabels?.length, p.enum.length, `${key}: a readable label per value`);
+    // Searching Settings for "nucleus" still finds every one (its keywords, and where true its description).
+    assert.ok(p.keywords?.includes('Nucleus Co-op') && p.keywords.includes('SplitScreen.Me'), key);
+    assert.match(`${key} ${p.description ?? p.markdownDescription}`, /nucleus/i, key);
+  }
+  assert.equal(props['splitscreenme.languageMode'].enumItemLabels[1], 'JavaScript');
+  // Nothing user-facing says "Nucleus:" as if it were the tool's name.
+  for (const f of ['README.md', 'PORTING.md', 'TESTING.md', 'package.json']) assert.doesNotMatch(fs.readFileSync(path.join(__dirname, '..', f), 'utf8'), /\*\*Nucleus: |"Nucleus: |Nucleus: (What's New|Set Up|Game Folder|Try It|Fix All|New Handler)/, f);
 });
 
 test('handler detection', () => {
@@ -155,15 +180,32 @@ test('fix-all code action (source.fixAll.nucleus) and in quick fixes', async () 
   assert.deepEqual(provider.provideCodeActions(m.makeDocument(HEADER), null, { diagnostics: [], only: m.CodeActionKind.SourceFixAll }), []);
 });
 
-test('Try it panel: simulates the active handler, no scripts, settings via command links', async () => {
+test('Try it panel: simulates the active handler; toggle buttons, only our own script', async () => {
   const run = (id: string, ...args: unknown[]) => m.__registered.commands.filter((c: any) => c.id === id).at(-1)!.fn(...args);
   m.window.activeTextEditor = { document: m.makeDocument(HEADER + 'Game.Play = function () { Context.StartArguments = "-w " + Context.Width; };\n') };
   await run('splitscreenme.tryIt');
   const panel = m.__panels.at(-1)!;
-  assert.equal(panel.options.enableScripts, false);
-  assert.match(panel.webview.html, /Nucleus would set up all 2 players/);
-  assert.match(panel.webview.html, /-w 960/);
-  assert.match(panel.webview.html, /command:splitscreenme\.tryItSet\?/);
+  const html = panel.webview.html;
+  assert.match(html, /Nucleus would set up all 2 players/);
+  assert.match(html, /-w 960/);
+  // The explanation is folded away, and opens with the keyboard (a <details>).
+  assert.match(html, /<details class="how" id="how"><summary>How this works ⓘ<\/summary>/);
+  // Real toggle buttons in labelled groups: the one in effect is pressed.
+  assert.match(html, /role="group" aria-labelledby="g-players"/);
+  assert.match(html, /<button type="button" class="choice" data-id="players-2" [^>]*aria-pressed="true"/);
+  assert.match(html, /data-id="players-4" [^>]*aria-pressed="false"/);
+  // Scripts: only the panel's own, by its nonce; nothing inline elsewhere.
+  assert.equal(panel.options.enableScripts, true);
+  const nonce = html.match(/script-src 'nonce-([^']+)'/)![1];
+  assert.equal((html.match(/<script/g) ?? []).length, 1);
+  assert.ok(html.includes(`<script nonce="${nonce}">`));
+  assert.doesNotMatch(html, / on[a-z]+=/);
+  const script = html.match(/<script nonce="[^"]+">([\s\S]*?)<\/script>/)![1];
+  assert.doesNotThrow(() => new Function(script), 'the panel\'s script parses');
+  // A button's message changes the settings like the command does.
+  panel.__onMessage!({ type: 'set', change: { players: 3 } });
+  await tick(); await tick();
+  assert.match(panel.webview.html, /all 3 players/);
   await run('splitscreenme.tryItSet', { players: 4 });
   assert.match(panel.webview.html, /all 4 players/);
   assert.match(panel.webview.html, /Player 4/);
@@ -264,7 +306,7 @@ test("Link the Game's Folder keeps the link on this PC, never in a settings file
   assert.deepEqual(m.__configWrites, [], 'no settings file is written');
   await run('splitscreenme.unlinkGameFolder');
   assert.deepEqual(state.get('splitscreenme.gameFolders'), {});
-  assert.match(m.window.__status.at(-1)!, /^Unlinked Game\.js/);
+  assert.match(m.window.__status.at(-1)!, /^SplitScreen\.Me: unlinked Game\.js/);
   await run('splitscreenme.unlinkGameFolder');
   assert.match(m.window.__status.at(-1)!, /isn't linked/);
   assert.deepEqual(m.__configWrites, [], 'unlinking nothing writes nothing');
@@ -285,4 +327,90 @@ test('each command has at most one palette entry (VS Code ORs them)', () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
   const ids = pkg.contributes.menus.commandPalette.map((e: { command: string }) => e.command);
   assert.deepEqual(ids.filter((c: string, i: number) => ids.indexOf(c) !== i), []);
+});
+
+test('the Run menu: Test in Nucleus Co-op (Windows), Try It and Debug in one Run button; Debug pauses at the start without breakpoints', async () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+  assert.equal(pkg.contributes.menus['editor/title'], undefined, 'no separate ▷ buttons');
+  const run = pkg.contributes.menus['editor/title/run'];
+  assert.deepEqual(run.map((e: any) => e.command), ['splitscreenme.testInNucleus', 'splitscreenme.tryIt', 'splitscreenme.debugHandler']);
+  assert.match(run[0].when, /isWindows/);
+  for (const e of run) assert.match(e.when, /splitscreenme\.isHandler/);
+  const debug = (vscode as any).debug;
+  const doc = m.makeDocument(HEADER, '/work/Demo.js');
+  m.window.activeTextEditor = { document: doc };
+  await m.__registered.commands.find((c: any) => c.id === 'splitscreenme.debugHandler').fn();
+  assert.deepEqual(debug.__started.at(-1), { type: 'nucleus', request: 'launch', name: 'Step through the handler', program: '/work/Demo.js', stopOnEntry: true });
+  debug.breakpoints = [{ enabled: true, location: { uri: doc.uri } }];
+  await m.__registered.commands.find((c: any) => c.id === 'splitscreenme.debugHandler').fn();
+  assert.equal(debug.__started.at(-1).stopOnEntry, false);
+  debug.breakpoints = [];
+  m.window.activeTextEditor = undefined;
+});
+
+test('walkthrough: no raw code marks in step text, its media exist, Test in Nucleus Co-op only on Windows', () => {
+  const root = path.join(__dirname, '..');
+  const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  const steps = pkg.contributes.walkthroughs[0].steps;
+  for (const s of steps) {
+    assert.doesNotMatch(s.description, /`/, `${s.id}: VS Code shows backticks in step text as they are`);
+    const media = s.media.markdown ? [s.media.markdown] : Object.values(s.media.image);
+    for (const f of media as string[]) assert.ok(fs.existsSync(path.join(root, f)), f);
+    for (const [, id] of s.description.matchAll(/\(command:([\w.]+)\)/g)) assert.ok(pkg.contributes.commands.some((c: any) => c.command === id), id);
+  }
+  assert.ok(['docs', 'debug', 'fixall'].every((id) => steps.some((s: any) => s.id === id)));
+  assert.equal(steps.find((s: any) => s.id === 'install').when, 'isWindows');
+});
+
+test('New Handler: one guided flow with steps and Back, saving <Name>.js with its <Name>/ folder where you pick', async (t) => {
+  const dir = fs.mkdtempSync(path.join((await import('node:os')).tmpdir(), 'nucleus-new-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  m.workspace.workspaceFolders = [{ name: 'handlers', uri: m.Uri.file(dir) }];
+  m.__inputs.length = 0;
+  // Name, exe, BACK (to the exe, which keeps what was typed), exe again, no Steam ID, Proto Input, the workspace folder.
+  m.__answers.push('My Game', 'MyGame.exe', 'BACK', 'MyGame.exe', '', ['Proto Input'], ['handlers']);
+  await m.__registered.commands.find((c: any) => c.id === 'splitscreenme.newHandler').fn();
+  const steps = m.__inputs.map((i: any) => `${i.step}/${i.totalSteps}${i.back ? '<' : ''}`);
+  assert.deepEqual(steps, ['1/5', '2/5<', '3/5<', '2/5<', '3/5<', '4/5<', '5/5<']);
+  assert.equal(m.__inputs[3].value, 'MyGame.exe', 'Back keeps the answer');
+  assert.ok(m.__inputs.every((i: any) => i.title === 'New Nucleus Co-op handler'));
+  const js = fs.readFileSync(path.join(dir, 'My Game.js'), 'utf8');
+  assert.match(js, /Game\.GameName = "My Game";/);
+  assert.match(js, /Game\.ExecutableName = "MyGame\.exe";/);
+  assert.ok(fs.statSync(path.join(dir, 'My Game')).isDirectory(), 'its Game.Folder');
+  assert.equal(m.window.__shown.at(-1).fsPath, path.join(dir, 'My Game.js'));
+  // Escape at any step: nothing is written.
+  m.__answers.push('Other', undefined);
+  await m.__registered.commands.find((c: any) => c.id === 'splitscreenme.newHandler').fn();
+  assert.ok(!fs.existsSync(path.join(dir, 'Other.js')));
+  m.workspace.workspaceFolders = undefined;
+});
+
+test('quiet results: a handler that can\'t be formatted, and Fix all with nothing to fix, go to the status bar and the log', async () => {
+  const win = vscode.window as any;
+  const warn = win.showWarningMessage, info = win.showInformationMessage;
+  const popups: string[] = [];
+  win.showWarningMessage = win.showInformationMessage = async (msg: string) => void popups.push(msg);
+  try {
+    const doc = m.makeDocument(HEADER + 'var s = "abc;\n'); // an unterminated string, as while typing
+    assert.deepEqual(m.__registered.formatting[0].provideDocumentFormattingEdits(doc, { insertSpaces: true, tabSize: 2 }), []);
+    assert.match(m.window.__status.at(-1)!, /SplitScreen\.Me: not formatted/);
+    assert.ok(m.__log.some((l) => /^warn Format /.test(l)));
+    m.window.activeTextEditor = { document: m.makeDocument(HEADER) };
+    await m.__registered.commands.find((c: any) => c.id === 'splitscreenme.fixAll').fn();
+    assert.match(m.window.__status.at(-1)!, /^SplitScreen\.Me: nothing to fix/);
+  } finally {
+    win.showWarningMessage = warn; win.showInformationMessage = info;
+    m.window.activeTextEditor = undefined;
+  }
+  assert.deepEqual(popups, [], 'no notification');
+});
+
+test('language status: the checks and the game folder beside the handler language', () => {
+  assert.ok(m.__languageStatus['splitscreenme.checks'] && m.__languageStatus['splitscreenme.gameFolder']);
+  assert.deepEqual(m.__languageStatus['splitscreenme.checks'].selector, [{ language: 'nucleus-handler' }], 'only for handlers');
+  const d = (sev: number) => new m.Diagnostic(new m.Range(new m.Position(0, 0), new m.Position(0, 1)), 'x', sev);
+  assert.deepEqual(checksText([]), { text: 'No problems', severity: 'ok' });
+  assert.deepEqual(checksText([d(m.DiagnosticSeverity.Hint), d(m.DiagnosticSeverity.Information)]), { text: 'No problems', severity: 'ok' });
+  assert.deepEqual(checksText([d(m.DiagnosticSeverity.Error), d(m.DiagnosticSeverity.Warning), d(m.DiagnosticSeverity.Error)]), { text: '2 errors, 1 warning', severity: 'error' });
 });

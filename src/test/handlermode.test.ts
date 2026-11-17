@@ -58,7 +58,7 @@ test('package.json: the handler language has a grammar built on JavaScript\'s, a
   for (const [what, list] of [['snippets', c.snippets], ['semanticTokenScopes', c.semanticTokenScopes], ['breakpoints', c.breakpoints]] as const)
     assert.ok((list as any[]).some((x) => x.language === HANDLER_LANGUAGE), `${what} cover the handler language`);
   assert.ok(c.debuggers[0].languages.includes(HANDLER_LANGUAGE), 'the debugger offers itself in handler files');
-  const setting = c.configuration.properties['splitscreenme.languageMode'];
+  const setting = Object.assign({}, ...c.configuration.map((g: any) => g.properties))['splitscreenme.languageMode'];
   assert.equal(setting.default, 'handler');
   assert.deepEqual(setting.enum, ['handler', 'javascript']);
   assert.ok(fs.readFileSync('.vscodeignore', 'utf8').includes('!syntaxes/**'), 'the grammar ships in the .vsix');

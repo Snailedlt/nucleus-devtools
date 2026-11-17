@@ -150,11 +150,13 @@ export function search(query: string, limit = 20): Entry[] {
       // Context.X fields that mirror Game.X are rarely what you want to set.
       if (e.owner === 'Context' && api.objects.Game.members[e.name] && e.member.kind !== 'method') score -= 5;
       if (!e.member.doc) score -= 1;
+      // Game.* first: what a handler sets; the rest is mostly called from inside its functions.
+      if (e.path.startsWith('Game.')) score += 2;
       return { e, score };
     })
     .filter((x) => x.score > 0)
     // Equal scores: the shorter name first ("mutex" finds KillMutex before KillLastInstanceMutex), then A–Z.
-    .sort((a, b) => b.score - a.score || a.e.name.length - b.e.name.length || a.e.path.localeCompare(b.e.path));
+    .sort((a, b) => b.score - a.score || Number(b.e.path.startsWith('Game.')) - Number(a.e.path.startsWith('Game.')) || a.e.name.length - b.e.name.length || a.e.path.localeCompare(b.e.path));
   return scored.slice(0, limit).map((x) => x.e);
 }
 

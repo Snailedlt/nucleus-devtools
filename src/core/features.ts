@@ -4,7 +4,7 @@
 // same behaviour. Positions are UTF-16 offsets into the text (what JavaScript strings index), which
 // is also what LSP counts by default. No `vscode` import here, no Node APIs either.
 import { blockedItemAt, blockedListAt, blockedLists, blockTarget, COMMON_MESSAGES, hex, messageMarkdown, WM_HUB_SAMPLE } from './wm';
-import { api, claudeNote, DOCS_URL, isStringMember, Member, memberMarkdown, memberSignature, membersOf, ownerLabel, Resolved, resolveCall, resolveGlobal, resolveIndex, resolveMember } from './api';
+import { api, claudeNote, DOCS_URL, paramType, isStringMember, Member, memberMarkdown, memberSignature, membersOf, ownerLabel, Resolved, resolveCall, resolveGlobal, resolveIndex, resolveMember } from './api';
 import { callContextAt, memberContextAt, resolveAt, valueContextAt } from './complete';
 export { explainLine, type LineExplanation } from './explain';
 import { Diagnostic, lineOf, lineStart, looksLikeHandler, RuleId, RULES, Severity, TextEdit } from './lint';
@@ -499,7 +499,7 @@ function signatureHelpAtRaw(text: string, offset: number, opts: FeatureOptions =
   if (c.callee.kind === 'member' && c.callee.member.kind === 'method') {
     const { owner, name, member } = c.callee;
     for (const o of member.overloads ?? []) {
-      const params = o.params.map((p) => `${p.rest ? '...' : ''}${p.name}: ${p.type}`);
+      const params = o.params.map((p) => `${p.rest ? '...' : ''}${p.name}: ${paramType(p)}`);
       const docs = o.params.map((p) => (p.doc ? p.doc + (p.docBy === 'claude' ? ' (AI-written)' : '') : undefined));
       signatures.push({ label: `${ownerLabel(owner) ? `${ownerLabel(owner)}.` : ''}${name}(${params.join(', ')}): ${o.returns}`, documentation: member.doc + (claudeNote(member) ? `\n\n_✎ ${claudeNote(member)}_` : ''), parameters: params, ...(docs.some(Boolean) ? { parameterDocs: docs } : {}) });
     }

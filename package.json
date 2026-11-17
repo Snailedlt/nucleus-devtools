@@ -103,121 +103,127 @@
       {
         "command": "splitscreenme.whatsNew",
         "title": "What's New",
-        "category": "Nucleus"
+        "category": "SplitScreen.Me"
       },
       {
         "command": "splitscreenme.newHandler",
         "title": "New Handler…",
-        "category": "Nucleus"
+        "category": "SplitScreen.Me"
       },
       {
         "command": "splitscreenme.tryIt",
         "title": "Try It (Simulate Each Player)",
-        "category": "Nucleus",
+        "category": "SplitScreen.Me",
         "icon": "$(play)"
       },
       {
         "command": "splitscreenme.tryItSet",
         "title": "Try It: Change Settings",
-        "category": "Nucleus"
+        "category": "SplitScreen.Me"
       },
       {
         "command": "splitscreenme.tryItTestAll",
         "title": "Try It: Test All Combinations (Players, Input, Monitors)",
-        "category": "Nucleus"
+        "category": "SplitScreen.Me"
+      },
+      {
+        "command": "splitscreenme.debugHandler",
+        "title": "Debug Handler (Step Through, Simulated)",
+        "category": "SplitScreen.Me",
+        "icon": "$(debug-alt)"
       },
       {
         "command": "splitscreenme.explainLine",
         "title": "Explain This Line",
-        "category": "Nucleus"
+        "category": "SplitScreen.Me"
       },
       {
         "command": "splitscreenme.fixAll",
         "title": "Fix All Problems That Can Be Fixed",
-        "category": "Nucleus"
+        "category": "SplitScreen.Me"
       },
       {
         "command": "splitscreenme.formatHandler",
         "title": "Format Handler",
-        "category": "Nucleus"
+        "category": "SplitScreen.Me"
       },
       {
         "command": "splitscreenme.packageHandler",
         "title": "Package Handler for the Hub (.nc)",
-        "category": "Nucleus"
+        "category": "SplitScreen.Me"
       },
       {
         "command": "splitscreenme.installHandler",
         "title": "Install Handler into Nucleus Co-op",
-        "category": "Nucleus"
+        "category": "SplitScreen.Me"
       },
       {
         "command": "splitscreenme.testInNucleus",
         "title": "Test in Nucleus Co-op",
-        "category": "Nucleus",
-        "icon": "$(debug-start)",
+        "category": "SplitScreen.Me",
+        "icon": "$(run-all)",
         "enablement": "!isWeb"
       },
       {
         "command": "splitscreenme.openNucleusLog",
         "title": "Open Nucleus Co-op's Debug Log",
-        "category": "Nucleus",
+        "category": "SplitScreen.Me",
         "enablement": "!isWeb"
       },
       {
         "command": "splitscreenme.browseHub",
         "title": "Browse Handlers on the Hub…",
-        "category": "Nucleus"
+        "category": "SplitScreen.Me"
       },
       {
         "command": "splitscreenme.setupTypes",
         "title": "Set Up Type Definitions (jsconfig.json + .d.ts)",
-        "category": "Nucleus"
+        "category": "SplitScreen.Me"
       },
       {
         "command": "splitscreenme.setupAgents",
         "title": "Set Up AI Agent Support (AGENTS.md, skill, CLI)",
-        "category": "Nucleus"
+        "category": "SplitScreen.Me"
       },
       {
         "command": "splitscreenme.lintWorkspace",
         "title": "Check All Handlers in the Workspace",
-        "category": "Nucleus"
+        "category": "SplitScreen.Me"
       },
       {
         "command": "splitscreenme.openDocs",
         "title": "Docs: Web Links…",
-        "category": "Nucleus"
+        "category": "SplitScreen.Me"
       },
       {
         "command": "splitscreenme.openInWorkbench",
         "title": "Open in the Browser Workbench",
-        "category": "Nucleus"
+        "category": "SplitScreen.Me"
       },
       {
         "command": "splitscreenme.linkGameFolder",
         "title": "Game Folder: Link…",
-        "category": "Nucleus"
+        "category": "SplitScreen.Me"
       },
       {
         "command": "splitscreenme.unlinkGameFolder",
         "title": "Game Folder: Unlink",
-        "category": "Nucleus"
+        "category": "SplitScreen.Me"
       },
       {
         "command": "splitscreenme.showDocs",
         "title": "Docs: Open (Every Option and Function)",
-        "category": "Nucleus"
+        "category": "SplitScreen.Me"
       },
       {
         "command": "splitscreenme.docsSearch",
         "title": "Docs: Search…",
-        "category": "Nucleus"
+        "category": "SplitScreen.Me"
       },
       {
         "command": "splitscreenme.docsBack",
         "title": "Docs: Back",
-        "category": "Nucleus"
+        "category": "SplitScreen.Me"
       }
     ],
     "keybindings": [
@@ -242,6 +248,23 @@
           "group": "1_nucleus@1"
         }
       ],
+      "editor/title/run": [
+        {
+          "command": "splitscreenme.testInNucleus",
+          "when": "splitscreenme.isHandler && isWindows && !isWeb",
+          "group": "navigation@1"
+        },
+        {
+          "command": "splitscreenme.tryIt",
+          "when": "splitscreenme.isHandler",
+          "group": "navigation@2"
+        },
+        {
+          "command": "splitscreenme.debugHandler",
+          "when": "splitscreenme.isHandler",
+          "group": "navigation@3"
+        }
+      ],
       "explorer/context": [
         {
           "command": "splitscreenme.packageHandler",
@@ -254,18 +277,6 @@
           "group": "nucleus@2"
         }
       ],
-      "editor/title": [
-        {
-          "command": "splitscreenme.tryIt",
-          "when": "splitscreenme.isHandler",
-          "group": "navigation@1"
-        },
-        {
-          "command": "splitscreenme.testInNucleus",
-          "when": "splitscreenme.isHandler && isWindows",
-          "group": "navigation@2"
-        }
-      ],
       "commandPalette": [
         {
           "command": "splitscreenme.tryItSet",
@@ -273,11 +284,15 @@
         },
         {
           "command": "splitscreenme.tryItTestAll",
-          "when": "false"
+          "when": "splitscreenme.isHandler || activeWebviewPanelId == 'splitscreenme.tryIt'"
         },
         {
           "command": "splitscreenme.tryIt",
           "when": "splitscreenme.isHandler || activeWebviewPanelId == 'splitscreenme.tryIt'"
+        },
+        {
+          "command": "splitscreenme.debugHandler",
+          "when": "splitscreenme.isHandler"
         },
         {
           "command": "splitscreenme.explainLine",
@@ -318,6 +333,10 @@
         {
           "command": "splitscreenme.formatHandler",
           "when": "false"
+        },
+        {
+          "command": "splitscreenme.openDocs",
+          "when": "false"
         }
       ]
     },
@@ -331,657 +350,1122 @@
         "path": "./snippets/nucleus.code-snippets"
       }
     ],
-    "configuration": {
-      "title": "SplitScreen.Me / Nucleus Co-op",
-      "properties": {
-        "splitscreenme.detection": {
-          "type": "string",
-          "enum": [
-            "auto",
-            "always",
-            "off"
-          ],
-          "default": "auto",
-          "enumDescriptions": [
-            "JavaScript files that assign Game.GUID/GameName/ExecutableName/Play/…, or live in a \"handlers\" folder.",
-            "Treat every JavaScript file as a Nucleus handler.",
-            "Disable all handler features."
-          ],
-          "description": "Which JavaScript files are treated as Nucleus Co-op handlers."
-        },
-        "splitscreenme.languageMode": {
-          "type": "string",
-          "scope": "resource",
-          "enum": [
-            "handler",
-            "javascript"
-          ],
-          "default": "handler",
-          "enumDescriptions": [
-            "Handlers open as \"Nucleus Co-op handler\": JavaScript's colours, with only the handler's suggestions, hovers and checks. VS Code's own JavaScript suggestions (browser globals, newer methods Nucleus' engine doesn't have) stay out.",
-            "Handlers stay JavaScript, so VS Code's JavaScript and TypeScript features run on them too (for example \"// @ts-check\" with Nucleus: Set Up Type Definitions). Their suggestions mix in with the handler's."
-          ],
-          "markdownDescription": "The language mode handlers open in. The language shows in the status bar; click it to switch one file."
-        },
-        "splitscreenme.showWhatsNew": {
-          "type": "boolean",
-          "default": true,
-          "description": "After an update, show a short note with what's new (the full list is in Nucleus: What's New)."
-        },
-        "splitscreenme.format.quotes": {
-          "type": "string",
-          "enum": [
-            "double",
-            "single",
-            "keep"
-          ],
-          "enumDescriptions": [
-            "\"Double\" quotes (also what the Hub install reads Game.GameName and Game.ExecutableName between)",
-            "'Single' quotes",
-            "Leave quotes as written"
-          ],
-          "default": "double",
-          "markdownDescription": "Quotes around strings when formatting a handler. A string that contains the chosen quote keeps its own, so no escapes are added."
-        },
-        "splitscreenme.format.semicolons": {
-          "type": "string",
-          "enum": [
-            "add",
-            "keep"
-          ],
-          "enumDescriptions": [
-            "A semicolon at the end of every statement that ends without one",
-            "Leave statement ends as written"
-          ],
-          "default": "add",
-          "markdownDescription": "Semicolons when formatting a handler. Either way the program stays exactly the same: the formatter checks that it parses to the same code before changing anything."
-        },
-        "splitscreenme.lint.enable": {
-          "type": "boolean",
-          "default": true,
-          "description": "Report problems in handlers (ES5-only syntax, unknown options, type mismatches, Hub install pitfalls, …)."
-        },
-        "splitscreenme.lint.compareWithHub": {
-          "type": "boolean",
-          "default": true,
-          "description": "For a handler with a Hub.Handler.Id line, compare Game.GUID with the version published on hub.splitscreen.me (guid-changed). Downloads that version once and keeps it in the cache."
-        },
-        "splitscreenme.lint.packageChecks": {
-          "type": "boolean",
-          "default": true,
-          "description": "Check the files in a handler's folder (<Name>/ next to <Name>.js) as they'd go into the .nc: names Windows can't install, files that overwrite each other, broken INI/JSON, very large files, and files the handler uses (Game.Folder + \"\\\\x\") that aren't there."
-        },
-        "splitscreenme.gameFolders": {
-          "type": "object",
-          "default": {},
-          "scope": "resource",
-          "additionalProperties": {
-            "type": "string"
+    "configuration": [
+      {
+        "title": "General",
+        "order": 1,
+        "properties": {
+          "splitscreenme.detection": {
+            "type": "string",
+            "keywords": [
+              "Nucleus Co-op",
+              "SplitScreen.Me"
+            ],
+            "enum": [
+              "auto",
+              "always",
+              "off"
+            ],
+            "default": "auto",
+            "enumDescriptions": [
+              "JavaScript files that assign Game.GUID/GameName/ExecutableName/Play/…, or live in a \"handlers\" folder.",
+              "Treat every JavaScript file as a Nucleus handler.",
+              "Disable all handler features."
+            ],
+            "description": "Which JavaScript files are treated as Nucleus Co-op handlers (and get the checks, suggestions and commands).",
+            "enumItemLabels": [
+              "Auto",
+              "Every JavaScript file",
+              "Off"
+            ]
           },
-          "markdownDescription": "The game's install folder for each handler (file name → folder), set by hand. **Nucleus: Game Folder: Link…** keeps its links on this PC instead (not in a settings file), and they come first. The handler is then checked against the real files (`ExecutableName`, `BinariesFolder`, the symlink and copy lists…), and those lists suggest the game's files. Only names and sizes are read; nothing leaves your PC."
-        },
-        "splitscreenme.lint.rules": {
-          "type": "object",
-          "default": {},
-          "markdownDescription": "Override the severity of individual rules, e.g. `{ \"deprecated\": \"off\", \"unknown-member\": \"error\" }`. See the [rule list](https://github.com/Snailedlt/splitscreenme-vscode#lint-rules).",
-          "properties": {
-            "syntax-error": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "es5-only": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "let-const-semantics": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "unknown-member": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "readonly-member": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "type-mismatch": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "too-late": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "value-format": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "wrong-arguments": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "missing-required": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "replaces-nucleus-object": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "callback-only-global": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "callback-misuse": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "guid-changed": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "file-encoding": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "undefined-name": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "missing-builtin": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "duplicate-assignment": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "hub-install-parse": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "guid-characters": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "deprecated": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "protoinput-legacy-hooks": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "protoinput-inactive": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "protoinput-needs-hook": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "blocked-message": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "needs-option": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "option-compare": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "no-cond-assign": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "no-constant-condition": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "no-dupe-keys": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "no-duplicate-case": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "no-dupe-else-if": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "no-dupe-args": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "use-isnan": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "valid-typeof": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "no-unreachable": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "no-unused-expressions": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "no-self-assign": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "no-self-compare": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "no-unsafe-negation": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "no-compare-neg-zero": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "no-invalid-regexp": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "no-empty-character-class": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "no-control-regex": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "no-sparse-arrays": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "no-useless-escape": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "no-octal-escape": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "no-loss-of-precision": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "for-direction": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "no-unsafe-finally": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "no-func-assign": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "no-ex-assign": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "no-obj-calls": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            },
-            "no-shadow-restricted-names": {
-              "type": "string",
-              "enum": [
-                "error",
-                "warning",
-                "info",
-                "hint",
-                "off"
-              ]
-            }
+          "splitscreenme.languageMode": {
+            "type": "string",
+            "keywords": [
+              "Nucleus Co-op",
+              "SplitScreen.Me"
+            ],
+            "scope": "resource",
+            "enum": [
+              "handler",
+              "javascript"
+            ],
+            "default": "handler",
+            "enumDescriptions": [
+              "Handlers open as \"Nucleus Co-op handler\": JavaScript's colours, with only the handler's suggestions, hovers and checks. VS Code's own JavaScript suggestions (browser globals, newer methods Nucleus' engine doesn't have) stay out.",
+              "Handlers stay JavaScript, so VS Code's JavaScript and TypeScript features run on them too (for example \"// @ts-check\" with SplitScreen.Me: Set Up Type Definitions). Their suggestions mix in with the handler's."
+            ],
+            "markdownDescription": "The language mode Nucleus Co-op handlers open in. The language shows in the status bar; click it to switch one file.",
+            "enumItemLabels": [
+              "Nucleus Co-op handler",
+              "JavaScript"
+            ]
           },
-          "additionalProperties": false
-        },
-        "splitscreenme.completion.enable": {
-          "type": "boolean",
-          "scope": "resource",
-          "default": true,
-          "description": "Provide completion, hover and signature help for the Nucleus API. Turned off automatically by \"Set Up Type Definitions\", since TypeScript then provides them."
-        },
-        "splitscreenme.nucleusPath": {
-          "type": "string",
-          "default": "",
-          "scope": "machine",
-          "description": "Nucleus Co-op installation folder (contains NucleusCoop.exe and \"handlers\"). Used by \"Install Handler into Nucleus Co-op\"."
+          "splitscreenme.completion.enable": {
+            "type": "boolean",
+            "keywords": [
+              "Nucleus Co-op",
+              "SplitScreen.Me"
+            ],
+            "scope": "resource",
+            "default": true,
+            "description": "Provide completion, hover and signature help for the Nucleus Co-op handler API. Turned off automatically by \"Set Up Type Definitions\", since TypeScript then provides them."
+          },
+          "splitscreenme.showWhatsNew": {
+            "type": "boolean",
+            "keywords": [
+              "Nucleus Co-op",
+              "SplitScreen.Me"
+            ],
+            "default": true,
+            "description": "After an update of the Nucleus Co-op handler tools, show a short note with what's new (the full list is in SplitScreen.Me: What's New)."
+          }
+        }
+      },
+      {
+        "title": "Checks",
+        "order": 2,
+        "properties": {
+          "splitscreenme.lint.enable": {
+            "type": "boolean",
+            "keywords": [
+              "Nucleus Co-op",
+              "SplitScreen.Me"
+            ],
+            "default": true,
+            "description": "Report problems in Nucleus Co-op handlers (ES5-only syntax, unknown options, type mismatches, Hub install pitfalls, …)."
+          },
+          "splitscreenme.lint.packageChecks": {
+            "type": "boolean",
+            "keywords": [
+              "Nucleus Co-op",
+              "SplitScreen.Me"
+            ],
+            "default": true,
+            "description": "Check the files in a Nucleus Co-op handler's folder (<Name>/ next to <Name>.js) as they'd go into the .nc: names Windows can't install, files that overwrite each other, broken INI/JSON, very large files, and files the handler uses (Game.Folder + \"\\\\x\") that aren't there."
+          },
+          "splitscreenme.lint.compareWithHub": {
+            "type": "boolean",
+            "keywords": [
+              "Nucleus Co-op",
+              "SplitScreen.Me"
+            ],
+            "default": true,
+            "description": "For a Nucleus Co-op handler with a Hub.Handler.Id line, compare Game.GUID with the version published on hub.splitscreen.me (guid-changed). Downloads that version once and keeps it in the cache."
+          },
+          "splitscreenme.gameFolders": {
+            "type": "object",
+            "keywords": [
+              "Nucleus Co-op",
+              "SplitScreen.Me"
+            ],
+            "default": {},
+            "scope": "resource",
+            "additionalProperties": {
+              "type": "string"
+            },
+            "markdownDescription": "The game's install folder for each Nucleus Co-op handler (file name → folder), set by hand. **SplitScreen.Me: Game Folder: Link…** keeps its links on this PC instead (not in a settings file), and they come first. The handler is then checked against the real files (`ExecutableName`, `BinariesFolder`, the symlink and copy lists…), and those lists suggest the game's files. Only names and sizes are read; nothing leaves your PC."
+          },
+          "splitscreenme.lint.rules": {
+            "type": "object",
+            "keywords": [
+              "Nucleus Co-op",
+              "SplitScreen.Me"
+            ],
+            "default": {},
+            "markdownDescription": "Override the severity of individual checks on Nucleus Co-op handlers, e.g. `{ \"deprecated\": \"off\", \"unknown-member\": \"error\" }`. See the [rule list](https://github.com/Snailedlt/splitscreenme-vscode#lint-rules).",
+            "properties": {
+              "syntax-error": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "es5-only": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "let-const-semantics": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "unknown-member": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "readonly-member": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "type-mismatch": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "too-late": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "value-format": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "wrong-arguments": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "missing-required": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "replaces-nucleus-object": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "callback-only-global": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "callback-misuse": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "guid-changed": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "file-encoding": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "undefined-name": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "missing-builtin": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "duplicate-assignment": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "hub-install-parse": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "guid-characters": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "deprecated": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "protoinput-legacy-hooks": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "protoinput-inactive": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "protoinput-needs-hook": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "blocked-message": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "needs-option": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "option-compare": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "no-cond-assign": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "no-constant-condition": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "no-dupe-keys": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "no-duplicate-case": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "no-dupe-else-if": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "no-dupe-args": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "use-isnan": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "valid-typeof": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "no-unreachable": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "no-unused-expressions": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "no-self-assign": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "no-self-compare": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "no-unsafe-negation": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "no-compare-neg-zero": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "no-invalid-regexp": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "no-empty-character-class": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "no-control-regex": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "no-sparse-arrays": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "no-useless-escape": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "no-octal-escape": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "no-loss-of-precision": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "for-direction": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "no-unsafe-finally": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "no-func-assign": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "no-ex-assign": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "no-obj-calls": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
+              "no-shadow-restricted-names": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              }
+            },
+            "additionalProperties": false
+          }
+        }
+      },
+      {
+        "title": "Format",
+        "order": 3,
+        "properties": {
+          "splitscreenme.format.quotes": {
+            "type": "string",
+            "keywords": [
+              "Nucleus Co-op",
+              "SplitScreen.Me"
+            ],
+            "enum": [
+              "double",
+              "single",
+              "keep"
+            ],
+            "enumDescriptions": [
+              "\"Double\" quotes (also what the Hub install reads Game.GameName and Game.ExecutableName between)",
+              "'Single' quotes",
+              "Leave quotes as written"
+            ],
+            "default": "double",
+            "markdownDescription": "Quotes around strings when formatting a Nucleus Co-op handler. A string that contains the chosen quote keeps its own, so no escapes are added.",
+            "enumItemLabels": [
+              "Double",
+              "Single",
+              "Keep"
+            ]
+          },
+          "splitscreenme.format.semicolons": {
+            "type": "string",
+            "keywords": [
+              "Nucleus Co-op",
+              "SplitScreen.Me"
+            ],
+            "enum": [
+              "add",
+              "keep"
+            ],
+            "enumDescriptions": [
+              "A semicolon at the end of every statement that ends without one",
+              "Leave statement ends as written"
+            ],
+            "default": "add",
+            "markdownDescription": "Semicolons when formatting a Nucleus Co-op handler. Either way the program stays exactly the same: the formatter checks that it parses to the same code before changing anything.",
+            "enumItemLabels": [
+              "Add",
+              "Keep"
+            ]
+          }
+        }
+      },
+      {
+        "title": "Nucleus Co-op",
+        "order": 4,
+        "properties": {
+          "splitscreenme.nucleusPath": {
+            "type": "string",
+            "keywords": [
+              "Nucleus Co-op",
+              "SplitScreen.Me"
+            ],
+            "default": "",
+            "scope": "machine",
+            "description": "Nucleus Co-op installation folder (contains NucleusCoop.exe and \"handlers\"). Used by \"Install Handler into Nucleus Co-op\" and \"Test in Nucleus Co-op\"."
+          }
         }
       }
-    },
+    ],
     "breakpoints": [
       {
         "language": "javascript"
@@ -993,7 +1477,7 @@
     "debuggers": [
       {
         "type": "nucleus",
-        "label": "Nucleus handler (simulated)",
+        "label": "Nucleus Co-op handler (simulated)",
         "languages": [
           "javascript",
           "nucleus-handler"
@@ -1054,7 +1538,7 @@
         ],
         "configurationSnippets": [
           {
-            "label": "Nucleus: step through a handler",
+            "label": "SplitScreen.Me: step through a Nucleus Co-op handler",
             "description": "Run the handler the way Nucleus does, simulated, and pause at breakpoints",
             "body": {
               "type": "nucleus",
@@ -1073,21 +1557,15 @@
       {
         "id": "nucleus.start",
         "title": "Make a Nucleus Co-op handler",
-        "description": "From an empty file to a handler players can download from the Hub: write it, let it check itself, try it, test it in Nucleus, share it.",
+        "description": "From an empty file to a handler players can download from the Hub: write it, let it check itself, try it, step through it, test it in Nucleus Co-op, share it.",
         "when": "true",
         "steps": [
           {
             "id": "start",
             "title": "Start a handler",
-            "description": "Start from the template, with the game's name and its .exe, or from a handler that already works for a similar game (same engine, same launcher).\n[New Handler…](command:splitscreenme.newHandler)\n[Browse the Hub…](command:splitscreenme.browseHub)\nIn an empty .js file, typing `handler` offers the whole template too.",
+            "description": "Start from the template, with the game's name and its .exe, or from a handler that already works for a similar game (same engine, same launcher).\n[New Handler…](command:splitscreenme.newHandler)\n[Browse the Hub…](command:splitscreenme.browseHub)\nIn an empty .js file, typing \"handler\" offers the whole template too.",
             "media": {
-              "image": {
-                "light": "media/walkthrough/vscode-hover-light.png",
-                "dark": "media/walkthrough/vscode-hover-dark.png",
-                "hc": "media/walkthrough/vscode-hover-dark.png",
-                "hcLight": "media/walkthrough/vscode-hover-light.png"
-              },
-              "altText": "A handler open in VS Code, with the docs of an option shown on hover"
+              "markdown": "media/walkthrough/start.md"
             },
             "completionEvents": [
               "onCommand:splitscreenme.newHandler",
@@ -1097,7 +1575,7 @@
           {
             "id": "check",
             "title": "Let it check itself as you type",
-            "description": "Problems are underlined as you type: red stops Nucleus, orange is probably wrong. Hover one for why and what to do; **Ctrl+.** offers the fix. Hover any option for its docs; suggestions know what exists where.\n[Fix All Auto-fixable Problems](command:splitscreenme.fixAll)",
+            "description": "Problems are underlined as you type: red stops Nucleus Co-op, orange is probably wrong. Hover one for why and what to do; Ctrl+. offers the fix. Hover any option for its docs; suggestions know what exists where.",
             "media": {
               "image": {
                 "light": "media/walkthrough/vscode-problems-light.png",
@@ -1108,13 +1586,43 @@
               "altText": "Problems in a handler, each explained, with a fix offered"
             },
             "completionEvents": [
+              "onCommand:editor.action.quickFix",
               "onCommand:splitscreenme.fixAll"
             ]
           },
           {
+            "id": "fixall",
+            "title": "Fix everything that can be fixed",
+            "description": "One command applies every safe fix in the handler; what needs your decision stays underlined. It can also run on every save.\n[Fix All Problems That Can Be Fixed](command:splitscreenme.fixAll)",
+            "media": {
+              "markdown": "media/walkthrough/fixall.md"
+            },
+            "completionEvents": [
+              "onCommand:splitscreenme.fixAll"
+            ]
+          },
+          {
+            "id": "docs",
+            "title": "Every option and function, explained",
+            "description": "The Docs open beside the editor, offline: every option and function in plain words, with examples. Click a name in a hover or a suggestion to open its page, or search by name or by what you want to do (\"window title\", \"mutex\").\n[Open the Docs](command:splitscreenme.showDocs)\n[Search the Docs…](command:splitscreenme.docsSearch)",
+            "media": {
+              "image": {
+                "light": "media/walkthrough/vscode-docs-light.webp",
+                "dark": "media/walkthrough/vscode-docs-dark.webp",
+                "hc": "media/walkthrough/vscode-docs-dark.webp",
+                "hcLight": "media/walkthrough/vscode-docs-light.webp"
+              },
+              "altText": "The Docs panel beside a handler: an option's page with its docs and an example"
+            },
+            "completionEvents": [
+              "onCommand:splitscreenme.showDocs",
+              "onCommand:splitscreenme.docsSearch"
+            ]
+          },
+          {
             "id": "tryit",
-            "title": "Try it before Nucleus does",
-            "description": "Try It runs `Game.Play` for each player, the way Nucleus would, and shows what each one gets: window, launch arguments, files changed. Nothing on your PC is touched.\n[Try It](command:splitscreenme.tryIt)",
+            "title": "Try it before Nucleus Co-op does",
+            "description": "Try It runs Game.Play for each player, the way Nucleus Co-op would, and shows what each one gets: window, launch arguments, files changed. Nothing on your PC is touched. It's in the Run button (▷) above a handler.\n[Try It](command:splitscreenme.tryIt)",
             "media": {
               "image": {
                 "light": "media/walkthrough/vscode-try-it-light.png",
@@ -1126,6 +1634,23 @@
             },
             "completionEvents": [
               "onCommand:splitscreenme.tryIt"
+            ]
+          },
+          {
+            "id": "debug",
+            "title": "Step through it (F5)",
+            "description": "Press F5 in a handler (or Debug in the Run button) to run it the way Nucleus Co-op does, simulated, and pause at breakpoints: see each player's Context, the handler's variables and what it did so far, step back and forth.\n[Debug the Handler](command:splitscreenme.debugHandler)",
+            "media": {
+              "image": {
+                "light": "media/walkthrough/vscode-debugger-light.webp",
+                "dark": "media/walkthrough/vscode-debugger-dark.webp",
+                "hc": "media/walkthrough/vscode-debugger-dark.webp",
+                "hcLight": "media/walkthrough/vscode-debugger-light.webp"
+              },
+              "altText": "The debugger paused in a handler, with its variables and Context"
+            },
+            "completionEvents": [
+              "onCommand:splitscreenme.debugHandler"
             ]
           },
           {
@@ -1142,7 +1667,8 @@
           {
             "id": "install",
             "title": "Test it in Nucleus Co-op",
-            "description": "One click installs the handler (and its folder) into Nucleus' `handlers` folder and starts Nucleus with the game selected: pick the players and press Play. Turn on the debug log when asked: if something's off, `debug-log.txt` says why.\n[Test in Nucleus Co-op](command:splitscreenme.testInNucleus)\n[Open the Debug Log](command:splitscreenme.openNucleusLog)",
+            "description": "One click installs the handler (and its folder) into Nucleus Co-op's handlers folder and starts it with the game selected: pick the players and press Play. Turn on the debug log when asked: if something's off, debug-log.txt says why.\n[Test in Nucleus Co-op](command:splitscreenme.testInNucleus)\n[Open the Debug Log](command:splitscreenme.openNucleusLog)",
+            "when": "isWindows",
             "media": {
               "markdown": "media/walkthrough/install.md"
             },

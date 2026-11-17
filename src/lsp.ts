@@ -220,7 +220,7 @@ export class Server {
     // The game folder linked to this handler (settings.gameFolders), if any: problems with their fix as data.
     const folder = this.gameFolderOf(uri);
     for (const p of folder ? checkAgainstFolder(d.text, folder) : []) {
-      (diagnostics as unknown[]).push({ range: lines.range({ start: p.start, end: Math.max(p.end, p.start) }), severity: SEVERITY[p.severity], code: 'game-folder', source: 'nucleus', message: `${p.title}. ${p.why}`, ...(p.fix ? { data: { fix: p.fix } } : {}) });
+      (diagnostics as unknown[]).push({ range: lines.range({ start: p.start, end: Math.max(p.end, p.start) }), severity: p.fact ? 4 : SEVERITY[p.severity], code: 'game-folder', source: 'nucleus', message: `${p.title}. ${p.why}`, ...(p.fix ? { data: { fix: p.fix } } : {}) });
     }
     this.notify('textDocument/publishDiagnostics', { uri, ...(closed ? {} : { version: d.version }), diagnostics });
     // Package problems on the files in <Name>/: publish them, and clear the ones that went away.

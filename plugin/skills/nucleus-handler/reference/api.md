@@ -11,7 +11,7 @@ Globals: `Game`, `Hub`, `Nucleus`, `System` (.NET), `importNamespace` are availa
 Handler definition (`GenericGameInfo`).
 
 ### Game.AddOption
-`AddOption(name: string | number | boolean, desc: string | number | boolean, key: string | number | boolean, value: any, defaultValue: any): void` / `Game.AddOption(name: string | number | boolean, desc: string | number | boolean, key: string | number | boolean, value: any): void`
+`AddOption(name: string, desc: string, key: string, value: any, defaultValue: any): void` / `Game.AddOption(name: string, desc: string, key: string, value: any): void`
 Adds a user-selectable option to the game profile. Read it back in `Game.Play` with `Context.Options["key"]`.
 _✎ AI-written, based on Nucleus GenericGameInfo.cs and GenericGameHandler.cs. Not from the official docs._
 
@@ -1279,7 +1279,7 @@ Prevent games from resizing window their windows on their own | Hooks upon game 
 Example: `Game.SetWindowHookStart = false;`
 
 ### Game.ShowOptionAsStep
-`ShowOptionAsStep(optionKey: string | number | boolean, required: boolean, title: string | number | boolean): CustomStep`
+`ShowOptionAsStep(optionKey: string, required: boolean, title: string): CustomStep`
 Shows a previously added option as its own setup step before launching.
 _✎ AI-written, based on Nucleus GenericGameInfo.cs and GenericGameHandler.cs. Not from the official docs._
 
@@ -2256,7 +2256,7 @@ Player's aspect ratio in decimal (e.g. 1777777).
 Example: `Context.AspectRatioDecimal`
 
 ### Context.BackupFile
-`BackupFile(filePaths: string[], overwrite: boolean): boolean` / `Context.BackupFile(filePath: string | number | boolean, overwrite: boolean): boolean`
+`BackupFile(filePaths: string[], overwrite: boolean): boolean` / `Context.BackupFile(filePath: string, overwrite: boolean): boolean`
 Copies a file to `<name>_NUCLEUS_BACKUP<ext>` next to it; when the session ends Nucleus deletes the original and moves the backup back. Parameters: the full path (or an array of paths), then `overwrite`, whether to replace an existing backup (false throws if one exists). The single-path form only acts for the first player (`PlayerID` 0); the array form acts for every player. A missing file is skipped with a log line; returns true.
 _✎ AI-written, based on Nucleus GenericContext.cs (BackupFile, both overloads), GenericGameHandler.cs (userBackedFiles restore on end). Not from the official docs._
 
@@ -2287,17 +2287,17 @@ Will rename the game's executable to "\<exe name\> - Player X", x being the inst
 Copied from `Game.ChangeExe` for the current instance.
 
 ### Context.ChangeXmlAttributeValue
-`ChangeXmlAttributeValue(path: string | number | boolean, xpath: string | number | boolean, attributeName: string | number | boolean, attributeValue: string | number | boolean): boolean`
+`ChangeXmlAttributeValue(path: string, xpath: string, attributeName: string, attributeValue: string): boolean`
 Opens the XML file `path` (environment variables like `%APPDATA%` are expanded), sets attribute `attributeName` to `attributeValue` on every node matching the XPath `xpath`, and saves the file. Throws if the file doesn't exist or a matching node lacks that attribute (it doesn't create attributes); returns true.
 _✎ AI-written, based on Nucleus GenericContext.cs (ChangeXmlAttributeValue). Not from the official docs._
 
 ### Context.ChangeXmlNodeInnerTextValue
-`ChangeXmlNodeInnerTextValue(path: string | number | boolean, xpath: string | number | boolean, innerTextValue: string | number | boolean): boolean`
+`ChangeXmlNodeInnerTextValue(path: string, xpath: string, innerTextValue: string): boolean`
 Files
 Edit an XML element (previously only nodes and attributes).
 
 ### Context.ChangeXmlNodeValue
-`ChangeXmlNodeValue(path: string | number | boolean, xpath: string | number | boolean, nodeValue: string | number | boolean): boolean`
+`ChangeXmlNodeValue(path: string, xpath: string, nodeValue: string): boolean`
 
 ### Context.CMDBatchAfter
 `CMDBatchAfter: string[]`
@@ -2335,11 +2335,11 @@ When using CMDLaunch, should the game's starting arguments be inside the same qu
 Copied from `Game.CMDStartArgsInside` for the current instance.
 
 ### Context.ConvertToBytes
-`ConvertToBytes(num: number): number[]` / `Context.ConvertToBytes(num: number): number[]` / `Context.ConvertToBytes(str: string | number | boolean): number[]`
+`ConvertToBytes(num: number): number[]` / `Context.ConvertToBytes(num: number): number[]` / `Context.ConvertToBytes(str: string): number[]`
 Helpers
 
 ### Context.ConvertToInt
-`ConvertToInt(num: string | number | boolean): number` / `Context.ConvertToInt(num: any): number`
+`ConvertToInt(num: string): number` / `Context.ConvertToInt(num: any): number`
 Helpers
 
 ### Context.ConvertToString
@@ -2359,23 +2359,23 @@ Copy files from the game directory to the instanced folder.
 Copied from `Game.CopyFiles` for the current instance.
 
 ### Context.CopyFolder
-`CopyFolder(source: string | number | boolean, destination: string | number | boolean): boolean`
+`CopyFolder(source: string, destination: string): boolean`
 Copies the folder `source` with all its files and subfolders into `destination` (both full paths), creating the destination folders. Files that already exist at the destination are not overwritten, and files that fail to copy are skipped silently. Throws if `source` doesn't exist; returns true.
 _✎ AI-written, based on Nucleus GenericContext.cs (CopyFolder), FileUtil.cs (CopyDirectory, CopyDirectoryFiles). Not from the official docs._
 
 ### Context.CopyScriptFolder
-`CopyScriptFolder(DestinationPath: string | number | boolean): boolean`
+`CopyScriptFolder(DestinationPath: string): boolean`
 Files
 Copies the handler's folder (Game.Folder) to the given destination.
 _✎ AI-written, based on Nucleus GenericContext.cs. Not from the official docs._
 
 ### Context.CreatedDate
-`CreatedDate(file: string | number | boolean, year: number, month: number, day: number, hour: number, minute: number, second: number): void` / `Context.CreatedDate(file: string | number | boolean, year: number, month: number, day: number): void`
+`CreatedDate(file: string, year: number, month: number, day: number, hour: number, minute: number, second: number): void` / `Context.CreatedDate(file: string, year: number, month: number, day: number): void`
 Files
 Change the creation date of a file.
 
 ### Context.CreateRegKey
-`CreateRegKey(baseKey: string | number | boolean, sKey: string | number | boolean, subKey: string | number | boolean): boolean`
+`CreateRegKey(baseKey: string, sKey: string, subKey: string): boolean`
 Registry
 Create a registry key for current user, baseKey can either be "HKEY_LOCAL_MACHINE" or "HKEY_CURRENT_USER".
 
@@ -2402,12 +2402,12 @@ Copied from `Game.Debug` for the current instance.
 _✎ AI-written, based on Nucleus GenericGameInfo.cs and GenericGameHandler.cs. Not from the official docs._
 
 ### Context.DeleteRegKey
-`DeleteRegKey(baseKey: string | number | boolean, sKey: string | number | boolean, subKey: string | number | boolean): void`
+`DeleteRegKey(baseKey: string, sKey: string, subKey: string): void`
 Registry
 Delete a registry key for current user, baseKey can either be "HKEY_LOCAL_MACHINE" or "HKEY_CURRENT_USER".
 
 ### Context.DeleteRegKeyValues
-`DeleteRegKeyValues(baseKey: string | number | boolean, sKey: string | number | boolean, values: string[]): void`
+`DeleteRegKeyValues(baseKey: string, sKey: string, values: string[]): void`
 
 ### Context.DocumentsConfigPath
 `DocumentsConfigPath: string`
@@ -2441,21 +2441,21 @@ default `DPIHandling.True`
 Copied from `Game.DPIHandling` for the current instance.
 
 ### Context.EditRegKey
-`EditRegKey(baseKey: string | number | boolean, sKey: string | number | boolean, subKey: string | number | boolean, value: any, regType: Nucleus.RegType | number | boolean): void`
+`EditRegKey(baseKey: string, sKey: string, subKey: string, value: any, regType: Nucleus.RegType): void`
 Registry
 Edit a registry key for current user, baseKey can either be "HKEY_LOCAL_MACHINE" or "HKEY_CURRENT_USER".
 EditRegKey uses a custom registry data type to use, by using `Nucleus.RegType.DWord` for example. The last word can be of the same name of RegistryValueKind enum.
 
 ### Context.EditRegKeyNoBackup
-`EditRegKeyNoBackup(baseKey: string | number | boolean, sKey: string | number | boolean, subKey: string | number | boolean, value: any, regType: Nucleus.RegType | number | boolean): void`
+`EditRegKeyNoBackup(baseKey: string, sKey: string, subKey: string, value: any, regType: Nucleus.RegType): void`
 Files
 Edit a registry key for current user without Nucleus creating a backup of the registry or before it creates one. Must be placed before any "Context.EditRegKey" line in handler for it to work.
 
 ### Context.EditTextFile
-`EditTextFile(path: string | number | boolean, refLines: string[], newLines: string[], encoder: string | number | boolean): boolean`
+`EditTextFile(path: string, refLines: string[], newLines: string[], encoder: string): boolean`
 
 ### Context.EditZipFile
-`EditZipFile(sourceZip: string | number | boolean, password: string | number | boolean, savePath: string | number | boolean, itemsToAdd: string[], entriesToRemove: string[]): boolean`
+`EditZipFile(sourceZip: string, password: string, savePath: string, itemsToAdd: string[], entriesToRemove: string[]): boolean`
 
 ### Context.EnvironmentPlayer
 `EnvironmentPlayer: string`
@@ -2495,7 +2495,7 @@ Full path of the executable being launched for this instance.
 _✎ AI-written, based on Nucleus GenericContext.cs. Not from the official docs._
 
 ### Context.ExtractZip
-`ExtractZip(sourceZip: string | number | boolean, contentDestination: string | number | boolean, password: string | number | boolean): boolean`
+`ExtractZip(sourceZip: string, contentDestination: string, password: string): boolean`
 
 ### Context.FakeFocus
 `FakeFocus: boolean`
@@ -2510,15 +2510,15 @@ If you only want specific instances to have fake focus messages sent to, specify
 Copied from `Game.FakeFocusInstances` for the current instance.
 
 ### Context.FindFilePartialName
-`FindFilePartialName(rootFolder: string | number | boolean, partialFileNames: string[]): string[]`
+`FindFilePartialName(rootFolder: string, partialFileNames: string[]): string[]`
 
 ### Context.FindFiles
-`FindFiles(rootFolder: string | number | boolean, fileName: string | number | boolean): string[]` / `Context.FindFiles(rootFolder: string | number | boolean, fileName: string | number | boolean, searchAll: boolean): string[]`
+`FindFiles(rootFolder: string, fileName: string): string[]` / `Context.FindFiles(rootFolder: string, fileName: string, searchAll: boolean): string[]`
 Files
 Return a string array of filenames (and their paths) found that match a pattern you specify.
 
 ### Context.FindLineNumberInTextFile
-`FindLineNumberInTextFile(path: string | number | boolean, searchValue: string | number | boolean, type: Nucleus.SearchType | number | boolean): number`
+`FindLineNumberInTextFile(path: string, searchValue: string, type: Nucleus.SearchType): number`
 Files
 Returns a line number (int), utilizes a newly created enum SearchType.
 
@@ -2547,10 +2547,10 @@ Useful to make sure that controllers are correctly assigned to the player they a
 Example: `Context.GamepadId`
 
 ### Context.GetFileName
-`GetFileName(fileFullPath: string | number | boolean): string`
+`GetFileName(fileFullPath: string): string`
 
 ### Context.GetFolder
-`GetFolder(folder: Nucleus.Folder | number | boolean): string`
+`GetFolder(folder: Nucleus.Folder): string`
 Path variables
 Path to the Nucleus Co-op current instance root folder (Nucleus-Coop\content\GUID\Instance#).
 
@@ -2609,7 +2609,7 @@ Height in pixels of this instance's window.
 _✎ AI-written, based on Nucleus GenericContext.cs. Not from the official docs._
 
 ### Context.HexEdit
-`HexEdit(fileToEdit: string | number | boolean, address: string | number | boolean, newBytes: number[]): boolean`
+`HexEdit(fileToEdit: string, address: string, newBytes: number[]): boolean`
 Path variables
 Writes bytes at an address in a file.
 _✎ AI-written, based on Nucleus GenericContext.cs. Not from the official docs._
@@ -2727,12 +2727,12 @@ Specify the type of mutex/handle to kill, for example "Mutant", "Event" or "Sema
 Copied from `Game.KillMutexType` for the current instance.
 
 ### Context.KillProcessesMatchingProcessName
-`KillProcessesMatchingProcessName(name: string | number | boolean): boolean`
+`KillProcessesMatchingProcessName(name: string): boolean`
 Processes
 Kill processes matching a given process name during preperation.
 
 ### Context.KillProcessesMatchingWindowName
-`KillProcessesMatchingWindowName(name: string | number | boolean): boolean`
+`KillProcessesMatchingWindowName(name: string): boolean`
 Processes
 Kill processes matching a given window name during preperation.
 
@@ -2758,7 +2758,7 @@ Local IP address of the computer.
 Example: `Context.LocalIP`
 
 ### Context.Log
-`Log(msg: string | number | boolean): void` / `Context.Log(msg: string | number | boolean, val: string | number | boolean): void` / `Context.Log(msg: string | number | boolean, val: number): void` / `Context.Log(msg: string | number | boolean, val: boolean): void` / `Context.Log(msg: string | number | boolean, val: number): void` / `Context.Log(msg: string | number | boolean, vals: string[]): void`
+`Log(msg: string): void` / `Context.Log(msg: string, val: string): void` / `Context.Log(msg: string, val: number): void` / `Context.Log(msg: string, val: boolean): void` / `Context.Log(msg: string, val: number): void` / `Context.Log(msg: string, vals: string[]): void`
 Helpers
 Writes a line to the Nucleus debug log (requires `Game.Debug = true` or debug logging enabled).
 _✎ AI-written, based on Nucleus GenericContext.cs. Not from the official docs._
@@ -2776,12 +2776,12 @@ This is just info. It will not limit the players number.
 Copied from `Game.MaxPlayersOneMonitor` for the current instance.
 
 ### Context.ModifiedDate
-`ModifiedDate(file: string | number | boolean, year: number, month: number, day: number, hour: number, minute: number, second: number): void` / `Context.ModifiedDate(file: string | number | boolean, year: number, month: number, day: number): void`
+`ModifiedDate(file: string, year: number, month: number, day: number, hour: number, minute: number, second: number): void` / `Context.ModifiedDate(file: string, year: number, month: number, day: number): void`
 Files
 Change the last modified date of a file.
 
 ### Context.ModifySaveFile
-`ModifySaveFile(installSavePath: string | number | boolean, saveFullPath: string | number | boolean, type: Nucleus.SaveType | number | boolean, ...info: Nucleus.SaveInfo): boolean`
+`ModifySaveFile(installSavePath: string, saveFullPath: string, type: Nucleus.SaveType, ...info: Nucleus.SaveInfo): boolean`
 Edits keys in an INI/CFG file. Example: `Context.ModifySaveFile(path, path, Nucleus.SaveType.INI, [new Nucleus.IniSaveInfo("Section", "Key", "Value")]);`
 _✎ AI-written, based on Nucleus GenericContext.cs. Not from the official docs._
 
@@ -2800,7 +2800,7 @@ _✎ AI-written, based on Nucleus GenericContext.cs. Not from the official docs.
 Example: `Context.MonitorWidth`
 
 ### Context.MoveFolder
-`MoveFolder(sourceDirName: string | number | boolean, destDirName: string | number | boolean): boolean`
+`MoveFolder(sourceDirName: string, destDirName: string): boolean`
 Path variables
 
 ### Context.NeedsSteamEmulation
@@ -2810,7 +2810,7 @@ If the game needs a fake Steam wrapper (SSE) to run multiple instances (this is 
 Copied from `Game.NeedsSteamEmulation` for the current instance.
 
 ### Context.NewSaveInfo
-`NewSaveInfo(section: string | number | boolean, key: string | number | boolean, value: string | number | boolean): Nucleus.SaveInfo`
+`NewSaveInfo(section: string, key: string, value: string): Nucleus.SaveInfo`
 
 ### Context.Nickname
 `(read-only) Nickname: string`
@@ -2885,16 +2885,16 @@ If steam_interface.txt is required, provide full path here to the original steam
 Copied from `Game.OrigSteamDllPath` for the current instance.
 
 ### Context.PatchFile
-`PatchFile(originalFile: string | number | boolean, patchedFile: string | number | boolean, patchFind: number[], patchReplace: number[]): boolean` / `Context.PatchFile(originalFile: string | number | boolean, patchedFile: string | number | boolean, spatchFind: string | number | boolean, spatchReplace: string | number | boolean): boolean`
+`PatchFile(originalFile: string, patchedFile: string, patchFind: number[], patchReplace: number[]): boolean` / `Context.PatchFile(originalFile: string, patchedFile: string, spatchFind: string, spatchReplace: string): boolean`
 Patches bytes in a file (copy of the original). The file must be excluded from symlinking (e.g. via `Game.FileSymlinkExclusions`).
 _✎ AI-written, based on Nucleus GenericContext.cs. Not from the official docs._
 
 ### Context.PatchFileFindAll
-`PatchFileFindAll(originalFile: string | number | boolean, patchedFile: string | number | boolean, patchFind: number[], patchReplace: number[]): boolean`
+`PatchFileFindAll(originalFile: string, patchedFile: string, patchFind: number[], patchReplace: number[]): boolean`
 Path variables
 
 ### Context.PatchFileFindPattern
-`PatchFileFindPattern(originalFile: string | number | boolean, patchedFile: string | number | boolean, origPattern: string | number | boolean, patchPattern: string | number | boolean, patchall: boolean): boolean` / `Context.PatchFileFindPattern(originalFile: string | number | boolean, patchedFile: string | number | boolean, origPattern: string | number | boolean, insert: number, offset: number, patchall: boolean): boolean`
+`PatchFileFindPattern(originalFile: string, patchedFile: string, origPattern: string, patchPattern: string, patchall: boolean): boolean` / `Context.PatchFileFindPattern(originalFile: string, patchedFile: string, origPattern: string, insert: number, offset: number, patchall: boolean): boolean`
 Reads `originalFile`, replaces every occurrence of the hex byte pattern `origPattern` (spaces allowed) and writes the result to `patchedFile`, even if nothing matched. Two forms: (`originalFile`, `patchedFile`, `origPattern`, `patchPattern`, `patchall`) puts the hex `patchPattern` in place of each match; (`originalFile`, `patchedFile`, `origPattern`, `insert`, `offset`, `patchall`) writes the low two bytes of the number `insert` (little-endian) into the pattern at one-based byte position `offset`. Throws if `originalFile` doesn't exist; returns true. In the first form, `patchall` false patches only the first byte of each match: pass true.
 _✎ AI-written, based on Nucleus GenericContext.cs (PatchFileFindPattern, both overloads). Not from the official docs._
 
@@ -2988,12 +2988,12 @@ _✎ AI-written, based on Nucleus GenericContext.cs. Not from the official docs.
 read-only
 
 ### Context.ReadRegKey
-`ReadRegKey(baseKey: string | number | boolean, sKey: string | number | boolean, subKey: string | number | boolean): string`
+`ReadRegKey(baseKey: string, sKey: string, subKey: string): string`
 Registry
 Return the value of a provided key as a string.
 
 ### Context.RemoveLineInTextFile
-`RemoveLineInTextFile(path: string | number | boolean, lineNum: number): void` / `Context.RemoveLineInTextFile(path: string | number | boolean, lineNum: number, encoder: string | number | boolean): void` / `Context.RemoveLineInTextFile(path: string | number | boolean, searchValue: string | number | boolean, type: Nucleus.SearchType | number | boolean): boolean` / `Context.RemoveLineInTextFile(path: string | number | boolean, searchValue: string | number | boolean, type: Nucleus.SearchType | number | boolean, encoder: string | number | boolean): boolean`
+`RemoveLineInTextFile(path: string, lineNum: number): void` / `Context.RemoveLineInTextFile(path: string, lineNum: number, encoder: string): void` / `Context.RemoveLineInTextFile(path: string, searchValue: string, type: Nucleus.SearchType): boolean` / `Context.RemoveLineInTextFile(path: string, searchValue: string, type: Nucleus.SearchType, encoder: string): boolean`
 Files
 Removes a given line number completely.
 
@@ -3004,12 +3004,12 @@ Instead of killing the mutex or handle, rename it on startup to something else |
 Copied from `Game.RenameNotKillMutex` for the current instance.
 
 ### Context.ReplaceLinesInTextFile
-`ReplaceLinesInTextFile(path: string | number | boolean, newLines: string[]): boolean` / `Context.ReplaceLinesInTextFile(path: string | number | boolean, newLines: string[], encoder: string | number | boolean): boolean`
+`ReplaceLinesInTextFile(path: string, newLines: string[]): boolean` / `Context.ReplaceLinesInTextFile(path: string, newLines: string[], encoder: string): boolean`
 Files
 Replace an entire line; for string array use the format: "lineNum|newValue", the | is required.
 
 ### Context.ReplacePartialLinesInTextFile
-`ReplacePartialLinesInTextFile(path: string | number | boolean, newLines: string[]): boolean` / `Context.ReplacePartialLinesInTextFile(path: string | number | boolean, newLines: string[], encoder: string | number | boolean): boolean`
+`ReplacePartialLinesInTextFile(path: string, newLines: string[]): boolean` / `Context.ReplacePartialLinesInTextFile(path: string, newLines: string[], encoder: string): boolean`
 Files
 Partially replace a line; for string array use the format: "lineNum|Regex pattern|newValue", the | is required.
 
@@ -3031,7 +3031,7 @@ Path to the source game root folder.
 Example: `Context.RootInstallFolder`
 
 ### Context.RunAdditionalFiles
-`RunAdditionalFiles(filePaths: string[], changeWorkingDir: boolean, secondsToPauseInbetween: number): void` / `Context.RunAdditionalFiles(filePaths: string[], changeWorkingDir: boolean, secondsToPauseInbetween: number, runAsAdmin: boolean, promptBetween: boolean): void` / `Context.RunAdditionalFiles(filePaths: string[], changeWorkingDir: boolean, customText: string | number | boolean, secondsToPauseInbetween: number, showFilePath: boolean, runAsAdmin: boolean, promptBetween: boolean, confirm: boolean): void`
+`RunAdditionalFiles(filePaths: string[], changeWorkingDir: boolean, secondsToPauseInbetween: number): void` / `Context.RunAdditionalFiles(filePaths: string[], changeWorkingDir: boolean, secondsToPauseInbetween: number, runAsAdmin: boolean, promptBetween: boolean): void` / `Context.RunAdditionalFiles(filePaths: string[], changeWorkingDir: boolean, customText: string, secondsToPauseInbetween: number, showFilePath: boolean, runAsAdmin: boolean, promptBetween: boolean, confirm: boolean): void`
 Files
 Specify additional files to run before launching game. By default will run each additional file once but can specify to run during specific player's instances by prefixing the filepath with #|. Replace # with player number. Can also specify to run files for each player by prefixing filepath with "all|". "bool confirm" will only run the file after clicking "Ok" in the prompt.
 
@@ -3054,10 +3054,10 @@ Path to the Nucleus Co-op handlers root folder (Nucleus-Coop\handlers).
 Example: `Context.ScriptFolder`
 
 ### Context.SearchSubFolder
-`SearchSubFolder(parentDirectory: string | number | boolean, searchPattern: string | number | boolean): string`
+`SearchSubFolder(parentDirectory: string, searchPattern: string): string`
 
 ### Context.SearchSubFolders
-`SearchSubFolders(parentDirectory: string | number | boolean, searchPattern: string | number | boolean): string[]`
+`SearchSubFolders(parentDirectory: string, searchPattern: string): string[]`
 
 ### Context.SetProtoInputMultipleControllers
 `SetProtoInputMultipleControllers(controller1: number, controller2: number, controller3: number, controller4: number): void`
@@ -3083,7 +3083,7 @@ If you only want specific instances to have starting hooks, specify them in a co
 Copied from `Game.StartHookInstances` for the current instance.
 
 ### Context.StartProcess
-`StartProcess(path: string | number | boolean, args: string | number | boolean, asAdmin: boolean): boolean`
+`StartProcess(path: string, args: string, asAdmin: boolean): boolean`
 Starts a process with arguments, optionally elevated.
 _✎ AI-written, based on Nucleus GenericContext.cs. Not from the official docs._
 
@@ -3206,7 +3206,7 @@ Relative path to where Nucleus should start the game's working folder to. Exampl
 Copied from `Game.WorkingFolder` for the current instance.
 
 ### Context.WriteTextFile
-`WriteTextFile(path: string | number | boolean, ...lines: string | number | boolean): boolean`
+`WriteTextFile(path: string, ...lines: string): boolean`
 Nemirtingas Epic Emulator
 NemirtingasEpicEmu.json edition from a handler example:
 
@@ -3491,12 +3491,12 @@ read-only
 Proto Input runtime API.
 
 ### ProtoInput.AddHandleToRename
-`AddHandleToRename(instanceHandle: number, name: string | number | boolean): void`
+`AddHandleToRename(instanceHandle: number, name: string): void`
 Needs the `RenameHandlesHookID` hook. Any mutex, event or semaphore the game creates or opens whose name contains this text gets a random number appended, so instances don't see each other's. Parameters: the instance handle and the text (up to 998 characters).
 _✎ AI-written, based on Nucleus ProtoInput.cs (AddHandleToRename, summary: requires RenameHandlesHookID), ProtoInputLoader Inject.cpp (AddHandleToRenameImpl), ProtoInputHooks RenameHandlesHook.cpp (updateName). Not from the official docs._
 
 ### ProtoInput.AddNamedPipeToRename
-`AddNamedPipeToRename(instanceHandle: number, name: string | number | boolean): void`
+`AddNamedPipeToRename(instanceHandle: number, name: string): void`
 Needs the `RenameHandlesHookID` hook. Any named pipe the game creates whose name contains this text gets a random number appended. Parameters: the instance handle and the text (up to 998 characters).
 _✎ AI-written, based on Nucleus ProtoInput.cs (AddNamedPipeToRename), ProtoInputLoader Inject.cpp (AddHandleToRenameImpl), ProtoInputHooks RenameHandlesHook.cpp (Hook_NtCreateNamedPipeFile, updateName). Not from the official docs._
 
@@ -3526,17 +3526,17 @@ Turns off a window message filter in the game instance. Parameters: the instance
 _✎ AI-written, based on Nucleus ProtoInput.cs (DisableMessageFilter), ProtoInputLoader InstallMessageFilter.cpp, ProtoInputHooks MessageFilterHook.cpp (SetFilterEnabled). Not from the official docs._
 
 ### ProtoInput.EasyHookInjectRuntime
-`EasyHookInjectRuntime(pid: number, dllFolderPath: string | number | boolean): number`
+`EasyHookInjectRuntime(pid: number, dllFolderPath: string): number`
 Loads Proto Input into a running process with EasyHook, through the helper `ProtoInputIJ32.exe`/`ProtoInputIJ64.exe`. Parameters: the process ID and the folder that holds the Proto Input files (ending in a backslash). Returns the new instance handle, or 0 on failure.
 _✎ AI-written, based on Nucleus ProtoInput.cs (EasyHookInjectRuntime), ProtoInputLoader EasyHookRuntime.cpp (EasyHookInjectImpl), Nucleus ProtoInputLauncher.cs (InjectRuntime). Not from the official docs._
 
 ### ProtoInput.EasyHookInjectStartup
-`EasyHookInjectStartup(exePath: string | number | boolean, commandLine: string | number | boolean, processCreationFlags: number, dllFolderPath: string | number | boolean, environment: number): number` / `ProtoInput.EasyHookInjectStartup(exePath: string | number | boolean, commandLine: string | number | boolean, processCreationFlags: number, dllFolderPath: string | number | boolean): number`
+`EasyHookInjectStartup(exePath: string, commandLine: string, processCreationFlags: number, dllFolderPath: string, environment: number): number` / `ProtoInput.EasyHookInjectStartup(exePath: string, commandLine: string, processCreationFlags: number, dllFolderPath: string): number`
 Starts a game executable suspended and loads Proto Input into it before it runs. Parameters: the exe path, the command line, the process creation flags (Nucleus passes 0) and the folder that holds the Proto Input files. Returns the instance handle (0 on failure); the game stays suspended until `ProtoInput.WakeUpProcess`.
 _✎ AI-written, based on Nucleus ProtoInput.cs (EasyHookInjectStartup, JavaScript friendly overload), ProtoInputLoader EasyHookStartup.cpp (RtlCreateSuspendedProcess), Nucleus ProtoInputLauncher.cs (InjectStartup). Not from the official docs._
 
 ### ProtoInput.EasyHookStealthInjectRuntime
-`EasyHookStealthInjectRuntime(pid: number, dllFolderPath: string | number | boolean): number`
+`EasyHookStealthInjectRuntime(pid: number, dllFolderPath: string): number`
 Same as `ProtoInput.EasyHookInjectRuntime`, but EasyHook injects in stealth mode (`EASYHOOK_INJECT_STEALTH`). Parameters: the process ID and the folder that holds the Proto Input files (ending in a backslash). Returns the new instance handle, or 0 on failure.
 _✎ AI-written, based on Nucleus ProtoInput.cs (EasyHookStealthInjectRuntime), ProtoInputLoader EasyHookRuntime.cpp, ProtoInputInjectorProxy Inject.cpp (RhInjectLibrary). Not from the official docs._
 
@@ -3566,7 +3566,7 @@ Locks or unlocks the real mouse and keyboard for the whole PC (runs in Nucleus, 
 _✎ AI-written, based on Nucleus ProtoInput.cs (LockInput, ProtoInputUtilDynamic DllImport), ProtoInputUtil InputLocker.cpp (LockInput, LoopThread), Nucleus LockInputRuntime.cs (Lock, Unlock). Not from the official docs._
 
 ### ProtoInput.RemoteLoadLibraryInjectRuntime
-`RemoteLoadLibraryInjectRuntime(pid: number, dllFolderPath: string | number | boolean): number`
+`RemoteLoadLibraryInjectRuntime(pid: number, dllFolderPath: string): number`
 Loads Proto Input into a running process by calling `LoadLibraryW` inside it. Parameters: the process ID and the folder that holds `ProtoInputHooks32.dll`/`ProtoInputHooks64.dll` (ending in a backslash). Returns the new instance handle, or 0 on failure.
 _✎ AI-written, based on Nucleus ProtoInput.cs (RemoteLoadLibraryInjectRuntime), ProtoInputLoader RemoteLoadLibrary.cpp, InstanceHandling.cpp (CreateInstanceHandle), Nucleus ProtoInputLauncher.cs (InjectRuntime). Not from the official docs._
 
@@ -3586,7 +3586,7 @@ Chooses the controllers the game instance sees through the `XinputHookID` hook. 
 _✎ AI-written, based on Nucleus ProtoInput.cs (SetControllerIndex), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetControllerIndex), ProtoInputHooks XinputHook.cpp (GetTargetControllerIndex). Not from the official docs._
 
 ### ProtoInput.SetCreateSingleHIDName
-`SetCreateSingleHIDName(instanceHandle: number, name: string | number | boolean): void`
+`SetCreateSingleHIDName(instanceHandle: number, name: string): void`
 Sets the one HID device path the `CreateSingleHIDHookID` hook lets the game open; opening any other path containing "HID" or "hid" fails. Parameters: the instance handle and the device path (Nucleus passes `player.RawHID`).
 _✎ AI-written, based on Nucleus ProtoInput.cs (SetCreateSingleHIDName), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, ProtoInputHooks CreateSingleHIDHook.cpp (SetRawHidW, Hook_CreateFileW). Not from the official docs._
 

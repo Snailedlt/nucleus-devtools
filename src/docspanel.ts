@@ -7,8 +7,30 @@ import { docsPageUrl, docsPage, docsValue, docsView, DocsPage } from './core/doc
 import { linkApiNames } from './core/features';
 import { allEntries } from './core/lookup';
 import { api } from './core/api';
+import { WORKBENCH_URL } from './core/sharelink';
 
-export const OPEN_DOCS = 'splitscreenme.showDocs'; // not openDocs: that is "Docs: Web Links…"
+export const OPEN_DOCS = 'splitscreenme.showDocs'; // not openDocs: that is the old "Docs: Web Links…" (still works)
+
+/** The guides, the Hub and places to ask for help: on the Docs panel's main page, and in the old Web Links… pick. */
+export function webLinks(workbenchUrl: string): { label: string; url: string }[] {
+  return [
+    { label: 'Handler API reference', url: 'https://www.splitscreen.me/docs/handler-api' },
+    { label: 'Creating handlers (guide)', url: 'https://www.splitscreen.me/docs/create-handlers' },
+    { label: 'Proto Input', url: 'https://www.splitscreen.me/docs/protoinput' },
+    { label: 'FAQ', url: 'https://www.splitscreen.me/docs/faq' },
+    { label: 'Nucleus Co-op docs (legacy)', url: 'https://nucleus-coop.github.io/docs/' },
+    { label: 'Browser workbench (SplitScreen.Me: Open in the Browser Workbench opens this handler there)', url: workbenchUrl },
+    { label: 'Handler hub', url: 'https://hub.splitscreen.me/' },
+    { label: 'Nucleus Co-op source code', url: 'https://github.com/SplitScreen-Me/splitscreenme-nucleus' },
+    { label: 'PCGamingWiki (check input & multiplayer support)', url: 'https://www.pcgamingwiki.com/wiki/Home' },
+    { label: 'Ask for help: SplitScreen.Me Discord', url: 'https://discord.gg/XxGMkqCf4r' },
+    { label: 'Ask for help: r/nucleuscoop', url: 'https://www.reddit.com/r/nucleuscoop/' },
+  ];
+}
+/** The links section of the Docs panel's main page. Exported for tests. */
+export function linksSection(workbenchUrl: string): string {
+  return `<section class="links" aria-labelledby="links-h"><h2 id="links-h">Links</h2><ul>${webLinks(workbenchUrl).map((l) => `<li><a href="${esc(l.url)}">${esc(l.label)}</a></li>`).join('')}</ul></section>`;
+}
 const BACK = 'splitscreenme.docsBack';
 const SEARCH = 'splitscreenme.docsSearch';
 
@@ -125,9 +147,9 @@ export function registerDocsPanel(context: vscode.ExtensionContext) {
     view = next;
     const page = docsPage(view, docsCommandLink);
     // Names inside the docs open their own page too.
-    const body = fallbackMarkdown(linkApiNames(page.markdown, docsCommandLink));
+    const body = fallbackMarkdown(linkApiNames(page.markdown, docsCommandLink)) + (view === 'home' ? linksSection(`${WORKBENCH_URL}?ref=vscode`) : '');
     if (!panel) {
-      panel = vscode.window.createWebviewPanel('splitscreenme.docs', 'Nucleus Docs', { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true }, {
+      panel = vscode.window.createWebviewPanel('splitscreenme.docs', 'Handler Docs', { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true }, {
         enableScripts: false,
         enableCommandUris: [OPEN_DOCS, BACK, SEARCH],
         localResourceRoots: [],
@@ -137,7 +159,7 @@ export function registerDocsPanel(context: vscode.ExtensionContext) {
         history.length = 0;
       }, null, context.subscriptions);
     } else panel.reveal(undefined, true);
-    panel.title = page.path ? `Docs: ${page.path.split('.').pop()}` : 'Nucleus Docs';
+    panel.title = page.path ? `Docs: ${page.path.split('.').pop()}` : 'Handler Docs';
     panel.webview.html = renderDocsPanel(page, body, history.length > 0);
   };
 

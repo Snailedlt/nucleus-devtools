@@ -247,3 +247,12 @@ test('validateHandlerInfo: maxPlayers is a whole number 1-16, as a number or dig
   for (const m of ['', true, '4.5', 0, 17, ' ', 'x']) assert.ok(bad(m), `rejects ${JSON.stringify(m)}`);
   for (const m of [1, 4, '8', 16]) assert.ok(!bad(m), `accepts ${JSON.stringify(m)}`);
 });
+
+test('parameter hints show a C# string parameter as string (the model\'s looser type is for the checks)', () => {
+  const src = 'Game.Play = function () {\n  Context.ModifySaveFile(';
+  const label = signatureHelpAt(src, src.length)?.signatures[0].label ?? '';
+  assert.match(label, /installSavePath: string, saveFullPath: string/);
+  assert.doesNotMatch(label, /number \| boolean/);
+  const add = 'Game.AddOption(';
+  assert.match(signatureHelpAt(add, add.length)?.signatures[0].label ?? '', /^Game\.AddOption\(name: string, desc: string, key: string, value: any/);
+});

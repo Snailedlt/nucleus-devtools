@@ -25,3 +25,18 @@ test('CHANGELOG.md has notes for the next release, each starting with a short bo
   // Released sections carry their date ("(beta)" until 0.5.0; 0.6.0 on are plain versions).
   for (const h of heads.slice(1)) assert.match(h, /^\d+\.\d+\.\d+( \(beta\))? · \d{4}-\d{2}-\d{2}$/, h);
 });
+
+test("What's New opens at the installed version, without Unreleased or the writing notes", async () => {
+  const { whatsNewMarkdown } = await import('../whatsnew');
+  const log = '# Changelog\n\nIntro.\n\n<!--\nnotes\n-->\n\n## Unreleased\n\n- **Next.**\n\n---\n\n## 0.8.0 · 2026-11-17\n\n- **Eight.**\n\n---\n\n## 0.7.0 · 2026-11-15\n\n- **Seven.**\n';
+  const md = whatsNewMarkdown(log, '0.8.0');
+  assert.match(md, /^# Changelog\n\nIntro\.\n\n## 0\.8\.0/);
+  assert.doesNotMatch(md, /Unreleased|Next|notes/);
+  assert.match(md, /## 0\.7\.0/);
+  // A build with no section of its own (between releases): from the newest release.
+  assert.match(whatsNewMarkdown(log, '0.9.0'), /^# Changelog\n\nIntro\.\n\n## 0\.8\.0/);
+  // The real changelog: the installed version's section first.
+  const real = whatsNewMarkdown(fs.readFileSync(path.join(__dirname, '..', 'CHANGELOG.md'), 'utf8'), '0.8.0');
+  assert.doesNotMatch(real, /## Unreleased|<!--/);
+  assert.match(real.split('\n## ')[1], /^0\.8\.0 /);
+});

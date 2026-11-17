@@ -334,12 +334,22 @@ export function looksLikeTypo(name: string, candidates: string[]): boolean {
 // Display helpers
 // ---------------------------------------------------------------------------
 
+/** A parameter's type as hints and signatures show it. The model types a C# `string` parameter
+ *  `string | number | boolean`, since Jint turns a number or boolean into text there (so the checks accept them);
+ *  what the method wants is still a string, and that's what a person should read. The same for an enum. */
+export function paramType(p: Param): string {
+  const cs = (p.csType ?? '').replace(/\[\]$/, '');
+  if (p.type === 'string | number | boolean' && /^(string|String|System\.String)$/.test(cs)) return 'string';
+  // An enum parameter (`Nucleus.SaveType | number | boolean`): its values are what to pass.
+  return p.type.match(/^(Nucleus\.\w+) \| number \| boolean$/)?.[1] ?? p.type;
+}
+
 export function memberSignature(owner: string, name: string, m: Member): string[] {
   const label = ownerLabel(owner);
   const full = label ? `${label}.${name}` : name;
   if (m.kind === 'method') {
     return (m.overloads ?? []).map(
-      (o) => `${full}(${o.params.map((p) => `${p.rest ? '...' : ''}${p.name}${p.optional ? '?' : ''}: ${p.type}`).join(', ')}): ${o.returns}`,
+      (o) => `${full}(${o.params.map((p) => `${p.rest ? '...' : ''}${p.name}${p.optional ? '?' : ''}: ${paramType(p)}`).join(', ')}): ${o.returns}`,
     );
   }
   const t = m.kind === 'object' ? m.ref ?? m.ts : m.ts;

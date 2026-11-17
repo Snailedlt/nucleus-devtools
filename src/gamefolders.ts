@@ -7,6 +7,7 @@ import path from 'node:path';
 import { checkAgainstFolder, folderLists, folderSummary, pickerOptions, type FolderFix } from './core/gamefolder';
 import { folderAt, forgetFolder, readGameFolder } from './gamefolder-node';
 import { RULES_URL } from './core/features';
+import { log, status } from './log';
 export { readGameFolder };
 
 const SETTING = 'gameFolders';
@@ -32,7 +33,8 @@ export function gameFolderDiagnostics(doc: vscode.TextDocument, source: string, 
   const folder = dir ? folderAt(dir) : undefined;
   if (!folder) return [];
   return checkAgainstFolder(doc.getText(), folder).map((p) => {
-    const d = new vscode.Diagnostic(new vscode.Range(doc.positionAt(p.start), doc.positionAt(Math.max(p.end, p.start))), `${p.title}. ${p.why}`, severity[p.severity]);
+    // A fact about the game (its engine, Steam, …) is a hint: no squiggle, shown on hover and in the language status.
+    const d = new vscode.Diagnostic(new vscode.Range(doc.positionAt(p.start), doc.positionAt(Math.max(p.end, p.start))), `${p.title}. ${p.why}`, p.fact ? vscode.DiagnosticSeverity.Hint : severity[p.severity]);
     d.source = source;
     d.code = { value: 'game-folder', target: vscode.Uri.parse(RULES_URL) };
     if (p.fix) fixOf.set(d, p.fix);
@@ -82,7 +84,7 @@ export function registerGameFolders(context: vscode.ExtensionContext, isHandler:
   const active = () => {
     const doc = vscode.window.activeTextEditor?.document;
     if (!doc || !isHandler(doc) || doc.uri.scheme !== 'file') {
-      vscode.window.showInformationMessage('Open a saved Nucleus handler first.');
+      status('open a saved Nucleus Co-op handler first');
       return undefined;
     }
     return doc;
@@ -101,6 +103,7 @@ export function registerGameFolders(context: vscode.ExtensionContext, isHandler:
       recheck(doc);
       const sum = folderSummary(folder, doc.getText());
       const facts = sum.facts.map((f) => f.title).join(', ');
+      log.info(`Linked ${doc.uri.fsPath} to ${dir}`);
       vscode.window.showInformationMessage(
         `Linked ${keyOf(doc)} to ${folder.name} (${folder.files.length.toLocaleString('en')} files${folder.truncated ? ', only partly listed' : ''}). ` +
           (sum.exe ? `Executable: ${sum.exe}.` : sum.exeName ? `${sum.exeName} isn't in it.` : 'Game.ExecutableName isn\'t set.') +
@@ -113,7 +116,7 @@ export function registerGameFolders(context: vscode.ExtensionContext, isHandler:
       const had = await save(doc, undefined);
       markLinked();
       recheck(doc);
-      vscode.window.setStatusBarMessage(had ? `Unlinked ${keyOf(doc)} from its game's folder.` : `${keyOf(doc)} isn't linked to a game's folder.`, 4000);
+      status(had ? `unlinked ${keyOf(doc)} from its game's folder` : `${keyOf(doc)} isn't linked to a game's folder`);
     }),
     // Fixes for the folder problems (e.g. the exe's real name, BinariesFolder set to where the exe is).
     vscode.languages.registerCodeActionsProvider(selector, {

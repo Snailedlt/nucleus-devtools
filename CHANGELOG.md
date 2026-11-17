@@ -16,6 +16,9 @@ How to write it (people and AI agents read this; the release workflow publishes 
 
 ### ✨ New
 
+- **One Run button above a handler.** The editor title's Run button (▷) now holds *Test in Nucleus Co-op* (Windows), *Try It* and the new *Debug Handler*, as the Python extension does, instead of two separate ▷ icons. Debug steps through the handler, simulated, and pauses on its first line when it has no breakpoint.
+- **The handler's status beside its language.** Hover **{} Nucleus Co-op handler** in the status bar for its checks (the problem count, or OK) and its game folder, with *Link…* or *Unlink*, as TypeScript and Python show theirs. Nothing new sits on screen.
+- **A SplitScreen.Me output channel.** *View › Output › SplitScreen.Me* logs what the extension did (packaged, installed, linked, tested) and every error, with *Show Log* on error messages.
 - **Handlers have their own file icon.** Handler files show Nucleus Co-op's logo with a JS tag in the Explorer, tabs and breadcrumbs, so you can tell them from other JavaScript at a glance (and see when one wasn't detected). It shows with VS Code's default file icons; icon themes that pick icons by file extension, such as Material Icon Theme, keep their JavaScript icon.
   <details><summary>Screenshot</summary>
 
@@ -25,6 +28,16 @@ How to write it (people and AI agents read this; the release workflow publishes 
 
 ### 🛠️ Improved
 
+- **One name: SplitScreen.Me.** Commands are now under *SplitScreen.Me:* in the Command Palette (was *Nucleus:*), and Settings has the extension's settings in titled groups (General, Checks, Format, Nucleus Co-op) with readable choices (*JavaScript*, not `javascript`). Searching Settings for "nucleus" still finds them. Command ids, setting keys and keybindings stay the same, so nothing you set up breaks.
+- **Fewer pop-ups.** "Nothing to fix", "Fixed 3 problems", "Checked 12 handlers" and a handler that can't be formatted yet (with format on save, a syntax error used to warn on every save) now show briefly in the status bar and go to the output channel, not a notification.
+- **Game facts aren't problems.** With a game folder linked, facts such as *Your game: Unreal Engine* are hints (no squiggle, still in the hover and the language status); real mismatches stay problems.
+- **Try it, tidier and keyboard friendly.** Its explanation is folded into *How this works ⓘ*; Players, Keyboard & mouse and Monitor are real toggle buttons (screen readers hear which is pressed), and the focus stays on the button you clicked. *Try It: Test All Combinations* is in the Command Palette now.
+- **New Handler as one guided flow.** Five steps in one box, with a step count and a Back button that keeps your answers; the last step picks the folder, and it saves `<Name>.js` together with its `<Name>/` folder.
+- **The Docs hold the web links.** The Docs panel's main page lists the guides, Proto Input, FAQ, the Hub and where to ask for help, so *Docs: Open* and *Docs: Search…* are all you need (*Docs: Web Links…* leaves the palette; its id still works). Searching the docs ranks `Game.*` options first.
+- **Clearer parameter hints.** A parameter that takes text shows `string`, not `string | number | boolean` (and an enum parameter its enum), in hints, hovers and the reference.
+- **The debugger opens on Locals.** Its first scope is now *Locals* (was *Variables › Variables*), expanded where it pauses.
+- **What's New opens at your version**, without the notes for the next one.
+- **A better walkthrough.** New steps for the Docs, the debugger (F5) and Fix all; *Test in Nucleus Co-op* shows only on Windows; no more raw code marks in the step text, and the first step no longer shows an unrelated picture.
 - **Nucleus commands only where they work.** The command palette shows Try It, Fix All, Format Handler, Explain This Line, Package, Install, Test in Nucleus Co-op and the game folder commands while a handler is open, and the Explorer's right-click menu offers Package and Install on handlers only, not on every `.js` file.
 - **Clearer command names that sort together.** In the palette, related commands now sit side by side: *Docs: Open*, *Docs: Search…* and *Docs: Web Links…* (was *Open Documentation…*); *Game Folder: Link…* and *Game Folder: Unlink* (shown only when a folder is linked). *Lint All Handlers in Workspace* is now *Check All Handlers in the Workspace*, and *Fix All Auto-fixable Problems* is *Fix All Problems That Can Be Fixed*. *Format Handler* leaves the palette, since Format Document (Shift+Alt+F) does the same in a handler; its keybinding stays. Keybindings to the old commands keep working.
 - **Fix all leaves harmless lines for you to choose.** `fixAll` in the shared checks can skip cleanups (lines that do nothing, such as `Player.ProtoController5`); the workbench uses it and offers them afterwards.
