@@ -4,6 +4,7 @@ import { registerWhatsNew } from './whatsnew';
 import { Diagnostic as LintDiagnostic, lint, RuleId, Severity } from './core/lint';
 import { registerCommands } from './commands';
 import { registerTryIt } from './tryit';
+import { registerReports, REPORT_COMMANDS, type CheckArgs } from './reportvscode';
 import { docsCommandLink, OPEN_DOCS, registerDocsPanel } from './docspanel';
 import { ruleOverrides } from './settings';
 import { definitionAt } from './core/definition';
@@ -264,6 +265,7 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   registerTryIt(context, isHandler);
+  registerReports(context);
   registerDocsPanel(context);
   registerGameFolders(context, isHandler, SELECTOR, (d) => refresh(d, 0));
   registerHandlerMode(context, isHandler);
@@ -378,6 +380,8 @@ function formatEdits(doc: vscode.TextDocument, opts: { insertSpaces: boolean; ta
 }
 
 const FIX_ALL_KIND = vscode.CodeActionKind.SourceFixAll.append('nucleus');
+/** "This check is wrong…": a quick fix's kind, so it shows with the fixes (Ctrl+.), but not a fix. */
+const REPORT_KIND = vscode.CodeActionKind.QuickFix.append('report');
 
 /** One edit replacing the document with the result of "Fix all", or undefined if nothing changes. */
 function fixAllEdit(doc: vscode.TextDocument): { edit: vscode.WorkspaceEdit; count: number } | undefined {
@@ -414,6 +418,17 @@ class FixProvider implements vscode.CodeActionProvider {
     for (const d of ctx.diagnostics) {
       const fix = pkgFixOf.get(d);
       if (fix && fix.version === doc.version) actions.push(toCodeAction(doc, { title: fix.title, kind: 'quickfix', edits: fix.edits, preferred: true }, d));
+    }
+    // "This check is wrong…": last in the list (after the fixes), once per check here, never preferred.
+    const seen = new Set<string>();
+    for (const [lintD, d] of byLint) {
+      if (seen.has(lintD.rule)) continue;
+      seen.add(lintD.rule);
+      const a = new vscode.CodeAction(`This check is wrong (${lintD.rule})…`, REPORT_KIND);
+      a.diagnostics = [d];
+      const args: CheckArgs = { uri: doc.uri.toString(), rule: lintD.rule, message: lintD.message, startLine: d.range.start.line, endLine: d.range.end.line };
+      a.command = { title: 'This check is wrong…', command: REPORT_COMMANDS.check, arguments: [args] };
+      actions.push(a);
     }
     return actions;
   }

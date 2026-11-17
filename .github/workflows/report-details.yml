@@ -1,6 +1,6 @@
 name: Report details
-# Tester feedback and doc review issues opened from the workbench carry a "Details from the workbench" block (build,
-# browser, settings, the open handler; playground/src/report.ts in nucleuscoop-handler-testbench) with a checksum.
+# Issues opened from the tools (the workbench, VS Code, ncdev, Notepad++; core/report.ts) carry a "Details from the
+# tool" block (versions, settings, where the handler is from) with a checksum.
 # GitHub can't lock a form field, so this copies the block, as it was when the issue was opened, into a comment the
 # reporter can't edit or remove, and says whether the block was changed before sending. Reads the issue only.
 on:
@@ -10,7 +10,7 @@ permissions:
   issues: write
 jobs:
   keep-details:
-    if: contains(github.event.issue.body, '### Details from the workbench')
+    if: contains(github.event.issue.body, '### Details from the tool') || contains(github.event.issue.body, '### Details from the workbench')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

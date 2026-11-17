@@ -13,6 +13,7 @@ import { docsPageUrl } from './core/docspage';
 import { CodeActionEntry, CompletionEntry, documentSymbols, SymbolEntry, CompletionKind, completionsAt, explainLine, packageQuickFix, fixAllCodeAction, formatEdits, hoverAt, inlayHints, isHandlerFile, quickFixes, RULES_URL, SEMANTIC_TOKEN_MODIFIERS, SEMANTIC_TOKEN_TYPES, semanticTokens, signatureHelpAt } from './core/features';
 import { RULE_DOCS, ruleUrl } from './core/ruledocs';
 import { EVERY_KEYBOARD } from './core/sim';
+import { buildReport, DISCORD_THREAD, findDuplicates, handlerHelp, handlerOrigin, simSummary, type ReportInput } from './core/report';
 import { lintPluginsFor } from './plugins';
 import { checkPackage } from './core/pkgcheck';
 import { forgetPackageFiles, packageFilePath, packageFilesFor } from './pkgfiles';
@@ -52,7 +53,7 @@ export interface LspSettings {
 }
 const DEFAULTS: LspSettings = { detection: 'auto', handlerGlobs: [], lint: { enable: true, rules: {}, compareWithHub: true, workspace: true }, completion: { enable: true }, gameFolders: {}, format: { quotes: 'double', semicolons: 'add' } };
 
-export const COMMANDS = { tryIt: 'nucleus.tryIt', fixAll: 'nucleus.fixAll', workbenchLink: 'nucleus.workbenchLink', package: 'nucleus.package', install: 'nucleus.install', newHandler: 'nucleus.newHandler', testInNucleus: 'nucleus.testInNucleus', explainLine: 'nucleus.explainLine' } as const;
+export const COMMANDS = { tryIt: 'nucleus.tryIt', fixAll: 'nucleus.fixAll', workbenchLink: 'nucleus.workbenchLink', package: 'nucleus.package', install: 'nucleus.install', newHandler: 'nucleus.newHandler', testInNucleus: 'nucleus.testInNucleus', explainLine: 'nucleus.explainLine', report: 'nucleus.report' } as const;
 const FIX_ALL_KIND = 'source.fixAll.nucleus';
 
 // LSP enums (numbers in the protocol)
@@ -138,6 +139,10 @@ export class Server {
   private nextId = 1;
   private roots: string[] = [];
   private canWatch = false;
+  /** The editor's name (clientInfo), for reports. */
+  private clientName = '';
+  /** The client opens links (window/showDocument, external): reports open the form themselves. */
+  private canShowDocument = false;
   private relativeWatch = false;
   /** <Name>/ folders of the handlers seen so far: their files are watched for the package checks. */
   private handlerDirs = new Set<string>();
@@ -292,6 +297,8 @@ export class Server {
       case 'initialize': {
         this.applySettings(p.initializationOptions);
         this.snippets = p.capabilities?.textDocument?.completion?.completionItem?.snippetSupport !== false;
+        this.clientName = typeof p.clientInfo?.name === 'string' ? p.clientInfo.name.slice(0, 40) : '';
+        this.canShowDocument = !!p.capabilities?.window?.showDocument?.support;
         // API names in hovers, hints and suggestion docs link to their docs pages on the site (docs/<name>/), tagged with the
         // editor's name for the anonymous visit counts (clientInfo: "Neovim", "Zed"…; "lsp" when it says none).
         const ref = String(p.clientInfo?.name ?? 'lsp').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) || 'lsp';
@@ -708,6 +715,13 @@ export class Server {
       const f = cd?.code === 'game-folder' ? cd.data?.fix : undefined;
       if (f && typeof f.start === 'number') actions.push({ title: f.title, kind: 'quickfix', diagnostics: [cd], isPreferred: true, edit: { changes: { [doc.uri]: [{ range: l.range({ start: f.start, end: f.end }), newText: f.text }] } } } as any);
     }
+    // "This check is wrong…": after the fixes, once per check on the line (kind quickfix.report: with the fixes, never
+    // preferred). The editor runs nucleus.report, which opens the prefilled form (or returns the choices).
+    for (const [m, cd] of pairs) {
+      if (actions.some((a) => a.kind === 'quickfix.report' && a.command.arguments[0].rule === m.rule)) continue;
+      const r = (cd as any).range;
+      actions.push({ title: `This check is wrong (${m.rule})…`, kind: 'quickfix.report', diagnostics: [cd], command: { title: 'This check is wrong…', command: COMMANDS.report, arguments: [{ kind: 'check', uri: doc.uri, rule: m.rule, message: m.message, line: r.start.line, endLine: r.end.line }] } });
+    }
     // Explain this line: on request from the actions menu, never on screen by itself.
     if (!only && p.range?.start && (doc.text.split('\n')[p.range.start.line] ?? '').trim()) actions.push({ title: 'Nucleus: Explain this line', command: { title: 'Explain this line', command: COMMANDS.explainLine, arguments: [{ uri: doc.uri, line: p.range.start.line }] } });
     if (!only && !actions.some((a) => a.kind === FIX_ALL_KIND)) {
@@ -715,6 +729,54 @@ export class Server {
       if (all) actions.push(toAction(all));
     }
     return only ? actions.filter((a) => only.some((k) => a.kind === k || a.kind.startsWith(`${k}.`))) : actions;
+  }
+
+  /** nucleus.report { kind: problem | feature | check | tryit, uri?, rule?, message?, line?, endLine?, choose? }: the
+   *  report's prefilled form (core/report.ts) and the ways on, as `choices` ({ title, url, copy? }: open the url, after
+   *  putting `copy` on the clipboard), possible duplicates first. A client that opens links (window/showDocument) gets
+   *  the form opened, unless it asks to `choose` itself (the Notepad++ plugin shows the choices as a menu). */
+  private async report(a: any, doc: Doc | undefined) {
+    const kind = ['problem', 'feature', 'check', 'tryit'].includes(a.kind) ? a.kind : 'problem';
+    const text = doc?.text;
+    const lines = text?.split(/\r?\n/) ?? [];
+    const from = Number.isInteger(a.line) ? Math.max(0, a.line) : undefined;
+    const code = kind === 'check' && from !== undefined ? lines.slice(from, Math.min(Number.isInteger(a.endLine) ? a.endLine : from, from + 19) + 1).join('\n') : undefined;
+    let sim: string | undefined;
+    if (kind === 'tryit' && text !== undefined) {
+      const file = pathOf(doc!.uri);
+      const players = Number.isInteger(a.players) && a.players >= 1 && a.players <= 16 ? a.players : 2;
+      const r = await simWorker().simulate(text, { players, width: 1920, height: 1080, keyboardPlayer: 0, plugins: file ? pluginsFor(file) : undefined }, { signal: this.current });
+      sim = simSummary(r, { players, resolution: '1920×1080', keyboard: 'player 1' });
+    }
+    const npp = /notepad\+\+/i.test(this.clientName);
+    const input: ReportInput = {
+      kind,
+      tool: npp ? 'notepad++' : 'lsp',
+      editor: npp ? undefined : this.clientName || 'an LSP editor',
+      version: `ncdev ${VERSION}${npp ? ' (Notepad++ plugin)' : ''}`,
+      details: [`ncdev: ${VERSION}`, `OS: ${process.platform} ${process.arch}`, ...(npp ? ['Editor: Notepad++'] : [])],
+      rule: typeof a.rule === 'string' ? a.rule : undefined,
+      message: typeof a.message === 'string' ? a.message : undefined,
+      line: from !== undefined ? from + 1 : undefined,
+      code,
+      sim,
+      handler: text !== undefined ? handlerOrigin(text) : undefined,
+    };
+    const r = buildReport(input);
+    const hits = process.env.NCDEV_NO_ISSUE_SEARCH ? [] : await findDuplicates(r, { userAgent: `ncdev/${VERSION}` });
+    const help = kind === 'problem' && input.handler?.hubId ? handlerHelp(input.handler) : undefined;
+    const choices = [
+      ...hits.map((h) => ({ title: `Is it this one? #${h.number} ${h.title} (open it and add a 👍)`, url: h.url })),
+      { title: 'Open the report on GitHub (recommended)', url: r.url },
+      ...(code?.trim() ? [{ title: 'Open the report without the flagged code', url: buildReport({ ...input, code: undefined }).url }] : []),
+      { title: "No GitHub account? Copy the report for the testers' Discord thread", url: DISCORD_THREAD, copy: r.text },
+      ...(help ? help.links.map((l) => ({ title: `The problem is in this handler, not the tools: ${l.label}`, url: l.url })) : []),
+    ];
+    if (!a.choose && this.canShowDocument) {
+      this.request('window/showDocument', { uri: r.url, external: true });
+      this.notify('window/showMessage', { type: 3, message: `Opened the report on GitHub: check it, then submit.${code?.trim() ? ' Remove the flagged code there if you prefer.' : ''}${hits.length ? ` Maybe the same: ${hits.map((h) => h.url).join(' ')}` : ''} No GitHub account? Post it in the testers' Discord thread: ${DISCORD_THREAD}${help ? ` A problem in this handler itself? Ask on its Hub page: ${help.links[0].url}` : ''}` });
+    }
+    return { title: r.title, url: r.url, text: r.text, choices };
   }
 
   private executeCommand(command: string, args: any[]): unknown {
@@ -796,6 +858,8 @@ export class Server {
         this.request('window/showDocument', { uri, takeFocus: true });
         return { uri };
       }
+      case COMMANDS.report:
+        return this.report(args[0] ?? {}, doc);
       case COMMANDS.explainLine: {
         if (!doc) throw new Error('nucleus.explainLine: give the uri of an open document and a 0-based line.');
         const line = Number((a as { line?: number }).line ?? 0);

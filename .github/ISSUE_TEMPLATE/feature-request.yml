@@ -1,0 +1,58 @@
+name: I want to do…
+description: Something you're trying to do with a check, Try it, the docs, VS Code, Notepad++, ncdev or another editor, and what's in the way. Start from the problem; a solution is optional.
+title: "I want to: "
+labels: [feature-request]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Tell us what you're trying to do and what stops you; we'll work out the best way to help. Something in the **browser workbench** or **Learn**? That goes to [the workbench's form](https://github.com/Snailedlt/nucleuscoop-handler-testbench/issues/new?template=feature-request.yml).
+  - type: textarea
+    id: goal
+    attributes:
+      label: What are you trying to do?
+      description: The goal, in your own words, e.g. "make each player's save go to its own folder".
+    validations:
+      required: true
+  - type: textarea
+    id: blocker
+    attributes:
+      label: What's in the way?
+      description: What you tried, and where it stops: a missing doc, a check that doesn't help, a step that's too hard, something the tools can't do.
+    validations:
+      required: true
+  - type: textarea
+    id: idea
+    attributes:
+      label: How could it work? (optional)
+      description: If you have an idea. It's fine to leave this empty.
+  - type: dropdown
+    id: area
+    attributes:
+      label: Where
+      options:
+        - Checks (a wrong or missing warning)
+        - Try it or the debugger (what it says Nucleus does is wrong)
+        - Suggestions, hovers or docs
+        - VS Code extension
+        - Notepad++ plugin
+        - ncdev (command line)
+        - Another editor (through ncdev lsp)
+        - AI agent kit (Claude Code plugin, MCP)
+        - Something else
+  - type: textarea
+    id: code
+    attributes:
+      label: Code (optional)
+      description: A few lines that show it, if that helps.
+      render: js
+  - type: input
+    id: version
+    attributes:
+      label: Version
+  - type: textarea
+    id: context
+    attributes:
+      label: Details from the tool
+      description: Filled in for you when you open this from a tool (versions, where you were; never your code). Please leave it as it is. A bot keeps a copy as the first comment.
+      render: text

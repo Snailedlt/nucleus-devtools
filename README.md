@@ -94,11 +94,14 @@ One engine runs underneath all of them, so the checks, suggestions and docs are 
 | **SplitScreen.Me: Check All Handlers in the Workspace** | Checks every handler in the workspace, not just open files. |
 | **SplitScreen.Me: Docs: Open (Every Option and Function)** | Opens the **Docs** beside the editor: every option and function with its docs, by group or by search (**SplitScreen.Me: Docs: Search…**), and on its main page the links to the guides, Proto Input, FAQ, Hub, PCGamingWiki and where to ask for help. API names in hovers, parameter hints and suggestions open their page here; *Open on the web* shows the same page in the browser. |
 | **SplitScreen.Me: Debug Handler** | Steps through the handler the way Nucleus Co-op runs it, simulated (also F5, and Debug in the Run button). Without a breakpoint it pauses on the first line. |
+| **SplitScreen.Me: Report a Problem…** / **Request a Feature…** | Opens the right GitHub form, filled in (versions, where the handler is from, never its code), after showing open reports that may be the same. No GitHub account? *Copy the report* and paste it in the testers' Discord thread. See [Reporting problems and asking for features](#reporting-problems-and-asking-for-features). |
 | **SplitScreen.Me: Open in the Browser Workbench** | The handler you're editing, in the [browser workbench](https://snailedlt.github.io/nucleuscoop-handler-testbench/?ref=vscode-readme-md) (its visual editor, Lines, Test all), through a share link. |
+
+On any problem, **Ctrl+.** (the light bulb) also has **This check is wrong (rule)…**, after the fixes, and the Try it panel's report button (*Nucleus did something different*) sends what Try it showed next to what really happened.
 
 Package and Install both refuse to continue if the handler has lint errors, unless you confirm.
 
-Hover the language in the status bar (**{} Nucleus Co-op handler**) for the handler's status: its checks (the problem count, or OK) and its game folder, with *Link…* or *Unlink*. What the extension did, and any error, goes to **View › Output › SplitScreen.Me**; quiet results such as "nothing to fix" show briefly in the status bar instead of a notification.
+Hover the language in the status bar (**{} Nucleus Co-op handler**) for the handler's status: its checks (the problem count, or OK), its game folder, with *Link…* or *Unlink*, and *Feedback* (Report a problem…). What the extension did, and any error, goes to **View › Output › SplitScreen.Me**; quiet results such as "nothing to fix" show briefly in the status bar instead of a notification.
 
 ### Handler asset folder
 
@@ -345,6 +348,8 @@ npm ci && npm run build
 node dist/cli.js path/to/handlers   # or `ncdev` / `nucleus-lint` once the package is installed
 ```
 
+`ncdev report` opens a report from the command line: `ncdev report` (a problem), `ncdev report feature`, `ncdev report tryit MyGame.js`, or `ncdev report --check unknown-member MyGame.js` (this check is wrong: the flagged line only, `--no-code` leaves it out). It prints the prefilled form's link and open reports that may be the same; `--open` opens it, `--text` prints it to paste in the testers' Discord thread.
+
 `--fix` applies every safe automatic fix and saves the files, and `--fix-dry-run` shows what it would change. `format` re-indents and spaces handlers (`--write` saves, `--check` exits 1 when a file isn't formatted), and `--hub` compares `Game.GUID` with the Hub version. Lint options: `--json`, `--rule unknown-member=error`, `--quiet` (errors only), `--verbose` (include hints), `--all` (lint every `.js`, not just handler-looking ones), `--list-rules`. The exit code is 1 when there are errors.
 
 ## Other editors
@@ -376,7 +381,7 @@ This installs the **Nucleus Co-op handlers** plugin and puts `ncdev` in `%LOCALA
 - **Suggestions as you type** after a dot, `=`, a quote…: the members that exist there, the values an option takes (`true`/`false`, `Nucleus.DPIHandling.True`…), the game's own files once its folder is linked. The selected one's type and docs show in the status bar. Parameter hints after `(`.
 - **The handler's own functions and variables** are suggested too, with the comment above them as their docs, and their parameters show after `(`. `Context.Options["` suggests the keys your `Game.AddOption` lines add, and `== "` their choices.
 - **Alt+F12**: go to where a function, variable or option is defined; *Find references* lists every use; *Rename…* changes a variable or function everywhere in the handler.
-- **Alt+Enter**: the fixes for the line. **Plugins › Nucleus Co-op handlers** has *Fix all*, *Format handler*, *Try it* (what Nucleus would set up for 1–4 players, in a new tab), a *Problems panel* (double-click to jump, right-click for the fixes), *Link the game's folder…*, *Open in the browser workbench* (this handler, in the workbench's visual editor and Test all), the *API reference* and *Check for updates*. Every command can get a shortcut in *Settings › Shortcut Mapper*.
+- **Alt+Enter**: the fixes for the line. **Plugins › Nucleus Co-op handlers** has *Fix all*, *Format handler*, *Try it* (what Nucleus would set up for 1–4 players, in a new tab), a *Problems panel* (double-click to jump, right-click for the fixes), *Link the game's folder…*, *Open in the browser workbench* (this handler, in the workbench's visual editor and Test all), the *API reference*, *Check for updates*, and *Report a problem…* / *Request a feature…* (Alt+Enter on a problem also has *This check is wrong*). Every command can get a shortcut in *Settings › Shortcut Mapper*.
 - **New handler…** asks the game's name, its .exe and what to start with, then creates and opens the handler. **Install to Nucleus Co-op** copies it (and its `<Name>/` folder) into Nucleus' `handlers` folder, asking first if it has errors or is already installed. The **Outline panel** lists the handler's options, functions and variables; click one to jump there.
 - **Test in Nucleus Co-op** installs the handler and starts Nucleus with its game selected (restarting an open one, with your OK); **Open Nucleus' debug log** shows what happened.
 - **Browse the Hub…** lists the Hub's handlers (most downloaded first, or search by game), and downloads one with its files and opens it. **Package as .nc…** makes the file to upload to the Hub.
@@ -493,6 +498,18 @@ src/lsp.ts              ncdev lsp: the Language Server for other editors
 src/mcp.ts              ncdev mcp: the tools as an MCP server
 scripts/generate-api.mjs
 ```
+
+## Reporting problems and asking for features
+
+Every tool knows where its report belongs, so you never pick a repository: the workbench and Learn open the workbench's forms; checks, Try it, the docs, VS Code, Notepad++, ncdev and other editors open this repository's. Each report is filled in with what the tool knows (versions, the check, where the handler came from: a Hub id and version, an example or your own code) and you see all of it before you submit. Code is only included when it's the flagged line(s) of a check, and you can leave it out.
+
+- **Report a problem**: VS Code's command palette or the language status (*Feedback*), Notepad++'s plugin menu, `ncdev report`, the workbench's menu.
+- **This check is wrong**: on every problem: Ctrl+. in VS Code, Alt+Enter in Notepad++, the code actions of any LSP editor, `ncdev report --check <rule> <file>`, the problem's flag in the workbench.
+- **Nucleus did something different**: the report button in the Try it panel (VS Code and the workbench), `ncdev report tryit <file>`.
+- **I want to do…**: a feature request that starts from the problem: what you're trying to do and what's in the way (*Request a Feature…*, `ncdev report feature`).
+- **A problem with one Hub handler** (the game doesn't start, splits wrong)? That's for the handler's author and the community, not these tools: the report flows ask, and point to its Hub page, the [Discord](https://discord.gg/XxGMkqCf4r) and [r/nucleuscoop](https://www.reddit.com/r/nucleuscoop/).
+
+Before a new report opens, the tools look for open reports that may be the same (GitHub's search, no sign-in): add a 👍 there instead. GitHub is the way we prefer, since issues are easiest for us to work with; **no GitHub account?** *Copy the report* and paste it in the [testers' Discord thread](https://discord.com/channels/142649962839277568/1568403337613680650/1568777762221588531). When a release fixes your report, the release says so on it.
 
 ## Credits
 

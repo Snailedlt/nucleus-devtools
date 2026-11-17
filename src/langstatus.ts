@@ -26,14 +26,20 @@ export function registerLanguageStatus(context: vscode.ExtensionContext, isHandl
   checks.name = 'SplitScreen.Me: Checks';
   const folder = create('splitscreenme.gameFolder', base);
   folder.name = 'SplitScreen.Me: Game Folder';
-  context.subscriptions.push(checks, folder);
+  // Report a problem or ask for a feature: here with the handler's other status, only when the language is hovered.
+  const report = create('splitscreenme.report', base);
+  report.name = 'SplitScreen.Me: Report';
+  report.text = '$(comment-discussion) Feedback';
+  report.detail = 'Something wrong, or missing?';
+  report.command = { title: 'Report a problem…', command: 'splitscreenme.reportProblem', tooltip: 'Report a problem with the tools (a check, Try it, the editor)' };
+  context.subscriptions.push(checks, folder, report);
 
   const update = () => {
     const doc = vscode.window.activeTextEditor?.document;
     if (!doc || !isHandler(doc)) return;
     // A handler kept in JavaScript mode: this file only, so other JavaScript files don't get it.
     const selector: vscode.DocumentSelector = doc.languageId === HANDLER_LANGUAGE || doc.uri.scheme !== 'file' ? base : [...base, { language: 'javascript', pattern: new vscode.RelativePattern(vscode.Uri.file(path.dirname(doc.uri.fsPath)), path.basename(doc.uri.fsPath)) }];
-    checks.selector = folder.selector = selector;
+    checks.selector = folder.selector = report.selector = selector;
 
     const c = checksText(vscode.languages.getDiagnostics(doc.uri));
     checks.text = c.text;

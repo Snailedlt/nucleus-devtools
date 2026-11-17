@@ -16,6 +16,11 @@ How to write it (people and AI agents read this; the release workflow publishes 
 
 ### ✨ New
 
+- **Report from where you are.** *SplitScreen.Me: Report a Problem…* and *Request a Feature…* (Command Palette, the language status's *Feedback*, Notepad++'s plugin menu, `ncdev report`) open the right GitHub form, filled in with the versions and where the handler came from, never its code. You never pick a repository, and you see everything before it's sent.
+- **"This check is wrong" on every problem.** Ctrl+. in VS Code, Alt+Enter in Notepad++, the code actions of other editors and `ncdev report --check <rule>` open a report with the check, the message and the line; the flagged lines' code only if you choose to include it.
+- **"Nucleus did something different" in Try it.** The Try it panel's report button sends what Try it showed (each player's window, arguments, file changes) next to what really happened.
+- **Possible duplicates first, and no account needed.** Before a new report, the tools show open reports that may be the same, to 👍 instead. No GitHub account? *Copy the report* and paste it in the testers' Discord thread. A problem with one Hub handler goes to its Hub page, Discord or Reddit instead of our forms.
+- **Releases tell the issues they fix.** A release comments "This is in vX.Y.Z" on each issue it fixes and thanks whoever reported it.
 - **One Run button above a handler.** The editor title's Run button (▷) now holds *Test in Nucleus Co-op* (Windows), *Try It* and the new *Debug Handler*, as the Python extension does, instead of two separate ▷ icons. Debug steps through the handler, simulated, and pauses on its first line when it has no breakpoint.
 - **The handler's status beside its language.** Hover **{} Nucleus Co-op handler** in the status bar for its checks (the problem count, or OK) and its game folder, with *Link…* or *Unlink*, as TypeScript and Python show theirs. Nothing new sits on screen.
 - **A SplitScreen.Me output channel.** *View › Output › SplitScreen.Me* logs what the extension did (packaged, installed, linked, tested) and every error, with *Show Log* on error messages.

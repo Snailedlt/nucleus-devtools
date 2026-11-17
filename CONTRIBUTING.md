@@ -6,9 +6,10 @@ This repository has the VS Code extension, the `ncdev` command line, the Notepad
 
 ## Without code
 
-- **Tell us what's wrong.** A warning on code that works, a real bug the checks missed, Try it saying something Nucleus doesn't do, a confusing hint: [the feedback form](https://github.com/Snailedlt/splitscreenme-vscode/issues/new?template=tester-feedback.yml). Name the handler if it's on the Hub.
+- **Tell us what's wrong, from where you saw it.** Every tool has a report built in, filled in with what it knows (README: [Reporting problems and asking for features](README.md#reporting-problems-and-asking-for-features)): *This check is wrong* on any problem (a warning on code that works), *Nucleus did something different* in Try it, *Report a problem* for anything else. Without a tool at hand: [the feedback form](https://github.com/Snailedlt/splitscreenme-vscode/issues/new?template=tester-feedback.yml) or [this check is wrong](https://github.com/Snailedlt/splitscreenme-vscode/issues/new?template=check-wrong.yml). No GitHub account? The tools' *Copy the report* goes in the [testers' Discord thread](https://discord.com/channels/142649962839277568/1568403337613680650/1568777762221588531). A problem with one Hub handler belongs with its author (its Hub page, the Discord, r/nucleuscoop), not here.
+- **Ask for what you need.** [I want to do…](https://github.com/Snailedlt/splitscreenme-vscode/issues/new?template=feature-request.yml) starts from the problem: what you're trying to do, and what's in the way.
 - **Check the AI-written docs.** Many options had no docs, so an AI wrote them from the Nucleus source; each says so. If you know how one really works, mark it right or wrong (👍/👎 on its docs page) or [send a correction](https://github.com/Snailedlt/splitscreenme-vscode/issues/new?template=doc-review.yml). A checked doc gets your name on it.
-- **Suggest a check.** A mistake you keep seeing in handlers is a check waiting to be written: describe it in the feedback form, with a handler that has it.
+- **Suggest a check.** A mistake you keep seeing in handlers is a check waiting to be written: describe it in *I want to do…*, with a handler that has it.
 - **Test a beta.** The testing guide is [TESTING.md](TESTING.md).
 
 ## With code

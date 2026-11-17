@@ -224,6 +224,26 @@
         "command": "splitscreenme.docsBack",
         "title": "Docs: Back",
         "category": "SplitScreen.Me"
+      },
+      {
+        "command": "splitscreenme.reportProblem",
+        "title": "Report a Problem…",
+        "category": "SplitScreen.Me"
+      },
+      {
+        "command": "splitscreenme.requestFeature",
+        "title": "Request a Feature…",
+        "category": "SplitScreen.Me"
+      },
+      {
+        "command": "splitscreenme.reportCheck",
+        "title": "This Check Is Wrong…",
+        "category": "SplitScreen.Me"
+      },
+      {
+        "command": "splitscreenme.reportTryIt",
+        "title": "Try It: Nucleus Did Something Different…",
+        "category": "SplitScreen.Me"
       }
     ],
     "keybindings": [
@@ -280,6 +300,14 @@
       "commandPalette": [
         {
           "command": "splitscreenme.tryItSet",
+          "when": "false"
+        },
+        {
+          "command": "splitscreenme.reportCheck",
+          "when": "false"
+        },
+        {
+          "command": "splitscreenme.reportTryIt",
           "when": "false"
         },
         {

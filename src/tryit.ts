@@ -10,6 +10,8 @@ import { SimOptions, SimResult, sessionSummary, groupIgnored, EVERY_KEYBOARD } f
 import { pluginsFor, isTimeout } from './sandbox';
 import { simWorker, runMatrixInWorker, isCancelled } from './simworker';
 import { MATRIX_RESOLUTIONS, MatrixResult, planMatrix } from './core/matrix';
+import { reportButton, REPORT_BUTTON_CSS } from './core/reporticons';
+import { simSummary } from './core/report';
 
 export interface TryItState {
   players: number;
@@ -27,7 +29,9 @@ const cmd = (id: string, arg?: unknown) => `command:${id}${arg === undefined ? '
 const SET = 'splitscreenme.tryItSet';
 
 /** What the panel's buttons post: a settings change, or Test all. */
-export type TryItMessage = { type: 'set'; change: Partial<TryItState> } | { type: 'testAll' };
+export type TryItMessage = { type: 'set'; change: Partial<TryItState> } | { type: 'testAll' } | { type: 'report' };
+/** The command that reports what Try it showed (src/reportvscode.ts). */
+export const REPORT_TRY_IT = 'splitscreenme.reportTryIt';
 /** A button that posts `msg`; `id` finds it again after a re-render (focus). */
 const button = (id: string, label: string, msg: TryItMessage, attrs = '', cls = 'choice') => `<button type="button" class="${cls}" data-id="${esc(id)}" data-msg="${esc(JSON.stringify(msg))}"${attrs}>${label}</button>`;
 
@@ -121,8 +125,11 @@ section { border-top: 1px solid var(--vscode-panel-border, rgba(128,128,128,.3))
 table { border-collapse: collapse; } th { text-align: left; font-weight: 400; color: var(--vscode-descriptionForeground); padding: 2px 14px 2px 0; vertical-align: top; white-space: nowrap; } td { padding: 2px 0; vertical-align: top; overflow-wrap: anywhere; }
 ul { margin: 0; padding-left: 18px; } ul.mono { list-style: none; padding-left: 0; } .warn li { color: var(--vscode-editorWarning-foreground); }
 details { margin: 6px 0; } summary { cursor: pointer; color: var(--vscode-descriptionForeground); }
+.head { display: flex; align-items: center; gap: 8px; } .head h2 { flex: 1; }
+${REPORT_BUTTON_CSS}
+.rep-btn { color: var(--vscode-descriptionForeground); } .rep-btn:hover { color: var(--vscode-foreground); }
 </style></head><body>
-<h2>Try it: ${esc(title)}</h2>
+<div class="head"><h2>Try it: ${esc(title)}</h2>${reportButton('report', { label: 'Nucleus did something different', tip: 'Nucleus did something different: report what Try it showed, next to what really happened. You see everything before it is sent.', attrs: `data-id="report" data-msg="${esc(JSON.stringify({ type: 'report' }))}"` })}</div>
 <details class="how" id="how"><summary>How this works ⓘ</summary><p class="lede">What Nucleus Co-op would set up for each player: where its window goes, how the game is started and which settings files it changes. Simulated, following the rules of Nucleus' Jint engine: nothing on your computer is touched, and the handler can't access it. Windows, focus and input still need a real test in Nucleus Co-op.</p></details>
 ${controls}${out.join('\n')}
 ${nonce ? `<script nonce="${nonce}">${SCRIPT}</script>` : ''}
@@ -156,6 +163,7 @@ export function registerTryIt(context: vscode.ExtensionContext, isHandler: (doc:
   let timer: NodeJS.Timeout | undefined;
   let state: TryItState = { ...DEFAULT_STATE, ...context.workspaceState?.get<Partial<TryItState>>(STATE_KEY, {}) };
   let matrix: MatrixResult | undefined; // the last "Test all combinations", until the handler changes
+  let shown: { r: SimResult; state: TryItState } | undefined; // what the panel shows, for "Nucleus did something different"
   // Shows the Try it button in the editor title bar only for handlers.
   const markHandler = (e: vscode.TextEditor | undefined) => void vscode.commands.executeCommand('setContext', 'splitscreenme.isHandler', !!e && isHandler(e.document));
   markHandler(vscode.window.activeTextEditor);
@@ -186,6 +194,7 @@ export function registerTryIt(context: vscode.ExtensionContext, isHandler: (doc:
     }
     if (mine !== run || !panel || doc !== d) return;
     stuck = isTimeout(r) ? key : undefined;
+    shown = { r, state: { ...state } };
     panel.webview.html = renderTryIt(r, state, title, matrix, randomBytes(16).toString('base64'));
   };
   const schedule = (delay = 400) => {
@@ -217,6 +226,11 @@ export function registerTryIt(context: vscode.ExtensionContext, isHandler: (doc:
         panel.webview.onDidReceiveMessage((m: TryItMessage) => {
           if (m?.type === 'set' && m.change && typeof m.change === 'object') void vscode.commands.executeCommand(SET, m.change);
           else if (m?.type === 'testAll') void vscode.commands.executeCommand(TEST_ALL);
+          else if (m?.type === 'report' && shown && doc) {
+            const st = shown.state;
+            const keyboard = st.keyboardPlayer === EVERY_KEYBOARD ? 'each player their own' : st.keyboardPlayer < 0 ? 'nobody' : `player ${st.keyboardPlayer + 1}`;
+            void vscode.commands.executeCommand(REPORT_TRY_IT, { uri: doc.uri.toString(), sim: simSummary(shown.r, { players: st.players, resolution: `${st.width}×${st.height}`, keyboard }) });
+          }
         }, null, context.subscriptions);
         panel.onDidDispose(() => ((panel = undefined), run?.abort(), stopMatrix()), null, context.subscriptions);
       }

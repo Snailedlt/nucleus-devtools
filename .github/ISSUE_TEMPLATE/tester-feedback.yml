@@ -1,10 +1,11 @@
 name: Tester feedback
-description: Something wrong, confusing or missing in a check, the VS Code extension, the Notepad++ plugin, ncdev or another editor.
+description: Something wrong, confusing or missing in a check, Try it, the VS Code extension, the Notepad++ plugin, ncdev or another editor.
 labels: [feedback]
 body:
   - type: markdown
     attributes:
-      value: Something in the **browser workbench**, **Learn** or the site's pages? That goes to [the workbench's form](https://github.com/Snailedlt/nucleuscoop-handler-testbench/issues/new?template=feedback.yml).
+      value: |
+        Something in the **browser workbench**, **Learn** or the site's pages? That goes to [the workbench's form](https://github.com/Snailedlt/nucleuscoop-handler-testbench/issues/new?template=feedback.yml). A wrong warning? [This check is wrong](https://github.com/Snailedlt/splitscreenme-vscode/issues/new?template=check-wrong.yml) asks the right questions. A game that doesn't work with one **Hub handler**? That's for its author: ask on its Hub page, the [Discord](https://discord.gg/XxGMkqCf4r) or [r/nucleuscoop](https://www.reddit.com/r/nucleuscoop/).
   - type: dropdown
     id: area
     attributes:
@@ -25,9 +26,15 @@ body:
     id: what
     attributes:
       label: What happened, and what did you expect?
-      description: For a wrong warning, say what Nucleus actually does when you run the handler, if you know.
+      description: For a wrong warning, say what Nucleus actually does when you run the handler, if you know. For Try it, what really happened in Nucleus Co-op.
     validations:
       required: true
+  - type: textarea
+    id: simulated
+    attributes:
+      label: What Try it showed
+      description: Filled in when you open this from Try it ("Nucleus did something different"). Leave it empty otherwise.
+      render: text
   - type: textarea
     id: handler
     attributes:
@@ -42,6 +49,6 @@ body:
   - type: textarea
     id: context
     attributes:
-      label: Details from the workbench
-      description: Filled in for you when you open this form from the workbench (build, browser, settings, which handler; never your code). Please leave it as it is. A bot keeps a copy as the first comment.
+      label: Details from the tool
+      description: Filled in for you when you open this form from the workbench, VS Code, Notepad++ or ncdev (versions, settings, which handler; never your code). Please leave it as it is. A bot keeps a copy as the first comment.
       render: text

@@ -1460,6 +1460,58 @@ static int pickAtCaret(HWND h, const std::vector<std::wstring>& choices) {
 
 static void needHandler() { MessageBoxW(npp._nppHandle, L"Open a handler (.js) first.", PLUGIN_NAME, MB_OK | MB_ICONINFORMATION); }
 
+// Reports (Report a problem, Request a feature, "This check is wrong" in Alt+Enter): the server's nucleus.report fills
+// the form and lists the ways on (possible duplicates, GitHub, copy for Discord, the handler's Hub page); the plugin
+// only shows them as a menu and opens the chosen link.
+static void copyText(const std::string& text) {
+  std::wstring w = wide(text);
+  if (!OpenClipboard(npp._nppHandle)) return;
+  EmptyClipboard();
+  HGLOBAL g = GlobalAlloc(GMEM_MOVEABLE, (w.size() + 1) * sizeof(wchar_t));
+  if (g) {
+    memcpy(GlobalLock(g), w.c_str(), (w.size() + 1) * sizeof(wchar_t));
+    GlobalUnlock(g);
+    if (!SetClipboardData(CF_UNICODETEXT, g)) GlobalFree(g);
+  }
+  CloseClipboard();
+}
+static void runReport(const Value& args) {
+  if (!lsp::running) lsp::start();
+  if (!lsp::running) {
+    // No ncdev yet: the tools' form, for the plugin.
+    ShellExecuteW(npp._nppHandle, L"open", L"https://github.com/Snailedlt/splitscreenme-vscode/issues/new?template=tester-feedback.yml&area=Notepad%2B%2B+plugin", nullptr, nullptr, SW_SHOWNORMAL);
+    return;
+  }
+  Object o = args.isObj() ? *args.o : Object{};
+  o["choose"] = Value(true);
+  status(L"Nucleus: preparing the report…");
+  HWND h = curSci();
+  lsp::request("workspace/executeCommand", Value(Object{{"command", "nucleus.report"}, {"arguments", Value(Array{Value(o)})}}), [h](const Value& r) {
+    std::vector<Value> cs;
+    for (auto& c : r["choices"].arr())
+      if (c["url"].str().rfind("https://", 0) == 0) cs.push_back(c);
+    status(L"");
+    if (cs.empty()) return;
+    std::vector<std::wstring> titles;
+    for (auto& c : cs) titles.push_back(wide(c["title"].str()));
+    int i = pickAtCaret(h, titles);
+    if (i < 0) return;
+    if (cs[i]["copy"].isStr()) {
+      copyText(cs[i]["copy"].str());
+      status(L"Nucleus: the report is copied: paste it in the Discord thread");
+    }
+    ShellExecuteW(npp._nppHandle, L"open", wide(cs[i]["url"].str()).c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+  });
+}
+static void reportKind(const char* kind) {
+  Doc* d = active();
+  Object o{{"kind", kind}};
+  if (d) o["uri"] = Value(d->uri);
+  runReport(Value(o));
+}
+static void cmdReportProblem() { reportKind("problem"); }
+static void cmdRequestFeature() { reportKind("feature"); }
+
 static void cmdQuickFix() {
   HWND h = curSci();
   Doc* d = active();
@@ -1476,7 +1528,7 @@ static void cmdQuickFix() {
                [=](const Value& r) {
                  std::vector<Value> actions;
                  for (auto& a : r.arr())
-                   if (a["edit"].isObj()) actions.push_back(a);
+                   if (a["edit"].isObj() || a["command"]["command"].str() == "nucleus.report") actions.push_back(a);
                  if (actions.empty()) {
                    status(L"Nucleus: no fixes on this line");
                    return;
@@ -1484,7 +1536,9 @@ static void cmdQuickFix() {
                  std::vector<std::wstring> titles;
                  for (auto& a : actions) titles.push_back(wide(a["title"].str()));
                  int i = pickAtCaret(h, titles);
-                 if (i >= 0) applyWorkspaceEdit(actions[i]["edit"]);
+                 if (i < 0) return;
+                 if (actions[i]["edit"].isObj()) applyWorkspaceEdit(actions[i]["edit"]);
+                 else runReport(actions[i]["command"]["arguments"][(size_t)0]);
                });
 }
 static void cmdFixAll() {
@@ -2420,6 +2474,8 @@ static FuncItem funcs[] = {
     {L"API reference", cmdReference, 0, false, nullptr},
     {L"Settings…", cmdSettings, 0, false, nullptr},
     {L"Check for updates", cmdUpdate, 0, false, nullptr},
+    {L"Report a problem…", cmdReportProblem, 0, false, nullptr},
+    {L"Request a feature…", cmdRequestFeature, 0, false, nullptr},
     {L"About", cmdAbout, 0, false, nullptr},
 };
 static const int PANEL_INDEX = 10, OUTLINE_INDEX = 11, UPDATE_INDEX = 27;

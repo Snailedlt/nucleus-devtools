@@ -52,6 +52,7 @@ Positions in core are offsets into the text, counted in UTF-16 code units (what 
 | The handler's own functions, variables and options | `visibleNames()`, `addedOptions()` (`core/ownsymbols.ts`), in completion, hover and signature help | `Context.Options` keys and values only (`{ own: false }`: VS Code's JavaScript support does the rest) | in `textDocument/completion` (names once a letter is typed, or on request), `hover`, `signatureHelp` |
 | Open in the browser workbench | `workbenchLink()` (`core/sharelink.ts`), `workbenchLinkFor()` (`src/workbenchlink.ts`) | **SplitScreen.Me: Open in the Browser Workbench** | `workspace/executeCommand` `nucleus.workbenchLink` `{ uri, ref }`, returns `{ url, withHandler }` |
 | Try it (what each player gets) | `simulateIsolated()` (`src/sandbox.ts`) + `formatSimulation()` (`src/simformat.ts`) | **SplitScreen.Me: Try It** panel | `workspace/executeCommand` `nucleus.tryIt`, returns the text |
+| Reports (a problem, a feature, this check is wrong, Try it differs) | `buildReport()`, `findDuplicates()`, `handlerHelp()` (`core/report.ts`); icons in `core/reporticons.ts` | **Report a Problem…**, **Request a Feature…**, *This check is wrong (rule)…* in Ctrl+., the Try it panel's report button (`src/reportvscode.ts`) | *This check is wrong (rule)…* as a code action (`kind: quickfix.report`); `workspace/executeCommand` `nucleus.report` `{ kind: problem\|feature\|check\|tryit, uri, rule, message, line, endLine, choose }`: opens the prefilled form with `window/showDocument` (external) when the client can, and returns `{ url, text, choices: [{ title, url, copy? }] }` (possible duplicates first; `choose: true` to show the choices yourself, as the Notepad++ plugin does) |
 | Is this file a handler? | `isHandlerFile()` | `isHandler()` | same, plus the `handlerGlobs` setting |
 
 ## Getting the server
@@ -272,6 +273,7 @@ Unsaved buffers (no `file:` URI) count when the client calls them `javascript` a
 | **New Handler** wizard | `ncdev new --name "My Game" --exe game.exe --features …` (`ncdev --help` lists the features) |
 | **Hub** browser (search, open, install) | `ncdev hub search <words>`, `ncdev hub fetch <id> --out dir` |
 | **Package** / **Install** | `ncdev package MyGame.js` (a `.nc` for the Hub); to install, copy `MyGame.js` and its `MyGame/` folder into Nucleus' `handlers` folder |
+| **Report a Problem…** / **Request a Feature…** / *This check is wrong* | `nucleus.report` (`{ kind: "problem" }`, `"feature"`, or the code action on a problem), or `ncdev report` / `ncdev report feature` / `ncdev report --check <rule> MyGame.js` in a terminal |
 | **Lint all handlers** | `ncdev lint path/to/handlers` (`--fix` applies the safe fixes) |
 | **Set Up Type Definitions** | Point your TypeScript server at `types/nucleus.d.ts` |
 | **Debugging** (Run and Debug) | `ncdev dap` in an editor with DAP support ([above](#debugging-ncdev-dap)), or `ncdev debug MyGame.js --break 14 --watch Context.PlayerID` in a terminal. |

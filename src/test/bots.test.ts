@@ -8,6 +8,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import * as bots from '../../scripts/issue-bots.mjs';
 import { docReviewUrl } from '../core/api';
+import * as report from '../core/report';
 
 const root = path.resolve(__dirname, '..');
 const TEMPLATES = path.join(root, '.github/ISSUE_TEMPLATE');
@@ -57,6 +58,7 @@ Doc: Context.Arch
 Check: 49f16946`;
 
 // splitscreenme-vscode#7, opened from the workbench's "Tell us what's wrong", exactly as GitHub stored it.
+// (Opened before the field was renamed "Details from the tool": the bot still reads the old label.)
 const ISSUE_7 = "### Which name\n\nContext.Arch\n\n### What's the problem\n\nIt's missing something important\n\n### What Nucleus really does\n\nTest\n\n### How you know\n\n_No response_\n\n### Details from the workbench\n\n```text\n" + REAL_BLOCK + '\n```';
 
 test('bots: the checksum matches the workbench on a real block', () => {
@@ -100,7 +102,7 @@ test('bots: every field a bot reads is in its form, and bodies built from the fo
   for (const [file, labels] of Object.entries(bots.BOT_FIELDS)) {
     const form = readForm(file);
     for (const label of labels) assert.ok(form.some((f) => f.label === label), `${file} has a field labelled "${label}" (a bot reads it)`);
-    const ctx = form.find((f) => f.label === 'Details from the workbench')!;
+    const ctx = form.find((f) => f.label === bots.DETAILS)!;
     const answers: Record<string, string> = { [ctx.id!]: REAL_BLOCK };
     const member = form.find((f) => f.label === 'Which name');
     if (member) answers[member.id!] = '`Game.AddOption`';
@@ -128,6 +130,64 @@ test('bots: the workflows use the tested module', () => {
     const y = fs.readFileSync(path.join(root, '.github/workflows', wf), 'utf8');
     assert.ok(y.includes('scripts/issue-bots.mjs') && y.includes(`bots.${fn}(`), `${wf} calls ${fn} from scripts/issue-bots.mjs`);
     // The job only starts when the body has a heading a form writes.
-    for (const h of y.matchAll(/'### ([^']+)'/g)) assert.ok(Object.values(bots.BOT_FIELDS).flat().includes(h[1]), `${wf}: "### ${h[1]}" is a field a form writes`);
+    for (const h of y.matchAll(/'### ([^']+)'/g)) assert.ok([...Object.values(bots.BOT_FIELDS).flat(), bots.DETAILS_OLD].includes(h[1]), `${wf}: "### ${h[1]}" is a field a form writes`);
   }
+});
+
+test('bots: every report link fills fields its form has, and the copied text uses the form\'s labels', () => {
+  const block = report.withChecksum(['VS Code extension: 0.8.0']);
+  assert.equal(bots.checksum(['VS Code extension: 0.8.0']), report.checksum(['VS Code extension: 0.8.0']), 'core/report.ts and the bot agree');
+  assert.equal(bots.checkDetails(block).status, 'ok');
+  const kinds: report.ReportInput[] = [
+    { kind: 'check', tool: 'vscode', rule: 'unknown-member', message: 'x', code: 'Game.Foo = 1;', line: 3, handler: { kind: 'hub', hubId: 'abc', hubVersion: '2' }, version: 'VS Code extension 0.8.0' },
+    { kind: 'tryit', tool: 'vscode', sim: 'Try it: 2 players', what: 'It crashed' },
+    { kind: 'problem', tool: 'notepad++' },
+    { kind: 'problem', tool: 'ncdev' },
+    { kind: 'feature', tool: 'lsp', editor: 'Neovim' },
+    { kind: 'docs', tool: 'workbench', query: 'save folder' },
+  ];
+  for (const k of kinds) {
+    const r = report.buildReport(k);
+    assert.equal(r.repo, report.TOOLS_REPO, `${k.kind} from ${k.tool} goes to the tools' repository`);
+    const u = new URL(r.url);
+    const template = u.searchParams.get('template')!;
+    const form = readForm(template);
+    const ids = new Set(form.map((f) => f.id).filter(Boolean));
+    for (const key of u.searchParams.keys()) if (!['template', 'title'].includes(key)) assert.ok(ids.has(key), `${template} has a field "${key}" (${k.kind} fills it)`);
+    const area = u.searchParams.get('area');
+    if (area) assert.ok(form.find((f) => f.id === 'area')!.options.includes(area), `${template}'s Where list has "${area}"`);
+    // The labels the copied text uses are the form's own.
+    const key = Object.keys(report.FORMS).find((x) => x === template)!;
+    for (const [id, label] of Object.entries(report.FORMS[key].labels)) assert.equal(form.find((f) => f.id === id)?.label, label, `${template}: ${id} is labelled "${label}"`);
+    // GitHub's bot reads the block back.
+    const b = body(template, Object.fromEntries(form.filter((f) => f.id).map((f) => [f.id!, r.fields[f.id!] ?? ''])));
+    assert.match(bots.detailsComment(b)!, /✅/, `${template}: the details survive GitHub's layout`);
+    assert.ok(r.url.length < 8000);
+  }
+  // check-wrong's verdicts are the form's.
+  assert.deepEqual(readForm('check-wrong.yml').find((f) => f.id === 'verdict')!.options, [...report.CHECK_VERDICTS]);
+});
+
+test('bots: the release comments only on this repository\'s fixed issues, once', async () => {
+  const notes = '- **A thing** (#3)\n- see #4 for more\n### 🐛 Fixed\n- **Bug** #9, and Other/repo#7\n### 🙏 Thanks\n- Ann for #10';
+  assert.deepEqual(bots.fixedIssueNumbers(notes, 'Snailedlt/splitscreenme-vscode'), [3, 9]);
+  assert.deepEqual(bots.fixedIssueNumbers('Fixes #12\ncloses Snailedlt/splitscreenme-vscode#13 and Snailedlt/nucleuscoop-handler-testbench#14', 'Snailedlt/splitscreenme-vscode'), [12, 13]);
+  const made: number[] = [];
+  const github = {
+    paginate: async (_fn: unknown, o: { issue_number: number }) => (o.issue_number === 9 ? [{ body: bots.FIXED_MARKER }] : []),
+    rest: {
+      issues: {
+        listComments: {},
+        get: async ({ issue_number }: { issue_number: number }) => {
+          if (issue_number === 404) throw new Error('Not Found');
+          return { data: { number: issue_number, user: { login: 'ann' }, pull_request: issue_number === 5 ? {} : undefined } };
+        },
+        createComment: async ({ issue_number, body }: { issue_number: number; body: string }) => { made.push(issue_number); assert.match(body, /Thanks @ann/); },
+      },
+    },
+  };
+  const done = await bots.runFixedComments({ github, context: { repo: { owner: 'Snailedlt', repo: 'splitscreenme-vscode' } }, tag: 'v1.0.0', url: 'u', notes: 'Fixes #3, fixes #5, fixes #9, fixes #404' });
+  assert.deepEqual(done, [3]); // #5 is a pull request, #9 already has the comment, #404 fails alone
+  assert.deepEqual(made, [3]);
+  assert.doesNotMatch(bots.fixedComment({ tag: 'v1', url: 'u', reporter: 'Snailedlt', owner: 'Snailedlt' }), /Thanks/);
 });

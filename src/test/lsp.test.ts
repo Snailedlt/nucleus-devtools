@@ -41,7 +41,7 @@ function nextNotification(match: (m: any) => boolean): Promise<any> {
 const diagnosticsFor = (uri: string, version?: number) => nextNotification((m) => m.method === 'textDocument/publishDiagnostics' && m.params.uri === uri && (version === undefined || m.params.version === version));
 
 before(async () => {
-  proc = spawn(process.execPath, [path.join(__dirname, '..', 'dist', 'cli.js'), 'lsp', '--stdio'], { stdio: ['pipe', 'pipe', 'inherit'] });
+  proc = spawn(process.execPath, [path.join(__dirname, '..', 'dist', 'cli.js'), 'lsp', '--stdio'], { stdio: ['pipe', 'pipe', 'inherit'], env: { ...process.env, NCDEV_NO_ISSUE_SEARCH: '1' } });
   let buf = Buffer.alloc(0);
   proc.stdout!.on('data', (chunk: Buffer) => {
     buf = Buffer.concat([buf, chunk]);
@@ -103,6 +103,20 @@ test('lsp: diagnostics with codes, links and tags; quick fixes and fix all', asy
   assert.deepEqual(edit.range.start, { line: 3, character: 10 });
   assert.ok(actions.some((a: any) => /Disable unknown-member/.test(a.title)));
   assert.ok(actions.some((a: any) => a.kind === 'source.fixAll.nucleus'));
+  // "This check is wrong…": after the fixes, never preferred; nucleus.report gives the prefilled form and the choices.
+  const wrong = actions.find((a: any) => a.kind === 'quickfix.report');
+  assert.equal(wrong.title, 'This check is wrong (unknown-member)…');
+  assert.ok(actions.indexOf(wrong) > 0 && !wrong.isPreferred);
+  assert.ok((await request('textDocument/codeAction', { textDocument: { uri: URI }, range: unknown.range, context: { diagnostics: [unknown], only: ['quickfix'] } })).result.some((a: any) => a.kind === 'quickfix.report'), 'a quickfix filter keeps it');
+  const rep = (await request('workspace/executeCommand', { command: wrong.command.command, arguments: [{ ...wrong.command.arguments[0], choose: true }] })).result;
+  const form = new URL(rep.url);
+  assert.equal(form.pathname, '/Snailedlt/splitscreenme-vscode/issues/new');
+  assert.equal(form.searchParams.get('template'), 'check-wrong.yml');
+  assert.equal(form.searchParams.get('rule'), 'unknown-member');
+  assert.equal(form.searchParams.get('code'), 'Game.Hook.ForceFocuss = true;', 'only the flagged line');
+  assert.match(form.searchParams.get('context')!, /^ncdev: .*\nOS: .*\nEditor: .*\nHandler: .*\nReport: this check is wrong\nRule: unknown-member\nLine: 4\nCheck: [0-9a-f]{8}$/);
+  assert.ok(rep.choices.some((c: any) => /without the flagged code/.test(c.title) && !new URL(c.url).searchParams.has('code')));
+  assert.ok(rep.choices.some((c: any) => c.copy && /discord\.com/.test(c.url)));
 
   const fixAll = (await request('textDocument/codeAction', { textDocument: { uri: URI }, range: unknown.range, context: { diagnostics: [], only: ['source.fixAll'] } })).result;
   assert.equal(fixAll.length, 1);

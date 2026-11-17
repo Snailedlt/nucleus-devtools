@@ -4,9 +4,14 @@
 // Never runs code from the issue: it only reads the body as text.
 
 /** The form fields the bots read, by template: GitHub turns each field's label into a `### <label>` heading. */
+export const DETAILS = 'Details from the tool';
+/** The field's old label (forms before the tools' reports, issues opened from an old page). */
+export const DETAILS_OLD = 'Details from the workbench';
 export const BOT_FIELDS = {
-  'doc-review.yml': ['Which name', 'Details from the workbench'],
-  'tester-feedback.yml': ['Details from the workbench'],
+  'doc-review.yml': ['Which name', DETAILS],
+  'tester-feedback.yml': [DETAILS],
+  'check-wrong.yml': [DETAILS],
+  'feature-request.yml': [DETAILS],
 };
 export const DOC_MARKER = '<!-- doc-review-bot -->';
 export const DETAILS_MARKER = '<!-- report-details-bot -->';
@@ -33,7 +38,7 @@ export function checksum(lines) {
   return h.toString(16).padStart(8, '0');
 }
 
-/** The "Details from the workbench" check: 'ok', 'none' (no checksum line: typed by hand) or 'changed'. */
+/** The "Details from the tool" check: 'ok', 'none' (no checksum line: typed by hand) or 'changed'. */
 export function checkDetails(block) {
   const lines = String(block).split('\n').map((l) => l.trim()).filter(Boolean);
   const sumLine = lines.findIndex((l) => /^Check: [0-9a-f]{8}$/.test(l));
@@ -44,7 +49,7 @@ export function checkDetails(block) {
 
 /** The report-details comment for an issue body, or null when the form's details field is missing or empty. */
 export function detailsComment(body) {
-  const block = field(body, 'Details from the workbench');
+  const block = field(body, DETAILS) || field(body, DETAILS_OLD);
   if (!block) return null;
   const { lines, status } = checkDetails(block);
   const says = {
@@ -53,7 +58,7 @@ export function detailsComment(body) {
     changed: '⚠️ Changed before sending: it no longer matches its checksum.',
   }[status];
   const safe = lines.join('\n').replace(/```/g, "'''").slice(0, 4000);
-  return `${DETAILS_MARKER}\n**Details from the workbench**, as sent. ${says}\n\n\`\`\`text\n${safe}\n\`\`\`\n\nThis copy stays as it is if the issue is edited later.`;
+  return `${DETAILS_MARKER}\n**Details from the tool**, as sent. ${says}\n\n\`\`\`text\n${safe}\n\`\`\`\n\nThis copy stays as it is if the issue is edited later.`;
 }
 
 /** The member a doc review is about (the form's "Which name"), or ''. */
@@ -89,4 +94,82 @@ export async function runDocReview({ github, context, docs }) {
   if (mine) await github.rest.issues.updateComment({ ...context.repo, comment_id: mine.id, body: text });
   else await github.rest.issues.createComment({ ...context.repo, issue_number: issue.number, body: text });
   if (d && !issue.title.includes(member)) await github.rest.issues.update({ ...context.repo, issue_number: issue.number, title: `Doc review: ${member}` });
+}
+
+// ---------------------------------------------------------------------------------------------------------------------
+// Closing the loop: when a release fixes an issue, say so on it, with the release and a thanks to whoever reported it.
+// Run by the Release workflow (and the workbench's pages.yml, fetching this file from main). Only issues in the repository
+// the workflow runs in (its token can't write elsewhere, and other repositories aren't ours to comment on); never twice
+// (a marker in the comment); never fails the release (the step is continue-on-error, and every issue is tried alone).
+
+export const FIXED_MARKER = '<!-- fixed-in-bot -->';
+
+/** Issue numbers in `repo` ("owner/name") that a release's notes or commit messages say it fixes: "Fixes #12",
+ *  "closes owner/name#12", an issues/12 link, and any reference on a line under a "Fixed" heading or written as "(#12)".
+ *  References to other repositories are left out. */
+export function fixedIssueNumbers(text, repo) {
+  const out = new Set();
+  const own = repo.toLowerCase();
+  let fixedGroup = false;
+  for (const raw of String(text || '').split(/\r?\n/)) {
+    if (/^#{2,4}\s/.test(raw)) fixedGroup = /fix/i.test(raw);
+    // Other repositories' references and links don't count; take them out first.
+    const refs = [];
+    const line = raw
+      .replace(/https:\/\/github\.com\/([\w.-]+\/[\w.-]+)\/(?:issues|pull)\/(\d+)/gi, (_, r, n) => (refs.push([r.toLowerCase(), n]), ` @@${refs.length - 1} `))
+      .replace(/\b([\w.-]+\/[\w.-]+)#(\d+)/g, (_, r, n) => (refs.push([r.toLowerCase(), n]), ` @@${refs.length - 1} `));
+    const tokens = [];
+    line.replace(/@@(\d+)|(?:^|[^\w&/])#(\d+)\b/g, (m, ref, n, at) => {
+      if (ref !== undefined) { const [r, num] = refs[Number(ref)]; if (r === own) tokens.push({ n: Number(num), at }); }
+      else tokens.push({ n: Number(n), at });
+      return m;
+    });
+    for (const t of tokens) {
+      const before = line.slice(Math.max(0, t.at - 30), t.at + 1);
+      const keyword = /\b(fix(e[sd])?|close[sd]?|resolve[sd]?)\b[\s:]*(the\s+)?(issue\s+)?\S*$/i.test(before);
+      const paren = /\(\s*\[?\s*$/.test(line.slice(Math.max(0, t.at - 3), t.at + 1));
+      if (t.n > 0 && (keyword || paren || (fixedGroup && !/thank/i.test(raw)))) out.add(t.n);
+    }
+  }
+  return [...out].sort((a, b) => a - b);
+}
+
+/** The comment on a fixed issue: the release, and a thanks to the reporter (not when they're the maintainer or a bot). */
+export function fixedComment({ tag, url, reporter, owner }) {
+  const thanks = reporter && reporter !== owner && !/\[bot\]$/.test(reporter) ? ` Thanks @${reporter} for reporting it!` : '';
+  return `${FIXED_MARKER}\n🎉 This is in **${tag}**: ${url}.${thanks}\n\nIf it isn't fixed for you after updating, say so here and we'll reopen it.`;
+}
+
+/** release.yml / pages.yml: comment on every issue the release fixes. `notes`: the release's notes; `commits`: the
+ *  commit messages since the previous release (or [] to use the notes only). Returns what it did, for the summary. */
+export async function runFixedComments({ github, context, tag, url, notes, commits = [], core }) {
+  const repo = `${context.repo.owner}/${context.repo.repo}`;
+  const nums = fixedIssueNumbers([notes, ...commits].join('\n'), repo).slice(0, 50);
+  const done = [];
+  for (const n of nums) {
+    try {
+      const { data: issue } = await github.rest.issues.get({ ...context.repo, issue_number: n });
+      if (issue.pull_request) continue;
+      const comments = await github.paginate(github.rest.issues.listComments, { ...context.repo, issue_number: n });
+      if (comments.some((c) => (c.body || '').includes(FIXED_MARKER))) continue;
+      await github.rest.issues.createComment({ ...context.repo, issue_number: n, body: fixedComment({ tag, url, reporter: issue.user?.login, owner: context.repo.owner }) });
+      done.push(n);
+    } catch (e) {
+      core?.warning?.(`#${n}: ${e.message}`);
+    }
+  }
+  return done;
+}
+
+/** The commit messages between the previous release and this one, from GitHub's compare API ([] when there's none). */
+export async function commitsSincePrevious({ github, context, tag, prefix = '' }) {
+  try {
+    const releases = await github.paginate(github.rest.repos.listReleases, { ...context.repo, per_page: 50 });
+    const prev = releases.filter((r) => !r.draft && r.tag_name !== tag && r.tag_name.startsWith(prefix))[0];
+    if (!prev) return [];
+    const { data } = await github.rest.repos.compareCommitsWithBasehead({ ...context.repo, basehead: `${prev.tag_name}...${tag}` });
+    return data.commits.map((c) => c.commit.message);
+  } catch {
+    return [];
+  }
 }

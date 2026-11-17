@@ -31,6 +31,8 @@ import { EVERY_KEYBOARD } from './core/sim';
 import { formatSimulation } from './simformat';
 import { serve } from './mcp';
 import { serve as serveLsp } from './lsp';
+import { buildReport, DISCORD_THREAD, findDuplicates, handlerHelp, handlerOrigin, simSummary, type ReportInput } from './core/report';
+import { spawn } from 'node:child_process';
 
 const HELP = `ncdev ${VERSION}: Nucleus Co-op dev tools (\`nucleus\` is the old name and still works)
 
@@ -99,6 +101,14 @@ Commands:
                               itself, checked against the release's SHA-256 sums). --check only
                               says whether there is one (exit code 10 if so)
   --version                   Show the version
+  report [problem|feature|tryit] [handler.js] [--open] [--text]
+  report --check <rule> <handler.js> [--line N] [--no-code] [--open] [--text]
+                              Report a problem, ask for a feature ("I want to do…"), say Try it
+                              differs from Nucleus, or that a check is wrong: prints the prefilled
+                              GitHub form's link (versions, the check, where the handler is from;
+                              only the flagged lines of code, unless --no-code) and open reports
+                              that may be the same. --open opens it in the browser; --text prints
+                              the report to paste in the testers' Discord thread (no GitHub account)
   dap                         Run as a Debug Adapter (stdio) for editors with DAP support: nvim-dap,
                               Helix, Zed, JetBrains, Emacs (dape) (PORTING.md, "Debugging")
 
@@ -127,7 +137,7 @@ interface Args {
   positional: string[];
   flags: Map<string, string[]>;
 }
-const BOOL_FLAGS = new Set(['--elevated', '--version', '-v', '--from-notepad++', '--step', '--json', '--stdio', '--all', '--quiet', '--verbose', '--force', '--search', '--markdown', '--fix', '--fix-dry-run', '--hub', '--write', '--check', '--remove', '--list-features', '--popular', '--restart', '--status', '-h', '--help']);
+const BOOL_FLAGS = new Set(['--open', '--no-code', '--text', '--elevated', '--version', '-v', '--from-notepad++', '--step', '--json', '--stdio', '--all', '--quiet', '--verbose', '--force', '--search', '--markdown', '--fix', '--fix-dry-run', '--hub', '--write', '--check', '--remove', '--list-features', '--popular', '--restart', '--status', '-h', '--help']);
 function parseArgs(argv: string[]): Args {
   const a: Args = { positional: [], flags: new Map() };
   for (let i = 0; i < argv.length; i++) {
@@ -160,11 +170,16 @@ async function main(argv: string[]): Promise<number> {
       rl.close();
     }
   }
-  const commands = ['lint', 'format', 'simulate', 'api', 'hub', 'new', 'install', 'test', 'package', 'init-agent', 'rules', 'mcp', 'lsp', 'dap', 'setup', 'workbench', 'debug', 'explain', 'update', 'version'];
+  const commands = ['report', 'lint', 'format', 'simulate', 'api', 'hub', 'new', 'install', 'test', 'package', 'init-agent', 'rules', 'mcp', 'lsp', 'dap', 'setup', 'workbench', 'debug', 'explain', 'update', 'version'];
   let cmd = argv[0] && commands.includes(argv[0]) ? argv.shift()! : undefined;
   if (!cmd && (argv[0] === '--version' || argv[0] === '-v')) cmd = 'version';
   if (path.basename(process.argv[1] ?? '').startsWith('nucleus-lint')) cmd ??= 'lint';
   if (argv.includes('--list-rules')) cmd = 'rules';
+  // `report --check <rule>`: here --check takes a value (elsewhere it's a switch).
+  if (cmd === 'report') {
+    const i = argv.indexOf('--check');
+    if (i >= 0 && argv[i + 1] && !argv[i + 1].startsWith('-')) argv.splice(i, 2, '--check-rule', argv[i + 1]);
+  }
   const args = parseArgs(argv);
   if (!cmd) {
     if (has(args, '-h') || has(args, '--help') || !args.positional.length) {
@@ -224,6 +239,8 @@ async function main(argv: string[]): Promise<number> {
       return serveDap().then((code) => process.exit(code));
     case 'workbench':
       return cmdWorkbench(args, json);
+    case 'report':
+      return cmdReport(args, json);
   }
   return 2;
 }
@@ -544,6 +561,62 @@ function cmdPackage(args: Args, json: boolean): number {
 }
 
 /** Saves the newest release's workbench.html: the whole browser workbench in one offline file. */
+/** Opens a link in the default browser; false when it can't. */
+function openInBrowser(url: string): boolean {
+  try {
+    const [c, a] = process.platform === 'win32' ? ['cmd', ['/c', 'start', '""', url.replace(/&/g, '^&')]] : process.platform === 'darwin' ? ['open', [url]] : ['xdg-open', [url]];
+    spawn(c, a as string[], { detached: true, stdio: 'ignore', windowsVerbatimArguments: process.platform === 'win32' }).on('error', () => undefined).unref();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function cmdReport(args: Args, json: boolean): Promise<number> {
+  const rule = flag(args, '--check-rule');
+  const words = ['problem', 'feature', 'tryit', 'check'];
+  const kind = (rule ? 'check' : words.includes(args.positional[0]) ? args.positional.shift()! : 'problem') as ReportInput['kind'];
+  if (kind === 'check' && !rule) throw new Usage('report --check <rule> <handler.js>: which check is wrong? (ncdev rules lists them)');
+  if (rule && !(rule in RULES)) throw new Usage(`report: no check called "${rule}" (ncdev rules lists them)`);
+  const file = args.positional[0];
+  if (file && !fs.existsSync(file)) throw new Error(`${file} doesn't exist`);
+  if (kind === 'check' && !file) throw new Usage('report --check <rule> <handler.js>: give the handler, so the report has the flagged line');
+  const text = file ? fs.readFileSync(file, 'utf8') : undefined;
+  const input: ReportInput = { kind, tool: 'ncdev', version: `ncdev ${VERSION}`, details: [`ncdev: ${VERSION}${isStandalone() ? ' (standalone)' : ''}`, `OS: ${process.platform} ${process.arch}`], handler: text !== undefined ? handlerOrigin(text) : undefined };
+  if (kind === 'check' && text !== undefined) {
+    // The flagged line: --line, else the check's first problem in the file.
+    const want = flag(args, '--line') ? Number(flag(args, '--line')) : undefined;
+    const d = lint(text).filter((x) => x.rule === rule).find((x) => want === undefined || lineOf(text, x.start) + 1 === want);
+    const lines = text.split(/\r?\n/);
+    const first = d ? lineOf(text, d.start) : want ? want - 1 : undefined;
+    const last = d ? lineOf(text, Math.max(d.start, d.end - 1)) : first;
+    Object.assign(input, { rule, message: d?.message, line: first !== undefined ? first + 1 : undefined, code: first !== undefined && !has(args, '--no-code') ? lines.slice(first, Math.min(last!, first + 19) + 1).join('\n') : undefined });
+  }
+  if (kind === 'tryit' && text !== undefined) input.sim = simSummary(simulateIsolated(text, { players: 2, width: 1920, height: 1080, keyboardPlayer: 0, plugins: pluginsFor(file!) }), { players: 2, resolution: '1920×1080', keyboard: 'player 1' });
+  const r = buildReport(input);
+  if (has(args, '--text')) {
+    print(json, { text: r.text, thread: DISCORD_THREAD }, () => `${r.text}\n\nPaste it in the testers' Discord thread: ${DISCORD_THREAD}`);
+    return 0;
+  }
+  const hits = process.env.NCDEV_NO_ISSUE_SEARCH ? [] : await findDuplicates(r, { userAgent: `ncdev/${VERSION}`, timeoutMs: 5000 });
+  const help = kind === 'problem' && input.handler?.hubId ? handlerHelp(input.handler) : undefined;
+  const opened = has(args, '--open') && openInBrowser(r.url);
+  print(json, { title: r.title, repo: r.repo, template: r.template, url: r.url, duplicates: hits, handlerHelp: help, opened }, () =>
+    [
+      `${r.title || (kind === 'feature' ? 'A feature request' : 'A report')} (${r.repo}, ${r.template})`,
+      ...(hits.length ? ['', 'Is it one of these? Open it and add a 👍 or a comment:', ...hits.map((h) => `  #${h.number} ${h.title}${h.thumbs ? ` (👍 ${h.thumbs})` : ''}\n    ${h.url}`)] : []),
+      ...(help ? ['', `Is the problem in this handler, not the tools? ${help.note}`, ...help.links.map((l) => `  ${l.label}: ${l.url}`)] : []),
+      '',
+      opened ? 'Opened the form in your browser: check it, then submit.' : 'Open this link to send it (you see everything before it is sent):',
+      ...(opened ? [] : [r.url]),
+      ...(input.code ? ['', 'It includes the flagged line(s) only. Leave them out with --no-code, or delete them on the form.'] : []),
+      '',
+      `No GitHub account? ncdev report … --text prints it to paste in the testers' Discord thread: ${DISCORD_THREAD}`,
+    ].join('\n'),
+  );
+  return 0;
+}
+
 async function cmdWorkbench(args: Args, json: boolean): Promise<number> {
   const out = flag(args, '--out') ?? 'nucleus-workbench.html';
   if (fs.existsSync(out) && !has(args, '--force')) throw new Error(`${out} already exists (use --force to overwrite)`);
