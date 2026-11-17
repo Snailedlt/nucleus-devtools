@@ -147,17 +147,24 @@ export const languages = {
   registerCodeActionsProvider: (_s: any, p: any) => (__registered.codeAction.push(p), disposable),
   registerDocumentSemanticTokensProvider: (_s: any, p: any, legend: any) => (((__registered as any).semantic ??= []).push({ p, legend }), disposable),
   registerInlayHintsProvider: (_s: any, p: any) => ((__registered as any).inlay = [...((__registered as any).inlay ?? []), p], disposable),
+  // Language changes (handlermode.ts): recorded, and the document takes the new language.
+  setTextDocumentLanguage: async (doc: any, languageId: string) => (__languageChanges.push({ uri: String(doc.uri), languageId }), (doc.languageId = languageId), doc),
 };
+export const __languageChanges: { uri: string; languageId: string }[] = [];
+/** Event handlers the code under test registered, by event name (onDidOpenTextDocument…), so tests can fire them. */
+export const __listeners: Record<string, ((e: any) => void)[]> = {};
+const listen = (name: string) => (fn: (e: any) => void) => (((__listeners[name] ??= []).push(fn)), disposable);
 export const __applied: WorkspaceEdit[] = [];
 export const workspace = {
   applyEdit: async (e: WorkspaceEdit) => (__applied.push(e), true),
   textDocuments: [] as any[],
   workspaceFolders: undefined,
   isTrusted: true,
-  onDidOpenTextDocument: () => disposable,
+  onDidOpenTextDocument: listen('onDidOpenTextDocument'),
   onDidChangeTextDocument: () => disposable,
-  onDidCloseTextDocument: () => disposable,
-  onDidChangeConfiguration: () => disposable,
+  onDidCloseTextDocument: listen('onDidCloseTextDocument'),
+  onDidSaveTextDocument: listen('onDidSaveTextDocument'),
+  onDidChangeConfiguration: listen('onDidChangeConfiguration'),
   createFileSystemWatcher: () => ({ onDidCreate: () => disposable, onDidChange: () => disposable, onDidDelete: () => disposable, dispose() {} }),
   getConfiguration: (section: string) => ({
     get: (key: string, def?: any) => (`${section}.${key}` in __config ? __config[`${section}.${key}`] : def),

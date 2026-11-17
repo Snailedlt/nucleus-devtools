@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { HANDLER_LANGUAGE, registerHandlerMode } from './handlermode';
 import { registerWhatsNew } from './whatsnew';
 import { Diagnostic as LintDiagnostic, lint, RuleId, Severity } from './core/lint';
 import { registerCommands } from './commands';
@@ -17,7 +18,10 @@ import { registerDebugger } from './debugvscode';
 import { forgetPackageFiles, packageFileForPath, packageFilesFor, packageFilePath } from './pkgfiles';
 
 const SOURCE = 'nucleus';
+// Handlers open in their own language mode (handlermode.ts); in JavaScript mode, by the setting or by hand, too.
 const SELECTOR: vscode.DocumentSelector = [
+  { language: HANDLER_LANGUAGE, scheme: 'file' },
+  { language: HANDLER_LANGUAGE, scheme: 'untitled' },
   { language: 'javascript', scheme: 'file' },
   { language: 'javascript', scheme: 'untitled' },
 ];
@@ -30,8 +34,10 @@ function config() {
 
 /** Is this document a Nucleus handler we should provide features for? */
 export function isHandler(doc: vscode.TextDocument): boolean {
-  if (doc.languageId !== 'javascript') return false;
   const mode = config().get<'auto' | 'always' | 'off'>('detection', 'auto');
+  // In the handler language mode it's a handler (detection put it there, or the user picked it), unless turned off.
+  if (doc.languageId === HANDLER_LANGUAGE) return mode !== 'off';
+  if (doc.languageId !== 'javascript') return false;
   return isHandlerFile(doc.fileName, doc.getText(), mode);
 }
 
@@ -137,7 +143,7 @@ export function activate(context: vscode.ExtensionContext) {
   );
   refreshAll();
 
-  const featuresOn = (doc: vscode.TextDocument) => config().get('completion.enable', true) && isHandler(doc);
+  const featuresOn = (doc: vscode.TextDocument) => vscode.workspace.getConfiguration('splitscreenme', doc.uri).get('completion.enable', true) && isHandler(doc);
 
   context.subscriptions.push(
     vscode.languages.registerCodeActionsProvider(SELECTOR, new FixProvider(), { providedCodeActionKinds: [vscode.CodeActionKind.QuickFix, FIX_ALL_KIND] }),
@@ -257,6 +263,7 @@ export function activate(context: vscode.ExtensionContext) {
   registerTryIt(context, isHandler);
   registerDocsPanel(context);
   registerGameFolders(context, isHandler, SELECTOR, (d) => refresh(d, 0));
+  registerHandlerMode(context, isHandler);
   registerDebugger(context, isHandler);
 
   registerCommands(context, {
@@ -419,8 +426,11 @@ const KIND: Record<CompletionKind, vscode.CompletionItemKind> = {
 
 const toRange = (doc: vscode.TextDocument, s: Span) => new vscode.Range(doc.positionAt(s.start), doc.positionAt(s.end));
 
+/** The handler's own names: ours in handler mode; in JavaScript mode VS Code's JavaScript service shows them. */
+const ownNames = (doc: vscode.TextDocument) => doc.languageId === HANDLER_LANGUAGE;
+
 function completions(doc: vscode.TextDocument, pos: vscode.Position): vscode.CompletionItem[] | undefined {
-  const entries = completionsAt(doc.getText(), doc.offsetAt(pos), { own: false, docsLink: docsCommandLink });
+  const entries = completionsAt(doc.getText(), doc.offsetAt(pos), { own: ownNames(doc), docsLink: docsCommandLink });
   return entries?.map((e) => {
     const item = new vscode.CompletionItem(e.labelDetail ? { label: e.label, description: e.labelDetail } : e.label, KIND[e.kind]);
     if (e.range) item.range = toRange(doc, e.range);
@@ -454,12 +464,12 @@ function hover(doc: vscode.TextDocument, pos: vscode.Position): vscode.Hover | u
     const e = explainLine(doc.getText(), doc.offsetAt(pos));
     if (e) return new vscode.Hover(markdown(e.markdown), doc.lineAt(pos.line).range);
   }
-  const h = hoverAt(doc.getText(), doc.offsetAt(pos), { own: false, docsLink: docsCommandLink });
+  const h = hoverAt(doc.getText(), doc.offsetAt(pos), { own: ownNames(doc), docsLink: docsCommandLink });
   return h && new vscode.Hover(markdown(h.markdown), toRange(doc, h.range));
 }
 
 function signatureHelp(doc: vscode.TextDocument, pos: vscode.Position): vscode.SignatureHelp | undefined {
-  const s = signatureHelpAt(doc.getText(), doc.offsetAt(pos), { own: false, docsLink: docsCommandLink });
+  const s = signatureHelpAt(doc.getText(), doc.offsetAt(pos), { own: ownNames(doc), docsLink: docsCommandLink });
   if (!s) return undefined;
   const help = new vscode.SignatureHelp();
   for (const sig of s.signatures) {

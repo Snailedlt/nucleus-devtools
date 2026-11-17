@@ -1,0 +1,6 @@
+{
+  "$comment": "Nucleus Co-op handlers (src/handlermode.ts): JavaScript's own grammar, so colours stay those of JavaScript.",
+  "name": "Nucleus Co-op handler",
+  "scopeName": "source.js.nucleus-handler",
+  "patterns": [{ "include": "source.js" }]
+}

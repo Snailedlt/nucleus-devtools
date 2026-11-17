@@ -12,11 +12,25 @@ How to write it (people and AI agents read this; the release workflow publishes 
 - At release: rename "## Unreleased" to "## <version> · <yyyy-mm-dd>". A `---` line separates releases.
 -->
 
-## Unreleased
+## 0.8.0 · 2026-11-17
 
 ### ⚠️ Changed
 
+- **Handlers open as "Nucleus Co-op handler", without VS Code's JavaScript suggestions.** VS Code's own JavaScript suggestions and type lines no longer mix in with the handler's: no browser globals, and no newer methods that Nucleus' engine doesn't have. Colours, brackets and folding stay those of JavaScript. Click the language in the status bar to switch a file back, or set `splitscreenme.languageMode` to `javascript` to keep all handlers as JavaScript; **Set Up Type Definitions** does that for its folder.
+  <details><summary>Screenshot</summary>
+
+  ![A handler in VS Code: the status bar says Nucleus Co-op handler, and Game.Hook. suggests only Nucleus options with their docs](https://raw.githubusercontent.com/Snailedlt/splitscreenme-vscode/main/docs/images/changelog/0.8.0-language-mode.png)
+
+  </details>
 - **Handlers are coloured like any JavaScript file.** Nucleus names now use JavaScript's own categories, so your theme colours them as it colours everything else: `Game` and `Context` as variables, what's on them as properties, what you call as methods. Option groups (`Game.ProtoInput`, `Nucleus.Folder`), fixed choices (`Nucleus.Folder.InstancedGameFolder`) and callbacks (`Game.Play`) keep a colour of their own in VS Code, through your theme's namespace, enum value and function colours. `Game` is no longer shown in the type colour. Other editors can style these three with the new `group`, `choice` and `callback` modifiers (PORTING.md).
+
+### ✨ New
+
+- **Options compared as numbers or booleans.** When the player starts from a saved profile, Nucleus gives every `Game.AddOption` value back as text, so `Context.Options["players"] === 4`, `== true` or `case 4:` never match, and a `false` option is the text "False", which an `if` counts as true. The new check, `option-compare`, finds these, also through the handler's own variables (`var p = Context.Options["players"]; if (p === 4)`), and offers `==` or `case "4":` as the fix. Loose `== 4` works and stays quiet.
+
+### 🐛 Fixed
+
+- **No "has no effect" warning on `File.Exists((Context.filePath = ...))`.** An unknown `Context` property assigned inside a call or a condition passes its value on, like the `var x = (Context.X = ...)` idiom, so it's now the same quiet hint instead of a warning that said the line does nothing.
 
 ---
 

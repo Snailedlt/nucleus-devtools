@@ -9,6 +9,7 @@ import { JS_RULES, jsRuleDiagnostics, type JsRuleId } from './jsrules';
 import * as acorn from 'acorn';
 import { parseLikeJint } from './jsparse';
 import { BEFORE_SESSION } from './lifecycle';
+import { analyzeScopes, type Binding } from './scopes';
 import {
   api,
   Member,
@@ -182,6 +183,10 @@ export const RULES = {
   'callback-misuse': {
     severity: 'warning',
     description: 'Callbacks Nucleus never runs or calls without checking: `Game.SetupSse` (never called), `Game.Play` with both `GamePlayBeforeGameSetup` and `GamePlayAfterLaunch` (never runs), `Context.StartArguments` set in a `Game.Play` that runs after launch (no effect), and `Game.CustomHotkeys` entries without their `Game.OnCustomHotKey_N` (Nucleus crashes when the hotkey is pressed).',
+  },
+  'option-compare': {
+    severity: 'warning',
+    description: 'A `Context.Options["key"]` value compared as if it were a number or a boolean, where only text works: when the player starts from a saved profile, Nucleus gives every option back as text ("4", "True", "False"). So `=== 4`, `== true`, `case 4:` never match, and a "False" option counts as true in an `if`.',
   },
   deprecated: { severity: 'hint', description: 'The option is deprecated (setting it to false is fine).' },
   // General JavaScript mistakes: ESLint's own rules (core/jsrules.ts).
@@ -410,6 +415,130 @@ class Analyzer {
     this.checkPublishedGuid();
     this.checkEncoding();
     this.checkReplacedObjects();
+    this.checkOptionCompare();
+  }
+
+  /**
+   * `Context.Options["players"] === 4`: a saved profile gives every option back as text (GameProfile.LoadGameProfile:
+   * `Jopt.Value.ToString()`, so `true` becomes "True"), and 754 of the Hub's 772 option lists are text anyway (spike #26).
+   * Follows the value through the handler's own variables (core/scopes.ts). Loose `==` with a number is fine.
+   */
+  private checkOptionCompare() {
+    if (!/\bOptions\b/.test(this.text)) return;
+    const sc = analyzeScopes(this.program);
+    const values = new Map<string, Node[]>();
+    const mutated = (b: Binding) =>
+      b.reads.some((r) => {
+        const m = sc.parentOf.get(r.node);
+        if (m?.type !== 'MemberExpression' || m.object !== r.node) return false;
+        const g = sc.parentOf.get(m);
+        return (g?.type === 'AssignmentExpression' && g.left === m) || (g?.type === 'UpdateExpression' && g.argument === m) ||
+          (g?.type === 'CallExpression' && g.callee === m && !m.computed && /^(push|unshift|splice|fill|reverse|sort|copyWithin|pop|shift)$/.test(m.property.name));
+      }) ||
+      // Escapes (`var alias = answers`, `f(answers)`): it may be changed where we don't follow it. Reading
+      // `answers[i]` / `answers.length` and passing it to Game.AddOption are fine.
+      b.reads.some((r) => {
+        const p = sc.parentOf.get(r.node);
+        if (p?.type === 'MemberExpression' && p.object === r.node) return false;
+        if (p?.type === 'CallExpression' && p.callee !== r.node && this.chainOf(p.callee) === 'Game.AddOption') return false;
+        return true;
+      });
+    visit(this.program, (x) => {
+      if (x.type !== 'CallExpression' || this.chainOf(x.callee) !== 'Game.AddOption' || sc.bindingOf.get(x.callee.object)) return;
+      const k = x.arguments[2];
+      let v = x.arguments[3];
+      if (v?.type === 'Identifier') {
+        const b = sc.bindingOf.get(v);
+        // `answers[0] = 2` or `answers.push(2)` later: the values may not stay text.
+        v = b && !mutated(b) ? singleValue(b) : undefined;
+      }
+      if (k?.type === 'Literal' && typeof k.value === 'string' && v?.type === 'ArrayExpression') values.set(k.value, v.elements.filter(Boolean));
+    });
+    const onPath = new Set<Binding>(); // `p = p`: stop instead of expanding every write again
+    const opt = (n: Node, depth = 0): { key?: string } | undefined => {
+      if (depth > 8) return undefined;
+      if (n.type === 'MemberExpression' && n.computed && this.chainOf(n.object) === 'Context.Options' && !sc.bindingOf.get(n.object.object)) {
+        return { key: n.property.type === 'Literal' && typeof n.property.value === 'string' ? n.property.value : undefined };
+      }
+      if (n.type !== 'Identifier') return undefined;
+      const b = sc.bindingOf.get(n);
+      if (!b || b.kind !== 'var' || !b.writes.length || b.writes.some((w) => !w.plain || !w.value)) return undefined;
+      if (onPath.has(b)) return undefined;
+      onPath.add(b);
+      const all = b.writes.map((w) => opt(w.value!, depth + 1));
+      onPath.delete(b);
+      if (all.some((o) => !o)) return undefined;
+      return { key: all.every((o) => o!.key === all[0]!.key) ? all[0]!.key : undefined };
+    };
+    const lit = (n: Node): 'number' | 'boolean' | undefined => {
+      if (n.type === 'Literal' && (typeof n.value === 'number' || typeof n.value === 'boolean')) return typeof n.value as 'number' | 'boolean';
+      if (n.type === 'UnaryExpression' && n.operator === '-' && n.argument.type === 'Literal' && typeof n.argument.value === 'number') return 'number';
+      return undefined;
+    };
+    const src = (n: Node) => {
+      const t = this.text.slice(n.start, n.end);
+      return t.length > 40 ? `${t.slice(0, 37)}...` : t;
+    };
+    const allText = (key?: string) => {
+      const v = key === undefined ? undefined : values.get(key);
+      return !!v?.length && v.every((e) => e.type === 'Literal' && typeof e.value === 'string');
+    };
+    const reported = new Set<Node>();
+    const report = (at: Node, message: string, fixes?: Fix[]) => {
+      if (reported.has(at)) return;
+      reported.add(at);
+      this.report({ rule: 'option-compare', message, start: at.start, end: at.end, fixes });
+    };
+    visit(this.program, (x) => {
+      if (x.type === 'BinaryExpression' && /^[!=]==?$/.test(x.operator)) {
+        for (const [a, b] of [[x.left, x.right], [x.right, x.left]] as Node[][]) {
+          const k = lit(b);
+          const o = k && opt(a);
+          if (!o) continue;
+          if (k === 'boolean') {
+            // `== true` with "1"/"0" values: loose equality turns both into numbers, so it can match.
+            const v = o.key === undefined ? undefined : values.get(o.key);
+            if (x.operator.length === 2 && v?.some((e) => e.type === 'Literal' && typeof e.value === 'string' && e.value.trim() !== '' && !isNaN(Number(e.value)))) continue;
+            report(x, `\`${src(a)}\` is text when the player starts from a saved profile ("True" or "False"), and text never equals \`${b.raw}\`. Give the option text values (such as "Yes" and "No") and compare with those.`);
+          } else if (x.operator.length === 3) {
+            const loose = x.operator === '===' ? '==' : '!=';
+            // The operator between the operands, not one inside a comment there.
+            const between = this.text.slice(x.left.end, x.right.start).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, (c) => ' '.repeat(c.length));
+            const i = between.indexOf(x.operator);
+            const opAt = i < 0 ? -1 : x.left.end + i;
+            report(
+              x,
+              `\`${src(a)}\` is text${allText(o.key) ? ' (the option\'s values are text)' : ' when the player starts from a saved profile'}, and \`${x.operator}\` never matches text with a number, so \`${src(x)}\` is ${x.operator === '===' ? 'never true' : 'always true'}${allText(o.key) ? '' : ' then'}. With \`${loose}\` it matches both "${src(b)}" and ${src(b)}.`,
+              opAt >= 0 ? [{ title: `Change \`${x.operator}\` to \`${loose}\``, edits: [{ start: opAt, end: opAt + 3, text: loose }] }] : undefined,
+            );
+          }
+        }
+      } else if (x.type === 'SwitchStatement') {
+        const o = opt(x.discriminant);
+        if (!o) return;
+        for (const c of x.cases) {
+          const k = c.test && lit(c.test);
+          if (!k) continue;
+          const asText = k === 'number' && allText(o.key) && c.test.type === 'Literal' ? JSON.stringify(String(c.test.value)) : undefined;
+          report(
+            c.test,
+            `\`switch\` compares with \`===\`, and \`${src(x.discriminant)}\` is text${allText(o.key) ? ' (the option\'s values are text)' : ' when the player starts from a saved profile'}, so \`case ${src(c.test)}:\` never matches${allText(o.key) ? '' : ' then'}.${asText ? ` Write \`case ${asText}:\`.` : ''}`,
+            asText ? [{ title: `Change to \`case ${asText}:\``, edits: [{ start: c.test.start, end: c.test.end, text: asText }] }] : undefined,
+          );
+        }
+      } else {
+        const tests: Node[] = [];
+        if ((x.type === 'IfStatement' || x.type === 'ConditionalExpression' || x.type === 'WhileStatement' || x.type === 'DoWhileStatement') && x.test) tests.push(x.test);
+        else if (x.type === 'UnaryExpression' && x.operator === '!') tests.push(x.argument);
+        else if (x.type === 'LogicalExpression') tests.push(x.left);
+        for (const t of tests) {
+          const o = opt(t);
+          const v = o?.key === undefined ? undefined : values.get(o.key);
+          if (!v?.some((e) => e.type === 'Literal' && e.value === false)) continue;
+          report(t, `The option "${o!.key}" has the value \`false\`, but from a saved profile it is the text "False", which counts as true here. Give the option text values (such as "Yes" and "No") and compare with those.`);
+        }
+      }
+    });
   }
 
   /**
@@ -1053,14 +1182,19 @@ class Analyzer {
         return;
       }
       // `var args = (Context.Args = "...")` is an idiom from older handlers (and the official
-      // guide): the property write is dropped, but the value still reaches the variable.
+      // guide): the property write is dropped, but the value still reaches the variable. The same
+      // goes for an assignment whose value a call, a condition or another assignment uses
+      // (`File.Exists((Context.filePath = ...))`, 1 Hub handler; issue #26).
       const assign = ctx.parent;
-      const valueUsed = isWrite && assign && this.parentOf.get(assign)?.type === 'VariableDeclarator';
+      // Only `=`: `Context.filePath -= 1` reads the missing property, so its value is NaN, not harmless.
+      const user = isWrite && assign?.type === 'AssignmentExpression' && assign.operator === '=' ? this.parentOf.get(assign) : undefined;
+      const receiver = user ? valueReceiver(user, assign!, (n) => this.parentOf.get(n)) : undefined;
+      const valueUsed = !!receiver;
       // ...unless the name is a typo of a real member: then the handler likely meant that one, and it isn't set.
       if (valueUsed && s && !known && !digitsOnly) {
         this.report({
           rule: 'unknown-member',
-          message: `\`${name}\` does not exist on \`${label}\`, so only the variable receives this value. Did you mean \`${s}\`?`,
+          message: `\`${name}\` does not exist on \`${label}\`, so only ${receiver} receives this value. Did you mean \`${s}\`?`,
           start: n.property.start,
           end: n.property.end,
           fixes,
@@ -1071,7 +1205,7 @@ class Analyzer {
         this.report({
           rule: 'unknown-member',
           severity: 'hint',
-          message: `\`${label}.${name}\` is not a Nucleus property, so only the variable receives this value. That is harmless, but \`var x = ...\` alone does the same.`,
+          message: `\`${label}.${name}\` is not a Nucleus property, so only ${receiver} receives this value. That is harmless, but ${receiver === 'the variable' ? '`var x = ...` alone does the same' : 'a variable (`var x = ...`) does the same'}.`,
           start: n.property.start,
           end: n.property.end,
           tags: ['unnecessary'],
@@ -1900,6 +2034,44 @@ function patternNames(p: Node | null | undefined): string[] {
       return patternNames(p.argument);
     default:
       return [];
+  }
+}
+
+/** The value a variable is given, when it is given exactly one (`var answers = [...]`). */
+function singleValue(b: Binding | undefined): Node | undefined {
+  return b && b.kind === 'var' && b.writes.length === 1 && b.writes[0].plain ? b.writes[0].value : undefined;
+}
+
+/** Who uses the value of an assignment `a = v` whose parent is `user`, in words; undefined when nothing does. */
+function valueReceiver(user: Node, assign: Node, parentOf: (n: Node) => Node | undefined): string | undefined {
+  switch (user.type) {
+    case 'VariableDeclarator':
+      return user.init === assign ? 'the variable' : undefined;
+    case 'AssignmentExpression':
+      return user.right === assign ? (user.left.type === 'Identifier' ? 'the variable' : 'the outer assignment') : undefined;
+    case 'CallExpression':
+    case 'NewExpression':
+      return user.callee === assign ? undefined : 'the call';
+    case 'IfStatement':
+    case 'WhileStatement':
+    case 'DoWhileStatement':
+    case 'ConditionalExpression':
+      return user.test === assign ? 'the condition' : user.type === 'ConditionalExpression' ? 'the expression' : undefined;
+    case 'SequenceExpression': {
+      // `(0, (a = v))`: only the last operand's value goes on.
+      const up = user.expressions[user.expressions.length - 1] === assign ? parentOf(user) : undefined;
+      return up ? valueReceiver(up, user, parentOf) : undefined;
+    }
+    case 'ForStatement':
+      return user.test === assign ? 'the condition' : undefined;
+    case 'ExpressionStatement':
+    case 'ForInStatement':
+    case 'ForOfStatement':
+      return undefined;
+    case 'ReturnStatement':
+      return 'the return value';
+    default:
+      return 'the expression';
   }
 }
 

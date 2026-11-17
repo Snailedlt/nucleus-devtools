@@ -104,7 +104,8 @@ async function newHandler() {
     title: 'Save handler',
   });
   if (!target) {
-    const doc = await vscode.workspace.openTextDocument({ language: 'javascript', content });
+    const asHandler = vscode.workspace.getConfiguration('splitscreenme').get('languageMode', 'handler') === 'handler';
+    const doc = await vscode.workspace.openTextDocument({ language: asHandler ? 'nucleus-handler' : 'javascript', content });
     await vscode.window.showTextDocument(doc);
     return;
   }
@@ -117,7 +118,7 @@ async function newHandler() {
 async function resolveHandlerFile(uri?: vscode.Uri): Promise<vscode.Uri | undefined> {
   if (uri?.fsPath.endsWith('.js')) return uri;
   const active = vscode.window.activeTextEditor?.document;
-  if (active && active.languageId === 'javascript' && !active.isUntitled) {
+  if (active && (active.languageId === 'javascript' || active.languageId === 'nucleus-handler') && !active.isUntitled) {
     if (active.isDirty) await active.save();
     return active.uri;
   }
@@ -416,10 +417,13 @@ async function setupTypes(context: vscode.ExtensionContext) {
     existing.include = Array.from(new Set([...(existing.include ?? ['**/*.js']), '.vscode/nucleus.d.ts']));
     await vscode.workspace.fs.writeFile(jsconfigUri, Buffer.from(JSON.stringify(existing, null, 2) + '\n'));
   }
-  // The TypeScript service now provides completion/hover; avoid duplicate entries.
-  await vscode.workspace.getConfiguration('splitscreenme', folder.uri).update('completion.enable', false, vscode.ConfigurationTarget.WorkspaceFolder);
+  // The TypeScript service now provides completion/hover; avoid duplicate entries. It only runs on JavaScript, so
+  // this folder's handlers stay in JavaScript mode (handlermode.ts).
+  const cfg = vscode.workspace.getConfiguration('splitscreenme', folder.uri);
+  await cfg.update('completion.enable', false, vscode.ConfigurationTarget.WorkspaceFolder);
+  await cfg.update('languageMode', 'javascript', vscode.ConfigurationTarget.WorkspaceFolder);
   vscode.window.showInformationMessage(
-    'Installed Nucleus type definitions (.vscode/nucleus.d.ts + jsconfig.json). Add "// @ts-check" to the top of a handler for type checking.',
+    'Installed Nucleus type definitions (.vscode/nucleus.d.ts + jsconfig.json), and handlers in this folder now open as JavaScript so TypeScript checks them. Add "// @ts-check" to the top of a handler for type checking.',
   );
 }
 

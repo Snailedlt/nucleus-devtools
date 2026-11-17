@@ -81,7 +81,7 @@ Send them as `initializationOptions`, or later as `workspace/didChangeConfigurat
 
 - `detection`: `auto` (default; see [handler detection](#how-handler-files-are-detected)), `always` (every `.js` file) or `off`.
 - `handlerGlobs`: paths that always count as handlers (`**` any folders, `*` any name part, matched against the end of the path).
-- `lint.rules`: per-rule severity, `error`, `warning`, `info`, `hint` or `off` (`nucleus rules` lists them).
+- `lint.rules`: per-rule severity, `error`, `warning`, `info`, `hint` or `off` (`ncdev rules` lists them).
 - `lint.compareWithHub`: for a handler with a `Hub.Handler.Id`, compare `Game.GUID` with the Hub's version (downloads it once, cached; the problem list updates when it arrives). `false` keeps the server offline.
 - `lint.workspace`: check every handler in the workspace folders, opened or not (default `true`), and re-check files that change on disk (when the client supports watched files: the server asks to watch `**/*.js` and each handler's `<Name>/` folder, not the whole workspace, and ignores `node_modules` and dot folders).
 - `gameFolders`: the game's install folder per handler file name. The handler is then checked against the real files (`ExecutableName`, `BinariesFolder`, the symlink and copy lists…), each problem's fix comes as a quick fix, and completion inside those lists offers the game's own files. Only names and sizes are read.
@@ -110,6 +110,18 @@ vim.lsp.enable('nucleus')
 -- Try it: vim.lsp.buf_request(0, 'workspace/executeCommand',
 --   { command = 'nucleus.tryIt', arguments = { { uri = vim.uri_from_bufnr(0), players = 2 } } },
 --   function(_, text) if text then print(text) end end)
+```
+
+Many colour schemes only colour the semantic-token groups they know, so Nucleus names can stay plain. These links give them colour in any scheme (tried with Neovim's own `habamax`):
+
+```lua
+local hl = function(group, opts) vim.api.nvim_set_hl(0, group, opts) end
+hl('@lsp.typemod.variable.defaultLibrary', { link = 'Constant' }) -- Game, Context, Nucleus
+hl('@lsp.type.property', { link = 'Identifier' }) -- Game.MaxPlayers
+hl('@lsp.type.method', { link = 'Function' }) -- Context.GetFolder
+hl('@lsp.typemod.property.group', { link = 'Type' }) -- Game.Hook, Nucleus.Folder
+hl('@lsp.typemod.property.choice', { link = 'Special' }) -- InstancedGameFolder
+hl('@lsp.typemod.method.callback', { link = 'Function', bold = true }) -- Game.Play
 ```
 
 On older Neovim with [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig):
@@ -256,15 +268,15 @@ Unsaved buffers (no `file:` URI) count when the client calls them `javascript` a
 
 | VS Code | Elsewhere |
 |---|---|
-| **Try it** panel (players, keyboard, monitor size as links; "Test all combinations") | `nucleus.tryIt` command (`{ uri, players, width, height, keyboardPlayer }`; `keyboardPlayer` is 1-based, `"all"` or `"none"`), or `nucleus simulate MyGame.js --players 4 --keyboard none --resolution 2560x1440` in a terminal. Show the returned text in a split or a floating window. |
-| **New Handler** wizard | `nucleus new --name "My Game" --exe game.exe --features …` (`nucleus --help` lists the features) |
-| **Hub** browser (search, open, install) | `nucleus hub search <words>`, `nucleus hub fetch <id> --out dir` |
-| **Package** / **Install** | `nucleus package MyGame.js` (a `.nc` for the Hub); to install, copy `MyGame.js` and its `MyGame/` folder into Nucleus' `handlers` folder |
-| **Lint all handlers** | `nucleus lint path/to/handlers` (`--fix` applies the safe fixes) |
+| **Try it** panel (players, keyboard, monitor size as links; "Test all combinations") | `nucleus.tryIt` command (`{ uri, players, width, height, keyboardPlayer }`; `keyboardPlayer` is 1-based, `"all"` or `"none"`), or `ncdev simulate MyGame.js --players 4 --keyboard none --resolution 2560x1440` in a terminal. Show the returned text in a split or a floating window. |
+| **New Handler** wizard | `ncdev new --name "My Game" --exe game.exe --features …` (`ncdev --help` lists the features) |
+| **Hub** browser (search, open, install) | `ncdev hub search <words>`, `ncdev hub fetch <id> --out dir` |
+| **Package** / **Install** | `ncdev package MyGame.js` (a `.nc` for the Hub); to install, copy `MyGame.js` and its `MyGame/` folder into Nucleus' `handlers` folder |
+| **Lint all handlers** | `ncdev lint path/to/handlers` (`--fix` applies the safe fixes) |
 | **Set Up Type Definitions** | Point your TypeScript server at `types/nucleus.d.ts` |
-| **Debugging** (Run and Debug) | `nucleus dap` in an editor with DAP support ([above](#debugging-ncdev-dap)), or `nucleus debug MyGame.js --break 14 --watch Context.PlayerID` in a terminal. |
+| **Debugging** (Run and Debug) | `ncdev dap` in an editor with DAP support ([above](#debugging-ncdev-dap)), or `ncdev debug MyGame.js --break 14 --watch Context.PlayerID` in a terminal. |
 | **What's New** | `CHANGELOG.md` |
-| Agent tools for Copilot | `nucleus mcp` for any MCP client (README, "AI agents") |
+| Agent tools for Copilot | `ncdev mcp` for any MCP client (README, "AI agents") |
 
 ## Testing a new adapter
 
