@@ -55,7 +55,13 @@ reviews:
     - path: "npp-plugin/**"
       instructions: "A thin client of `ncdev lsp` (C++17, MinGW). Logic belongs in src/core/features.ts or src/lsp.ts, not here."
     - path: "package.json"
-      instructions: "Command and setting ids are links people bind keys to: never rename one without a deprecated alias pointing at the new id (AGENTS.md: links live for ever)."
+      instructions: |
+        Command and setting ids are links people bind keys to: never rename one without a deprecated alias pointing at the new id (AGENTS.md: links live for ever).
+        Anything contributed for `javascript` (snippets, breakpoints, semantic scopes, debugger, keybindings) must also be contributed for `nucleus-handler` (src/handlermode.ts); flag one added for JavaScript only.
+    - path: "src/{extension,handlermode}.ts"
+      instructions: "Handlers open in the `nucleus-handler` language (handlermode.ts), so every provider is registered for both `nucleus-handler` and `javascript`. Flag a provider or selector added for one of them only."
+    - path: "docs/images/gallery/**"
+      instructions: "One set per view, `<tool>-<view>-{light,dark}.webp`, shared by the README and the workbench start page (whose build stops if one is missing). Flag a view added in one theme only, a renamed or removed file the start page lists, or a separate copy of an existing view."
     - path: "CHANGELOG.md"
       instructions: "User-visible changes go under the unreleased section in an emoji group (✨ New, 🛠️ Improved, 🐛 Fixed, ⚡ Faster, ⚠️ Changed, 🙏 Thanks), starting with a short bold summary, then one or two plain sentences."
     - path: "src/test/**"

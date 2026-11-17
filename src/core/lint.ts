@@ -434,6 +434,14 @@ class Analyzer {
         const g = sc.parentOf.get(m);
         return (g?.type === 'AssignmentExpression' && g.left === m) || (g?.type === 'UpdateExpression' && g.argument === m) ||
           (g?.type === 'CallExpression' && g.callee === m && !m.computed && /^(push|unshift|splice|fill|reverse|sort|copyWithin|pop|shift)$/.test(m.property.name));
+      }) ||
+      // Escapes (`var alias = answers`, `f(answers)`): it may be changed where we don't follow it. Reading
+      // `answers[i]` / `answers.length` and passing it to Game.AddOption are fine.
+      b.reads.some((r) => {
+        const p = sc.parentOf.get(r.node);
+        if (p?.type === 'MemberExpression' && p.object === r.node) return false;
+        if (p?.type === 'CallExpression' && p.callee !== r.node && this.chainOf(p.callee) === 'Game.AddOption') return false;
+        return true;
       });
     visit(this.program, (x) => {
       if (x.type !== 'CallExpression' || this.chainOf(x.callee) !== 'Game.AddOption' || sc.bindingOf.get(x.callee.object)) return;

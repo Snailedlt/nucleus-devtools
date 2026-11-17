@@ -361,6 +361,27 @@ Game.Play = function () {
   assert.equal(apply(src, d[1].fixes![0]).includes('if (p /* === */ == 4)'), true);
 });
 
+test('option-compare: no quoted-case fix when the option array escapes (an alias may change it)', () => {
+  const src =
+    HEADER +
+    `var answers = ["2", "4"];
+var alias = answers;
+alias[0] = 2;
+Game.AddOption("Players", "", "players", answers);
+var other = ["1", "3"];
+var n = other.length;
+Game.AddOption("Mode", "", "mode", other);
+Game.Play = function () {
+  switch (Context.Options["players"]) { case 2: break; }
+  switch (Context.Options["mode"]) { case 1: break; }
+};
+`;
+  const d = only(src, 'option-compare');
+  assert.equal(d.length, 2);
+  assert.equal(d[0].fixes, undefined, 'answers escaped into alias');
+  assert.equal(apply(src, d[1].fixes![0]).includes('case "1":'), true, 'reading other.length keeps the fix');
+});
+
 test('unknown-member: a compound write is never the harmless idiom; sequences and for tests pass the value on', () => {
   const src = HEADER + 'Game.Play = function () {\n  if (Context.filePath -= 1) {}\n  if (System.IO.File.Exists((0, (Context.filePathB = "x")))) {}\n  for (; (Context.filePathC = 1); ) { break; }\n};\n';
   const d = only(src, 'unknown-member');
