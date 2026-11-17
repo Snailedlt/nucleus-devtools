@@ -8,20 +8,30 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 
 export function initMessageHints(editor: CM) {
   let marks: { clear: () => void }[] = [];
+  // Help on request: the names and the "+" show for the list the cursor is in, or on hover (CSS), not all the time.
+  let groups: { from: number; to: number; els: HTMLElement[] }[] = [];
+  const reveal = () => {
+    const at = editor.indexFromPos(editor.getCursor());
+    for (const g of groups) g.els.forEach((e) => e.classList.toggle('near', at >= g.from && at <= g.to + 1));
+  };
   let timer = 0;
   let menu: HTMLElement | null = null;
   const closeMenu = () => { menu?.remove(); menu = null; };
   const draw = () => {
     marks.forEach((m) => m.clear());
     marks = [];
+    groups = [];
     const text: string = editor.getValue();
     for (const l of blockedLists(text)) {
+      const els: HTMLElement[] = [];
+      groups.push({ from: l.open, to: l.close, els });
       for (const it of l.items) {
         const t = blockTarget(it.id);
         const el = document.createElement('span');
         el.className = `wm-hint${t.kind === 'ok' ? '' : ' bad'}`;
         el.textContent = t.kind === 'ok' ? t.name : t.kind === 'out' ? 'unknown' : `→ ${t.name}?`;
         el.setAttribute('aria-hidden', 'true'); // the hover and Check say it in words
+        els.push(el);
         marks.push(editor.setBookmark(editor.posFromIndex(it.end), { widget: el, insertLeft: true }));
       }
       const add = document.createElement('button');
@@ -32,9 +42,12 @@ export function initMessageHints(editor: CM) {
       add.setAttribute('aria-label', 'Add a window message to block');
       add.addEventListener('mousedown', (e) => e.preventDefault()); // keep the editor's selection
       add.addEventListener('click', () => openMenu(add, l));
+      els.push(add);
       marks.push(editor.setBookmark(editor.posFromIndex(l.close), { widget: add, insertLeft: true }));
     }
+    reveal();
   };
+  editor.on('cursorActivity', reveal);
   function openMenu(anchor: HTMLElement, list: BlockedList) {
     closeMenu();
     const have = new Set(list.items.map((i) => i.id));

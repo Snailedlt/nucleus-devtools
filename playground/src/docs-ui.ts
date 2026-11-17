@@ -84,7 +84,7 @@ export function initDocs(deps: DocsDeps): DocsUI {
     const enums = Object.keys(api.enums).sort();
     el.innerHTML = `<div class="api-home">
       <p class="muted">Every option, Context member, enum and .NET call a handler can use, with what Nucleus does with it. Type above, or start here. <a href="${esc(deps.pageUrl('').replace(/\/\/$/, '/'))}" target="_blank" rel="noopener">All the docs as pages ↗</a></p>
-      ${unchecked().size ? `<button type="button" class="api-ai" data-group="AI"><span class="ai-spark" aria-hidden="true"></span><span><span class="t">Help check AI-written docs <span class="count">${unchecked().size}</span></span><span class="d">AI wrote these from the Nucleus source; no person has checked them yet. Know how one really works? Tell us with 👍 or 👎.</span></span></button>` : ''}
+      ${unchecked().size ? `<button type="button" class="api-ai slim" data-group="AI" title="AI wrote these from the Nucleus source; no person has checked them yet. Know how one really works? Tell us with 👍 or 👎."><span class="ai-spark" aria-hidden="true"></span><span class="t">Help check ${unchecked().size} AI-written docs</span><span class="d">Know how one really works? 👍 or 👎</span><span aria-hidden="true">→</span></button>` : ''}
       <h3 class="api-h">Browse</h3>
       <div class="api-groups">${API_GROUPS.filter((g) => g.key !== 'AI').map((g) => `<button type="button" class="api-group" data-group="${g.key}"><span class="t">${esc(g.title)} <span class="count">${all.filter((e) => g.match(e.path)).length}</span></span><span class="s">${esc(g.doc)}</span></button>`).join('')}</div>
       <h3 class="api-h">Every handler has</h3>

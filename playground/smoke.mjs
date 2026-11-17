@@ -441,7 +441,7 @@ for (const theme of ['light', 'dark']) {
     await q.click('#new-dialog button[type=submit]');
     await q.waitForTimeout(600);
     check(await q.isHidden('#no-handler') && await q.isVisible('#main') && !(await q.$('#welcome')), `${theme}: New handler… leaves the home page for the code, with no welcome box above it`);
-    await q.click('#welcome-open');
+    await q.evaluate(() => document.querySelector('#welcome-open').click());
     check(await q.isVisible('#no-handler') && (await q.textContent('#nh-title')) === 'Getting started' && await q.isVisible('[data-nh=back]'), `${theme}: Getting started shows the home page over the open handler`);
     await q.keyboard.press('Escape');
     check(await q.isHidden('#no-handler') && await q.isVisible('#main'), `${theme}: Esc goes back to the code`);

@@ -133,9 +133,16 @@ export function initFolderPickers(editor: CM, getFolder: () => GameFolder | null
     menu?.remove(); menu = null;
     if (offDoc) { document.removeEventListener('pointerdown', offDoc); offDoc = null; }
   };
+  // Help on request: the "+" shows for the list the cursor is in, or on hover (CSS), not all the time.
+  let adds: { from: number; to: number; el: HTMLElement }[] = [];
+  const reveal = () => {
+    const at = editor.indexFromPos(editor.getCursor());
+    for (const a of adds) a.el.classList.toggle('near', at >= a.from && at <= a.to + 1);
+  };
   const draw = () => {
     marks.forEach((m) => m.clear());
     marks = [];
+    adds = [];
     const text: string = editor.getValue();
     const folder = getFolder();
     for (const l of folderLists(text)) {
@@ -149,9 +156,12 @@ export function initFolderPickers(editor: CM, getFolder: () => GameFolder | null
       add.setAttribute('aria-haspopup', 'dialog');
       add.addEventListener('mousedown', (e) => e.preventDefault()); // keep the editor's selection
       add.addEventListener('click', () => openMenu(add, l));
+      adds.push({ from: l.open, to: l.close, el: add });
       marks.push(editor.setBookmark(editor.posFromIndex(l.close), { widget: add, insertLeft: true }));
     }
+    reveal();
   };
+  editor.on('cursorActivity', () => reveal());
   const place = (anchor: HTMLElement) => {
     if (!menu) return;
     const r = anchor.getBoundingClientRect();

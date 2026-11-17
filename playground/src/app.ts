@@ -1415,7 +1415,8 @@ function versionOf(text: string): string {
   return `${text.length}:${(h >>> 0).toString(36)}`;
 }
 const CREDIT_OFF = 'nucleus-workbench-credit-off';
-const creditOn = () => { try { return localStorage.getItem(CREDIT_OFF) !== '1'; } catch { return true; } };
+// '1' off, '0' on (chosen in Settings); not chosen: on in Guided mode, off for people who write code (Advanced).
+const creditOn = () => { try { const v = localStorage.getItem(CREDIT_OFF); return v === '1' ? false : v === '0' ? true : mode !== 'dev'; } catch { return mode !== 'dev'; } };
 /** The handler as it leaves the workbench: with the credit lines when it was made or changed here (credit.ts). */
 function exportText(): string {
   const text = editor.getValue();
@@ -1508,6 +1509,12 @@ function setNoneOpen(v: boolean) {
   if (homeOver) showHome(false);
   noneOpen = v;
   document.documentElement.classList.toggle('no-handler', v);
+  // Nothing to share or save: those buttons say so instead of looking ready.
+  document.querySelectorAll<HTMLButtonElement>('#share-open, .split-save .btn, .rail [data-rail=save], .rail [data-rail=share]').forEach((b) => {
+    b.disabled = v;
+    if (v) b.dataset.titleWas = b.title ?? '';
+    b.title = v ? 'Open or start a handler first' : b.dataset.titleWas ?? b.title;
+  });
   $('#nh-title').textContent = firstVisit ? 'Welcome to the workbench' : 'No handler open';
   try { if (v) localStorage.setItem(NONE_KEY, '1'); else localStorage.removeItem(NONE_KEY); } catch { /* ignore */ }
   const box = document.getElementById('no-handler');
@@ -2374,9 +2381,54 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
     format: () => formatDocument(),
     nextProblem: () => stepProblem(1),
     prevProblem: () => stepProblem(-1),
+    nextPane: () => cyclePane(1),
+    prevPane: () => cyclePane(-1),
+    goToCheck: () => goToCheck(),
   };
   run[id]?.();
 });
+
+// F6 / Shift+F6, as in VS Code: the header, the Files panel, the code (or Form/Blocks), Lines and the results, in turn.
+const FOCUSABLE = 'button:not([disabled]), a[href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
+function cyclePane(dir: 1 | -1) {
+  const panes = ['header', '#files-panel', '.main > .pane:not(.side)', '#lines', '.main > .pane.side']
+    .map((sel) => document.querySelector<HTMLElement>(sel))
+    .filter((p): p is HTMLElement => !!p && !p.hidden && p.offsetParent !== null && p.getClientRects().length > 0);
+  if (!panes.length) return;
+  const at = panes.findIndex((p) => p.contains(document.activeElement));
+  const next = panes[at < 0 ? 0 : (at + dir + panes.length) % panes.length];
+  if (next.matches('.pane:not(.side)') && viewMode === 'code') editor.focus();
+  else if (next.matches('.pane.side')) (next.querySelector<HTMLElement>('[role=tab][aria-selected=true]') ?? next.querySelector<HTMLElement>(FOCUSABLE))?.focus();
+  else next.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+  announce(next.getAttribute('aria-label') ?? (next.tagName === 'HEADER' ? 'Header' : 'Panel'));
+}
+/** Ctrl+Shift+M (VS Code's Problems) and the "Skip to Check" link: the problem list, its first problem focused. */
+function goToCheck() {
+  selectTab('problems');
+  requestAnimationFrame(() => (document.querySelector<HTMLElement>('#problems .problem') ?? document.querySelector<HTMLElement>('[data-tab=problems]'))?.focus());
+}
+document.querySelectorAll<HTMLElement>('[data-skip]').forEach((a) => a.addEventListener('click', (e) => {
+  e.preventDefault();
+  if (a.dataset.skip === 'check') goToCheck();
+  else if (viewMode === 'code') editor.focus();
+  else document.querySelector<HTMLElement>('.main > .pane:not(.side)')?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+}));
+// Double Shift, as in JetBrains: Open (examples, Hub handlers, commands). Settings › Keyboard shortcuts turns it off.
+{
+  const KEY = 'nucleus-workbench-double-shift';
+  let last = 0;
+  let clean = false;
+  document.addEventListener('keydown', (e) => { clean = e.key === 'Shift' && !e.repeat && !e.ctrlKey && !e.altKey && !e.metaKey; if (e.key !== 'Shift') last = 0; }, true);
+  document.addEventListener('keyup', (e) => {
+    if (e.key !== 'Shift' || !clean) return;
+    let on = true;
+    try { on = localStorage.getItem(KEY) !== '0'; } catch { /* default */ }
+    if (!on || (document.querySelector('dialog[open]') && !openDialog.open)) return void (last = 0);
+    const now = Date.now();
+    if (now - last < 400) { last = 0; togglePalette(false); }
+    else last = now;
+  }, true);
+}
 /** The shortcut list (?): from keybindings.ts, so it shows the keys as they're set now. */
 function renderHelpKeys() {
   const body = document.querySelector('#help-dialog table.keys tbody');
@@ -2633,7 +2685,7 @@ wireVotes((kind, _id, v, el) => {
 {
   const box = $('#set-credit') as HTMLInputElement;
   box.checked = creditOn();
-  box.addEventListener('change', () => { try { box.checked ? localStorage.removeItem(CREDIT_OFF) : localStorage.setItem(CREDIT_OFF, '1'); } catch { /* not kept */ } });
+  box.addEventListener('change', () => { try { localStorage.setItem(CREDIT_OFF, box.checked ? '0' : '1'); } catch { /* not kept */ } });
 }
 
 $('#set-build').textContent = `Build ${BUILD.bench ?? '?'}`;
