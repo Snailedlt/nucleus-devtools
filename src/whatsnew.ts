@@ -1,6 +1,6 @@
 // What's new: after the extension updates, one note with the highlights of this version's
 // CHANGELOG.md section and a button to read it all. Not on a first install; off with
-// splitscreenme.showWhatsNew. "SplitScreen.Me: What's New" opens the changelog any time, at the installed version.
+// splitscreenme.showWhatsNew. "Nucleus: What's New" opens the changelog any time, at the installed version.
 import * as vscode from 'vscode';
 import fs from 'node:fs';
 
@@ -62,7 +62,7 @@ export function registerWhatsNew(context: vscode.ExtensionContext) {
   try {
     list = highlights(fs.readFileSync(changelog().fsPath, 'utf8'), version);
   } catch {}
-  const text = `SplitScreen.Me handler tools updated to ${version}${list.length ? `: ${list.slice(0, 3).join(' · ')}${list.length > 3 ? ` (+${list.length - 3} more)` : ''}` : '.'}`;
+  const text = `Nucleus handler tools updated to ${version}${list.length ? `: ${list.slice(0, 3).join(' · ')}${list.length > 3 ? ` (+${list.length - 3} more)` : ''}` : '.'}`;
   void vscode.window.showInformationMessage(text, "What's new", "Don't show again").then((choice) => {
     if (choice === "What's new") open();
     else if (choice === "Don't show again") void vscode.workspace.getConfiguration('splitscreenme').update('showWhatsNew', false, vscode.ConfigurationTarget.Global);

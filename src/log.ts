@@ -1,9 +1,9 @@
-// The "SplitScreen.Me" output channel (View › Output), as Python and ESLint have theirs: what the extension did and
+// The "Nucleus" output channel (View › Output), as Python and ESLint have theirs: what the extension did and
 // what went wrong, so quiet results (nothing to fix, a file that can't be formatted yet) can go to the status bar
 // instead of a notification, and nothing is lost.
 import * as vscode from 'vscode';
 
-export const BRAND = 'SplitScreen.Me';
+export const BRAND = 'Nucleus';
 
 let channel: vscode.LogOutputChannel | undefined;
 function out(): vscode.LogOutputChannel | undefined {

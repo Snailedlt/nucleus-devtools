@@ -103,147 +103,147 @@
       {
         "command": "splitscreenme.whatsNew",
         "title": "What's New",
-        "category": "SplitScreen.Me"
+        "category": "Nucleus"
       },
       {
         "command": "splitscreenme.newHandler",
         "title": "New Handler…",
-        "category": "SplitScreen.Me"
+        "category": "Nucleus"
       },
       {
         "command": "splitscreenme.tryIt",
         "title": "Try It (Simulate Each Player)",
-        "category": "SplitScreen.Me",
+        "category": "Nucleus",
         "icon": "$(play)"
       },
       {
         "command": "splitscreenme.tryItSet",
         "title": "Try It: Change Settings",
-        "category": "SplitScreen.Me"
+        "category": "Nucleus"
       },
       {
         "command": "splitscreenme.tryItTestAll",
         "title": "Try It: Test All Combinations (Players, Input, Monitors)",
-        "category": "SplitScreen.Me"
+        "category": "Nucleus"
       },
       {
         "command": "splitscreenme.debugHandler",
         "title": "Debug Handler (Step Through, Simulated)",
-        "category": "SplitScreen.Me",
+        "category": "Nucleus",
         "icon": "$(debug-alt)"
       },
       {
         "command": "splitscreenme.explainLine",
         "title": "Explain This Line",
-        "category": "SplitScreen.Me"
+        "category": "Nucleus"
       },
       {
         "command": "splitscreenme.fixAll",
         "title": "Fix All Problems That Can Be Fixed",
-        "category": "SplitScreen.Me"
+        "category": "Nucleus"
       },
       {
         "command": "splitscreenme.formatHandler",
         "title": "Format Handler",
-        "category": "SplitScreen.Me"
+        "category": "Nucleus"
       },
       {
         "command": "splitscreenme.packageHandler",
         "title": "Package Handler for the Hub (.nc)",
-        "category": "SplitScreen.Me"
+        "category": "Nucleus"
       },
       {
         "command": "splitscreenme.installHandler",
         "title": "Install Handler into Nucleus Co-op",
-        "category": "SplitScreen.Me"
+        "category": "Nucleus"
       },
       {
         "command": "splitscreenme.testInNucleus",
         "title": "Test in Nucleus Co-op",
-        "category": "SplitScreen.Me",
+        "category": "Nucleus",
         "icon": "$(run-all)",
         "enablement": "!isWeb"
       },
       {
         "command": "splitscreenme.openNucleusLog",
         "title": "Open Nucleus Co-op's Debug Log",
-        "category": "SplitScreen.Me",
+        "category": "Nucleus",
         "enablement": "!isWeb"
       },
       {
         "command": "splitscreenme.browseHub",
         "title": "Browse Handlers on the Hub…",
-        "category": "SplitScreen.Me"
+        "category": "Nucleus"
       },
       {
         "command": "splitscreenme.setupTypes",
         "title": "Set Up Type Definitions (jsconfig.json + .d.ts)",
-        "category": "SplitScreen.Me"
+        "category": "Nucleus"
       },
       {
         "command": "splitscreenme.setupAgents",
         "title": "Set Up AI Agent Support (AGENTS.md, skill, CLI)",
-        "category": "SplitScreen.Me"
+        "category": "Nucleus"
       },
       {
         "command": "splitscreenme.lintWorkspace",
         "title": "Check All Handlers in the Workspace",
-        "category": "SplitScreen.Me"
+        "category": "Nucleus"
       },
       {
         "command": "splitscreenme.openDocs",
         "title": "Docs: Web Links…",
-        "category": "SplitScreen.Me"
+        "category": "Nucleus"
       },
       {
         "command": "splitscreenme.openInWorkbench",
         "title": "Open in the Browser Workbench",
-        "category": "SplitScreen.Me"
+        "category": "Nucleus"
       },
       {
         "command": "splitscreenme.linkGameFolder",
         "title": "Game Folder: Link…",
-        "category": "SplitScreen.Me"
+        "category": "Nucleus"
       },
       {
         "command": "splitscreenme.unlinkGameFolder",
         "title": "Game Folder: Unlink",
-        "category": "SplitScreen.Me"
+        "category": "Nucleus"
       },
       {
         "command": "splitscreenme.showDocs",
         "title": "Docs: Open (Every Option and Function)",
-        "category": "SplitScreen.Me"
+        "category": "Nucleus"
       },
       {
         "command": "splitscreenme.docsSearch",
         "title": "Docs: Search…",
-        "category": "SplitScreen.Me"
+        "category": "Nucleus"
       },
       {
         "command": "splitscreenme.docsBack",
         "title": "Docs: Back",
-        "category": "SplitScreen.Me"
+        "category": "Nucleus"
       },
       {
         "command": "splitscreenme.reportProblem",
         "title": "Report a Problem…",
-        "category": "SplitScreen.Me"
+        "category": "Nucleus"
       },
       {
         "command": "splitscreenme.requestFeature",
         "title": "Request a Feature…",
-        "category": "SplitScreen.Me"
+        "category": "Nucleus"
       },
       {
         "command": "splitscreenme.reportCheck",
         "title": "This Check Is Wrong…",
-        "category": "SplitScreen.Me"
+        "category": "Nucleus"
       },
       {
         "command": "splitscreenme.reportTryIt",
         "title": "Try It: Nucleus Did Something Different…",
-        "category": "SplitScreen.Me"
+        "category": "Nucleus"
       }
     ],
     "keybindings": [
@@ -421,7 +421,7 @@
             "default": "handler",
             "enumDescriptions": [
               "Handlers open as \"Nucleus Co-op handler\": JavaScript's colours, with only the handler's suggestions, hovers and checks. VS Code's own JavaScript suggestions (browser globals, newer methods Nucleus' engine doesn't have) stay out.",
-              "Handlers stay JavaScript, so VS Code's JavaScript and TypeScript features run on them too (for example \"// @ts-check\" with SplitScreen.Me: Set Up Type Definitions). Their suggestions mix in with the handler's."
+              "Handlers stay JavaScript, so VS Code's JavaScript and TypeScript features run on them too (for example \"// @ts-check\" with Nucleus: Set Up Type Definitions). Their suggestions mix in with the handler's."
             ],
             "markdownDescription": "The language mode Nucleus Co-op handlers open in. The language shows in the status bar; click it to switch one file.",
             "enumItemLabels": [
@@ -446,7 +446,7 @@
               "SplitScreen.Me"
             ],
             "default": true,
-            "description": "After an update of the Nucleus Co-op handler tools, show a short note with what's new (the full list is in SplitScreen.Me: What's New)."
+            "description": "After an update of the Nucleus Co-op handler tools, show a short note with what's new (the full list is in Nucleus: What's New)."
           }
         }
       },
@@ -492,7 +492,7 @@
             "additionalProperties": {
               "type": "string"
             },
-            "markdownDescription": "The game's install folder for each Nucleus Co-op handler (file name → folder), set by hand. **SplitScreen.Me: Game Folder: Link…** keeps its links on this PC instead (not in a settings file), and they come first. The handler is then checked against the real files (`ExecutableName`, `BinariesFolder`, the symlink and copy lists…), and those lists suggest the game's files. Only names and sizes are read; nothing leaves your PC."
+            "markdownDescription": "The game's install folder for each Nucleus Co-op handler (file name → folder), set by hand. **Nucleus: Game Folder: Link…** keeps its links on this PC instead (not in a settings file), and they come first. The handler is then checked against the real files (`ExecutableName`, `BinariesFolder`, the symlink and copy lists…), and those lists suggest the game's files. Only names and sizes are read; nothing leaves your PC."
           },
           "splitscreenme.lint.rules": {
             "type": "object",
@@ -1566,7 +1566,7 @@
         ],
         "configurationSnippets": [
           {
-            "label": "SplitScreen.Me: step through a Nucleus Co-op handler",
+            "label": "Nucleus: step through a Nucleus Co-op handler",
             "description": "Run the handler the way Nucleus does, simulated, and pause at breakpoints",
             "body": {
               "type": "nucleus",

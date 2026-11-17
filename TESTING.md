@@ -11,9 +11,9 @@ Thanks for helping. These tools are for people who write Nucleus Co-op handlers,
 ## What to try
 
 1. Open a handler you know well, ideally one that works in Nucleus. Look at every warning: is it right?
-2. Press the Run button (▷) in the editor title bar, or pick **Try It** in its menu (**SplitScreen.Me: Try It**). It shows what Nucleus would set up for each player: window, launch arguments, files it changes. Does that match what really happens?
-3. Run **SplitScreen.Me: Fix All Problems That Can Be Fixed** on a copy. Did it change anything it shouldn't have?
-4. Write something new with **SplitScreen.Me: New Handler…** and see how far completion and hover get you.
+2. Press the Run button (▷) in the editor title bar, or pick **Try It** in its menu (**Nucleus: Try It**). It shows what Nucleus would set up for each player: window, launch arguments, files it changes. Does that match what really happens?
+3. Run **Nucleus: Fix All Problems That Can Be Fixed** on a copy. Did it change anything it shouldn't have?
+4. Write something new with **Nucleus: New Handler…** and see how far completion and hover get you.
 
 ## What we want to hear
 

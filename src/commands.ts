@@ -29,7 +29,7 @@ export function registerCommands(context: vscode.ExtensionContext, host: Command
           await fn(...args);
         } catch (e: any) {
           log.error(id, e);
-          const pick = await vscode.window.showErrorMessage(`SplitScreen.Me: ${e?.message ?? e}`, 'Show Log');
+          const pick = await vscode.window.showErrorMessage(`Nucleus: ${e?.message ?? e}`, 'Show Log');
           if (pick) log.show();
         }
       }),
@@ -170,7 +170,7 @@ async function testHandlerInNucleus(context: vscode.ExtensionContext, uri?: vsco
   if (!nucleus) return;
   const status = nucleusStatus(nucleus);
   if (!status.canStart) {
-    vscode.window.showWarningMessage(`SplitScreen.Me: ${status.why}`);
+    vscode.window.showWarningMessage(`Nucleus: ${status.why}`);
     return;
   }
   if (status.running) {
@@ -397,7 +397,7 @@ async function openInWorkbench() {
 
 /** The old "Docs: Web Links…" (out of the palette; its id still works): the same links as the Docs panel's main page. */
 async function openDocs() {
-  const pick = await vscode.window.showQuickPick(webLinks(`${WORKBENCH_URL}?ref=vscode`).map((l) => ({ label: l.label, detail: l.url, url: l.url })), { title: 'SplitScreen.Me documentation' });
+  const pick = await vscode.window.showQuickPick(webLinks(`${WORKBENCH_URL}?ref=vscode`).map((l) => ({ label: l.label, detail: l.url, url: l.url })), { title: 'Nucleus Co-op handler documentation' });
   if (pick) vscode.env.openExternal(vscode.Uri.parse(pick.url));
 }
 

@@ -19,7 +19,7 @@ export function webLinks(workbenchUrl: string): { label: string; url: string }[]
     { label: 'Proto Input', url: 'https://www.splitscreen.me/docs/protoinput' },
     { label: 'FAQ', url: 'https://www.splitscreen.me/docs/faq' },
     { label: 'Nucleus Co-op docs (legacy)', url: 'https://nucleus-coop.github.io/docs/' },
-    { label: 'Browser workbench (SplitScreen.Me: Open in the Browser Workbench opens this handler there)', url: workbenchUrl },
+    { label: 'Browser workbench (Nucleus: Open in the Browser Workbench opens this handler there)', url: workbenchUrl },
     { label: 'Handler hub', url: 'https://hub.splitscreen.me/' },
     { label: 'Nucleus Co-op source code', url: 'https://github.com/SplitScreen-Me/splitscreenme-nucleus' },
     { label: 'PCGamingWiki (check input & multiplayer support)', url: 'https://www.pcgamingwiki.com/wiki/Home' },

@@ -17,7 +17,7 @@ How to write it (people and AI agents read this; the release workflow publishes 
 
 ### ✨ New
 
-- **Report from where you are.** *SplitScreen.Me: Report a Problem…* and *Request a Feature…* (Command Palette, the language status's *Feedback*, Notepad++'s plugin menu, `ncdev report`) open the right GitHub form, filled in with the versions and where the handler came from, never its code. You never pick a repository, and you see everything before it's sent.
+- **Report from where you are.** *Nucleus: Report a Problem…* and *Request a Feature…* (Command Palette, the language status's *Feedback*, Notepad++'s plugin menu, `ncdev report`) open the right GitHub form, filled in with the versions and where the handler came from, never its code. You never pick a repository, and you see everything before it's sent.
 - **"This check is wrong" on every problem.** Ctrl+. in VS Code, Alt+Enter in Notepad++, the code actions of other editors and `ncdev report --check <rule>` open a report with the check, the message and the line; the flagged lines' code only if you choose to include it.
 - **"Nucleus did something different" in Try it.** The Try it panel's report button sends what Try it showed (each player's window, arguments, file changes) next to what really happened.
 - **Possible duplicates first, and no account needed.** Before a new report, the tools show open reports that may be the same, to 👍 instead. No GitHub account? *Copy the report* and paste it in the testers' Discord thread. A problem with one Hub handler goes to its Hub page, Discord or Reddit instead of our forms.
@@ -27,7 +27,7 @@ How to write it (people and AI agents read this; the release workflow publishes 
 - **Vote on docs, people and AIs apart.** 👍/👎 on both parts of a doc (the doc and "In practice"). AI agents can vote too (`ncdev docs vote`, the MCP tool `nucleus_vote_doc`), counted apart; an AI-written part with at least 10 votes from people, 90% 👍, is labelled *Verified by people*. The docs show the counts.
 - **One Run button above a handler.** The editor title's Run button (▷) now holds *Test in Nucleus Co-op* (Windows), *Try It* and the new *Debug Handler*, as the Python extension does, instead of two separate ▷ icons. Debug steps through the handler, simulated, and pauses on its first line when it has no breakpoint.
 - **The handler's status beside its language.** Hover **{} Nucleus Co-op handler** in the status bar for its checks (the problem count, or OK) and its game folder, with *Link…* or *Unlink*, as TypeScript and Python show theirs. Nothing new sits on screen.
-- **A SplitScreen.Me output channel.** *View › Output › SplitScreen.Me* logs what the extension did (packaged, installed, linked, tested) and every error, with *Show Log* on error messages.
+- **A Nucleus output channel.** *View › Output › Nucleus* logs what the extension did (packaged, installed, linked, tested) and every error, with *Show Log* on error messages.
 - **Handlers have their own file icon.** Handler files show Nucleus Co-op's logo with a JS tag in the Explorer, tabs and breadcrumbs, so you can tell them from other JavaScript at a glance (and see when one wasn't detected). It shows with VS Code's default file icons; icon themes that pick icons by file extension, such as Material Icon Theme, keep their JavaScript icon.
   <details><summary>Screenshot</summary>
 
@@ -37,7 +37,7 @@ How to write it (people and AI agents read this; the release workflow publishes 
 
 ### 🛠️ Improved
 
-- **One name: SplitScreen.Me.** Commands are now under *SplitScreen.Me:* in the Command Palette (was *Nucleus:*), and Settings has the extension's settings in titled groups (General, Checks, Format, Nucleus Co-op) with readable choices (*JavaScript*, not `javascript`). Searching Settings for "nucleus" still finds them. Command ids, setting keys and keybindings stay the same, so nothing you set up breaks.
+- **Settings in titled groups.** Settings has the extension's settings in titled groups (General, Checks, Format, Nucleus Co-op) with readable choices (*JavaScript*, not `javascript`). Searching Settings for "nucleus" still finds them. Command ids, setting keys and keybindings stay the same, so nothing you set up breaks.
 - **Fewer pop-ups.** "Nothing to fix", "Fixed 3 problems", "Checked 12 handlers" and a handler that can't be formatted yet (with format on save, a syntax error used to warn on every save) now show briefly in the status bar and go to the output channel, not a notification.
 - **Game facts aren't problems.** With a game folder linked, facts such as *Your game: Unreal Engine* are hints (no squiggle, still in the hover and the language status); real mismatches stay problems.
 - **Try it, tidier and keyboard friendly.** Its explanation is folded into *How this works ⓘ*; Players, Keyboard & mouse and Monitor are real toggle buttons (screen readers hear which is pressed), and the focus stays on the button you clicked. *Try It: Test All Combinations* is in the Command Palette now.

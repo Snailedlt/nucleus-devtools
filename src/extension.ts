@@ -367,7 +367,7 @@ function rangeFormat(doc: vscode.TextDocument, start: number, end: number, opts:
  *  bar and the output channel, never a notification; the problem itself is underlined already. */
 function cantFormat(doc: vscode.TextDocument, why: string) {
   log.warn(`Format ${doc.uri.scheme === 'file' ? doc.uri.fsPath : 'Untitled'}: ${why}`);
-  vscode.window.setStatusBarMessage(`$(warning) SplitScreen.Me: not formatted: ${why}`, 5000);
+  vscode.window.setStatusBarMessage(`$(warning) Nucleus: not formatted: ${why}`, 5000);
 }
 
 function formatEdits(doc: vscode.TextDocument, opts: { insertSpaces: boolean; tabSize: number }): vscode.TextEdit[] {

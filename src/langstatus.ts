@@ -23,12 +23,12 @@ export function registerLanguageStatus(context: vscode.ExtensionContext, isHandl
   if (!create) return; // older VS Code (and the test mock without it)
   const base: vscode.DocumentFilter[] = [{ language: HANDLER_LANGUAGE }];
   const checks = create('splitscreenme.checks', base);
-  checks.name = 'SplitScreen.Me: Checks';
+  checks.name = 'Nucleus: Checks';
   const folder = create('splitscreenme.gameFolder', base);
-  folder.name = 'SplitScreen.Me: Game Folder';
+  folder.name = 'Nucleus: Game Folder';
   // Report a problem or ask for a feature: here with the handler's other status, only when the language is hovered.
   const report = create('splitscreenme.report', base);
-  report.name = 'SplitScreen.Me: Report';
+  report.name = 'Nucleus: Report';
   report.text = '$(comment-discussion) Feedback';
   report.detail = 'Something wrong, or missing?';
   report.command = { title: 'Report a problem…', command: 'splitscreenme.reportProblem', tooltip: 'Report a problem with the tools (a check, Try it, the editor)' };

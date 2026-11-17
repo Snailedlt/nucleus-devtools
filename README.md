@@ -77,31 +77,31 @@ One engine runs underneath all of them, so the checks, suggestions and docs are 
 
 1. Install the extension. Until it is on the Marketplace, download the `.vsix` from the [releases](https://github.com/Snailedlt/splitscreenme-vscode/releases) (or run `npm ci && npm run package`), then **Extensions: Install from VSIX…**. Testing it? See [TESTING.md](TESTING.md).
 2. Open the folder where you keep your handlers. Any `.js` file that sets `Game.GUID`, `Game.GameName`, `Game.ExecutableName` or `Game.Play`, or lives in a `handlers` folder, opens as **Nucleus Co-op handler** (shown in the status bar) and gets handler features. Other JavaScript files are left alone.
-3. Run **SplitScreen.Me: New Handler…** from the Command Palette, or type `handler` in an empty `.js` file. New to handlers? *Help › Welcome › Make a Nucleus Co-op handler* walks you through it.
+3. Run **Nucleus: New Handler…** from the Command Palette, or type `handler` in an empty `.js` file. New to handlers? *Help › Welcome › Make a Nucleus Co-op handler* walks you through it.
 
 ### Commands
 
 | Command | What it does |
 | --- | --- |
-| **SplitScreen.Me: New Handler…** | One guided flow (step 1 of 5, with Back): the game name, executable, Steam app ID, optional features and the folder to save in. Writes a ready-to-edit `<Name>.js` and its `<Name>/` folder (`Game.Folder`). |
-| **SplitScreen.Me: Try It (Simulate Each Player)** | Opens a panel beside the editor showing what Nucleus would set up for each player: window position and size, launch arguments, the settings files it changes, options Nucleus skips, and errors a player would hit. It updates as you type; pick 1–4 players, the keyboard & mouse player and the monitor size in the panel. Also in the Run button (▷) above a handler. **SplitScreen.Me: Try It: Test All Combinations** runs every player count, input setup and monitor size. See [Try it](#try-it). |
-| **SplitScreen.Me: Package Handler for the Hub (.nc)** | Zips `Game.js` as `handler.js`, plus the `Game/` asset folder next to it. Also available in the Explorer context menu. |
-| **SplitScreen.Me: Test in Nucleus Co-op** (the Run button ▷ above a handler, Windows) | Installs the handler and starts Nucleus Co-op with its game selected: pick the players and press Play. Restarts an open Nucleus (with your OK; it reads handlers when it starts) and offers to turn on its debug log once. **SplitScreen.Me: Open Nucleus Co-op's Debug Log** opens `debug-log.txt`. Also `ncdev test` and in Notepad++. |
-| **SplitScreen.Me: Install Handler into Nucleus Co-op** | Copies `Game.js` and `Game/` into `<Nucleus>/handlers/`. Asks for your Nucleus folder once (`splitscreenme.nucleusPath`). |
-| **SplitScreen.Me: Browse Handlers on the Hub…** | Searches hub.splitscreen.me; opens a handler's source or its Hub page. |
-| **SplitScreen.Me: Set Up Type Definitions** | Writes `.vscode/nucleus.d.ts` and a `jsconfig.json` (ES5 lib), then hands completion over to the TypeScript service and keeps the folder's handlers in JavaScript mode. Add `// @ts-check` to a handler for type errors. |
-| **SplitScreen.Me: Fix All Problems That Can Be Fixed** | Applies every safe fix to the open handler. To run it on save, add `"editor.codeActionsOnSave": { "source.fixAll.nucleus": "explicit" }`. |
-| **SplitScreen.Me: Check All Handlers in the Workspace** | Checks every handler in the workspace, not just open files. |
-| **SplitScreen.Me: Docs: Open (Every Option and Function)** | Opens the **Docs** beside the editor: every option and function with its docs, by group or by search (**SplitScreen.Me: Docs: Search…**), and on its main page the links to the guides, Proto Input, FAQ, Hub, PCGamingWiki and where to ask for help. API names in hovers, parameter hints and suggestions open their page here; *Open on the web* shows the same page in the browser. |
-| **SplitScreen.Me: Debug Handler** | Steps through the handler the way Nucleus Co-op runs it, simulated (also F5, and Debug in the Run button). Without a breakpoint it pauses on the first line. |
-| **SplitScreen.Me: Report a Problem…** / **Request a Feature…** | Opens the right GitHub form, filled in (versions, where the handler is from, never its code), after showing open reports that may be the same. No GitHub account? *Copy the report* and paste it in the testers' Discord thread. See [Reporting problems and asking for features](#reporting-problems-and-asking-for-features). |
-| **SplitScreen.Me: Open in the Browser Workbench** | The handler you're editing, in the [browser workbench](https://snailedlt.github.io/nucleuscoop-handler-testbench/?ref=vscode-readme-md) (its visual editor, Lines, Test all), through a share link. |
+| **Nucleus: New Handler…** | One guided flow (step 1 of 5, with Back): the game name, executable, Steam app ID, optional features and the folder to save in. Writes a ready-to-edit `<Name>.js` and its `<Name>/` folder (`Game.Folder`). |
+| **Nucleus: Try It (Simulate Each Player)** | Opens a panel beside the editor showing what Nucleus would set up for each player: window position and size, launch arguments, the settings files it changes, options Nucleus skips, and errors a player would hit. It updates as you type; pick 1–4 players, the keyboard & mouse player and the monitor size in the panel. Also in the Run button (▷) above a handler. **Nucleus: Try It: Test All Combinations** runs every player count, input setup and monitor size. See [Try it](#try-it). |
+| **Nucleus: Package Handler for the Hub (.nc)** | Zips `Game.js` as `handler.js`, plus the `Game/` asset folder next to it. Also available in the Explorer context menu. |
+| **Nucleus: Test in Nucleus Co-op** (the Run button ▷ above a handler, Windows) | Installs the handler and starts Nucleus Co-op with its game selected: pick the players and press Play. Restarts an open Nucleus (with your OK; it reads handlers when it starts) and offers to turn on its debug log once. **Nucleus: Open Nucleus Co-op's Debug Log** opens `debug-log.txt`. Also `ncdev test` and in Notepad++. |
+| **Nucleus: Install Handler into Nucleus Co-op** | Copies `Game.js` and `Game/` into `<Nucleus>/handlers/`. Asks for your Nucleus folder once (`splitscreenme.nucleusPath`). |
+| **Nucleus: Browse Handlers on the Hub…** | Searches hub.splitscreen.me; opens a handler's source or its Hub page. |
+| **Nucleus: Set Up Type Definitions** | Writes `.vscode/nucleus.d.ts` and a `jsconfig.json` (ES5 lib), then hands completion over to the TypeScript service and keeps the folder's handlers in JavaScript mode. Add `// @ts-check` to a handler for type errors. |
+| **Nucleus: Fix All Problems That Can Be Fixed** | Applies every safe fix to the open handler. To run it on save, add `"editor.codeActionsOnSave": { "source.fixAll.nucleus": "explicit" }`. |
+| **Nucleus: Check All Handlers in the Workspace** | Checks every handler in the workspace, not just open files. |
+| **Nucleus: Docs: Open (Every Option and Function)** | Opens the **Docs** beside the editor: every option and function with its docs, by group or by search (**Nucleus: Docs: Search…**), and on its main page the links to the guides, Proto Input, FAQ, Hub, PCGamingWiki and where to ask for help. API names in hovers, parameter hints and suggestions open their page here; *Open on the web* shows the same page in the browser. |
+| **Nucleus: Debug Handler** | Steps through the handler the way Nucleus Co-op runs it, simulated (also F5, and Debug in the Run button). Without a breakpoint it pauses on the first line. |
+| **Nucleus: Report a Problem…** / **Request a Feature…** | Opens the right GitHub form, filled in (versions, where the handler is from, never its code), after showing open reports that may be the same. No GitHub account? *Copy the report* and paste it in the testers' Discord thread. See [Reporting problems and asking for features](#reporting-problems-and-asking-for-features). |
+| **Nucleus: Open in the Browser Workbench** | The handler you're editing, in the [browser workbench](https://snailedlt.github.io/nucleuscoop-handler-testbench/?ref=vscode-readme-md) (its visual editor, Lines, Test all), through a share link. |
 
 On any problem, **Ctrl+.** (the light bulb) also has **This check is wrong (rule)…**, after the fixes, and the Try it panel's report button (*Nucleus did something different*) sends what Try it showed next to what really happened.
 
 Package and Install both refuse to continue if the handler has lint errors, unless you confirm.
 
-Hover the language in the status bar (**{} Nucleus Co-op handler**) for the handler's status: its checks (the problem count, or OK), its game folder, with *Link…* or *Unlink*, and *Feedback* (Report a problem…). What the extension did, and any error, goes to **View › Output › SplitScreen.Me**; quiet results such as "nothing to fix" show briefly in the status bar instead of a notification.
+Hover the language in the status bar (**{} Nucleus Co-op handler**) for the handler's status: its checks (the problem count, or OK), its game folder, with *Link…* or *Unlink*, and *Feedback* (Report a problem…). What the extension did, and any error, goes to **View › Output › Nucleus**; quiet results such as "nothing to fix" show briefly in the status bar instead of a notification.
 
 ### Handler asset folder
 
@@ -186,7 +186,7 @@ First run (2 runs per case per arm, $1.48): every case scored 1.00 with the plug
 
 ### Any agent, in your handler folder
 
-Run **SplitScreen.Me: Set Up AI Agent Support** in VS Code, or:
+Run **Nucleus: Set Up AI Agent Support** in VS Code, or:
 
 ```bash
 node path/to/nucleus.js init-agent .
@@ -294,10 +294,10 @@ The linter runs over the 150 most-downloaded handlers on the Hub with **no error
 | `splitscreenme.lint.packageChecks` | `true` | Check the files in the handler's `<Name>/` folder as they'd go into the .nc (Windows names, overwrites, broken INI/JSON, missing files). |
 | `splitscreenme.format.quotes` | `double` | Quotes when formatting: `double` (what the Hub install reads best), `single` or `keep`. A string containing the chosen quote keeps its own. |
 | `splitscreenme.format.semicolons` | `add` | Semicolons when formatting: `add` or `keep`. |
-| `splitscreenme.gameFolders` | `{}` | The game's install folder per handler (file name → folder), set by hand. **SplitScreen.Me: Game Folder: Link…** keeps its links on this PC instead, so no path ends up in a shared `.vscode/settings.json`. |
+| `splitscreenme.gameFolders` | `{}` | The game's install folder per handler (file name → folder), set by hand. **Nucleus: Game Folder: Link…** keeps its links on this PC instead, so no path ends up in a shared `.vscode/settings.json`. |
 | `splitscreenme.completion.enable` | `true` | The extension's completion/hover/signature help. Turned off by **Set Up Type Definitions**, because TypeScript then provides them. |
 | `splitscreenme.nucleusPath` | | Your Nucleus Co-op folder, used by Install. |
-| `splitscreenme.showWhatsNew` | `true` | After an update, a short note with what's new. **SplitScreen.Me: What's New** opens the changelog any time. |
+| `splitscreenme.showWhatsNew` | `true` | After an update, a short note with what's new. **Nucleus: What's New** opens the changelog any time. |
 
 ### Handler language mode
 
@@ -305,14 +305,14 @@ Handlers open in a language mode of their own, **Nucleus Co-op handler**. It use
 
 - Handler files get their own file icon, Nucleus Co-op's logo with a JS tag, in the Explorer, tabs and breadcrumbs. It shows with VS Code's default file icons (Seti) and icon themes that don't claim `.js` files themselves; Material Icon Theme and vscode-icons pick an icon by file extension first, so there a handler keeps their JavaScript icon (the status bar still says **Nucleus Co-op handler**). The status bar shows the mode. Click it to switch one file back to JavaScript; that file stays JavaScript for the session.
 - `"splitscreenme.languageMode": "javascript"` keeps all handlers as JavaScript.
-- **SplitScreen.Me: Set Up Type Definitions** sets that for its folder, because `// @ts-check` needs the TypeScript service.
+- **Nucleus: Set Up Type Definitions** sets that for its folder, because `// @ts-check` needs the TypeScript service.
 - Formatters, linters, snippets and keybindings you set up for `javascript` (Prettier, ESLint, …) don't apply to handler files. Add `nucleus-handler` to their languages, or use JavaScript mode. The extension's own formatter, snippets and debugger work in both.
 
 **What the Hub sees.** The Hub's handler list comes from our daily copy on GitHub, checked at most once an hour; hub.splitscreen.me is asked only when that copy is missing or out of date, and each package is downloaded once per version. Every request says it comes from these devtools, which tool and which feature sent it (`User-Agent: SplitScreenMe-DevTools/0.7.0 (ncdev-cli; hub-search; +https://github.com/Snailedlt/splitscreenme-vscode)` and the same in `X-Requested-With`), and nothing else: no search text, file names, code, user or computer names.
 
 ## Try it
 
-**SplitScreen.Me: Try It** and `ncdev simulate` load the handler and run `Game.Play` once per player, the way Nucleus does, without Nucleus or the game. They emulate the rules of Nucleus' engine (Jint 2.11.58): unknown options are skipped, only the first letter of a name is case-insensitive, list and enum values are converted the same way, wrong argument counts throw, and ES2015+ built-ins such as `.includes()` fail. The emulation is checked against the real engine: it predicts the same outcome on all 121 probes of the [testbench](https://github.com/Snailedlt/nucleuscoop-handler-testbench), launch arguments included.
+**Nucleus: Try It** and `ncdev simulate` load the handler and run `Game.Play` once per player, the way Nucleus does, without Nucleus or the game. They emulate the rules of Nucleus' engine (Jint 2.11.58): unknown options are skipped, only the first letter of a name is case-insensitive, list and enum values are converted the same way, wrong argument counts throw, and ES2015+ built-ins such as `.includes()` fail. The emulation is checked against the real engine: it predicts the same outcome on all 121 probes of the [testbench](https://github.com/Snailedlt/nucleuscoop-handler-testbench), launch arguments included.
 
 It also follows Nucleus' session flow: an error in `Game.Play` ends the session (later players are never set up), `Game.OnFinishedSetup` and `Game.OnStop` run with the last player's `Context`, `Game.GamePlayAfterLaunch` makes `Context.StartArguments` irrelevant, and paths (`Context.ExePath`, `GetFolder`, ...) depend on `Game.SymlinkGame`/`HardcopyGame`/`HardlinkGame` and `Game.BinariesFolder` as in Nucleus. Plugin globals listed in the handler folder's `pluginsInfo.txt` record their calls.
 

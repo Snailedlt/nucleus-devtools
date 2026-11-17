@@ -59,10 +59,10 @@ test('package.json rule settings match the linter rules', () => {
   assert.deepEqual(Object.keys(props['splitscreenme.lint.rules'].properties).sort(), Object.keys(RULES).sort());
 });
 
-test('one name everywhere: the SplitScreen.Me category, settings in titled groups with readable labels', () => {
+test('one name everywhere: the Nucleus category, settings in titled groups with readable labels', () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
   for (const c of pkg.contributes.commands) {
-    assert.equal(c.category, 'SplitScreen.Me', c.command);
+    assert.equal(c.category, 'Nucleus', c.command);
     assert.match(c.command, /^splitscreenme\./, 'command ids stay as they are (keybindings)');
   }
   const groups = pkg.contributes.configuration;
@@ -78,8 +78,8 @@ test('one name everywhere: the SplitScreen.Me category, settings in titled group
     assert.match(`${key} ${p.description ?? p.markdownDescription}`, /nucleus/i, key);
   }
   assert.equal(props['splitscreenme.languageMode'].enumItemLabels[1], 'JavaScript');
-  // Nothing user-facing says "Nucleus:" as if it were the tool's name.
-  for (const f of ['README.md', 'PORTING.md', 'TESTING.md', 'package.json']) assert.doesNotMatch(fs.readFileSync(path.join(__dirname, '..', f), 'utf8'), /\*\*Nucleus: |"Nucleus: |Nucleus: (What's New|Set Up|Game Folder|Try It|Fix All|New Handler)/, f);
+  // The commands are Nucleus's (the tools are Nucleus Co-op tools under the SplitScreen.Me umbrella, AGENTS.md).
+  for (const f of ['README.md', 'PORTING.md', 'TESTING.md', 'package.json']) assert.doesNotMatch(fs.readFileSync(path.join(__dirname, '..', f), 'utf8'), /SplitScreen\.Me: (What's New|Set Up|Game Folder|Try It|Fix All|New Handler|Report)/, f);
 });
 
 test('handler detection', () => {
@@ -306,7 +306,7 @@ test("Link the Game's Folder keeps the link on this PC, never in a settings file
   assert.deepEqual(m.__configWrites, [], 'no settings file is written');
   await run('splitscreenme.unlinkGameFolder');
   assert.deepEqual(state.get('splitscreenme.gameFolders'), {});
-  assert.match(m.window.__status.at(-1)!, /^SplitScreen\.Me: unlinked Game\.js/);
+  assert.match(m.window.__status.at(-1)!, /^Nucleus: unlinked Game\.js/);
   await run('splitscreenme.unlinkGameFolder');
   assert.match(m.window.__status.at(-1)!, /isn't linked/);
   assert.deepEqual(m.__configWrites, [], 'unlinking nothing writes nothing');
@@ -394,11 +394,11 @@ test('quiet results: a handler that can\'t be formatted, and Fix all with nothin
   try {
     const doc = m.makeDocument(HEADER + 'var s = "abc;\n'); // an unterminated string, as while typing
     assert.deepEqual(m.__registered.formatting[0].provideDocumentFormattingEdits(doc, { insertSpaces: true, tabSize: 2 }), []);
-    assert.match(m.window.__status.at(-1)!, /SplitScreen\.Me: not formatted/);
+    assert.match(m.window.__status.at(-1)!, /Nucleus: not formatted/);
     assert.ok(m.__log.some((l) => /^warn Format /.test(l)));
     m.window.activeTextEditor = { document: m.makeDocument(HEADER) };
     await m.__registered.commands.find((c: any) => c.id === 'splitscreenme.fixAll').fn();
-    assert.match(m.window.__status.at(-1)!, /^SplitScreen\.Me: nothing to fix/);
+    assert.match(m.window.__status.at(-1)!, /^Nucleus: nothing to fix/);
   } finally {
     win.showWarningMessage = warn; win.showInformationMessage = info;
     m.window.activeTextEditor = undefined;
