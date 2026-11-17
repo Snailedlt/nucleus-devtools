@@ -15,6 +15,7 @@ import { publishedNow } from './published';
 import { checkPackage, type PkgProblem } from './core/pkgcheck';
 import { gameFolderDiagnostics, registerGameFolders } from './gamefolders';
 import { registerDebugger } from './debugvscode';
+import { registerHandlerFiles } from './handlerfiles';
 import { forgetPackageFiles, packageFileForPath, packageFilesFor, packageFilePath } from './pkgfiles';
 
 const SOURCE = 'nucleus';
@@ -265,6 +266,7 @@ export function activate(context: vscode.ExtensionContext) {
   registerGameFolders(context, isHandler, SELECTOR, (d) => refresh(d, 0));
   registerHandlerMode(context, isHandler);
   registerDebugger(context, isHandler);
+  registerHandlerFiles(context, (p, text) => isHandlerFile(p, text, config().get<'auto' | 'always' | 'off'>('detection', 'auto')), isHandler);
 
   registerCommands(context, {
     lintFiles: (entries) => {

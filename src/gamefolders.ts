@@ -10,13 +10,18 @@ import { RULES_URL } from './core/features';
 export { readGameFolder };
 
 const SETTING = 'gameFolders';
+/** Links made with the command: this PC's own state (by the handler's full path), never a settings file, so a
+ *  path on your PC doesn't end up in a shared `.vscode/settings.json`. The setting (by file name) still works. */
+const STATE = 'splitscreenme.gameFolders';
+let store: vscode.Memento | undefined;
+const linksOf = (): Record<string, string> => store?.get<Record<string, string>>(STATE) ?? {};
 
 const keyOf = (doc: vscode.TextDocument) => path.basename(doc.uri.fsPath);
-/** The game folder linked to this handler (by its file name), if any. */
+const settingMap = (doc: vscode.TextDocument) => vscode.workspace.getConfiguration('splitscreenme', doc.uri).get<Record<string, string>>(SETTING) ?? {};
+/** The game folder linked to this handler, if any: by the command (this PC), else the setting (by file name). */
 export function linkedFolder(doc: vscode.TextDocument): string | undefined {
   if (doc.uri.scheme !== 'file') return undefined;
-  const map = vscode.workspace.getConfiguration('splitscreenme', doc.uri).get<Record<string, string>>(SETTING) ?? {};
-  return map[keyOf(doc)];
+  return linksOf()[doc.uri.fsPath] ?? settingMap(doc)[keyOf(doc)];
 }
 
 const fixOf = new WeakMap<vscode.Diagnostic, FolderFix>();
@@ -36,12 +41,33 @@ export function gameFolderDiagnostics(doc: vscode.TextDocument, source: string, 
 }
 
 export function registerGameFolders(context: vscode.ExtensionContext, isHandler: (d: vscode.TextDocument) => boolean, selector: vscode.DocumentSelector, recheck: (d: vscode.TextDocument) => void) {
-  const save = async (doc: vscode.TextDocument, dir: string | undefined) => {
-    const cfg = vscode.workspace.getConfiguration('splitscreenme', doc.uri);
-    const map = { ...(cfg.get<Record<string, string>>(SETTING) ?? {}) };
-    if (dir) map[keyOf(doc)] = dir;
-    else delete map[keyOf(doc)];
-    await cfg.update(SETTING, map, vscode.workspace.workspaceFolders?.length && vscode.workspace.isTrusted !== false ? vscode.ConfigurationTarget.Workspace : vscode.ConfigurationTarget.Global);
+  store = context.globalState;
+  /** Links (or, with no folder, unlinks) the handler. Returns whether anything was linked before. */
+  const save = async (doc: vscode.TextDocument, dir: string | undefined): Promise<boolean> => {
+    const links = { ...linksOf() };
+    let had = doc.uri.fsPath in links;
+    if (dir) links[doc.uri.fsPath] = dir;
+    else delete links[doc.uri.fsPath];
+    await store!.update(STATE, links);
+    // A link in the setting from an older version (or set by hand): unlinking removes it from where it is, and
+    // only then is a settings file written.
+    if (!dir) {
+      const cfg = vscode.workspace.getConfiguration('splitscreenme', doc.uri);
+      const info = cfg.inspect<Record<string, string>>(SETTING);
+      const targets: [Record<string, string> | undefined, vscode.ConfigurationTarget][] = [
+        [info?.workspaceFolderValue, vscode.ConfigurationTarget.WorkspaceFolder],
+        [info?.workspaceValue, vscode.ConfigurationTarget.Workspace],
+        [info?.globalValue, vscode.ConfigurationTarget.Global],
+      ];
+      for (const [map, target] of targets) {
+        if (!map || !(keyOf(doc) in map)) continue;
+        const next = { ...map };
+        delete next[keyOf(doc)];
+        await cfg.update(SETTING, next, target);
+        had = true;
+      }
+    }
+    return had;
   };
   const active = () => {
     const doc = vscode.window.activeTextEditor?.document;
@@ -73,8 +99,9 @@ export function registerGameFolders(context: vscode.ExtensionContext, isHandler:
     vscode.commands.registerCommand('splitscreenme.unlinkGameFolder', async () => {
       const doc = active();
       if (!doc) return;
-      await save(doc, undefined);
+      const had = await save(doc, undefined);
       recheck(doc);
+      vscode.window.setStatusBarMessage(had ? `Unlinked ${keyOf(doc)} from its game's folder.` : `${keyOf(doc)} isn't linked to a game's folder.`, 4000);
     }),
     // Fixes for the folder problems (e.g. the exe's real name, BinariesFolder set to where the exe is).
     vscode.languages.registerCodeActionsProvider(selector, {

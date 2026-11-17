@@ -245,12 +245,12 @@
       "explorer/context": [
         {
           "command": "splitscreenme.packageHandler",
-          "when": "resourceExtname == .js",
+          "when": "resourcePath in splitscreenme.handlerFiles",
           "group": "nucleus@1"
         },
         {
           "command": "splitscreenme.installHandler",
-          "when": "resourceExtname == .js && !isWeb",
+          "when": "resourcePath in splitscreenme.handlerFiles && !isWeb",
           "group": "nucleus@2"
         }
       ],
@@ -276,8 +276,40 @@
           "when": "false"
         },
         {
+          "command": "splitscreenme.tryIt",
+          "when": "splitscreenme.isHandler || activeWebviewPanelId == 'splitscreenme.tryIt'"
+        },
+        {
+          "command": "splitscreenme.explainLine",
+          "when": "splitscreenme.isHandler"
+        },
+        {
+          "command": "splitscreenme.fixAll",
+          "when": "splitscreenme.isHandler"
+        },
+        {
+          "command": "splitscreenme.formatHandler",
+          "when": "splitscreenme.isHandler"
+        },
+        {
+          "command": "splitscreenme.packageHandler",
+          "when": "splitscreenme.isHandler"
+        },
+        {
           "command": "splitscreenme.installHandler",
-          "when": "!isWeb"
+          "when": "splitscreenme.isHandler && !isWeb"
+        },
+        {
+          "command": "splitscreenme.testInNucleus",
+          "when": "splitscreenme.isHandler && !isWeb"
+        },
+        {
+          "command": "splitscreenme.linkGameFolder",
+          "when": "splitscreenme.isHandler && !isWeb"
+        },
+        {
+          "command": "splitscreenme.unlinkGameFolder",
+          "when": "splitscreenme.isHandler && !isWeb"
         },
         {
           "command": "splitscreenme.setupAgents",
@@ -386,7 +418,7 @@
           "additionalProperties": {
             "type": "string"
           },
-          "markdownDescription": "The game's install folder for each handler (file name → folder), set with **Nucleus: Link the Game's Folder…**. The handler is then checked against the real files (`ExecutableName`, `BinariesFolder`, the symlink and copy lists…), and those lists suggest the game's files. Only names and sizes are read; nothing leaves your PC."
+          "markdownDescription": "The game's install folder for each handler (file name → folder), set by hand. **Nucleus: Link the Game's Folder…** keeps its links on this PC instead (not in a settings file), and they come first. The handler is then checked against the real files (`ExecutableName`, `BinariesFolder`, the symlink and copy lists…), and those lists suggest the game's files. Only names and sizes are read; nothing leaves your PC."
         },
         "splitscreenme.lint.rules": {
           "type": "object",

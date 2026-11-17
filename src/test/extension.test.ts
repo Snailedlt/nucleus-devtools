@@ -247,3 +247,27 @@ test('Fix all counts the problems it leaves: package and game-folder ones, and t
   assert.equal(problemsBesideLint(handler as any, all, [json as any]), 2);
   assert.equal(problemsBesideLint(handler as any, all, []), 1);
 });
+
+test("Link the Game's Folder keeps the link on this PC, never in a settings file; Unlink says what it did", async () => {
+  const state = new Map<string, unknown>();
+  const globalState = { get: (k: string) => state.get(k), update: async (k: string, v: unknown) => void state.set(k, v), keys: () => [...state.keys()] };
+  activate({ subscriptions: [], globalState } as any);
+  const game = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'game-'));
+  fs.writeFileSync(path.join(game, 'a.exe'), 'x');
+  const doc = m.makeDocument(HEADER, path.join(game, 'Game.js'));
+  m.window.activeTextEditor = { document: doc };
+  const run = (id: string) => [...m.__registered.commands].reverse().find((c) => c.id === id)!.fn();
+  m.__configWrites.length = 0;
+  m.window.__openDialog = [m.Uri.file(game)];
+  await run('splitscreenme.linkGameFolder');
+  assert.deepEqual(state.get('splitscreenme.gameFolders'), { [doc.uri.fsPath]: game });
+  assert.deepEqual(m.__configWrites, [], 'no settings file is written');
+  await run('splitscreenme.unlinkGameFolder');
+  assert.deepEqual(state.get('splitscreenme.gameFolders'), {});
+  assert.match(m.window.__status.at(-1)!, /^Unlinked Game\.js/);
+  await run('splitscreenme.unlinkGameFolder');
+  assert.match(m.window.__status.at(-1)!, /isn't linked/);
+  assert.deepEqual(m.__configWrites, [], 'unlinking nothing writes nothing');
+  m.window.activeTextEditor = undefined;
+  fs.rmSync(game, { recursive: true, force: true });
+});

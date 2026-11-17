@@ -105,12 +105,12 @@ export class SignatureHelp {
   activeParameter = 0;
 }
 export class Uri {
-  constructor(public fsPath: string) {}
+  constructor(public fsPath: string, public scheme = /^[a-z][\w+.-]+:/i.test(fsPath) ? fsPath.split(':')[0] : 'file') {}
   static parse(s: string) {
     return new Uri(s);
   }
   static file(s: string) {
-    return new Uri(s);
+    return new Uri(s, 'file');
   }
   toString() {
     return this.fsPath;
@@ -168,9 +168,12 @@ export const workspace = {
   createFileSystemWatcher: () => ({ onDidCreate: () => disposable, onDidChange: () => disposable, onDidDelete: () => disposable, dispose() {} }),
   getConfiguration: (section: string) => ({
     get: (key: string, def?: any) => (`${section}.${key}` in __config ? __config[`${section}.${key}`] : def),
-    update: async () => {},
+    inspect: (key: string) => (`${section}.${key}` in __config ? { workspaceValue: __config[`${section}.${key}`] } : undefined),
+    update: async (key: string, value: any, target?: number) => void __configWrites.push({ key: `${section}.${key}`, value, target }),
   }),
 };
+/** Settings the extension wrote (getConfiguration().update). */
+export const __configWrites: { key: string; value: any; target?: number }[] = [];
 export const commands = {
   registerCommand: (id: string, fn: any) => (__registered.commands.push({ id, fn }), disposable),
   executeCommand: async () => {},
@@ -193,6 +196,10 @@ export const window = {
   showErrorMessage: async () => undefined,
   showWarningMessage: async () => undefined,
   showInformationMessage: async () => undefined,
+  __openDialog: undefined as any,
+  showOpenDialog: async () => window.__openDialog,
+  __status: [] as string[],
+  setStatusBarMessage: (text: string) => (window.__status.push(text), disposable),
   __progress: [] as { message?: string }[],
   withProgress: async (_o: unknown, task: (p: { report(v: { message?: string }): void }, t: { isCancellationRequested: boolean; onCancellationRequested(f: () => void): unknown }) => Promise<unknown>) =>
     task({ report: (v) => window.__progress.push(v) }, { isCancellationRequested: false, onCancellationRequested: () => disposable }),

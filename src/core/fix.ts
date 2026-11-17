@@ -12,14 +12,19 @@ export interface FixAllResult {
   applied: AppliedFix[];
   /** Problems still present after fixing (errors and warnings). */
   remaining: Diagnostic[];
+  /** Harmless cleanups (lines that do nothing) still fixable in `code`: those `cleanups: false` left alone. */
+  cleanups: number;
 }
+
+/** A harmless problem whose fix only removes something that does nothing (tagged `unnecessary`). */
+export const isCleanup = (d: Diagnostic) => !!d.tags?.includes('unnecessary') && d.severity !== 'error';
 
 /**
  * Applies the preferred fix of each diagnostic. Fixes whose edits overlap an
  * already chosen fix wait for the next pass (the code is re-linted in between),
  * so nested problems (an arrow inside an arrow) resolve over several passes.
  */
-export function fixAll(text: string, options: LintOptions & { maxPasses?: number } = {}): FixAllResult {
+export function fixAll(text: string, options: LintOptions & { maxPasses?: number; /** Also apply harmless cleanups (default true). */ cleanups?: boolean } = {}): FixAllResult {
   let code = text;
   const applied: AppliedFix[] = [];
   for (let pass = 0; pass < (options.maxPasses ?? 10); pass++) {
@@ -31,6 +36,7 @@ export function fixAll(text: string, options: LintOptions & { maxPasses?: number
     for (const d of diags) {
       const fix = d.fixes?.find((f) => f.preferred);
       if (!fix) continue;
+      if (options.cleanups === false && isCleanup(d)) continue;
       const key = JSON.stringify(fix.edits);
       if (seen.has(key)) continue; // the same fix offered by several diagnostics
       if (fix.edits.some(overlaps)) continue;
@@ -41,5 +47,11 @@ export function fixAll(text: string, options: LintOptions & { maxPasses?: number
     if (!chosen.length) break;
     for (const e of [...chosen].sort((a, b) => b.start - a.start || b.end - a.end)) code = code.slice(0, e.start) + e.text + code.slice(e.end);
   }
-  return { code, applied, remaining: lint(code, options).filter((d) => d.severity === 'error' || d.severity === 'warning') };
+  const after = lint(code, options);
+  return {
+    code,
+    applied,
+    remaining: after.filter((d) => d.severity === 'error' || d.severity === 'warning'),
+    cleanups: after.filter((d) => isCleanup(d) && d.fixes?.some((f) => f.preferred)).length,
+  };
 }

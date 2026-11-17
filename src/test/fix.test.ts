@@ -116,3 +116,13 @@ test('Fix all never applies behaviour-changing fixes', () => {
   // missing required options need the author's values
   assert.equal(fixAll('Game.MaxPlayers = 4;\n').code, 'Game.MaxPlayers = 4;\n');
 });
+
+test('cleanups: false leaves harmless lines that do nothing, and counts them', () => {
+  const src = HEADER + 'Game.Play = function () {\n  Player.ProtoController5 = 0;\n  Player.ProtoController6 = 0;\n};\n';
+  const r = fixAll(src, { cleanups: false });
+  assert.equal(r.code, src);
+  assert.equal(r.cleanups, 2);
+  const all = fixAll(src);
+  assert.doesNotMatch(all.code, /ProtoController5/);
+  assert.equal(all.cleanups, 0);
+});
