@@ -13,7 +13,8 @@ export function runDocReview(args: { github: any; context: any; docs: Record<str
 export const DETAILS: string;
 export const DETAILS_OLD: string;
 export const FIXED_MARKER: string;
+export function deliveredIssues(text: string, repo: string): { n: number; kind: 'fixed' | 'added' }[];
 export function fixedIssueNumbers(text: string, repo: string): number[];
-export function fixedComment(args: { tag: string; url: string; reporter?: string; owner?: string }): string;
+export function fixedComment(args: { tag: string; url: string; reporter?: string; owner?: string; kind?: 'fixed' | 'added' }): string;
 export function runFixedComments(args: { github: any; context: any; tag: string; url: string; notes: string; commits?: string[]; core?: any }): Promise<number[]>;
 export function commitsSincePrevious(args: { github: any; context: any; tag: string; prefix?: string }): Promise<string[]>;
