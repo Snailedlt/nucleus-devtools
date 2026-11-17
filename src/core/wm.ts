@@ -30,12 +30,14 @@ export function blockTarget(id: number): BlockTarget {
   return { kind: 'other', name: ename.split(' / ')[0], sharedWith: eid };
 }
 
-/** The ones handlers block, most used first (in Hub handlers, 2026-11-06: 270 of 600 block some), with what they mean. */
+/** How many Hub handlers the `hub` counts below come from: every one on the Hub (2026-11-16: 486 of 898 block some). */
+export const WM_HUB_SAMPLE = 898;
+/** The ones handlers block, most used first, with what they mean; `hub`: how many of the WM_HUB_SAMPLE Hub handlers block it. */
 export const COMMON_MESSAGES: { id: number; name: string; meaning: string; hub: number }[] = [
-  { id: 0x0008, name: 'WM_KILLFOCUS', meaning: 'The window lost keyboard focus. Blocked so a game keeps playing (and listening) when another player\'s window gets focus.', hub: 265 },
-  { id: 0x02a1, name: 'WM_MOUSEHOVER', meaning: 'The mouse rested over the window. Blocked so games don\'t react to the one real cursor moving over every window.', hub: 83 },
-  { id: 0x02a3, name: 'WM_MOUSELEAVE', meaning: 'The mouse left the window. Blocked so a game doesn\'t pause or drop input when the real cursor moves to another player\'s window.', hub: 82 },
-  { id: 0x0006, name: 'WM_ACTIVATE', meaning: 'The window was activated or deactivated. Blocked so a game doesn\'t pause or mute when it loses the foreground.', hub: 10 },
+  { id: 0x0008, name: 'WM_KILLFOCUS', meaning: 'The window lost keyboard focus. Blocked so a game keeps playing (and listening) when another player\'s window gets focus.', hub: 486 },
+  { id: 0x02a1, name: 'WM_MOUSEHOVER', meaning: 'The mouse rested over the window. Blocked so games don\'t react to the one real cursor moving over every window.', hub: 162 },
+  { id: 0x02a3, name: 'WM_MOUSELEAVE', meaning: 'The mouse left the window. Blocked so a game doesn\'t pause or drop input when the real cursor moves to another player\'s window.', hub: 161 },
+  { id: 0x0006, name: 'WM_ACTIVATE', meaning: 'The window was activated or deactivated. Blocked so a game doesn\'t pause or mute when it loses the foreground.', hub: 11 },
   { id: 0x0007, name: 'WM_SETFOCUS', meaning: 'The window got keyboard focus. Rarely blocked; some games reset their input when it arrives.', hub: 1 },
   { id: 0x0086, name: 'WM_NCACTIVATE', meaning: 'The title bar is drawn as active or inactive. Blocked for games that pause on it.', hub: 1 },
   { id: 0x001c, name: 'WM_ACTIVATEAPP', meaning: 'Another program\'s window became active. Games often pause or mute on it. (Game.ProtoInput.WindowActvateAppFilter handles it too.)', hub: 0 },
@@ -71,7 +73,7 @@ export function messageMarkdown(id: number): string {
   const t = blockTarget(id), common = COMMON_MESSAGES.find((m) => m.id === id);
   const head = t.kind === 'ok' ? `**${t.name}** (${hex(id)}, ${id})` : `**${hex(id)}** (${id})`;
   const what = common ? common.meaning : t.kind === 'ok' ? 'A window message Proto Input can block.' : '';
-  const hub = common?.hub ? ` Blocked by ${common.hub} of the 600 most-starred Hub handlers.` : '';
+  const hub = common?.hub ? ` Blocked by ${common.hub} of the ${WM_HUB_SAMPLE} Hub handlers.` : '';
   const warn = t.kind === 'out' ? 'Past the end of Proto Input\'s message list: blocking it does nothing.' : t.kind === 'other' ? `Not in Proto Input's message list: blocking it switches on the block for ${t.name} (${hex(t.sharedWith)}) instead.` : '';
   return [head, [what, hub].join('').trim(), warn, 'Blocked only with `Game.ProtoInput.MessageFilterHook = true`.'].filter(Boolean).join('\n\n');
 }

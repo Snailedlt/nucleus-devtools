@@ -3,6 +3,7 @@
 !dist/cli.js
 !types/nucleus.d.ts
 !snippets/**
+!syntaxes/**
 !media/icon.png
 !package.json
 !README.md
