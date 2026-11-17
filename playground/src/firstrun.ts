@@ -9,12 +9,14 @@ export interface FirstRunDeps {
   setMode: (m: 'simple' | 'dev') => void;
   layout: () => 'bar' | 'rail';
   setLayout: (l: 'bar' | 'rail') => void;
-  /** After the choice (or skip): what to show next. */
-  done: (exp: Experience | null) => void;
+  /** After the choice (or skip): what to show next. `first`: the questions were the first-visit ones (not reopened
+   *  from Settings or Getting started); `layout`: the layout chosen with "Let's go". */
+  done: (exp: Experience | null, info: { first: boolean; layout?: 'bar' | 'rail' }) => void;
 }
 export const firstRunDone = () => { try { return localStorage.getItem(KEY) !== null; } catch { return true; } };
 
 export function initFirstRun(dlg: HTMLDialogElement, d: FirstRunDeps) {
+  let first = false; // set when the dialog opens: was this the first visit's questions?
   const mark = (v: string) => { try { localStorage.setItem(KEY, v); } catch { /* not kept */ } };
   const render = () => {
     const dev = d.mode() === 'dev', rail = d.layout() === 'rail';
@@ -38,15 +40,15 @@ export function initFirstRun(dlg: HTMLDialogElement, d: FirstRunDeps) {
   };
   dlg.setAttribute('aria-labelledby', 'fr-h');
   dlg.addEventListener('close', () => {
-    if (dlg.returnValue !== 'go') { if (!firstRunDone()) mark('skipped'); return void d.done(null); }
+    if (dlg.returnValue !== 'go') { if (!firstRunDone()) mark('skipped'); return void d.done(null, { first }); }
     const exp = (dlg.querySelector<HTMLInputElement>('input[name=fr-exp]:checked')?.value ?? 'guided') as Experience;
     const lay = (dlg.querySelector<HTMLInputElement>('input[name=fr-lay]:checked')?.value ?? 'bar') as 'bar' | 'rail';
     d.setMode(exp === 'developer' ? 'dev' : 'simple');
     d.setLayout(lay);
     mark(exp);
-    d.done(exp);
+    d.done(exp, { first, layout: lay });
   });
-  const open = () => { render(); dlg.returnValue = ''; if (!dlg.open) dlg.showModal(); dlg.querySelector<HTMLInputElement>('input:checked')?.focus(); };
+  const open = () => { first = !firstRunDone(); render(); dlg.returnValue = ''; if (!dlg.open) dlg.showModal(); dlg.querySelector<HTMLInputElement>('input:checked')?.focus(); };
   document.addEventListener('open-firstrun', open);
   return { open };
 }
