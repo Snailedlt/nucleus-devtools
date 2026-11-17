@@ -5,16 +5,16 @@ Tooling for writing [Nucleus Co-op](https://github.com/SplitScreen-Me/splitscree
 > **Beta, testers wanted.** Intro, screenshots and a 5-minute install: **https://snailedlt.github.io/nucleuscoop-handler-testbench/start/?ref=vscode-readme-md**
 
 <p>
-  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/vscode-problems-dark.png"><img src="docs/images/vscode-problems-light.png" width="49%" alt="VS Code: a handler with common mistakes, each underlined, and the Problems panel explaining every one"></picture>
-  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/vscode-try-it-dark.png"><img src="docs/images/vscode-try-it-light.png" width="49%" alt="VS Code: the Try it panel beside StardewValley.js, showing what Nucleus would set up for each of 4 players"></picture>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/gallery/vscode-problems-quickfix-dark.webp"><img src="docs/images/gallery/vscode-problems-quickfix-light.webp" width="49%" alt="VS Code: a handler with common mistakes, each underlined, the Problems panel explaining every one, and the quick fix that wraps Game.KillMutex's value in an array"></picture>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/gallery/vscode-try-it-dark.webp"><img src="docs/images/gallery/vscode-try-it-light.webp" width="49%" alt="VS Code: the Try it panel beside Risk of Rain 2, a verified Hub handler, showing what Nucleus would set up for each of 4 players"></picture>
 </p>
 <p>
-  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/vscode-hover-dark.png"><img src="docs/images/vscode-hover-light.png" width="32%" alt="VS Code: hovering Player.ProtoController5 in Skyrim Together Reborn explains that Nucleus and Proto Input take at most four controllers"></picture>
-  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/vscode-completion-dark.png"><img src="docs/images/vscode-completion-light.png" width="32%" alt="VS Code: completion after Game.Hook. lists the real options with their types"></picture>
-  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/vscode-quickfix-dark.png"><img src="docs/images/vscode-quickfix-light.png" width="32%" alt="VS Code: the quick fix that wraps Game.KillMutex's value in an array"></picture>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/gallery/vscode-hover-docs-dark.webp"><img src="docs/images/gallery/vscode-hover-docs-light.webp" width="32%" alt="VS Code: hovering Context.ReplaceLinesInTextFile shows both overloads and what to pass"></picture>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/gallery/vscode-completion-dark.webp"><img src="docs/images/gallery/vscode-completion-light.webp" width="32%" alt="VS Code: suggestions after Game.Hook. list the real options, with the selected one's docs beside the list"></picture>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/gallery/vscode-debugger-dark.webp"><img src="docs/images/gallery/vscode-debugger-light.webp" width="32%" alt="VS Code: Run and Debug paused at a breakpoint in Game.Play, with the handler's variables for player 1"></picture>
 </p>
 
-*Problems, the **Try it** panel, hover, completion and quick fixes, in VS Code (the status bar shows the handler's own language mode, **Nucleus Co-op handler**). The same checks run in the [browser workbench](https://snailedlt.github.io/nucleuscoop-handler-testbench/?ref=vscode-readme-md). Testing it? See [TESTING.md](TESTING.md).*
+*Problems and quick fixes, the **Try it** panel, hover, completion and the debugger, in VS Code (the status bar shows the handler's own language mode, **Nucleus Co-op handler**). The same checks run in the [browser workbench](https://snailedlt.github.io/nucleuscoop-handler-testbench/?ref=vscode-readme-md). Testing it? See [TESTING.md](TESTING.md).*
 
 **In motion** (a minute or two each, captioned, no sound; click to play):
 
@@ -362,6 +362,11 @@ ncdev setup notepad++
 ```
 
 A portable Notepad++ needs no permission: add `--path "C:\path\to\Notepad++"`.
+
+<p>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/gallery/notepadpp-panels-dark.webp"><img src="docs/images/gallery/notepadpp-panels-light.webp" width="49%" alt="Notepad++: a handler with common mistakes underlined, the Problems panel listing each with why, and the Outline panel"></picture>
+  <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/gallery/notepadpp-menu-dark.webp"><img src="docs/images/gallery/notepadpp-menu-light.webp" width="49%" alt="Notepad++: the Plugins › Nucleus Co-op handlers menu, with Try it, Fix all, the panels, the Hub and Test in Nucleus Co-op"></picture>
+</p>
 
 This installs the **Nucleus Co-op handlers** plugin and puts `ncdev` in `%LOCALAPPDATA%\ncdev`, where the plugin finds it. In a handler:
 

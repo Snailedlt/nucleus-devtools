@@ -67,6 +67,7 @@ Run `npm test` and `npm run typecheck` before finishing. Run `npm run build` aft
 - `scripts/issue-bots.mjs`: the issue bots (`doc-review.yml`, `report-details.yml` call it). `src/test/bots.test.ts` checks them on real issue bodies and against the forms in `.github/ISSUE_TEMPLATE/`; rename a form field and that test fails. The details checksum must match the workbench's (`playground/src/checksum.ts` there; both test the same block).
 - `scripts/generate-api.mjs`: builds the API model from the Nucleus C# sources + splitscreen.me docs.
 - `plugin/`: the Claude Code plugin (`.claude-plugin/plugin.json`, `skills/nucleus-handler/`). `.claude-plugin/marketplace.json` at the root publishes it.
+- `docs/images/gallery/`: the VS Code and Notepad++ screenshots, one set per view (`<tool>-<view>-{light,dark}.webp`), shown by the README and by the workbench's start page gallery (its build copies them from this repo's `main`, like `docs/videos/`, and stops if one is missing). Retake a view in place, light (Light Modern) and dark (Dark Modern); don't add separate copies.
 - `.coderabbit.yaml`: CodeRabbit's pull request reviews. It reads this file and the skill's docs as guidelines; its `path_instructions` repeat the rules above per folder (core, rules, format, sandbox, Hub, adapters), so change them together. The Nucleus source reaches it through the DeepWiki MCP server, connected in CodeRabbit's web app. [CODERABBIT.md](CODERABBIT.md) has the web app's setup.
 
 ## Docs written by Claude
