@@ -4,7 +4,9 @@ name: Sync with Nucleus and the docs
 # both, regenerate the API model, docs and skill files, test, and open (or update) a pull request with
 # the diff, so new or changed options show up for review instead of silently. The same pull request carries
 # the docs' vote counts (data/doc-votes.json, which make "Verified by people" labels) and the Hub handlers' usage
-# (data/hub-examples.json: the docs' Hub examples and counts), both from the testbench's data branch.
+# (data/hub-examples.json: the docs' Hub examples and counts) with each handler's game engine (data/hub-engines.json,
+# from the cached Wikidata answers in data/wikidata-engines.json: no Wikidata query here), all from the testbench's
+# data branch.
 # Needs: Settings > Actions > General > "Allow GitHub Actions to create and approve pull requests".
 on:
   schedule:
@@ -47,10 +49,11 @@ jobs:
           node scripts/doc-votes.mjs || echo "::warning::No votes report: data/doc-votes.json stays."
           if git clone -q --depth 1 --branch data --filter=blob:none https://github.com/Snailedlt/nucleuscoop-handler-testbench.git ../hubdata; then
             npm ci --ignore-scripts --no-audit --no-fund >/dev/null
+            node scripts/hub-engines.mjs --hub ../hubdata || echo "::warning::hub-engines failed: data/hub-engines.json stays."
             node scripts/hub-examples.mjs --hub ../hubdata || echo "::warning::hub-examples failed: data/hub-examples.json stays."
           fi
-          # Only the date moved in hub-examples.json: nothing to review.
-          if git diff --numstat -- data/hub-examples.json | awk '{ if ($1 > 1) found=1 } END { exit !found }' || ! git diff --quiet -- data/doc-votes.json; then echo "changed=true" >> "$GITHUB_OUTPUT"; else git checkout -- data/hub-examples.json; echo "changed=false" >> "$GITHUB_OUTPUT"; fi
+          # Only the date moved in hub-examples.json and hub-engines.json: nothing to review.
+          if git diff --numstat -- data/hub-examples.json data/hub-engines.json | awk '{ if ($1 > 1) found=1 } END { exit !found }' || ! git diff --quiet -- data/doc-votes.json; then echo "changed=true" >> "$GITHUB_OUTPUT"; else git checkout -- data/hub-examples.json data/hub-engines.json; echo "changed=false" >> "$GITHUB_OUTPUT"; fi
       - if: steps.check.outputs.changed == 'true' || steps.data.outputs.changed == 'true'
         uses: actions/setup-node@v4
         with:

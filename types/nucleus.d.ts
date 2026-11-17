@@ -92,6 +92,8 @@ interface Game {
   Debug: boolean;
   /**
    * Chooses whether or not to automatically move the windows around to fit in the right spaces.
+   *
+   * By engine: Source games 47% of 32 handlers (all Hub handlers 10%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.SupportsPositioning = true; (The most common value in Hub handlers: 67 of the 87 that set it.)
    */
   SupportsPositioning: boolean;
@@ -118,6 +120,8 @@ interface Game {
    *
    * In practice: Lets one player use the ordinary keyboard and mouse (the one Windows already uses), which the setup screen then offers. It's the single-keyboard option: few Hub handlers combine it with `Game.SupportsMultipleKeyboardsAndMice` (5 of the 209 that set it true).
    * (AI-written, based on Nucleus DevicesFunctions.cs (if Game.SupportsKeyboard: the keyboard player), InputIcons.cs; verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: Unity games 19% of 203 handlers (all Hub handlers 42%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.SupportsKeyboard = true;
    */
   SupportsKeyboard: boolean;
@@ -131,6 +135,8 @@ interface Game {
    *
    * In practice: Files or folders that must exist next to the game's executable (paths relative to its folder) for this handler to match it, when the player adds a game or Nucleus searches the disks. It tells apart games that share an executable name (hl2.exe, game.exe): the most common entry in Hub handlers is `["binkw32.dll"]` (30 of 409).
    * (AI-written, based on Nucleus GameManager.cs (the ExecutableContext check: File.Exists or Directory.Exists for each entry); verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: Unreal Engine games 21% of 223 handlers (all Hub handlers 45%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.ExecutableContext = ["data"]; (AI-written example)
    */
   ExecutableContext: string[];
@@ -202,8 +208,10 @@ interface Game {
   /**
    * In which folder the game exe is located? Relative path to where Nucleus should start the game's working folder to.
    *
-   * In practice: Where the executable sits inside the game folder ("bin", "Binaries\\Win64"). Nucleus takes it off the executable's folder to find the game's root, so the whole game is linked into each instance, not only the executable's folder. 70 of the 371 Hub handlers that set it leave it empty; "bin" (25) and "Binaries\\Win32" (16) come next.
-   * (AI-written, based on Nucleus GenericGameHandler.cs (rootFolder = the exe folder with gen.BinariesFolder replaced, or StringUtil.GetRootFromBinariesFolder with BinariesFolderPathFix); verified Hub handlers, counted 2026-11-17.)
+   * In practice: Where the executable sits inside the game folder ("bin", "Binaries\\Win64"). Nucleus takes it off the executable's folder to find the game's root, so the whole game is linked into each instance, not only the executable's folder. 70 of the 371 Hub handlers that set it leave it empty; "bin" (25) and "Binaries\\Win32" (16) come next. Unreal Engine games' handlers nearly all set it: 198 of 223 to the project's "Binaries\\Win64" (or "Binaries\\Win32"), older Unreal games' to "System".
+   * (AI-written, based on Nucleus GenericGameHandler.cs (rootFolder = the exe folder with gen.BinariesFolder replaced, or StringUtil.GetRootFromBinariesFolder with BinariesFolderPathFix); verified Hub handlers, counted 2026-11-17; Unreal Engine games from data/hub-engines.json.)
+   *
+   * By engine: Unreal Engine games 100% of 223 handlers, Unity games 8% of 203 handlers, Source games 9% of 32 handlers (all Hub handlers 41%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.BinariesFolder = "Bin";
    */
   BinariesFolder: string;
@@ -216,11 +224,15 @@ interface Game {
    *
    * In practice: Nucleus starts a thread that keeps sending focus messages (WM_ACTIVATE, WM_ACTIVATEAPP, WM_SETFOCUS, ...) to every instance's window, so games that pause in the background keep running. `Game.FakeFocusInterval` sets how often; 153 of the 259 Hub handlers that set it true set one too (5000 and 10000 ms are common).
    * (AI-written, based on Nucleus GenericGameHandler.cs (if gen.FakeFocus: WindowFakeFocus.SendFocusMsgs thread), WindowFakeFocus.cs; verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: Unreal Engine games 16% of 223 handlers (all Hub handlers 37%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.FakeFocus = true;
    */
   FakeFocus: boolean;
   /**
    * The milliseconds between sending fake focus messages. Default at 1000, some rare games need this to be very low.
+   *
+   * By engine: Source games 0% of 32 handlers, Unreal Engine games 2% of 223 handlers (all Hub handlers 19%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @default 1000
    * @example Game.FakeFocusInterval = 1000;
    */
@@ -234,6 +246,8 @@ interface Game {
   /**
    * Sends focus messages once to every player's game window, one second apart, after the last instance has started, to make each game believe it has focus. `Game.FakeFocusSendActivate` adds the activate message. Not run with `Game.ProcessChangesAtEnd`.
    * (AI-written, based on Nucleus GenericGameHandler.cs (last-instance block), WindowFakeFocus.cs (SendFakeFocusMsg). Not from the official docs.)
+   *
+   * By engine: Source games 0% of 32 handlers, Unreal Engine games 1% of 223 handlers (all Hub handlers 19%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.SendFakeFocusMsg = true; (The most common value in Hub handlers: 164 of the 172 that set it.)
    */
   SendFakeFocusMsg: boolean;
@@ -259,6 +273,8 @@ interface Game {
    *
    * In practice: Adds a question Nucleus asks before the session (usually a list to pick from), at the top level of the handler. The answer is in `Context.Options["<key>"]` inside `Game.Play`, as text when it comes from a saved profile. 334 Hub handlers ask at least one, often a resolution, an FPS cap or which instances get sound.
    * (AI-written, based on Nucleus GenericGameInfo.cs (AddOption), GameProfile.LoadGameProfile (saved answers come back as text); verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: Unity games 16% of 203 handlers (all Hub handlers 37%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @param name Title of the option shown to the player in Nucleus' options list. (AI-written)
    * @param desc Description shown under the title. (AI-written)
    * @param key Name the handler reads the chosen value with: Context.Options[key]. (AI-written)
@@ -273,6 +289,8 @@ interface Game {
    *
    * In practice: Adds a question Nucleus asks before the session (usually a list to pick from), at the top level of the handler. The answer is in `Context.Options["<key>"]` inside `Game.Play`, as text when it comes from a saved profile. 334 Hub handlers ask at least one, often a resolution, an FPS cap or which instances get sound.
    * (AI-written, based on Nucleus GenericGameInfo.cs (AddOption), GameProfile.LoadGameProfile (saved answers come back as text); verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: Unity games 16% of 203 handlers (all Hub handlers 37%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @param name Title of the option shown to the player in Nucleus' options list. (AI-written)
    * @param desc Description shown under the title. (AI-written)
    * @param key Name the handler reads the chosen value with: Context.Options[key]. (AI-written)
@@ -287,6 +305,8 @@ interface Game {
   IsUpdateAvailable(fetch: boolean): boolean;
   /**
    * Relative path to where Nucleus should start the game's working folder to. Example: The main executable is on the root directory (left4dead2.exe), but the game expects to be started with a working folder of 'bin' (all the game's libraries are there).
+   *
+   * By engine: Source games 38% of 32 handlers (all Hub handlers 2%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.WorkingFolder = ""; (The most common value in Hub handlers: 12 of the 14 that set it.)
    */
   WorkingFolder: string;
@@ -302,19 +322,25 @@ interface Game {
   /**
    * Array of mutexes to kill before starting the next game process. A 'Mutex/Mutant' is a mutually exclusive flag, which basically tells the game not to allow multiple instances of its program.
    *
-   * In practice: Before it starts the second and later instances, Nucleus closes these named handles in the instance before (mutexes by default; `Game.KillMutexType` picks events, semaphores or sections), because many games refuse to start while another copy holds one. `Game.RenameNotKillMutex` renames them at startup instead. 248 Hub handlers list some; find the names with a tool such as Process Explorer while the game runs.
-   * (AI-written, based on Nucleus GenericGameHandler.cs (the mutex kill before the next instance), ProcessUtil.cs; verified Hub handlers, counted 2026-11-17.)
+   * In practice: Before it starts the second and later instances, Nucleus closes these named handles in the instance before (mutexes by default; `Game.KillMutexType` picks events, semaphores or sections), because many games refuse to start while another copy holds one. `Game.RenameNotKillMutex` renames them at startup instead. 248 Hub handlers list some; find the names with a tool such as Process Explorer while the game runs. Source games share one: 27 of the 32 Source handlers kill `hl2_singleton_mutex`.
+   * (AI-written, based on Nucleus GenericGameHandler.cs (the mutex kill before the next instance), ProcessUtil.cs; verified Hub handlers, counted 2026-11-17; Source games from data/hub-engines.json.)
+   *
+   * By engine: Source games 94% of 32 handlers, Unity games 3% of 203 handlers (all Hub handlers 28%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.KillMutex = ["GameMutexName"]; (AI-written example)
    */
   KillMutex: string[];
   /**
    * Specify the type of mutex/handle to kill, for example "Mutant", "Event" or "Semaphore" | default: "Mutant".
+   *
+   * By engine: Source games 31% of 32 handlers (all Hub handlers 2%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @default "Mutant"
    * @example Game.KillMutexType = "Mutant";
    */
   KillMutexType: string;
   /**
    * \# of seconds to wait before killing the mutex | Only works with killing not renaming | default: 0.
+   *
+   * By engine: Source games 31% of 32 handlers (all Hub handlers 1%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.KillMutexDelay = 10;
    */
   KillMutexDelay: number;
@@ -369,6 +395,8 @@ interface Game {
   LockMouse: boolean;
   /**
    * Path to the game handler folder (Nucleus-Coop\handlers\handler_folder).
+   *
+   * By engine: Source games 84% of 32 handlers (all Hub handlers 26%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.Folder
    */
   Folder: string;
@@ -377,6 +405,8 @@ interface Game {
    *
    * In practice: Nucleus injects its hooks into each instance after launch so the game is told it is the foreground window (GetForegroundWindow and the like), even when it isn't. 210 Hub handlers set it true; 87 of them use `Game.FakeFocus` with it.
    * (AI-written, based on Nucleus GenericGameHandler.cs (post-launch hooks when gen.HookFocus), DllsInjector.cs (Hook GetForegroundWindow); verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: Unity games 4% of 203 handlers (all Hub handlers 32%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.HookFocus = true;
    */
   HookFocus: boolean;
@@ -415,6 +445,8 @@ interface Game {
    *
    * In practice: Nucleus normally only accepts a game window whose title is within 2 letters of `Game.Hook.ForceFocusWindowName`. True turns that check off, for games whose title changes (a version number, the level name, the FPS). 251 of the 266 Hub handlers that set it use true.
    * (AI-written, based on Nucleus GlobalWindowMethods.cs (UpdateAndRefreshGameWindows: ComputeLevenshteinDistance > 2 && !HasDynamicWindowTitle); verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: Source games 9% of 32 handlers (all Hub handlers 30%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.HasDynamicWindowTitle = false;
    */
   HasDynamicWindowTitle: boolean;
@@ -439,6 +471,8 @@ interface Game {
   CopyFiles: string[];
   /**
    * Prevent games from resizing their windows on their own | Hooks after all instances have been opened (see Game.SetWindowHookStart for an alternative).
+   *
+   * By engine: Source games 3% of 32 handlers (all Hub handlers 25%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.SetWindowHook = true;
    */
   SetWindowHook: boolean;
@@ -452,6 +486,8 @@ interface Game {
   HideTaskbar: boolean;
   /**
    * Prompt the user with a messagebox to let the user decide when to open the next instance | default: false, PauseBetweenStarts STILL required.
+   *
+   * By engine: Source games 47% of 32 handlers (all Hub handlers 17%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.PromptBetweenInstances = true;
    */
   PromptBetweenInstances: boolean;
@@ -462,6 +498,8 @@ interface Game {
   HideCursor: boolean;
   /**
    * Instead of killing the mutex or handle, rename it on startup to something else | Requires Game.KillMutex to contain the EXACT name of the handles for this to work (no partial).
+   *
+   * By engine: Source games 47% of 32 handlers (all Hub handlers 3%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.RenameNotKillMutex = true;
    */
   RenameNotKillMutex: boolean;
@@ -497,11 +535,15 @@ interface Game {
    *
    * In practice: As each new instance starts, Nucleus puts the window of the one before it back to its place and size (and strips its borders again), for games that move or resize their window when another copy starts. 421 of 450 Hub handlers that set it use true.
    * (AI-written, based on Nucleus GenericGameHandler.cs (if i > 0 && gen.ResetWindows), GlobalWindowMethods.ResetWindows; verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: Source games 13% of 32 handlers (all Hub handlers 50%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.ResetWindows = false;
    */
   ResetWindows: boolean;
   /**
    * When killing handles, should a partial search be done with the handle name? | Renaming handles requires an exact match | default: false.
+   *
+   * By engine: Source games 31% of 32 handlers (all Hub handlers 2%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.PartialMutexSearch = false;
    */
   PartialMutexSearch: boolean;
@@ -598,6 +640,8 @@ interface Game {
   PlayersPerInstance: number;
   /**
    * Set up Devreorder.
+   *
+   * By engine: Source games 31% of 32 handlers (all Hub handlers 2%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.UseDevReorder = true;
    */
   UseDevReorder: boolean;
@@ -613,6 +657,8 @@ interface Game {
   HexEditExe: string[];
   /**
    * Disable raw input devices in game | default: false.
+   *
+   * By engine: Unity games 43% of 203 handlers (all Hub handlers 10%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.BlockRawInput = false;
    */
   BlockRawInput: boolean;
@@ -663,6 +709,8 @@ interface Game {
   HardlinkGame: boolean;
   /**
    * Set the foreground window to be something other than game windows.
+   *
+   * By engine: Source games 0% of 32 handlers (all Hub handlers 28%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.SetForegroundWindowElsewhere = false;
    */
   SetForegroundWindowElsewhere: boolean;
@@ -681,6 +729,8 @@ interface Game {
   SymlinkFolders: boolean;
   /**
    * Create a steam_appid.txt file where the game executable is.
+   *
+   * By engine: Source games 69% of 32 handlers (all Hub handlers 21%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.CreateSteamAppIdByExe = false;
    */
   CreateSteamAppIdByExe: boolean;
@@ -734,6 +784,8 @@ interface Game {
    *
    * In practice: Gives each instance its own user profile folders (AppData, Documents) under Nucleus' folder, by changing the environment the game starts with. The handler's `Game.UserProfileConfigPath`, `Game.UserProfileSavePath` and `Game.DocumentsConfigPath`/`DocumentsSavePath` are only copied there when it is true. 359 of the 487 Hub handlers that set it true also set `Game.UserProfileSavePath`.
    * (AI-written, based on Nucleus GenericGameHandler.cs (the UserProfile/Documents copies need gen.UseNucleusEnvironment; the instance's environment); verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: Unity games 26% of 203 handlers, Source games 28% of 32 handlers (all Hub handlers 56%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.UseNucleusEnvironment = false;
    */
   UseNucleusEnvironment: boolean;
@@ -784,6 +836,8 @@ interface Game {
   KeyboardPlayerSkipFakeFocus: boolean;
   /**
    * Relative path from user profile (e.g. C:\Users\ZeroFox) to game's config path | Used to provide some extra functionality (open/delete/copy over to Nucleus Environment).
+   *
+   * By engine: Source games 0% of 32 handlers, Unity games 17% of 203 handlers (all Hub handlers 37%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.UserProfileConfigPath = "AppData\\Local\\Game\\Config";
    */
   UserProfileConfigPath: string;
@@ -792,6 +846,8 @@ interface Game {
    *
    * In practice: A folder inside the user's profile (relative, e.g. `AppData\\Roaming\\Game`) that Nucleus copies into each instance's own profile when `Game.UseNucleusEnvironment` is on, so every instance starts with the player's saves and keeps its own afterwards. Without UseNucleusEnvironment it isn't copied.
    * (AI-written, based on Nucleus GenericGameHandler.cs (UserProfileSaveCopy needs gen.UseNucleusEnvironment), NucleusUsers.cs (UserProfileSaveCopy); verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: Source games 25% of 32 handlers (all Hub handlers 59%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.UserProfileSavePath = "AppData\\Local\\Game\\Saves";
    */
   UserProfileSavePath: string;
@@ -928,6 +984,8 @@ interface Game {
    *
    * In practice: Once an instance's window is placed, Nucleus minimises it and restores it again (ShowWindow 6, then 9). The source says it fixes black borders in some games (Minecraft) but can stretch others. 252 of 268 Hub handlers that set it use true.
    * (AI-written, based on Nucleus GlobalWindowMethods.cs (UpdateAndRefreshGameWindows), WindowMerger.cs; verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: Unreal Engine games 63% of 223 handlers, Source games 0% of 32 handlers (all Hub handlers 31%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @default false
    * @example Game.RefreshWindowAfterStart = false;
    */
@@ -1014,6 +1072,8 @@ interface Game {
   LauncherExeIgnoreFileCheck: boolean;
   /**
    * This prompts user one time and applies to ALL players, unless a value text file already exists and saving is on.
+   *
+   * By engine: Source games 19% of 32 handlers (all Hub handlers 1%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.CustomUserGeneralPrompts = ["Enter ROM name", "Enter filename"];
    */
   CustomUserGeneralPrompts: string[];
@@ -1040,6 +1100,8 @@ interface Game {
    */
   SaveCustomUserInstanceValues: boolean;
   /**
+   *
+   * By engine: Source games 19% of 32 handlers (all Hub handlers 1%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.SaveAndEditCustomUserGeneralValues = false;
    */
   SaveAndEditCustomUserGeneralValues: boolean;
@@ -1079,6 +1141,8 @@ interface Game {
   ExtWindowStyleEndChanges: string[];
   /**
    * Setup wizark952's dinput blocker (block dinput for the game).
+   *
+   * By engine: Source games 22% of 32 handlers (all Hub handlers 5%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.UseDInputBlocker = false;
    */
   UseDInputBlocker: boolean;
@@ -1667,6 +1731,8 @@ interface GameHook {
   DInputEnabled: boolean;
   /**
    * If we should completely remove support for DirectInput input from the game
+   *
+   * By engine: Source games 50% of 32 handlers, Unity games 5% of 203 handlers (all Hub handlers 21%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.Hook.DInputForceDisable = true;
    */
   DInputForceDisable: boolean;
@@ -1753,6 +1819,8 @@ interface GameHook {
   FixPosition: boolean;
   /**
    * Use the xinput custom dll from Alpha 8 instead of Alpha 10 | Will still force alpha 10 custom dll if game is x64.
+   *
+   * By engine: Source games 34% of 32 handlers (all Hub handlers 8%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @default false
    * @example Game.Hook.UseAlpha8CustomDll = false;
    */
@@ -1966,6 +2034,8 @@ interface GameProtoInput {
   ClipCursorHook: boolean;
   /**
    * Prevents the game from setting a bounding region about the mouse cursor. Some games will repeatedly clip the cursor when they receive the fake focus, so this should almost always be enabled. Fake clip means that if the game tries to clip (i.e. bound) the real cursor, it will bound the fake cursor instead.
+   *
+   * By engine: Source games 0% of 32 handlers (all Hub handlers 38%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.ProtoInput.ClipCursorHookCreatesFakeClip = true;
    */
   ClipCursorHookCreatesFakeClip: boolean;
@@ -1996,6 +2066,8 @@ interface GameProtoInput {
   DinputDeviceHook: boolean;
   /**
    * Prevents the game from calling SetWindowPos to resposition and resize the game window, instead forcing it to the resolution set by Nucleus. This will usually require using startup hooks.
+   *
+   * By engine: Unreal Engine games 32% of 223 handlers (all Hub handlers 14%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.ProtoInput.SetWindowPosHook = true;
    */
   SetWindowPosHook: Nucleus.SetWindowPosHook | number | boolean;
@@ -2016,6 +2088,8 @@ interface GameProtoInput {
   CreateSingleHIDHook: boolean;
   /**
    * Hooks SetWindowLong and SetWindowLongPtr to prevent the game from re-adding a title bar after Nucleus has stripped it.
+   *
+   * By engine: Unreal Engine games 34% of 223 handlers (all Hub handlers 13%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.ProtoInput.SetWindowStyleHook = true;
    */
   SetWindowStyleHook: boolean;
@@ -2135,6 +2209,8 @@ interface GameProtoInput {
   /**
    * Milliseconds Proto Input's focus loop waits between rounds of focus messages to the game window. Default `5`. Only read when `Game.ProtoInput.EnableFocusMessageLoop` is on and Proto Input is injected (`Game.ProtoInput.InjectStartup` or an `InjectRuntime_…` option).
    * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → StartFocusMessageLoop), ProtoInputOptions.cs; ProtoInputHooks FocusMessageLoop.cpp (LoopThread). Not from the official docs.)
+   *
+   * By engine: Source games 6% of 32 handlers (all Hub handlers 29%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @default 5
    * @example Game.ProtoInput.FocusLoopIntervalMilliseconds = 5;
    */
@@ -2142,18 +2218,24 @@ interface GameProtoInput {
   /**
    * Proto Input's focus loop repeatedly tells the game window it was activated by a click (WM_ACTIVATE), so it believes it still has focus. Only read when `Game.ProtoInput.EnableFocusMessageLoop` is on and Proto Input is injected (`Game.ProtoInput.InjectStartup` or an `InjectRuntime_…` option).
    * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → StartFocusMessageLoop); ProtoInputHooks FocusMessageLoop.cpp (LoopThread). Not from the official docs.)
+   *
+   * By engine: Source games 3% of 32 handlers (all Hub handlers 27%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.ProtoInput.FocusLoop_WM_ACTIVATE = true;
    */
   FocusLoop_WM_ACTIVATE: boolean;
   /**
    * Proto Input's focus loop repeatedly tells the game that its app became the active one (WM_ACTIVATEAPP), so it believes it still has focus. Only read when `Game.ProtoInput.EnableFocusMessageLoop` is on and Proto Input is injected (`Game.ProtoInput.InjectStartup` or an `InjectRuntime_…` option).
    * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → StartFocusMessageLoop); ProtoInputHooks FocusMessageLoop.cpp (LoopThread). Not from the official docs.)
+   *
+   * By engine: Source games 0% of 32 handlers (all Hub handlers 20%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.ProtoInput.FocusLoop_WM_ACTIVATEAPP = false;
    */
   FocusLoop_WM_ACTIVATEAPP: boolean;
   /**
    * Proto Input's focus loop repeatedly tells the game window to show itself as active (WM_NCACTIVATE), so it believes it still has focus. Only read when `Game.ProtoInput.EnableFocusMessageLoop` is on and Proto Input is injected (`Game.ProtoInput.InjectStartup` or an `InjectRuntime_…` option).
    * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → StartFocusMessageLoop); ProtoInputHooks FocusMessageLoop.cpp (LoopThread). Not from the official docs.)
+   *
+   * By engine: Source games 0% of 32 handlers (all Hub handlers 18%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.ProtoInput.FocusLoop_WM_NCACTIVATE = false;
    */
   FocusLoop_WM_NCACTIVATE: boolean;
@@ -2191,6 +2273,8 @@ interface GameProtoInput {
   /**
    * Lets the player show or hide Proto Input's fake cursor with a key on their own keyboard (`Game.ProtoInput.ToggleFakeCursorVisibilityShortcutVkey`, Home by default); that key press is not passed to the game as a message. Needs `Game.ProtoInput.InjectStartup` or an `InjectRuntime_…` option.
    * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → SetToggleFakeCursorVisibilityShortcut), ProtoInputOptions.cs (Vkey default 0x24); ProtoInputHooks RawInput.cpp (SendKeyMessage). Not from the official docs.)
+   *
+   * By engine: Unity games 54% of 203 handlers, Source games 0% of 32 handlers (all Hub handlers 21%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.ProtoInput.EnableToggleFakeCursorVisibilityShortcut = false; (The most common value in Hub handlers: 162 of the 193 that set it.)
    */
   EnableToggleFakeCursorVisibilityShortcut: boolean;
@@ -2201,6 +2285,8 @@ interface GameProtoInput {
   ToggleFakeCursorVisibilityShortcutVkey: number;
   /**
    * Monitors when the game tries to hide the cursor (e.g. when you close the menu in a first person game), and sets the visibility of the fake cursor instead. Should be almost always be enabled, except sometimes during debugging when you want to see where the fake mouse cursor is at all times. This hook also monitors calls to set the cursor image, so Proto Input will change the fake cursor to match the game's cursor image. Some games (notably Unity engine games) need DontShowCursorWhenImageUpdated enabled or the cursors will show when they shouldn't.
+   *
+   * By engine: Unity games 71% of 203 handlers, Source games 0% of 32 handlers (all Hub handlers 24%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.ProtoInput.DontShowCursorWhenImageUpdated = false;
    */
   DontShowCursorWhenImageUpdated: boolean;
@@ -2232,6 +2318,8 @@ interface GameProtoInput {
    */
   MessageSubWindows: boolean;
   /**
+   *
+   * By engine: Unity games 57% of 203 handlers, Source games 3% of 32 handlers (all Hub handlers 25%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Game.ProtoInput.MultipleProtoControllers = false;
    */
   MultipleProtoControllers: boolean;
@@ -2408,6 +2496,8 @@ interface Context {
    * Not used but could be present in some handlers
    *
    * Copied from `Game.SavePath` for the current instance.
+   *
+   * By engine: Source games 78% of 32 handlers (all Hub handlers 30%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example var savePath = Context.SavePath;
    */
   SavePath: string;
@@ -2498,6 +2588,8 @@ interface Context {
    */
   IsFullscreen: boolean;
   /**
+   *
+   * By engine: Source games 31% of 32 handlers (all Hub handlers 1%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @default new UserInfo()
    */
   User: UserInfo;
@@ -2747,6 +2839,8 @@ interface Context {
   /**
    * Answers to `Game.CustomUserGeneralPrompts`.
    * (AI-written, based on Nucleus GenericContext.cs. Not from the official docs.)
+   *
+   * By engine: Source games 19% of 32 handlers (all Hub handlers 1%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example var customUserGeneralValues = Context.CustomUserGeneralValues;
    */
   CustomUserGeneralValues: string[];
@@ -2913,6 +3007,8 @@ interface Context {
   /**
    * Values chosen by the user for options added with `Game.AddOption`.
    * (AI-written, based on Nucleus GenericContext.cs. Not from the official docs.)
+   *
+   * By engine: Unity games 16% of 203 handlers (all Hub handlers 38%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example var options = Context.Options;
    */
   readonly Options: Record<string, any>;
@@ -2940,12 +3036,16 @@ interface Context {
   /**
    * X position of this instance's window.
    * (AI-written, based on Nucleus GenericContext.cs. Not from the official docs.)
+   *
+   * By engine: Source games 25% of 32 handlers (all Hub handlers 8%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Context.PosX
    */
   readonly PosX: number;
   /**
    * Y position of this instance's window.
    * (AI-written, based on Nucleus GenericContext.cs. Not from the official docs.)
+   *
+   * By engine: Source games 25% of 32 handlers (all Hub handlers 8%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Context.PosY
    */
   readonly PosY: number;
@@ -3134,11 +3234,15 @@ interface Context {
    *
    * In practice: The player's nickname from Nucleus, or Player1, Player2, ... when the profile doesn't use nicknames. Hub handlers put it into the game's config or a Steam emulator's user name file in `Game.Play` (264 read it), so each instance shows its player's name.
    * (AI-written, based on Nucleus GenericGameHandler.cs (player.Nickname = $"Player{i + 1}" without GameProfile.UseNicknames); verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: Source games 9% of 32 handlers (all Hub handlers 29%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Context.Nickname
    */
   readonly Nickname: string;
   /**
    * Local IP address of the computer.
+   *
+   * By engine: Source games 22% of 32 handlers (all Hub handlers 1%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Context.LocalIP
    */
   readonly LocalIP: string;
@@ -3149,6 +3253,8 @@ interface Context {
   NucleusUserRoot: string;
   /**
    * Path to current players Nucleus environment.
+   *
+   * By engine: Unreal Engine games 57% of 223 handlers, Unity games 0% of 203 handlers, Source games 3% of 32 handlers (all Hub handlers 27%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Context.EnvironmentPlayer
    */
   EnvironmentPlayer: string;
@@ -3169,6 +3275,8 @@ interface Context {
   readonly DocumentsRoot: string;
   /**
    * Relative path from user profile to game's config path | requires Game.UserProfileConfigPath be set.
+   *
+   * By engine: Unreal Engine games 52% of 223 handlers, Source games 0% of 32 handlers, Unity games 1% of 203 handlers (all Hub handlers 23%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @example Context.UserProfileConfigPath
    */
   UserProfileConfigPath: string;
@@ -3328,6 +3436,8 @@ interface Context {
    *
    * In practice: Deletes the file if it exists and writes the lines, one per line (no line break after the last). Hub handlers call it in `Game.Play` (352) to write a small config, an autoexec or a Steam emulator's user name file for each instance.
    * (AI-written, based on Nucleus GenericContext.cs (WriteTextFile); verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: Source games 100% of 32 handlers (all Hub handlers 39%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @param path Full path of the file to write; an existing file is deleted first, so its old content is lost. (AI-written)
    * @param lines The text: one or more lines, as separate arguments or an array; each becomes a line, with no line break after the last. (AI-written)
    * @example Context.WriteTextFile(Context.GetFolder(Nucleus.Folder.InstancedGameFolder) + "\\autoexec.cfg", [
@@ -3341,6 +3451,8 @@ interface Context {
    *
    * In practice: Deletes the file if it exists and writes the lines, one per line (no line break after the last). Hub handlers call it in `Game.Play` (352) to write a small config, an autoexec or a Steam emulator's user name file for each instance.
    * (AI-written, based on Nucleus GenericContext.cs (WriteTextFile); verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: Source games 100% of 32 handlers (all Hub handlers 39%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @param path Full path of the file to write; an existing file is deleted first, so its old content is lost. (AI-written)
    * @param lines The text: one or more lines, as separate arguments or an array; each becomes a line, with no line break after the last. (AI-written)
    * @example Context.WriteTextFile(Context.GetFolder(Nucleus.Folder.InstancedGameFolder) + "\\autoexec.cfg", [
@@ -3382,6 +3494,8 @@ var line = Context.FindLineNumberInTextFile(cfg, "resolution", Nucleus.SearchTyp
    *
    * In practice: Each entry is "<line number>|<new line>" (1-based); entries whose number is outside the file (such as -1 from `Context.FindLineNumberInTextFile` finding nothing) are skipped, and only the text up to a second `|` is kept. The usual Hub pattern (300 handlers, in `Game.Play`) builds the list with `Context.FindLineNumberInTextFile`, often to put the player's nickname or resolution into the game's config.
    * (AI-written, based on Nucleus GenericContext.cs (ReplaceLinesInTextFile: line.Split('|')); verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: Unity games 16% of 203 handlers (all Hub handlers 33%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @param path Full path of the text file to edit; it must exist. The file is read, deleted and written back. (AI-written)
    * @param newLines Array of "N|new text" strings: N is the line number, counting from 1; out-of-range lines are skipped and text after a second | is dropped. (AI-written)
    * @example var cfg = Context.GetFolder(Nucleus.Folder.InstancedGameFolder) + "\\config.cfg";
@@ -3396,6 +3510,8 @@ Context.ReplaceLinesInTextFile(cfg, [
    *
    * In practice: Each entry is "<line number>|<new line>" (1-based); entries whose number is outside the file (such as -1 from `Context.FindLineNumberInTextFile` finding nothing) are skipped, and only the text up to a second `|` is kept. The usual Hub pattern (300 handlers, in `Game.Play`) builds the list with `Context.FindLineNumberInTextFile`, often to put the player's nickname or resolution into the game's config.
    * (AI-written, based on Nucleus GenericContext.cs (ReplaceLinesInTextFile: line.Split('|')); verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: Unity games 16% of 203 handlers (all Hub handlers 33%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @param path Full path of the text file to edit; it must exist. The file is read, deleted and written back. (AI-written)
    * @param newLines Array of "N|new text" strings: N is the line number, counting from 1; out-of-range lines are skipped and text after a second | is dropped. (AI-written)
    * @param encoder Encoding name for .NET Encoding.GetEncoding, e.g. "utf-8" or "utf-16", used to read and write; without it .NET's default (UTF-8) is used. (AI-written)
@@ -3427,6 +3543,8 @@ Context.ReplaceLinesInTextFile(cfg, [
    *
    * In practice: For INI files Nucleus writes each `Nucleus.IniSaveInfo` key into the file (copying it from the first path to the second first, when they differ); for CFG files each `Nucleus.CfgSaveInfo`; other entries are skipped. Hub handlers call it in `Game.Play` (370), mostly with the same path twice, to set each instance's resolution and window mode in the game's INI file.
    * (AI-written, based on Nucleus GenericContext.cs (ModifySaveFile: SaveType.INI / SaveType.CFG); verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: Source games 19% of 32 handlers (all Hub handlers 41%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @param installSavePath Full path of the source file to read. For INI it is copied to saveFullPath first when the two paths differ (the copy fails if saveFullPath already exists). (AI-written)
    * @param saveFullPath Full path where the edited file is written; may be the same as installSavePath to edit in place. (AI-written)
    * @param _type File format: Nucleus.SaveType.INI or Nucleus.SaveType.CFG (Source-engine style cfg); any other value throws. (AI-written)
@@ -3445,6 +3563,8 @@ Context.ModifySaveFile(ini, ini, Nucleus.SaveType.INI, [
    *
    * In practice: For INI files Nucleus writes each `Nucleus.IniSaveInfo` key into the file (copying it from the first path to the second first, when they differ); for CFG files each `Nucleus.CfgSaveInfo`; other entries are skipped. Hub handlers call it in `Game.Play` (370), mostly with the same path twice, to set each instance's resolution and window mode in the game's INI file.
    * (AI-written, based on Nucleus GenericContext.cs (ModifySaveFile: SaveType.INI / SaveType.CFG); verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: Source games 19% of 32 handlers (all Hub handlers 41%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @param installSavePath Full path of the source file to read. For INI it is copied to saveFullPath first when the two paths differ (the copy fails if saveFullPath already exists). (AI-written)
    * @param saveFullPath Full path where the edited file is written; may be the same as installSavePath to edit in place. (AI-written)
    * @param _type File format: Nucleus.SaveType.INI or Nucleus.SaveType.CFG (Source-engine style cfg); any other value throws. (AI-written)
@@ -3487,6 +3607,8 @@ Context.ModifySaveFile(ini, ini, Nucleus.SaveType.INI, [
   /**
    * Patches bytes in a file (copy of the original). The file must be excluded from symlinking (e.g. via `Game.FileSymlinkExclusions`).
    * (AI-written, based on Nucleus GenericContext.cs. Not from the official docs.)
+   *
+   * By engine: Unity games 33% of 203 handlers (all Hub handlers 12%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @param originalFile Full path of the file to read. (AI-written)
    * @param patchedFile Full path the patched bytes are written to; may be the same as originalFile. It is written even if nothing matched. (AI-written)
    * @param patchFind Bytes to find, as an array of numbers 0-255; only the first match is patched (more matches are logged as not unique). (AI-written)
@@ -3496,6 +3618,8 @@ Context.ModifySaveFile(ini, ini, Nucleus.SaveType.INI, [
   /**
    * Patches bytes in a file (copy of the original). The file must be excluded from symlinking (e.g. via `Game.FileSymlinkExclusions`).
    * (AI-written, based on Nucleus GenericContext.cs. Not from the official docs.)
+   *
+   * By engine: Unity games 33% of 203 handlers (all Hub handlers 12%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @param originalFile Full path of the file to read. (AI-written)
    * @param patchedFile Full path the patched bytes are written to; may be the same as originalFile. It is written even if nothing matched. (AI-written)
    * @param spatchFind Text to find, converted to ASCII bytes; only the first match is patched. (AI-written)
@@ -3536,8 +3660,10 @@ Context.ModifySaveFile(ini, ini, Nucleus.SaveType.INI, [
    * Edit a registry key for current user, baseKey can either be "HKEY_LOCAL_MACHINE" or "HKEY_CURRENT_USER".
    * EditRegKey uses a custom registry data type to use, by using `Nucleus.RegType.DWord` for example. The last word can be of the same name of RegistryValueKind enum.
    *
-   * In practice: Before it first changes a key, Nucleus exports it to utils\backup\<key>.reg, which it imports again afterwards (`Context.EditRegKeyNoBackup` skips that); a missing key is created. Only HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE and HKEY_USERS work; anything else, or a null value, is ignored without a word. Hub handlers use it in `Game.Play` (179), often for a game that keeps its resolution or window mode in the registry.
-   * (AI-written, based on Nucleus GenericContext.cs (EditRegKey, ExportRegistry), RegistryUtil.cs (the utils\backup .reg files); verified Hub handlers, counted 2026-11-17.)
+   * In practice: Before it first changes a key, Nucleus exports it to utils\backup\<key>.reg, which it imports again afterwards (`Context.EditRegKeyNoBackup` skips that); a missing key is created. Only HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE and HKEY_USERS work; anything else, or a null value, is ignored without a word. Hub handlers use it in `Game.Play` (179), often for a game that keeps its resolution or window mode in the registry. Unity games keep their screen settings there (HKEY_CURRENT_USER\SOFTWARE\<company>\<game>): 149 of the 151 Unity handlers that call it set `Screenmanager Resolution Width` and `Height` (the names end in a hash, `_h182942802`).
+   * (AI-written, based on Nucleus GenericContext.cs (EditRegKey, ExportRegistry), RegistryUtil.cs (the utils\backup .reg files); verified Hub handlers, counted 2026-11-17; Unity games from data/hub-engines.json.)
+   *
+   * By engine: Unity games 74% of 203 handlers, Source games 0% of 32 handlers, Unreal Engine games 0% of 223 handlers (all Hub handlers 20%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @param baseKey Registry root as text: "HKEY_CURRENT_USER", "HKEY_LOCAL_MACHINE" or "HKEY_USERS"; anything else and the call does nothing. (AI-written)
    * @param sKey Key path under the root, e.g. "Software\\Company\\Game"; created if missing. Before the first edit Nucleus exports it to utils\backup\<last part>.reg. (AI-written)
    * @param subKey Name of the value to set inside that key. (AI-written)
@@ -4364,6 +4490,8 @@ interface ProtoInputValues {
   /**
    * Selects the focus hooks (ID 10): `GetForegroundWindow`, `GetActiveWindow`, `GetFocus`, `GetCapture` and `WindowFromPoint` return the game's main window, and `SetFocus`, `SetForegroundWindow` and similar calls do nothing, so the game believes it always has focus. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.
    * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks FocusHook.cpp (GetHwnd, InstallImpl). Not from the official docs.)
+   *
+   * By engine: Source games 31% of 32 handlers (all Hub handlers 14%). Counted from Hub handlers; engines from Wikidata and the handlers' code.
    * @default (uint)ProtoHookIDs.FocusHooksHookID
    * @example ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ProtoInput.Values.FocusHooksHookID);
    */
