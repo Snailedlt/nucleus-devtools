@@ -34,7 +34,7 @@ node build.mjs --preview          # dist/: the site (dist/pages), the single-fil
 npm test                          # unit tests of the pure modules and every published link (tools/workbench-units.test.mjs, tools/links.test.mjs; CORE_DIR=<extension checkout>)
 node smoke.mjs                    # browser smoke test of dist/pages (Playwright + axe-core); pages.yml runs it before every deploy
 node sim-parity.mjs               # Try it against the real Jint results in probes/expected.txt
-node ../tools/screenshots.cjs     # retake the workbench screenshots, light and dark (serve dist/pages on :8765 first)
+node ../tools/screenshots.cjs     # retake the workbench screenshots, light and dark (serve dist/pages on :8765 first): docs/images/gallery (start page and README) and the release-note ones
 ```
 
 The Pages build uses splitscreenme-vscode's `main`: merge that first when the workbench needs new core code.
@@ -64,5 +64,5 @@ The Pages build uses splitscreenme-vscode's `main`: merge that first when the wo
 - When the maintainer has to run a workflow or change a setting, give the direct link and the inputs. Allowlist hosts and environment variables go in a code block, one per line.
 - **Links live for ever.** Addresses end up in Discord posts, READMEs, bookmarks and old releases, so every link we've published keeps working after any redesign: keep them readable and generic (`#docs-Context.ModifySaveFile`, `#hub-<id>`, `#what-it-catches`, not internal ids or tab indexes). When one changes, the old one leads to the new place and says so once: add it to `MOVED_LINKS` in `playground/src/links.ts` (workbench `#…` links; `tools/links.test.mjs` checks every one), keep the old `id` as an alias (start page anchors: `<span id="install" class="anchor-alias">`), or leave a small page at the old path that says what moved and links on (site pages). For something removed, link to a note saying it's gone and what replaced it. An unknown link never dead-ends: it says what it was and offers the way on.
 - **Every code block is syntax highlighted**: docs, hovers, hints, suggestion docs, Check, Try it, the debugger, What's new, the Files panel, the start page. Use `codehl.ts` (`hlHtml` for rendered docs, `hlCode(src, mode)` for raw code, `modeFor(name)` for a file by type); plain text (a .txt) stays plain. Inline code that is clearly code is coloured too.
-- Screenshots come in light and dark (`<name>-light.png`, `<name>-dark.png`); pages show the viewer's theme.
+- Screenshots come in light and dark (`<name>-light.…`, `<name>-dark.…`); pages show the viewer's theme. One set per view, used everywhere: the start page's gallery and the READMEs show `docs/images/gallery/<tool>-<view>-{light,dark}.webp`, the workbench's here (`tools/screenshots.cjs`), VS Code's and Notepad++'s in splitscreenme-vscode's `docs/images/gallery` (`build.mjs` copies them, like the videos). Don't add separate copies.
 - Keep the Hub's load low: the Hub list comes from our daily index (`data` branch), packages once per version.

@@ -2782,7 +2782,13 @@ const firstRun = initFirstRun($('#firstrun-dialog') as HTMLDialogElement, {
   setMode,
   layout,
   setLayout,
-  done: (exp) => {
+  done: (exp, { first, layout: lay }) => {
+    // Anonymous counts (feedback.ts): how many choose guided or code, which layout, and how many skip. Only the
+    // first visit's answer: reopening the questions later isn't a first-run choice.
+    if (first) {
+      use(`firstrun/${exp ?? 'skipped'}`);
+      if (exp && lay) use(`firstrun/layout-${lay}`);
+    }
     if (exp === 'developer') {
       // "I write code" starts compact: no tip bar (a click away in Settings), and a home page without the intro.
       tips.set(false);
