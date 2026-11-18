@@ -317,7 +317,7 @@ function botTemplates() {
     .sort()
     .map((f) => {
       const id = f.slice(0, -3);
-      return { id, name: NAMES[id] ?? id.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()), source: fs.readFileSync(path.join(tdir, f), 'utf8').replace(/\r\n/g, '\n') };
+      return { id, name: NAMES[id] ?? id.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()), source: fs.readFileSync(path.join(tdir, f), 'utf8').replace(/^\uFEFF/, '').replace(/\r\n/g, '\n') }; // no byte order mark (some are saved with one)
     });
   return { commit: rev(dir), templates };
 }

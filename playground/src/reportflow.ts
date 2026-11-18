@@ -24,6 +24,11 @@ export interface FlowOptions {
   /** The open handler's code, only to read its Hub lines (never sent). */
   handlerCode?: string;
   extra?: Record<string, string | undefined>;
+  /** The dialog's heading, intro and question when the kind's own don't fit where it was opened from (a report
+   *  about one tip, say); where the report goes still follows `kind`. */
+  heading?: string;
+  intro?: string;
+  askLabel?: string;
 }
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -40,6 +45,7 @@ const TEXT: Record<ReportKind, KindText> = {
 };
 
 let dlg: HTMLDialogElement | undefined;
+let returnTo: HTMLElement | undefined;
 function dialog(): HTMLDialogElement {
   if (dlg && document.body.contains(dlg)) return dlg;
   if (!document.getElementById('rf-style')) {
@@ -54,6 +60,12 @@ function dialog(): HTMLDialogElement {
   dlg.setAttribute('aria-labelledby', 'rf-h');
   document.body.append(dlg);
   dlg.addEventListener('click', (e) => { if (e.target === dlg) dlg!.close(); }); // a click outside the box
+  // Closed (Esc, Cancel, Continue): focus back where it was, if the browser left it nowhere.
+  dlg.addEventListener('close', () => {
+    const back = returnTo;
+    returnTo = undefined;
+    if (back?.isConnected && (!document.activeElement || document.activeElement === document.body)) back.focus();
+  });
   return dlg;
 }
 
@@ -67,7 +79,8 @@ function origin(o: FlowOptions): HandlerOrigin | undefined {
 /** Opens the report dialog. */
 export function openReportFlow(o: FlowOptions): void {
   const d = dialog();
-  const t = TEXT[o.kind];
+  const base = TEXT[o.kind];
+  const t: KindText = { ...base, heading: o.heading ?? base.heading, intro: o.intro ?? base.intro, ask: base.ask && o.askLabel ? { ...base.ask, label: o.askLabel } : base.ask };
   const tool = o.tool ?? 'workbench';
   const handler = o.kind === 'docs' || o.kind === 'stuck' || o.kind === 'feature' || o.kind === 'error' ? undefined : origin(o);
   const part = o.kind === 'check' || o.kind === 'stuck' ? o.code : o.kind === 'tryit' ? o.sim : o.kind === 'error' ? o.error?.stack ?? '' : '';
@@ -106,7 +119,8 @@ export function openReportFlow(o: FlowOptions): void {
   const help = askWhere ? handlerHelp(handler) : undefined;
   const helpHtml = help ? `<div class="rf-help" id="rf-help" hidden><p>${esc(help.note)}</p><ul>${help.links.map((l) => `<li><a href="${esc(l.url)}" target="_blank" rel="noopener">${esc(l.label)}</a></li>`).join('')}</ul></div>` : '';
   const verdict = o.kind === 'check' ? `<label class="rf-field"><span>What's wrong</span><select id="rf-verdict">${CHECK_VERDICTS.map((v) => `<option>${esc(v)}</option>`).join('')}</select></label>` : '';
-  const ask = t.ask ? `<label class="rf-field"><span>${esc(t.ask.label)}</span><textarea id="rf-what" rows="${t.ask.rows ?? 2}"></textarea></label>` : '';
+  const needed = o.kind === 'feature';
+  const ask = t.ask ? `<label class="rf-field"><span>${esc(t.ask.label)}</span><textarea id="rf-what" rows="${t.ask.rows ?? 2}"${needed ? ' aria-required="true"' : ''}></textarea></label>${needed ? '<p class="rf-err" id="rf-what-err" hidden></p>' : ''}` : '';
   const partHtml = part?.trim() && t.part
     ? `<div class="rf-part"><label><input type="checkbox" id="rf-part" checked> ${esc(t.part)}</label><pre class="rf-pre" tabindex="0" aria-label="${esc(t.part.replace(/^Include /, ''))}">${esc(part.length > 4000 ? `${part.slice(0, 4000)}\n…` : part)}</pre>${o.kind === 'check' ? '<p class="rf-note">Only these lines, never the rest of your handler.</p>' : ''}</div>`
     : '';
@@ -149,10 +163,22 @@ export function openReportFlow(o: FlowOptions): void {
   }
 
   d.querySelector('#rf-cancel')!.addEventListener('click', () => d.close());
+  d.querySelector('#rf-what')?.addEventListener('input', (e) => {
+    const what = e.target as HTMLTextAreaElement;
+    if (what.getAttribute('aria-invalid') !== 'true' || !what.value.trim()) return;
+    what.removeAttribute('aria-invalid');
+    what.removeAttribute('aria-describedby');
+    d.querySelector<HTMLElement>('#rf-what-err')!.hidden = true;
+  });
   go.addEventListener('click', () => {
     const what = d.querySelector<HTMLTextAreaElement>('#rf-what');
-    if (o.kind === 'feature' && what && !what.value.trim()) {
+    if (needed && what && !what.value.trim()) {
+      // Said in words under the box, and tied to it, not only a red border.
+      const err = d.querySelector<HTMLElement>('#rf-what-err')!;
+      err.textContent = 'Write what you\'re trying to do first: a sentence is enough.';
+      err.hidden = false;
       what.setAttribute('aria-invalid', 'true');
+      what.setAttribute('aria-describedby', 'rf-what-err');
       what.focus();
       return;
     }
@@ -169,7 +195,11 @@ export function openReportFlow(o: FlowOptions): void {
       note.innerHTML = `This browser couldn't copy. Select the text below, copy it and paste it in the <a href="${esc(DISCORD_THREAD)}" target="_blank" rel="noopener">testers' thread on Discord</a>.<pre class="rf-pre" tabindex="0">${esc(r.text)}</pre>`;
     }
   });
-  if (!d.open) d.showModal();
+  if (!d.open) {
+    const a = document.activeElement;
+    returnTo = a instanceof HTMLElement && a !== document.body ? a : undefined;
+    d.showModal();
+  }
   (d.querySelector<HTMLElement>('#rf-what') ?? go).focus();
 }
 
@@ -186,6 +216,7 @@ dialog.rf::backdrop{background:#0006}
 .rf textarea,.rf select{font:inherit;color:inherit;background:var(--bg,#fff);border:1px solid var(--line,#8886);border-radius:var(--r-ctl,6px);padding:6px 8px;width:100%;box-sizing:border-box}
 .rf textarea{resize:vertical;min-height:2.6em}
 .rf textarea[aria-invalid=true]{border-color:var(--err,#c00)}
+.rf .rf-err{color:var(--err,#c00);margin:-4px 0 8px;font-size:.9em;font-weight:600}
 .rf-pre{margin:4px 0 0;padding:8px;max-height:180px;overflow:auto;background:var(--code-bg,#0000000d);border:1px solid var(--line,#8884);border-radius:var(--r-ctl,6px);font:12px/1.45 var(--font-mono,var(--mono,ui-monospace,monospace));white-space:pre-wrap;overflow-wrap:anywhere}
 .rf-part{margin:0 0 10px}
 .rf-part label,.rf-where label{display:flex;align-items:center;gap:6px;min-height:28px}

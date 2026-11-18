@@ -75,6 +75,17 @@ How to write it (people and AI agents read this, and the workbench shows it):
 - **The page fits the window.** It was a few pixels taller, so the whole page scrolled; with no handler open, the welcome screen also had extra space around it.
 - **On phones, the handler's name shows again.** The row above the code was too wide, so the name shrank to its arrow and the save button was cut off; the name now has its own line.
 - **The *All* filter's count is readable.** On the selected (blue) chip it now has enough contrast.
+- **Moving a step in Blocks moves the focus with it.** After *Move up*, *Move down* or Alt+↑/↓, the keyboard and the open row stay on the step you moved, so pressing again keeps moving the same step.
+- **Ctrl+Z works in Blocks.** Ctrl+Z, Ctrl+Y and Ctrl+Shift+Z undo and redo the handler's code from the Blocks view, and each Blocks action is its own undo step (typing in one field still undoes as one).
+- ***Insert into handler* knows when the example is in already.** Examples of more than one line (such as `Context.ReplaceLinesInTextFile`'s) now turn the button into *Show in handler*, instead of adding a second copy.
+- **"Add Game.ProtoInput…" from your game's files behaves like every other fix.** The changed lines light up with a note and Undo, and the keyboard stays in the list.
+- **Importing settings restores them exactly.** A setting that was at its default when you exported goes back to its default; older settings files still import.
+- **The Discord bot's engine templates open cleanly.** Source, Generic, Diesel and MT Framework no longer start with an invisible character.
+- **Closing a report goes back to the menu.** After *Report a problem* or *Request a feature* from the menu, Esc or Cancel puts the keyboard back on the menu button.
+- **A feature request without text says what's missing.** Continue shows a message under the box, read out by screen readers, not only a red border.
+- **Learn's "Different for you? Tell us" asks about the tip.** The report it opens is titled *This tip is different for me* and asks what happens instead.
+- **The 👍/👎 under a doc and under "In practice" have names of their own.** Screen readers say which part you vote on.
+- **Settings › AI fits on a phone.** The provider list no longer runs off the screen.
 
 ---
 

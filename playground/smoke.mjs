@@ -604,6 +604,23 @@ for (const theme of ['light', 'dark']) {
     await p.fill('#api-q', 'Game.ProtoInput.DontShowCursorWhenImageUpdated');
     await p.waitForTimeout(400);
     check(await p.isVisible('#api-results .dc-practice.counted .dc-engine'), `${theme}: Docs shows "By engine" alone, marked counted, where there's no AI-written "In practice"`);
+    // Insert into handler, twice: the second press shows it instead of adding a second copy (an example of two statements).
+    {
+      const cmText = () => p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue());
+      const was = await cmText();
+      await p.fill('#api-q', 'Context.ReplaceLinesInTextFile');
+      await p.waitForTimeout(400);
+      const ins = '#api-results [data-insert="Context.ReplaceLinesInTextFile"]';
+      await p.click(ins);
+      await p.waitForTimeout(300);
+      const label = await p.textContent(ins);
+      await p.click(ins);
+      await p.waitForTimeout(300);
+      const cfgs = ((await cmText()).match(/var cfg\b/g) ?? []).length;
+      check(label === 'Show in handler' && cfgs === 1, `${theme}: Insert into handler, pressed again, shows the example instead of adding it twice (${label}, ${cfgs}× var cfg)`);
+      await p.evaluate((t) => document.querySelector('.CodeMirror').CodeMirror.setValue(t), was);
+      await p.waitForTimeout(300);
+    }
     // Blocks: a code step is a small CodeMirror with the colours, and typing in it edits the handler.
     await p.click('[data-view-mode=blocks]');
     await p.waitForTimeout(800);
@@ -648,6 +665,26 @@ for (const theme of ['light', 'dark']) {
       await p.keyboard.press('Enter');
       await p.waitForTimeout(150);
       check((await p.getAttribute(more, 'aria-expanded')) === 'true' && (await p.isVisible('#blocksview .bv-note-rest')), `${theme}: Enter on "… 4 more lines" unfolds the comment`);
+      // Moving a step: focus and its open row go with it; each move is its own Ctrl+Z, from Blocks too.
+      const steps = 'Game.GUID = "Demo";\nGame.GameName = "Demo";\nGame.ExecutableName = "demo.exe";\nGame.Play = function () {\n    Context.Wait(1);\n    var a = 2;\n    if (a > 1) {\n        Context.Wait(5);\n    }\n    Context.StartArguments = "-d";\n};\n';
+      await p.evaluate((c) => document.querySelector('.CodeMirror').CodeMirror.setValue(c), steps);
+      await p.waitForTimeout(700);
+      const playLines = async () => (await p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue())).split('\n').slice(4, 10).map((l) => l.trim()).join(' ');
+      const where = () => p.evaluate(() => [document.activeElement?.getAttribute('data-bv'), [...document.querySelectorAll('#blocksview .bv-open')].map((e) => e.getAttribute('data-key')).join()]);
+      await p.click('[data-bv="Play/0:more"]');
+      await p.click('[data-bv="Play/0:down"]');
+      await p.waitForTimeout(250);
+      await p.keyboard.press('Enter');
+      await p.waitForTimeout(250);
+      const [f1, o1] = await where();
+      const moved = await playLines();
+      check(f1 === 'Play/2:down' && o1 === 'Play/2' && /^var a = 2; if .* Context\.Wait\(1\); Context\.StartArguments/.test(moved), `${theme}: Move down twice in Blocks moves one step two places, focus and its open row with it (${f1}, ${o1})`);
+      await p.keyboard.press('ControlOrMeta+z');
+      await p.waitForTimeout(250);
+      const undone = await playLines();
+      await p.keyboard.press('ControlOrMeta+y');
+      await p.waitForTimeout(250);
+      check(/^var a = 2; Context\.Wait\(1\); if/.test(undone) && (await playLines()) === moved, `${theme}: Ctrl+Z in Blocks undoes one move, Ctrl+Y redoes it`);
       await p.evaluate((c) => document.querySelector('.CodeMirror').CodeMirror.setValue(c), before);
       await p.waitForTimeout(600);
     }

@@ -15,17 +15,27 @@ export function exportSettings(): string {
   return JSON.stringify({ format: FORMAT, version: 1, exported: new Date().toISOString().slice(0, 10), settings: values }, null, 2);
 }
 
-/** Applies a settings file. Returns how many settings it set, or throws with a message for the person. */
-export function importSettings(text: string): number {
+/** Applies a settings file: the settings come back exactly as they were exported, so one that isn't in the file was
+ *  at its default then and goes back to it (files from every version so far list only the settings that weren't).
+ *  Returns how many it set and how many it put back to their default, or throws with a message for the person. */
+export function importSettings(text: string): { set: number; reset: number } {
   let data: any;
   try { data = JSON.parse(text); } catch { throw new Error("This isn't a settings file (it isn't JSON)."); }
-  if (data?.format !== FORMAT || typeof data.settings !== 'object' || !data.settings) throw new Error("This isn't a workbench settings file.");
-  let n = 0;
+  if (data?.format !== FORMAT || typeof data.settings !== 'object' || !data.settings || Array.isArray(data.settings)) throw new Error("This isn't a workbench settings file.");
+  // Only known settings, as text, and not huge (a custom theme is the biggest, a few KB).
+  const values = new Map<string, string>();
   for (const [k, v] of Object.entries(data.settings)) {
     const key = `nucleus-workbench-${k}`;
-    // Only known settings, as text, and not huge (a custom theme is the biggest, a few KB).
-    if (!SETTINGS.includes(key) || typeof v !== 'string' || v.length > 200_000) continue;
-    try { localStorage.setItem(key, v); n++; } catch { throw new Error("This browser didn't let the page store settings."); }
+    if (SETTINGS.includes(key) && typeof v === 'string' && v.length <= 200_000) values.set(key, v);
   }
-  return n;
+  let set = 0;
+  let reset = 0;
+  try {
+    for (const key of SETTINGS) {
+      const v = values.get(key);
+      if (v !== undefined) { localStorage.setItem(key, v); set++; }
+      else if (localStorage.getItem(key) !== null) { localStorage.removeItem(key); reset++; }
+    }
+  } catch { throw new Error("This browser didn't let the page store settings."); }
+  return { set, reset };
 }

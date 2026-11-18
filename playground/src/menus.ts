@@ -58,7 +58,8 @@ export function openMenu(anchor: HTMLElement, label: string, items: MenuItem[], 
     const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-i]');
     if (!b) return;
     const it = items[Number(b.dataset.i)];
-    closeMenu(it.checked !== undefined);
+    // Focus goes back to the menu's button first, so a dialog the item opens gives it back there when it closes.
+    closeMenu(true);
     it.run?.();
   });
   el.addEventListener('keydown', (e) => {

@@ -26,8 +26,10 @@ export interface FormHost {
   /** The handler text, as it is now. */
   getText(): string;
   /** Apply edits in the coordinates of the current text. They never overlap and are sorted by start; apply
-   *  them as one change (from the last to the first, or with CodeMirror's `operation`). Must be synchronous. */
-  applyEdits(edits: TextEdit[]): void;
+   *  them as one change (from the last to the first, or with CodeMirror's `operation`). Must be synchronous.
+   *  `typing` (optional) names the text field the edit was typed in, or is '' for an action: edits typed in one
+   *  field may share an undo step, every action is an undo step of its own. */
+  applyEdits(edits: TextEdit[], typing?: string): void;
   /** Show this offset in the Code view. */
   jumpTo(offset: number): void;
   /** The linter's diagnostics. */

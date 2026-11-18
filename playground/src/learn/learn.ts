@@ -714,7 +714,12 @@ $('#lesson-body').addEventListener('click', (e) => {
   const [where, i, j] = b.dataset.unverified!.split(':');
   const st = l.steps?.[Number(i)];
   const tip = where === 'note' ? l.notes?.[Number(i)]?.text : st && typeof st !== 'string' ? tipText(st.trouble?.[Number(j)] ?? '') : '';
-  openReportFlow({ kind: 'problem', tool: 'learn', title: `Learn: a tip is different for me (${l.title.replace(/`/g, '')})`, extra: { Lesson: keyOf(l), Tip: tip } });
+  openReportFlow({
+    kind: 'problem', tool: 'learn', title: `Learn: a tip is different for me (${l.title.replace(/`/g, '')})`, extra: { Lesson: keyOf(l), Tip: tip },
+    heading: 'This tip is different for me',
+    intro: "We haven't checked this tip on every PC yet. Tell us what you see instead, so we can fix it for everyone. The lesson and the tip are filled in for you.",
+    askLabel: 'What happens for you instead? (optional: you can also write it on the form)',
+  });
 });
 $('#reset').addEventListener('click', () => { reset(); status(); });
 

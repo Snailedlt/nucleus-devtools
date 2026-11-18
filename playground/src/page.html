@@ -439,6 +439,8 @@ body.resizing-v, body.resizing-v * { cursor: row-resize !important; user-select:
 .set-fields[hidden] { display: none; }
 .set-field { display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
 .set-field small { color: var(--muted); font-size: 12px; }
+.set-field:has(> select) { min-width: 0; max-width: 100%; }
+.set-field select { max-width: 100%; min-width: 0; box-sizing: border-box; } /* long options don't widen it past a phone's width */
 .set-field input { font: 13px var(--font-mono); color: var(--fg); background: var(--code-bg); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 6px 8px; width: 100%; box-sizing: border-box; }
 .set-waka-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 #settings-dialog h2 { margin: 0 0 6px; }
@@ -2148,6 +2150,7 @@ details[open] > .fv-group-title::before { transform: rotate(45deg); }
 @media (hover: none) { .bv-note-pop { display: none; } }
 
 #extra-problems { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+#extra-problems .xp-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 #extra-problems .xp-h { font-size: 12px; font-weight: 700; color: var(--muted); margin: 8px 2px 2px; display: flex; gap: 6px; align-items: center; }
 #extra-problems .xp { display: flex; gap: 8px; align-items: flex-start; padding: 7px 10px; border: 1px solid var(--line); border-radius: var(--r-pane); background: var(--surface); font-size: 13px; }
 #extra-problems .xp .xp-b { flex: 1; min-width: 0; }

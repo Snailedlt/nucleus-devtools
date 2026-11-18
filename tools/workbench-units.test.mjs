@@ -582,6 +582,8 @@ test('docs: "Insert into handler" puts an example where it belongs (lines.ts pla
       const p = L.placeExample(base, `${label}.${k}`, prettyCode(m.example), m.exampleIn ?? 'top');
       assert.ok(p && p.action !== 'same', `${label}.${k}`);
       assert.doesNotThrow(() => parseLikeJint(p.text, { ecmaVersion: 'latest' }), `${label}.${k}: ${p.text}`);
+      // Once in, the handler has it: Docs offers "Show in handler", not a second copy (several statements too).
+      assert.equal(L.placeExample(p.text, `${label}.${k}`, prettyCode(m.example), m.exampleIn ?? 'top')?.action, 'same', `${label}.${k} again: ${p.text}`);
       n++;
     }
   }

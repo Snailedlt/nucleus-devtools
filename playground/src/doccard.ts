@@ -50,8 +50,8 @@ export function memberCard(owner: string, name: string, m: Member, opts: { head?
       + (m.deprecated ? `<p class="dc-dep">${inline(m.deprecated)}</p>` : '')
       + (m.doc ? paras(m.doc) : '<p class="muted">No description yet.</p>')
       + (fact ? `<p class="dc-fact">${fact}</p>` : '')
-      + (note ? `<p class="dc-ai" title="${esc(note)}"><span class="ai-spark" aria-hidden="true"></span><span>${m.docCheckedBy ? `AI-written, checked by ${esc(m.docCheckedBy)}` : 'AI-written'}</span>${verified(path, 'doc')}${voteButtons('doc', path, { up: 'Correct', down: 'Wrong or unclear' })}<a href="${esc(withContext(docReviewUrl(path), { Doc: path }))}" target="_blank" rel="noopener">Report</a></p>` : '')
-      + (m.practice ? `<p class="dc-pr-h"><strong>In practice</strong></p>${paras(m.practice)}<p class="dc-ai" title="${esc(practiceNote(m))}"><span class="ai-spark" aria-hidden="true"></span><span>AI-written</span>${verified(path, 'practice')}${voteButtons('practice', path, { up: 'Correct', down: 'Wrong or unclear' })}</p>` : '')
+      + (note ? `<p class="dc-ai" title="${esc(note)}"><span class="ai-spark" aria-hidden="true"></span><span>${m.docCheckedBy ? `AI-written, checked by ${esc(m.docCheckedBy)}` : 'AI-written'}</span>${verified(path, 'doc')}${voteButtons('doc', path, VOTE_LABELS.doc)}<a href="${esc(withContext(docReviewUrl(path), { Doc: path }))}" target="_blank" rel="noopener">Report</a></p>` : '')
+      + (m.practice ? `<p class="dc-pr-h"><strong>In practice</strong></p>${paras(m.practice)}<p class="dc-ai" title="${esc(practiceNote(m))}"><span class="ai-spark" aria-hidden="true"></span><span>AI-written</span>${verified(path, 'practice')}${voteButtons('practice', path, VOTE_LABELS.practice)}</p>` : '')
       + (m.byEngine ? `${m.practice ? '' : '<p class="dc-pr-h"><strong>In practice</strong></p>'}${engineLine(m.byEngine)}` : '')
       + `</div></div>`);
   }
@@ -75,6 +75,11 @@ export function memberCard(owner: string, name: string, m: Member, opts: { head?
 const engineLine = (text: string) => `<p class="dc-engine">${esc(text)}</p>`;
 const paras = (text: string) => text.split(/\n{2,}/).map((p) => `<p>${inline(p)}</p>`).join('');
 /** "✓ Verified by people (12 votes)" for an AI-written part people verified ('' otherwise). */
+// The doc and "In practice" each get 👍/👎: their names say which part (the buttons show only the icons).
+const VOTE_LABELS: Record<DocPart, { up: string; down: string }> = {
+  doc: { up: 'The doc is correct', down: 'The doc is wrong or unclear' },
+  practice: { up: '“In practice” is correct', down: '“In practice” is wrong or unclear' },
+};
 const verified = (path: string, part: DocPart) => {
   const l = verifiedLabel(partVotes(path, part));
   return l ? `<span class="dc-verified" title="At least 10 votes from people, at least 90% of them 👍. AI votes don't count.">✓ ${esc(l)}</span>` : '';
@@ -82,7 +87,7 @@ const verified = (path: string, part: DocPart) => {
 /** Is this right? 👍 👎, the votes so far (people, then AIs, apart), the verified label, and the report link. */
 function checkRow(path: string, part: DocPart, aiWritten: boolean): string {
   const counts = votesLine(partVotes(path, part));
-  return `<div class="dc-check"><span>${part === 'practice' ? 'Is this right?' : 'Is this doc right?'}</span>${voteButtons(part, path, { up: 'Correct', down: 'Wrong or unclear' })}`
+  return `<div class="dc-check"><span>${part === 'practice' ? 'Is this right?' : 'Is this doc right?'}</span>${voteButtons(part, path, VOTE_LABELS[part])}`
     + (aiWritten ? verified(path, part) : '')
     + (counts ? `<span class="dc-counts" title="Votes so far. People's and AIs' are counted apart; only people's make an AI-written part verified.">${esc(counts)}</span>` : '')
     + `<a href="${esc(withContext(docReviewUrl(path), { Doc: path }))}" target="_blank" rel="noopener">Tell us what's wrong</a>${appNote()}</div>`;

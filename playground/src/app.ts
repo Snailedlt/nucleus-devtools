@@ -870,29 +870,49 @@ editor.on('scroll', () => { if (!sig.hidden) placeSig(); });
 
 
 // Problems that aren't the linter's: the code against the picked game folder (and the package's files).
+let extraFocus: { at: number; text: string } | undefined;
 function renderExtraProblems(text: string) {
   const box = $('#extra-problems');
   const list = folderProblems;
   const pk = pkgProblems;
   box.hidden = !list.length && !pk.length;
   if (!list.length && !pk.length) return void (box.innerHTML = '');
-  const pkHtml = pk.length ? `<li class="xp-h" role="presentation">In the package <span class="muted">· ${packageFiles.length} file${packageFiles.length === 1 ? '' : 's'} besides handler.js</span></li>` + pk.map((f, i) => {
+  // Two groups, each a list of its own under its heading (the heading is no list item).
+  const group = (id: string, head: string, items: string) => `<li class="xp-g"><div class="xp-h" id="${id}">${head}</div><ul class="xp-list" aria-labelledby="${id}">${items}</ul></li>`;
+  const pkHtml = pk.length ? group('xp-h-pkg', `In the package <span class="muted">· ${packageFiles.length} file${packageFiles.length === 1 ? '' : 's'} besides handler.js</span>`, pk.map((f, i) => {
     const where = f.file ? `<button class="loc" type="button" data-xopen="${esc(f.file)}"${f.line ? ` data-xline="${f.line}"` : ''}>${fileIcon(f.file)}${esc(f.file.split('/').pop()!)}${f.line ? `:${f.line}` : ''}</button>` : f.start !== undefined ? `<button class="loc" type="button" data-xjump="${f.start}">Line ${lineOf(text, f.start) + 1}</button>` : '';
     return `<li class="xp ${f.severity}"><span class="sev-ico" aria-hidden="true">${SEV_ICON[f.severity]}</span><div class="xp-b">${where} <strong>${esc(f.title)}</strong><p class="xp-why">${esc(f.why)}</p>${f.fix ? `<div class="xp-act"><button class="fix primary" type="button" data-pfix="${i}">${esc(f.fix.title)}</button></div>` : ''}</div></li>`;
-  }).join('') : '';
-  box.innerHTML = pkHtml + (!list.length ? '' : `<li class="xp-h" role="presentation">Against your game <span class="muted">· ${esc(gameFolder?.name ?? '')}</span></li>` + list.map((f, i) => {
+  }).join('')) : '';
+  box.innerHTML = pkHtml + (!list.length ? '' : group('xp-h-game', `Against your game <span class="muted">· ${esc(gameFolder?.name ?? '')}</span>`, list.map((f, i) => {
     const line = lineOf(text, f.start) + 1;
     return `<li class="xp ${f.severity}"><span class="sev-ico" aria-hidden="true">${SEV_ICON[f.severity]}</span><div class="xp-b"><button class="loc" type="button" data-xjump="${f.start}">Line ${line}</button> <strong>${esc(f.title)}</strong><p class="xp-why">${esc(f.why)}</p>${f.fix ? `<div class="xp-act"><button class="fix primary" type="button" data-xfix="${i}">${esc(f.fix.title)}</button></div>` : ''}</div></li>`;
-  }).join(''));
+  }).join('')));
   box.querySelectorAll<HTMLButtonElement>('[data-xjump]').forEach((b) => b.addEventListener('click', () => jumpTo(Number(b.dataset.xjump))));
   box.querySelectorAll<HTMLButtonElement>('[data-xopen]').forEach((b) => b.addEventListener('click', () => pkgUI?.openFile(b.dataset.xopen!, b.dataset.xline ? Number(b.dataset.xline) : undefined)));
+  // After a fix, like Check's own: the keyboard stays here, on the item now where this one was, once Check has run
+  // again and drawn the list anew (or on the first problem when this list is gone).
+  if (extraFocus && extraFocus.text === text) {
+    const rows = box.querySelectorAll<HTMLElement>('.xp');
+    const row = rows[Math.min(extraFocus.at, rows.length - 1)] as HTMLElement | undefined;
+    (row?.querySelector<HTMLElement>('.fix') ?? row?.querySelector<HTMLElement>('.loc') ?? document.querySelector<HTMLElement>('#problems .problem .fix, #problems .problem .loc, #status button'))?.focus();
+    extraFocus = undefined;
+  }
+  const keepFocus = (at: number) => {
+    const mine = (extraFocus = { at, text: editor.getValue() });
+    setTimeout(() => { if (extraFocus === mine) extraFocus = undefined; }, 5000);
+  };
   box.querySelectorAll<HTMLButtonElement>('[data-pfix]').forEach((b) => b.addEventListener('click', () => {
     const fx = pk[Number(b.dataset.pfix)].fix!;
     if (fx.kind === 'move') pkgUI?.moveFile(fx.from, fx.to);
+    keepFocus(Number(b.dataset.pfix));
   }));
   box.querySelectorAll<HTMLButtonElement>('[data-xfix]').forEach((b) => b.addEventListener('click', () => {
-    const fx = list[Number(b.dataset.xfix)].fix!;
-    editor.replaceRange(fx.text, editor.posFromIndex(fx.start), editor.posFromIndex(fx.end));
+    const f = list[Number(b.dataset.xfix)];
+    const fx = f.fix!;
+    const edits = [{ start: fx.start, end: fx.end, text: fx.text }];
+    fixWithNucli(editor, applyEditsToText(editor.getValue(), edits), () => editor.replaceRange(fx.text, editor.posFromIndex(fx.start), editor.posFromIndex(fx.end)));
+    codeNote(editor, editor.posFromIndex(fx.start).line, `Fixed: ${fx.title.replace(/`/g, '')}.`, { action: undoAction });
+    keepFocus(pk.length + Number(b.dataset.xfix));
   }));
 }
 function renderProblems(text: string) {
@@ -2601,7 +2621,9 @@ let formView: FormView | null = null;
 let blocksView: BlocksView | null = null;
 const viewHost = (origin: string) => ({
   getText: () => editor.getValue(),
-  applyEdits: (edits: TextEdit[]) => editor.operation(() => { for (const e of [...edits].sort((a, z) => z.start - a.start)) editor.replaceRange(e.text, editor.posFromIndex(e.start), editor.posFromIndex(e.end), origin); }),
+  // CodeMirror merges changes of the same "+" origin made within a second into one undo step. A view that says what
+  // was typed in (`typing`: a field, or '' for an action) gets merges per field only; actions get no "+".
+  applyEdits: (edits: TextEdit[], typing?: string) => editor.operation(() => { for (const e of [...edits].sort((a, z) => z.start - a.start)) editor.replaceRange(e.text, editor.posFromIndex(e.start), editor.posFromIndex(e.end), typing === undefined ? origin : typing ? `${origin}:${typing}` : origin.replace(/^\+/, '')); }),
   jumpTo: (offset: number) => { setViewMode('code'); const pos = editor.posFromIndex(offset); editor.setCursor(pos); editor.scrollIntoView(pos, 80); editor.focus(); },
   diagnostics: () => current,
   diagnosticsText: () => currentText,
@@ -2630,6 +2652,20 @@ function setViewMode(m: ViewMode) {
 }
 document.querySelectorAll<HTMLButtonElement>('[data-view-mode]').forEach((b) => b.addEventListener('click', () => setViewMode(b.dataset.viewMode as ViewMode)));
 editor.on('swapDoc', () => { formView?.refresh(); blocksView?.refresh(); });
+// Ctrl+Z / Ctrl+Y (Ctrl+Shift+Z, Cmd on a Mac) in Blocks undo and redo the handler's code, as in the Code view. A
+// small code field keeps its own undo while it has changes of its own.
+$('#blocksview').addEventListener('keydown', (ev) => {
+  if (!(ev.ctrlKey || ev.metaKey) || ev.altKey) return;
+  const k = ev.key.toLowerCase();
+  const redo = k === 'y' && !ev.shiftKey || k === 'z' && ev.shiftKey;
+  if (k !== 'z' && !redo) return;
+  const cm = (ev.target as HTMLElement).closest?.('.CodeMirror') as (HTMLElement & { CodeMirror?: { historySize(): { undo: number; redo: number } } }) | null;
+  if (cm?.CodeMirror && cm.CodeMirror.historySize()[redo ? 'redo' : 'undo'] > 0) return;
+  ev.preventDefault();
+  ev.stopPropagation();
+  if (redo) editor.redo(); else editor.undo();
+  blocksView?.refresh();
+}, true);
 setViewMode(viewMode);
 pkgUI = initPackageUI({
   editor,
@@ -2806,9 +2842,10 @@ $('#set-import-file').addEventListener('change', async () => {
   if (!file) return;
   const msg = $('#set-io-msg');
   try {
-    const n = importSettings(await file.text());
-    msg.textContent = n ? `Imported ${n} setting${n === 1 ? '' : 's'}. Reloading to apply them…` : 'Nothing to import: the file has no settings this version knows.';
-    if (n) setTimeout(() => location.reload(), 900);
+    const { set, reset } = importSettings(await file.text());
+    const parts = [set ? `Imported ${set} setting${set === 1 ? '' : 's'}` : '', reset ? `put ${reset} back to the default, as in the file` : ''].filter(Boolean).join(' and ');
+    msg.textContent = parts ? `${parts[0].toUpperCase()}${parts.slice(1)}. Reloading to apply them…` : 'Nothing to change: your settings are at their defaults, as in the file.';
+    if (set || reset) setTimeout(() => location.reload(), 900);
   } catch (e: any) {
     msg.textContent = e?.message ?? "Couldn't read that file.";
   }

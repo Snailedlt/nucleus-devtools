@@ -667,7 +667,10 @@ export function mountBlocksView(container: HTMLElement, host: BlocksHost): Block
       if (!quiet) say("That change would break the code, so it wasn't made.");
       return false;
     }
-    host.applyEdits([...edits].sort((a, b) => a.start - b.start));
+    // Typing in a field may merge into one undo step (per field); every other action is an undo step of its own.
+    const act = document.activeElement as HTMLElement | null;
+    const typed = act && root.contains(act) && (act instanceof HTMLTextAreaElement || (act instanceof HTMLInputElement && act.type === 'text')) ? (act.closest('[data-bv]')?.getAttribute('data-bv') ?? '') : '';
+    host.applyEdits([...edits].sort((a, b) => a.start - b.start), typed);
     log.push({ before, edits });
     if (log.length > 200) log = log.slice(-200);
     if (focus) focusWant = focus;
@@ -1515,13 +1518,34 @@ export function mountBlocksView(container: HTMLElement, host: BlocksHost): Block
     const ca = lineChunk(t, lo, prevEnd);
     const cb = lineChunk(t, hi, lo.end);
     if (ca && cb && ca.end < cb.start) [ra, rb] = [ca, cb];
-    const ok = edit([{ ...ra, text: t.slice(rb.start, rb.end) }, { ...rb, text: t.slice(ra.start, ra.end) }]);
-    if (ok) {
-      const n = at.b.stmts.length;
-      const btn = j === 0 || j === n - 1 ? (dir < 0 ? 'down' : 'up') : dir < 0 ? 'up' : 'down';
-      focusTo(`${at.b.key}/${j}:${btn}`);
-      say(`Moved to position ${j + 1} of ${n}.`);
+    // Keys are positions, so what belongs to a step (open row, folded comments, slots shown as code) swaps with it,
+    // and focus goes to the moved step at its new place.
+    const ka = `${at.b.key}/${at.i}`;
+    const kb = `${at.b.key}/${j}`;
+    const n = at.b.stmts.length;
+    const btn = j === 0 || j === n - 1 ? (dir < 0 ? 'down' : 'up') : dir < 0 ? 'up' : 'down';
+    const act = document.activeElement as HTMLElement | null;
+    const fid = act && root.contains(act) ? act.getAttribute('data-bv') : null;
+    const swapped = swapKeys(ka, kb);
+    const want = fid === `${ka}:up` || fid === `${ka}:down` ? `${kb}:${btn}` : fid && swapped(fid) !== fid ? swapped(fid) : `${kb}:more`;
+    const ok = edit([{ ...ra, text: t.slice(rb.start, rb.end) }, { ...rb, text: t.slice(ra.start, ra.end) }], want);
+    if (ok) say(`Moved to position ${j + 1} of ${n}.`);
+    else swapKeys(ka, kb);
+  }
+
+  /** Swaps the view state kept under step key `a` (and everything inside it) with that under `b`. */
+  function swapKeys(a: string, b: string): (k: string) => string {
+    const swap = (k: string): string => {
+      for (const [x, y] of [[a, b], [b, a]]) if (k === x || k.startsWith(`${x}/`) || k.startsWith(`${x}:`) || k.startsWith(`${x}|`)) return y + k.slice(x.length);
+      return k;
+    };
+    for (const set of [toggled, notesToggled, forcedCode, codeEditing]) {
+      const all = [...set];
+      set.clear();
+      for (const k of all) set.add(swap(k));
     }
+    for (const k of [...parts.keys()]) if (swap(k) !== k) parts.delete(k);
+    return swap;
   }
 
   /** A statement's lines when it is alone on them, with the comment lines right above it (not before `floor`). */

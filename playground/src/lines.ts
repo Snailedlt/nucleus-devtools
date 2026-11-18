@@ -285,12 +285,25 @@ export function placeExample(text: string, path: string, example: string, where 
   };
   const isFn = (s: any) => /Function/.test(assignOf(s)?.right?.type ?? '');
   const block = (code: string, ind: string) => code.split('\n').map((l) => (l ? ind + l : l)).join('\n');
+  // Where the example's statements stand already, one after another in `stmts` (an example can be several:
+  // `var cfg = ...;` then the call), whatever the spacing; -1 when they don't.
+  const foundIn = (stmts: any[], code: string) => {
+    let want = [norm(code)];
+    try {
+      const ex = (parseLikeJint(code, { ecmaVersion: 'latest', sourceType: 'script', allowReturnOutsideFunction: true }).program as any).body as any[];
+      if (ex.length) want = ex.map((s) => norm(code.slice(s.start, s.end)));
+    } catch { /* compared as one piece */ }
+    const have = stmts.map((s) => norm(text.slice(s.start, s.end)));
+    return have.findIndex((_, i) => want.every((w, k) => have[i + k] === w));
+  };
   const insertAt = (at: number, code: string, label: string, action: Placed['action'] = 'insert'): Placed => {
     const out = text.slice(0, at) + code + text.slice(at);
     return { text: out, action, line: lineAt(out, at + (code.startsWith('\n') ? 1 : 0)), where: label };
   };
 
   if (where === 'top') {
+    const at = foundIn(top, example);
+    if (at >= 0) return { text, action: 'same', line: lineAt(text, top[at].start), where: 'the top level' };
     // Set already: the (last) top-level assignment gets the example's value.
     const have = top.filter((s) => pathOfStmt(s) === path);
     let mine: any;
@@ -352,7 +365,8 @@ export function placeExample(text: string, path: string, example: string, where 
     } else wrap = true;
   }
   const stmts = body.body as any[];
-  if (stmts.some((s) => norm(text.slice(s.start, s.end)) === norm(code))) return { text, action: 'same', line: lineAt(text, stmts.find((s) => norm(text.slice(s.start, s.end)) === norm(code)).start), where };
+  const at = foundIn(stmts, code);
+  if (at >= 0) return { text, action: 'same', line: lineAt(text, stmts[at].start), where };
   const outer = indentOf(text, body === fn.body ? fnStmt.start : body.start);
   const last = stmts[stmts.length - 1];
   const ind = last && lineStart(text, last.start) > body.start ? indentOf(text, last.start) : outer + unit;
