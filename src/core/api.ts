@@ -57,7 +57,7 @@ export interface Member {
   /** Where the example comes from when not the official docs: 'claude' (AI-written, data/claude-practice.json), 'hub'
    *  (the most common value or call in Hub handlers, data/hub-examples.json) or 'generated' (from its type). */
   exampleBy?: 'claude' | 'hub' | 'generated';
-  /** What a 'hub' or 'generated' example is ("The most common value in Hub handlers: 564 of the 889 that set it."). */
+  /** What a 'hub' or 'generated' example is ("From Hub handlers", no counts). */
   exampleNote?: string;
   /** Where the example goes in a handler: 'top' (the top level), 'Game.Play' or another callback. */
   exampleIn?: string;
@@ -414,6 +414,9 @@ export const claudeNote = (m: { docBy?: string; docBasis?: string; docCheckedBy?
  *  the doc-review workflow adds the doc itself as a comment the reporter can't remove). */
 export const docReviewUrl = (path: string) =>
   `https://github.com/Snailedlt/splitscreenme-vscode/issues/new?template=doc-review.yml&title=${encodeURIComponent(`Doc review: ${path}`)}&member=${encodeURIComponent(path)}`;
+/** The same form for feedback after a 👍 (something to add, a better example): titled as feedback. */
+export const docFeedbackUrl = (path: string) =>
+  `https://github.com/Snailedlt/splitscreenme-vscode/issues/new?template=doc-review.yml&title=${encodeURIComponent(`Doc feedback: ${path}`)}&member=${encodeURIComponent(path)}`;
 
 /** The label of an AI-written "In practice" part (empty without one). */
 export const practiceNote = (m: Member) =>
@@ -480,16 +483,23 @@ export function memberHoverMarkdown(owner: string, name: string, m: Member): str
   return parts.join('\n\n');
 }
 
-export function memberMarkdown(owner: string, name: string, m: Member): string {
+/** A place in memberMarkdown's text for a control the caller puts there itself (VS Code's Docs panel: each part's
+ *  👍/👎 inside it; 'practice-open'/'practice-close' around "In practice"). A paragraph of its own. */
+export const docSlot = (name: 'doc' | 'practice' | 'practice-open' | 'practice-close') => `@@slot:${name}@@`;
+
+/** `slots`: put docSlot markers in, and leave out the "Is it wrong? Tell us" links (the caller's votes lead there). */
+export function memberMarkdown(owner: string, name: string, m: Member, slots = false): string {
   const parts: string[] = [];
+  const tellUs = (checked: unknown, path: string) => (checked || slots ? '' : ` [Is it wrong? Tell us](${docReviewUrl(path)})`);
   // Each overload laid out as prettier would (one parameter per line when it's long), the example too.
   parts.push('```ts\n' + memberSignature(owner, name, m).map((x) => prettySignature(x)).join('\n') + '\n```');
   if (m.deprecated) parts.push(`**${m.deprecated}**`);
   if (m.doc) parts.push(m.doc);
   const path = `${ownerLabel(owner)}${ownerLabel(owner) ? '.' : ''}${name}`;
-  if (claudeNote(m)) parts.push(`_✎ ${claudeNote(m)}_${m.docCheckedBy ? '' : ` [Is it wrong? Tell us](${docReviewUrl(path)})`}`);
+  if (claudeNote(m)) parts.push(`_✎ ${claudeNote(m)}_${tellUs(m.docCheckedBy, path)}`);
   const docVotes = m.doc ? votesMarkdown(path, 'doc', m.docBy === 'claude') : '';
   if (docVotes) parts.push(docVotes);
+  if (slots && m.doc) parts.push(docSlot('doc'));
   // What to pass for each parameter (every name once, from whichever overload has it).
   const params = new Map<string, Param>();
   for (const o of m.overloads ?? []) for (const p of o.params) if (p.doc && !params.has(p.name)) params.set(p.name, p);
@@ -502,7 +512,8 @@ export function memberMarkdown(owner: string, name: string, m: Member): string {
   // "In practice": AI-written, its own label and votes, apart from the doc above.
   if (m.practice) {
     const pv = votesMarkdown(path, 'practice', true);
-    parts.push(`**In practice** _(AI-written)_\n\n${m.practice}\n\n_✎ ${practiceNote(m)}_${m.practiceCheckedBy ? '' : ` [Is it wrong? Tell us](${docReviewUrl(path)})`}${pv ? `\n\n${pv}` : ''}`);
+    const body = `**In practice** _(AI-written)_\n\n${m.practice}\n\n_✎ ${practiceNote(m)}_${tellUs(m.practiceCheckedBy, path)}${pv ? `\n\n${pv}` : ''}`;
+    parts.push(slots ? [docSlot('practice-open'), body, docSlot('practice'), docSlot('practice-close')].join('\n\n') : body);
   }
   // Where one engine's handlers use it notably more or less: mechanical, not AI-written, under "In practice" or alone.
   if (m.byEngine) parts.push(`${m.practice ? '' : '**In practice**\n\n'}_${m.byEngine}_`);

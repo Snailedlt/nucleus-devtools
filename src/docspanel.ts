@@ -7,7 +7,7 @@ import { docsPageUrl, docsPage, docsValue, docsView, DocsPage } from './core/doc
 import { linkApiNames } from './core/features';
 import { allEntries, lookup } from './core/lookup';
 import { FEEDBACK_SITE, voteEventPath, type DocPart } from './core/docvotes';
-import { api } from './core/api';
+import { api, docFeedbackUrl, docReviewUrl, docSlot } from './core/api';
 import { WORKBENCH_URL } from './core/sharelink';
 
 export const OPEN_DOCS = 'splitscreenme.showDocs'; // not openDocs: that is the old "Docs: Web Links…" (still works)
@@ -37,22 +37,33 @@ const SEARCH = 'splitscreenme.docsSearch';
 const VOTE = 'splitscreenme.docsVote';
 type Vote = 'up' | 'down';
 
-/** People's 👍/👎 on a doc page's parts (the doc, and the AI-written "In practice"): command links, since the panel
- *  runs no scripts. `mine`: this person's votes so far (globalState), so a second click takes a vote back. Exported for tests. */
-export function voteSection(path: string, parts: { part: DocPart; label: string }[], mine: Record<string, Vote | undefined>, canSend: boolean): string {
-  if (!parts.length) return '';
-  const link = (part: DocPart, v: Vote) => `command:${VOTE}?${encodeURIComponent(JSON.stringify([path, part, v]))}`;
-  const rows = parts.map(({ part, label }) => {
-    const cur = mine[`${part}/${path}`];
-    // Links (the panel runs no scripts, so no Space-to-press button): the accessible name says the part, the vote and
-    // whether it is the current one.
-    const btn = (v: Vote, icon: string, name: string) => {
-      const what = cur === v ? `${label}: you said ${name}. Activate to take it back` : `${label}: vote ${name}`;
-      return `<a class="vote${cur === v ? ' on' : ''}" href="${esc(link(part, v))}" aria-label="${esc(what)}" title="${esc(cur === v ? `You said: ${name}. Click again to take it back.` : name)}">${icon}</a>`;
-    };
-    return `<li><span>${esc(label)}</span> ${btn('up', '👍', 'Right')} ${btn('down', '👎', 'Wrong or unclear')}</li>`;
-  }).join('');
-  return `<section class="votes" aria-labelledby="votes-h"><h2 id="votes-h">Is this right?</h2><ul>${rows}</ul><p class="note">${canSend ? 'Anonymous counts, no account: they show in the docs after their next build. People\'s votes decide "Verified by people".' : 'Votes are off because VS Code telemetry is off (Settings › Telemetry).'}</p></section>`;
+/** People's 👍/👎 on one part of a doc page (the doc, or the AI-written "In practice"), placed inside that part: command
+ *  links, since the panel runs no scripts. `mine`: this person's votes so far (globalState), so a second click takes a
+ *  vote back. The follow-up link shows only after a vote (help on request): "Tell us what's wrong" after 👎, "Give
+ *  feedback" (the same form, titled as feedback) after 👍; it goes again when the vote is taken back. Exported for tests. */
+export function voteLine(path: string, part: DocPart, label: string, mine: Record<string, Vote | undefined>, canSend: boolean): string {
+  const link = (v: Vote) => `command:${VOTE}?${encodeURIComponent(JSON.stringify([path, part, v]))}`;
+  const cur = mine[`${part}/${path}`];
+  // Links (the panel runs no scripts, so no Space-to-press button): the accessible name says the part, the vote and
+  // whether it is the current one.
+  const btn = (v: Vote, icon: string, name: string) => {
+    const what = cur === v ? `${label}: you said ${name}. Activate to take it back` : `${label}: vote ${name}`;
+    return `<a class="vote${cur === v ? ' on' : ''}" href="${esc(link(v))}" aria-label="${esc(what)}" title="${esc(cur === v ? `You said: ${name}. Click again to take it back.` : name)}">${icon}</a>`;
+  };
+  const follow = cur === 'down' ? `<a class="follow" href="${esc(docReviewUrl(path))}">Tell us what's wrong</a>`
+    : cur === 'up' ? `<a class="follow" href="${esc(docFeedbackUrl(path))}">Give feedback</a>` : '';
+  const note = canSend ? '' : '<span class="note">Votes are off because VS Code telemetry is off (Settings › Telemetry).</span>';
+  const ask = part === 'practice' ? 'Is this right?' : 'Is this doc right?';
+  return `<div class="votes" role="group" aria-label="${esc(`${label}: is it right?`)}"><span title="Anonymous counts, no account: they show in the docs after their next build. People's votes decide &quot;Verified by people&quot;.">${ask}</span> ${btn('up', '👍', 'Right')} ${btn('down', '👎', 'Wrong or unclear')}${follow ? ` ${follow}` : ''}${note ? ` ${note}` : ''}</div>`;
+}
+
+/** Puts each part's votes where docsPage(…, slots) marked it in the rendered page, and "In practice" in its box.
+ *  `parts`: the parts that get votes, with their names for screen readers. Exported for tests. */
+export function placeVotes(html: string, path: string, parts: { part: DocPart; label: string }[], mine: Record<string, Vote | undefined>, canSend: boolean): string {
+  const slot = (name: Parameters<typeof docSlot>[0]) => `<p>${esc(docSlot(name))}</p>`;
+  let out = html.replace(slot('practice-open'), '<section class="practice" aria-label="In practice">').replace(slot('practice-close'), '</section>');
+  for (const p of parts) out = out.replace(slot(p.part), voteLine(path, p.part, p.label, mine, canSend));
+  return out.replace(/<p>@@slot:[\w-]+@@<\/p>/g, '');
 }
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -153,10 +164,11 @@ body.vscode-high-contrast .tk-property, body.vscode-high-contrast .tk-variable {
 body.vscode-high-contrast-light .tk-keyword { color: #0f4a85; } body.vscode-high-contrast-light .tk-string { color: #0f4a85; }
 body.vscode-high-contrast-light .tk-comment { color: #515151; } body.vscode-high-contrast-light .tk-type { color: #185e73; } body.vscode-high-contrast-light .tk-function { color: #5e2cbc; }
 ul { padding-left: 20px; } li { margin: 3px 0; }
-.votes { margin-top: 24px; border-top: 1px solid var(--vscode-panel-border, #8884); padding-top: 8px; } .votes h2 { font-size: 1em; } .votes ul { list-style: none; padding: 0; }
-.votes li { display: flex; gap: 8px; align-items: center; } .votes li span { min-width: 12em; }
+.votes { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; margin: 4px 0 10px; font-size: .92em; color: var(--vscode-descriptionForeground); }
+.votes .follow { margin-left: 4px; }
+.practice { border: 1px solid var(--vscode-panel-border, #8884); border-radius: 6px; padding: 2px 12px; margin: 12px 0; }
 .vote { display: inline-block; padding: 2px 8px; border: 1px solid var(--vscode-button-border, #8886); border-radius: 4px; text-decoration: none; }
-.vote.on { background: var(--vscode-button-background); color: var(--vscode-button-foreground); } .votes .note { opacity: .85; font-size: .9em; }
+.vote.on { background: var(--vscode-button-background); color: var(--vscode-button-foreground); } .votes .note { opacity: .85; }
 </style></head><body>
 <nav aria-label="Where you are in the docs">${canGoBack ? `<a class="back" href="command:${BACK}" title="Back" aria-label="Back">←</a>` : ''}${parts.join('<span class="sep" aria-hidden="true">/</span>')}<span class="end"><a href="command:${SEARCH}" title="Search the docs (names and words)">Search…</a><a href="${esc(web)}" title="The same page on the site, to share or read in the browser">Open on the web</a></span></nav>
 <main>${body}</main>
@@ -170,15 +182,14 @@ export function registerDocsPanel(context: vscode.ExtensionContext) {
 
   const VOTES_KEY = 'splitscreenme.docVotes';
   const mine = () => context.globalState?.get<Record<string, Vote | undefined>>(VOTES_KEY) ?? {};
-  const votesFor = (path?: string) => {
-    if (!path) return '';
+  const withVotes = (html: string, path?: string) => {
+    if (!path) return html;
     const r = lookup(path);
     const m = r.kind === 'entries' && r.entries.length === 1 ? r.entries[0].member : undefined;
-    if (!m) return '';
     const parts: { part: DocPart; label: string }[] = [];
-    if (m.doc) parts.push({ part: 'doc', label: m.docBy === 'claude' ? 'The doc (AI-written)' : 'The doc' });
-    if (m.practice) parts.push({ part: 'practice', label: '"In practice" (AI-written)' });
-    return voteSection(path, parts, mine(), vscode.env.isTelemetryEnabled !== false);
+    if (m?.doc) parts.push({ part: 'doc', label: m.docBy === 'claude' ? 'The doc (AI-written)' : 'The doc' });
+    if (m?.practice) parts.push({ part: 'practice', label: '"In practice" (AI-written)' });
+    return placeVotes(html, path, parts, mine(), vscode.env.isTelemetryEnabled !== false);
   };
   /** Sends one people's-vote event to the same anonymous counter as the workbench (GoatCounter); true when it was
    *  accepted, false offline or on an HTTP error (never fails loudly). */
@@ -198,9 +209,9 @@ export function registerDocsPanel(context: vscode.ExtensionContext) {
     if (push && panel && next !== view) history.push(view);
     if (history.length > 50) history.shift();
     view = next;
-    const page = docsPage(view, docsCommandLink);
-    // Names inside the docs open their own page too.
-    const body = fallbackMarkdown(linkApiNames(page.markdown, docsCommandLink)) + (view === 'home' ? linksSection(`${WORKBENCH_URL}?ref=vscode`) : '') + votesFor(page.path);
+    const page = docsPage(view, docsCommandLink, true);
+    // Names inside the docs open their own page too; each part's 👍/👎 goes inside it.
+    const body = withVotes(fallbackMarkdown(linkApiNames(page.markdown, docsCommandLink)), page.path) + (view === 'home' ? linksSection(`${WORKBENCH_URL}?ref=vscode`) : '');
     if (!panel) {
       panel = vscode.window.createWebviewPanel('splitscreenme.docs', 'Handler Docs', { viewColumn: vscode.ViewColumn.Beside, preserveFocus: true }, {
         enableScripts: false,

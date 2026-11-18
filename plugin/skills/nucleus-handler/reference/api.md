@@ -415,7 +415,7 @@ default `DpiAwarenessMode.HighDpiAware`
 `DPIHandling: Nucleus.DPIHandling | number | boolean`
 default `DPIHandling.True`
 The way the games handles DPI scaling. Modify this if the game is presenting different sizing behaviour after the Windows 10 Creators Update. Values: True: True tries to send the correct width and height to the game's window. Nucleus.DPIHandling.Scaled: Scaled will scale the width and height by the DPI of the system (see that it's not per-monitor). Nucleus.DPIHandling.InvScaled: InvScaled will scale the width and height by 1 / DPI of the system (see that it's not per-monitor).
-Example (The most common value in Hub handlers: 19 of the 23 that set it.):
+Example (From Hub handlers):
 ```js
 Game.DPIHandling = Nucleus.DPIHandling.InvScaled;
 ```
@@ -882,7 +882,7 @@ Game.GoldbergNoLocalSave = false;
 ### Game.GoldbergNoWarning
 `GoldbergNoWarning: boolean`
 default `false`
-Example (The most common value in Hub handlers: 11 of the 11 that set it.):
+Example (From Hub handlers):
 ```js
 Game.GoldbergNoWarning = true;
 ```
@@ -1276,7 +1276,7 @@ Game.IgnoreThirdPartyPrompt = false;
 `IgnoreWindowBorderCheck: boolean`
 Skips the window pass Nucleus runs after the last instance has started and when windows are reset: it re-applies position, size and border removal to game windows that still have a border, and applies `Game.WindowStyleEndChanges`, `Game.ExtWindowStyleEndChanges` and `Game.EnableWindows`. Default `false`.
 _✎ AI-written, based on Nucleus GenericGameHandler.cs (last-instance block), GlobalWindowMethods.cs (RemoveBorder, reset-windows update loop, ResetWindows). Not from the official docs._
-Example (The most common value in Hub handlers: 12 of the 27 that set it.):
+Example (From Hub handlers):
 ```js
 Game.IgnoreWindowBorderCheck = true;
 ```
@@ -1512,7 +1512,7 @@ Game.LockInputAtStart = true;
 default `false`
 Pauses the Windows Explorer threads behind the taskbar, Start menu and Alt+Tab while input is locked, so they can't react to input; they resume when input is unlocked. Read on every lock (the lock key, the gamepad lock shortcut or `Game.LockInputAtStart`). Default `false`.
 _✎ AI-written, based on Nucleus LockInputRuntime.cs (Lock/Unlock), RawInputProcessor.cs, GamepadShortcuts.cs, GenericGameHandler.cs (LockInputAtStart); ProtoInputUtil KillExplorer.cpp (SuspendExplorer/RestartExplorer). Not from the official docs._
-Example (The most common value in Hub handlers: 498 of the 538 that set it.):
+Example (From Hub handlers):
 ```js
 Game.LockInputSuspendsExplorer = true;
 ```
@@ -1963,7 +1963,7 @@ Relative to instanced game directory root
 Sends focus messages once to every player's game window, one second apart, after the last instance has started, to make each game believe it has focus. `Game.FakeFocusSendActivate` adds the activate message. Not run with `Game.ProcessChangesAtEnd`.
 _✎ AI-written, based on Nucleus GenericGameHandler.cs (last-instance block), WindowFakeFocus.cs (SendFakeFocusMsg). Not from the official docs._
 By engine: rarer in Source and Unreal Engine games.
-Example (The most common value in Hub handlers: 164 of the 172 that set it.):
+Example (From Hub handlers):
 ```js
 Game.SendFakeFocusMsg = true;
 ```
@@ -2069,7 +2069,7 @@ Game.SSEAdditionalLines = ["Section|Key=Value"];
 ### Game.StartArguments
 `StartArguments: string`
 Adds whatever you put into the field as starting parameters for the game's executable. For example, in most cases '-windowed' will force windowed mode. Parameters can be chained. Necessary for some games.
-Example (The most common value in Hub handlers: 48 of the 114 that set it.):
+Example (From Hub handlers):
 ```js
 Game.StartArguments = "";
 ```
@@ -2111,7 +2111,7 @@ Game.SteamlessArgs = "--quiet --keepbind";
 ### Game.SteamlessPatch
 `SteamlessPatch: string[]`
 bool apply to launcher,string Steamless Args,int wait for exe patching finished.
-Example (The most common value in Hub handlers: 5 of the 25 that set it.):
+Example (From Hub handlers):
 ```js
 Game.SteamlessPatch = [
   "false",
@@ -2165,7 +2165,7 @@ Game.SupportsMultipleKeyboardsAndMice = true;
 `SupportsPositioning: boolean`
 Chooses whether or not to automatically move the windows around to fit in the right spaces.
 By engine: more common in Source games.
-Example (The most common value in Hub handlers: 67 of the 87 that set it.):
+Example (From Hub handlers):
 ```js
 Game.SupportsPositioning = true;
 ```
@@ -2232,7 +2232,7 @@ Game.ThirdPartyLaunch = false;
 `ToggleUnfocusOnInputsLock: boolean`
 default `false`
 v.2.1.2 see RawInputProcessor & GenericGameHandler
-Example (The most common value in Hub handlers: 50 of the 51 that set it.):
+Example (From Hub handlers):
 ```js
 Game.ToggleUnfocusOnInputsLock = true;
 ```
@@ -2490,7 +2490,7 @@ Game.WindowStyleValues = ["~0xC00000", "0x8000000"];
 `WorkingFolder: string`
 Relative path to where Nucleus should start the game's working folder to. Example: The main executable is on the root directory (left4dead2.exe), but the game expects to be started with a working folder of 'bin' (all the game's libraries are there).
 By engine: more common in Source games.
-Example (The most common value in Hub handlers: 12 of the 14 that set it.):
+Example (From Hub handlers):
 ```js
 Game.WorkingFolder = "";
 ```
@@ -2554,7 +2554,7 @@ Custom xinput/x360ce hook settings (`Game.Hook`).
 `BlockInputEvents: boolean`
 default `true`
 If force focus is enabled, this blocks all input events but gamepad.
-Example (The most common value in Hub handlers: 6 of the 10 that set it.):
+Example (From Hub handlers):
 ```js
 Game.Hook.BlockInputEvents = true;
 ```
@@ -2563,7 +2563,7 @@ Game.Hook.BlockInputEvents = true;
 `BlockKeyboardEvents: boolean`
 default `true`
 If force focus is enabled, this blocks all keyboard input.
-Example (The most common value in Hub handlers: 10 of the 10 that set it.):
+Example (From Hub handlers):
 ```js
 Game.Hook.BlockKeyboardEvents = false;
 ```
@@ -2572,7 +2572,7 @@ Game.Hook.BlockKeyboardEvents = false;
 `BlockMouseEvents: boolean`
 default `true`
 If force focus is enabled, this blocks all mouse input.
-Example (The most common value in Hub handlers: 6 of the 10 that set it.):
+Example (From Hub handlers):
 ```js
 Game.Hook.BlockMouseEvents = true;
 ```
@@ -2677,7 +2677,7 @@ Game.Hook.ResWidth = 1280;
 If the game supports sdl2 joysticks(not a hook)
 In practice (AI-written): Not a hook: Nucleus lists SDL2 controllers for the game and, for each instance, copies its own SDL2.dll (utils\SDL2\<arch>) next to the game's .exe, or into each folder in Game.SDLPaths, and writes SDL2.ini with that player's controller number. So it only works for games that load SDL2.dll as a separate file; a game with SDL built into its .exe (or a differently named SDL DLL such as SDL264.dll) keeps its own SDL and ignores it. Rare in Hub handlers; some also set Game.SDLPaths.
 _✎ AI-written, based on Nucleus Tools/SDL2Dll/SDL2Dll.cs (SetupSDL2Dll), GenericGameHandler.cs (gen.Hook.SDL2Enabled), Controls/SetupScreen/DevicesFunctions.cs (SDL2 devices); verified Hub handlers, counted 2026-11-18._
-Example (The most common value in Hub handlers: 16 of the 16 that set it.):
+Example (From Hub handlers):
 ```js
 Game.Hook.SDL2Enabled = true;
 ```
@@ -2889,7 +2889,7 @@ Game.ProtoInput.EnableFocusMessageLoop = true;
 Lets the player show or hide Proto Input's fake cursor with a key on their own keyboard (`Game.ProtoInput.ToggleFakeCursorVisibilityShortcutVkey`, Home by default); that key press is not passed to the game as a message. Needs `Game.ProtoInput.InjectStartup` or an `InjectRuntime_…` option.
 _✎ AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → SetToggleFakeCursorVisibilityShortcut), ProtoInputOptions.cs (Vkey default 0x24); ProtoInputHooks RawInput.cpp (SendKeyMessage). Not from the official docs._
 By engine: more common in Unity games, rarer in Source games.
-Example (The most common value in Hub handlers: 162 of the 193 that set it.):
+Example (From Hub handlers):
 ```js
 Game.ProtoInput.EnableToggleFakeCursorVisibilityShortcut = false;
 ```
@@ -3785,7 +3785,7 @@ var cMDStartArgsInside = Context.CMDStartArgsInside;
 ### Context.ConvertToBytes
 `ConvertToBytes(num: number): number[]` / `Context.ConvertToBytes(num: number): number[]` / `Context.ConvertToBytes(str: string): number[]`
 Helpers
-Example (The most common call in Hub handlers: 13 of the 14 that use it.):
+Example (From Hub handlers):
 ```js
 Context.ConvertToBytes(Context.AspectRatioDecimal);
 ```
@@ -4237,7 +4237,7 @@ var hideCursor = Context.HideCursor;
 
 ### Context.HideDesktop
 `HideDesktop(): void` / `Context.HideDesktop(hideTaskbar: boolean): void`
-Example (The most common call in Hub handlers: 13 of the 15 that use it.):
+Example (From Hub handlers):
 ```js
 Context.HideDesktop();
 ```
@@ -4254,7 +4254,7 @@ var hideTaskbar = Context.HideTaskbar;
 
 ### Context.HideTaskBar
 `HideTaskBar(): void`
-Example (The most common call in Hub handlers: 15 of the 15 that use it.):
+Example (From Hub handlers):
 ```js
 Context.HideTaskBar();
 ```
@@ -5169,7 +5169,7 @@ Pauses the handler for the given number of milliseconds.
 _✎ AI-written, based on Nucleus GenericContext.cs. Not from the official docs._
 In practice (AI-written): Pauses the handler (and Nucleus' setup of this instance) for this many milliseconds. Few handlers need it, often for Unreal Engine games; they usually wait about a second and a half, for example after starting an extra program before changing files.
 _✎ AI-written, based on Nucleus GenericContext.cs (Wait: Thread.Sleep); verified Hub handlers, counted 2026-11-17; engines from data/hub-engines.json._
-Example (The most common call in Hub handlers: 27 of the 56 that use it.):
+Example (From Hub handlers):
 ```js
 Context.Wait(1500);
 ```
@@ -5808,7 +5808,7 @@ _✎ AI-written, based on Nucleus ProtoInput.cs (AllowFakeCursorOutOfBounds), Pr
 `DisableMessageBlock(instanceHandle: number, messageID: number): void`
 Stops blocking a window message that `ProtoInput.EnableMessageBlock` blocked. Parameters: the instance handle (`Player.ProtoInputInstanceHandle`) and the message number.
 _✎ AI-written, based on Nucleus ProtoInput.cs (DisableMessageBlock), ProtoInputLoader InstallMessageFilter.cpp, ProtoInputHooks PipeCommunication.cpp (SetupMessageBlock). Not from the official docs._
-Example (The most common call in Hub handlers: 8 of the 10 that use it.):
+Example (From Hub handlers):
 ```js
 for (var i = 0; i < PlayerList.Count; i++) {
   var player = PlayerList[i];
@@ -5823,7 +5823,7 @@ for (var i = 0; i < PlayerList.Count; i++) {
 `DisableMessageFilter(instanceHandle: number, filterID: number): void`
 Turns off a window message filter in the game instance. Parameters: the instance handle (`Player.ProtoInputInstanceHandle`) and a filter ID from `ProtoInput.Values` (the `...FilterID` values).
 _✎ AI-written, based on Nucleus ProtoInput.cs (DisableMessageFilter), ProtoInputLoader InstallMessageFilter.cpp, ProtoInputHooks MessageFilterHook.cpp (SetFilterEnabled). Not from the official docs._
-Example (The most common call in Hub handlers: 349 of the 355 that use it.):
+Example (From Hub handlers):
 ```js
 for (var i = 0; i < PlayerList.Count; i++) {
   var player = PlayerList[i];
@@ -5853,7 +5853,7 @@ _✎ AI-written, based on Nucleus ProtoInput.cs (EasyHookStealthInjectRuntime), 
 `EnableMessageBlock(instanceHandle: number, messageID: number): void`
 Blocks a window message in the game instance: the game reads it as an empty message (`WM_NULL`). Parameters: the instance handle (`Player.ProtoInputInstanceHandle`) and the message number. Only acts while the `MessageFilterHookID` hook is installed, and the number goes through Proto Input's own message table, so an unlisted number can block a different message.
 _✎ AI-written, based on Nucleus ProtoInput.cs (EnableMessageBlock), ProtoInputLoader InstallMessageFilter.cpp, ProtoInputHooks PipeCommunication.cpp (SetupMessageBlock, MessageList::GetBlocked), ProtoInputHooks MessageFilterHook.cpp (FilterMessage). Not from the official docs._
-Example (The most common call in Hub handlers: 8 of the 12 that use it.):
+Example (From Hub handlers):
 ```js
 for (var i = 0; i < PlayerList.Count; i++) {
   var player = PlayerList[i];
@@ -5870,7 +5870,7 @@ Turns on a window message filter in the game instance. Parameters: the instance 
 _✎ AI-written, based on Nucleus ProtoInput.cs (EnableMessageFilter), ProtoInputLoader InstallMessageFilter.cpp, ProtoInputHooks PipeCommunication.cpp (SetupMessageFilter), ProtoInputHooks MessageFilterHook.cpp (FilterMessage). Not from the official docs._
 In practice (AI-written): Turns a message filter on for one instance. It only acts with `Game.ProtoInput.MessageFilterHook` on. Handlers call it in `Game.ProtoInput.OnInputLocked` and the matching `ProtoInput.DisableMessageFilter` in `Game.ProtoInput.OnInputUnlocked`; RawInputFilterID and MouseButtonFilterID are the common filters.
 _✎ AI-written, based on Nucleus ProtoInput.cs (EnableMessageFilter, ExposedValues); ProtoInputHooks MessageFilterHook.cpp; verified Hub handlers, counted 2026-11-17._
-Example (The most common call in Hub handlers: 348 of the 355 that use it.):
+Example (From Hub handlers):
 ```js
 for (var i = 0; i < PlayerList.Count; i++) {
   var player = PlayerList[i];
@@ -5892,7 +5892,7 @@ Installs a Proto Input hook in the game instance. Parameters: the instance handl
 _✎ AI-written, based on Nucleus ProtoInput.cs (InstallHook), ProtoInputLoader InstallHooks.cpp + InstanceHandling.cpp (WaitClientConnect), ProtoInputHooks HookManager.cpp (InstallHook). Not from the official docs._
 In practice (AI-written): Handlers call it in `Game.ProtoInput.OnInputLocked`, in a loop over `PlayerList`, so a hook acts only while input is locked, and remove it again with `ProtoInput.UninstallHook` in `Game.ProtoInput.OnInputUnlocked`. The cursor and key state hooks are the usual ones: GetCursorPosHookID, SetCursorPosHookID, GetKeyStateHookID, GetAsyncKeyStateHookID, GetKeyboardStateHookID.
 _✎ AI-written, based on Nucleus ProtoInput.cs (InstallHook, ExposedValues); verified Hub handlers, counted 2026-11-17._
-Example (The most common call in Hub handlers: 336 of the 352 that use it.):
+Example (From Hub handlers):
 ```js
 for (var i = 0; i < PlayerList.Count; i++) {
   var player = PlayerList[i];
@@ -5969,7 +5969,7 @@ Shows or hides the fake cursor Proto Input draws over the game for this instance
 _✎ AI-written, based on Nucleus ProtoInput.cs (SetDrawFakeCursor), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetDrawFakeCursor), ProtoInputHooks FakeCursor.cpp (EnableDisableFakeCursor). Not from the official docs._
 In practice (AI-written): Shows or hides Proto Input's fake cursor in one instance, for games that have no cursor of their own. Handlers show it in `Game.ProtoInput.OnInputLocked` (with true); some hide it again in `Game.ProtoInput.OnInputUnlocked` (with false).
 _✎ AI-written, based on Nucleus ProtoInput.cs (SetDrawFakeCursor); verified Hub handlers, counted 2026-11-17._
-Example (The most common call in Hub handlers: 288 of the 290 that use it.):
+Example (From Hub handlers):
 ```js
 for (var i = 0; i < PlayerList.Count; i++) {
   var player = PlayerList[i];
@@ -5984,7 +5984,7 @@ for (var i = 0; i < PlayerList.Count; i++) {
 `SetDrawFakeCursorFix(instanceHandle: number, enable: boolean): void`
 Switches the fake cursor to an alternative drawing mode that offsets it by the cursor image's detected hotspot and does not resize it for the monitor scale. It does not turn drawing on: `ProtoInput.SetDrawFakeCursor` does. Parameters: the instance handle and `true`/`false`.
 _✎ AI-written, based on Nucleus ProtoInput.cs (SetDrawFakeCursorFix), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetDrawFakeCursorFix), ProtoInputHooks FakeCursor.cpp (setmonitorscale, DrawFakeCursorFix). Not from the official docs._
-Example (The most common call in Hub handlers: 5 of the 5 that use it.):
+Example (From Hub handlers):
 ```js
 for (var i = 0; i < PlayerList.Count; i++) {
   var player = PlayerList[i];
@@ -6034,7 +6034,7 @@ _✎ AI-written, based on Nucleus ProtoInput.cs (SetPutMouseInsideWindow), Proto
 `SetRawInputBypass(instanceHandle: number, enable: boolean): void`
 When `true`, raw input from every mouse and keyboard is forwarded to the game unchanged, not only from the assigned devices, and Proto Input's fake mouse and keyboard are not updated from it. Parameters: the instance handle and `true`/`false`.
 _✎ AI-written, based on Nucleus ProtoInput.cs (SetRawInputBypass), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetRawInputBypass), ProtoInputHooks RawInput.cpp (ProcessRawInput). Not from the official docs._
-Example (The most common call in Hub handlers: 42 of the 42 that use it.):
+Example (From Hub handlers):
 ```js
 for (var i = 0; i < PlayerList.Count; i++) {
   var player = PlayerList[i];
@@ -6136,7 +6136,7 @@ _✎ AI-written, based on Nucleus ProtoInput.cs (StartFocusMessageLoop); verifie
 `StopFocusMessageLoop(instanceHandle: number): void`
 Pauses the focus message loop started by `ProtoInput.StartFocusMessageLoop`. Parameter: the instance handle.
 _✎ AI-written, based on Nucleus ProtoInput.cs (StopFocusMessageLoop), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (StopFocusMessageLoop), ProtoInputHooks FocusMessageLoop.cpp (PauseMessageLoop). Not from the official docs._
-Example (The most common call in Hub handlers: 228 of the 228 that use it.):
+Example (From Hub handlers):
 ```js
 for (var i = 0; i < PlayerList.Count; i++) {
   var player = PlayerList[i];
@@ -6155,7 +6155,7 @@ _✎ AI-written, based on Nucleus ProtoInput.cs (SuspendExplorer summary), Proto
 `UninstallHook(instanceHandle: number, hookID: number): void`
 Removes a Proto Input hook from the game instance. Parameters: the instance handle (`Player.ProtoInputInstanceHandle`) and a hook ID from `ProtoInput.Values` (the `...HookID` values).
 _✎ AI-written, based on Nucleus ProtoInput.cs (UninstallHook), ProtoInputLoader InstallHooks.cpp, ProtoInputHooks HookManager.cpp (UninstallHook). Not from the official docs._
-Example (The most common call in Hub handlers: 336 of the 352 that use it.):
+Example (From Hub handlers):
 ```js
 for (var i = 0; i < PlayerList.Count; i++) {
   var player = PlayerList[i];

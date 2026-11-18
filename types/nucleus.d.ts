@@ -94,7 +94,7 @@ interface Game {
    * Chooses whether or not to automatically move the windows around to fit in the right spaces.
    *
    * By engine: more common in Source games.
-   * The most common value in Hub handlers: 67 of the 87 that set it:
+   * From Hub handlers:
    * @example Game.SupportsPositioning = true;
    */
   SupportsPositioning: boolean;
@@ -195,7 +195,7 @@ interface Game {
   /**
    * The way the games handles DPI scaling. Modify this if the game is presenting different sizing behaviour after the Windows 10 Creators Update. Values: True: True tries to send the correct width and height to the game's window. Nucleus.DPIHandling.Scaled: Scaled will scale the width and height by the DPI of the system (see that it's not per-monitor). Nucleus.DPIHandling.InvScaled: InvScaled will scale the width and height by 1 / DPI of the system (see that it's not per-monitor).
    * @default DPIHandling.True
-   * The most common value in Hub handlers: 19 of the 23 that set it:
+   * From Hub handlers:
    * @example Game.DPIHandling = Nucleus.DPIHandling.InvScaled;
    */
   DPIHandling: Nucleus.DPIHandling | number | boolean;
@@ -205,7 +205,7 @@ interface Game {
   DpiAwarenessMode: Nucleus.DpiAwarenessMode | number | boolean;
   /**
    * Adds whatever you put into the field as starting parameters for the game's executable. For example, in most cases '-windowed' will force windowed mode. Parameters can be chained. Necessary for some games.
-   * The most common value in Hub handlers: 48 of the 114 that set it:
+   * From Hub handlers:
    * @example Game.StartArguments = "";
    */
   StartArguments: string;
@@ -252,7 +252,7 @@ interface Game {
    * (AI-written, based on Nucleus GenericGameHandler.cs (last-instance block), WindowFakeFocus.cs (SendFakeFocusMsg). Not from the official docs.)
    *
    * By engine: rarer in Source and Unreal Engine games.
-   * The most common value in Hub handlers: 164 of the 172 that set it:
+   * From Hub handlers:
    * @example Game.SendFakeFocusMsg = true;
    */
   SendFakeFocusMsg: boolean;
@@ -314,7 +314,7 @@ interface Game {
    * Relative path to where Nucleus should start the game's working folder to. Example: The main executable is on the root directory (left4dead2.exe), but the game expects to be started with a working folder of 'bin' (all the game's libraries are there).
    *
    * By engine: more common in Source games.
-   * The most common value in Hub handlers: 12 of the 14 that set it:
+   * From Hub handlers:
    * @example Game.WorkingFolder = "";
    */
   WorkingFolder: string;
@@ -567,7 +567,7 @@ interface Game {
   UseGoldberg: boolean;
   /**
    * @default false
-   * The most common value in Hub handlers: 11 of the 11 that set it:
+   * From Hub handlers:
    * @example Game.GoldbergNoWarning = true;
    */
   GoldbergNoWarning: boolean;
@@ -600,7 +600,7 @@ interface Game {
   SteamlessTiming: number;
   /**
    * bool apply to launcher,string Steamless Args,int wait for exe patching finished.
-   * The most common value in Hub handlers: 5 of the 25 that set it:
+   * From Hub handlers:
    * @example Game.SteamlessPatch = ["false", "--quiet --keepbind", "5000"];
    */
   SteamlessPatch: string[];
@@ -1181,7 +1181,7 @@ interface Game {
   /**
    * Skips the window pass Nucleus runs after the last instance has started and when windows are reset: it re-applies position, size and border removal to game windows that still have a border, and applies `Game.WindowStyleEndChanges`, `Game.ExtWindowStyleEndChanges` and `Game.EnableWindows`. Default `false`.
    * (AI-written, based on Nucleus GenericGameHandler.cs (last-instance block), GlobalWindowMethods.cs (RemoveBorder, reset-windows update loop, ResetWindows). Not from the official docs.)
-   * The most common value in Hub handlers: 12 of the 27 that set it:
+   * From Hub handlers:
    * @example Game.IgnoreWindowBorderCheck = true;
    */
   IgnoreWindowBorderCheck: boolean;
@@ -1647,14 +1647,14 @@ interface Game {
    * Pauses the Windows Explorer threads behind the taskbar, Start menu and Alt+Tab while input is locked, so they can't react to input; they resume when input is unlocked. Read on every lock (the lock key, the gamepad lock shortcut or `Game.LockInputAtStart`). Default `false`.
    * (AI-written, based on Nucleus LockInputRuntime.cs (Lock/Unlock), RawInputProcessor.cs, GamepadShortcuts.cs, GenericGameHandler.cs (LockInputAtStart); ProtoInputUtil KillExplorer.cpp (SuspendExplorer/RestartExplorer). Not from the official docs.)
    * @default false
-   * The most common value in Hub handlers: 498 of the 538 that set it:
+   * From Hub handlers:
    * @example Game.LockInputSuspendsExplorer = true;
    */
   LockInputSuspendsExplorer: boolean;
   /**
    * v.2.1.2 see RawInputProcessor & GenericGameHandler
    * @default false
-   * The most common value in Hub handlers: 50 of the 51 that set it:
+   * From Hub handlers:
    * @example Game.ToggleUnfocusOnInputsLock = true;
    */
   ToggleUnfocusOnInputsLock: boolean;
@@ -1764,7 +1764,7 @@ interface GameHook {
    *
    * In practice: Not a hook: Nucleus lists SDL2 controllers for the game and, for each instance, copies its own SDL2.dll (utils\SDL2\<arch>) next to the game's .exe, or into each folder in Game.SDLPaths, and writes SDL2.ini with that player's controller number. So it only works for games that load SDL2.dll as a separate file; a game with SDL built into its .exe (or a differently named SDL DLL such as SDL264.dll) keeps its own SDL and ignores it. Rare in Hub handlers; some also set Game.SDLPaths.
    * (AI-written, based on Nucleus Tools/SDL2Dll/SDL2Dll.cs (SetupSDL2Dll), GenericGameHandler.cs (gen.Hook.SDL2Enabled), Controls/SetupScreen/DevicesFunctions.cs (SDL2 devices); verified Hub handlers, counted 2026-11-18.)
-   * The most common value in Hub handlers: 16 of the 16 that set it:
+   * From Hub handlers:
    * @example Game.Hook.SDL2Enabled = true;
    */
   SDL2Enabled: boolean;
@@ -1809,21 +1809,21 @@ interface GameHook {
   /**
    * If force focus is enabled, this blocks all mouse input.
    * @default true
-   * The most common value in Hub handlers: 6 of the 10 that set it:
+   * From Hub handlers:
    * @example Game.Hook.BlockMouseEvents = true;
    */
   BlockMouseEvents: boolean;
   /**
    * If force focus is enabled, this blocks all keyboard input.
    * @default true
-   * The most common value in Hub handlers: 10 of the 10 that set it:
+   * From Hub handlers:
    * @example Game.Hook.BlockKeyboardEvents = false;
    */
   BlockKeyboardEvents: boolean;
   /**
    * If force focus is enabled, this blocks all input events but gamepad.
    * @default true
-   * The most common value in Hub handlers: 6 of the 10 that set it:
+   * From Hub handlers:
    * @example Game.Hook.BlockInputEvents = true;
    */
   BlockInputEvents: boolean;
@@ -2314,7 +2314,7 @@ interface GameProtoInput {
    * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → SetToggleFakeCursorVisibilityShortcut), ProtoInputOptions.cs (Vkey default 0x24); ProtoInputHooks RawInput.cpp (SendKeyMessage). Not from the official docs.)
    *
    * By engine: more common in Unity games, rarer in Source games.
-   * The most common value in Hub handlers: 162 of the 193 that set it:
+   * From Hub handlers:
    * @example Game.ProtoInput.EnableToggleFakeCursorVisibilityShortcut = false;
    */
   EnableToggleFakeCursorVisibilityShortcut: boolean;
@@ -3349,12 +3349,12 @@ interface Context {
   readonly ScriptFolder: string;
   SetProtoInputMultipleControllers(controller1: number, controller2: number, controller3: number, controller4: number): void;
   /**
-   * The most common call in Hub handlers: 13 of the 15 that use it:
+   * From Hub handlers:
    * @example Context.HideDesktop();
    */
   HideDesktop(): void;
   /**
-   * The most common call in Hub handlers: 13 of the 15 that use it:
+   * From Hub handlers:
    * @example Context.HideDesktop();
    */
   HideDesktop(hideTaskbar: boolean): void;
@@ -3368,7 +3368,7 @@ interface Context {
   EditZipFile(sourceZip: string | number | boolean, password: string | number | boolean, savePath: string | number | boolean, itemsToAdd: string[], entriesToRemove: string[]): boolean;
   ExtractZip(sourceZip: string | number | boolean, contentDestination: string | number | boolean, password: string | number | boolean): boolean;
   /**
-   * The most common call in Hub handlers: 15 of the 15 that use it:
+   * From Hub handlers:
    * @example Context.HideTaskBar();
    */
   HideTaskBar(): void;
@@ -3413,17 +3413,17 @@ interface Context {
   ToUpperCase(str: any): string;
   ToLowerCase(str: any): string;
   /**
-   * The most common call in Hub handlers: 13 of the 14 that use it:
+   * From Hub handlers:
    * @example Context.ConvertToBytes(Context.AspectRatioDecimal);
    */
   ConvertToBytes(num: number): number[];
   /**
-   * The most common call in Hub handlers: 13 of the 14 that use it:
+   * From Hub handlers:
    * @example Context.ConvertToBytes(Context.AspectRatioDecimal);
    */
   ConvertToBytes(num: number): number[];
   /**
-   * The most common call in Hub handlers: 13 of the 14 that use it:
+   * From Hub handlers:
    * @example Context.ConvertToBytes(Context.AspectRatioDecimal);
    */
   ConvertToBytes(str: string | number | boolean): number[];
@@ -3749,7 +3749,7 @@ Context.ModifySaveFile(ini, ini, Nucleus.SaveType.INI, [
    *
    * In practice: Pauses the handler (and Nucleus' setup of this instance) for this many milliseconds. Few handlers need it, often for Unreal Engine games; they usually wait about a second and a half, for example after starting an extra program before changing files.
    * (AI-written, based on Nucleus GenericContext.cs (Wait: Thread.Sleep); verified Hub handlers, counted 2026-11-17; engines from data/hub-engines.json.)
-   * The most common call in Hub handlers: 27 of the 56 that use it:
+   * From Hub handlers:
    * @example Context.Wait(1500);
    */
   Wait(wait: number): void;
@@ -4192,7 +4192,7 @@ interface ProtoInputRuntime {
    * (AI-written, based on Nucleus ProtoInput.cs (InstallHook, ExposedValues); verified Hub handlers, counted 2026-11-17.)
    * @param instanceHandle The player's Proto Input instance, Player.ProtoInputInstanceHandle (or PlayerList[i].ProtoInputInstanceHandle); Nucleus sets it when it injects Proto Input, otherwise it is 0. (AI-written)
    * @param hookID Which hook to install: a ProtoInput.Values.*HookID value, e.g. ProtoInput.Values.GetCursorPosHookID or ProtoInput.Values.FocusHooksHookID. (AI-written)
-   * The most common call in Hub handlers: 336 of the 352 that use it:
+   * From Hub handlers:
    * @example for (var i = 0; i < PlayerList.Count; i++) {
   var player = PlayerList[i];
   ProtoInput.InstallHook(
@@ -4207,7 +4207,7 @@ interface ProtoInputRuntime {
    * (AI-written, based on Nucleus ProtoInput.cs (UninstallHook), ProtoInputLoader InstallHooks.cpp, ProtoInputHooks HookManager.cpp (UninstallHook). Not from the official docs.)
    * @param instanceHandle The player's Proto Input instance, Player.ProtoInputInstanceHandle (or PlayerList[i].ProtoInputInstanceHandle). (AI-written)
    * @param hookID Which hook to remove: a ProtoInput.Values.*HookID value, the same one passed to InstallHook. (AI-written)
-   * The most common call in Hub handlers: 336 of the 352 that use it:
+   * From Hub handlers:
    * @example for (var i = 0; i < PlayerList.Count; i++) {
   var player = PlayerList[i];
   ProtoInput.UninstallHook(
@@ -4225,7 +4225,7 @@ interface ProtoInputRuntime {
    * (AI-written, based on Nucleus ProtoInput.cs (EnableMessageFilter, ExposedValues); ProtoInputHooks MessageFilterHook.cpp; verified Hub handlers, counted 2026-11-17.)
    * @param instanceHandle The player's Proto Input instance, Player.ProtoInputInstanceHandle (or PlayerList[i].ProtoInputInstanceHandle). (AI-written)
    * @param filterID Which filter to turn on: a ProtoInput.Values.*FilterID value, e.g. ProtoInput.Values.RawInputFilterID or ProtoInput.Values.WindowActivateFilterID. (AI-written)
-   * The most common call in Hub handlers: 348 of the 355 that use it:
+   * From Hub handlers:
    * @example for (var i = 0; i < PlayerList.Count; i++) {
   var player = PlayerList[i];
   ProtoInput.EnableMessageFilter(
@@ -4240,7 +4240,7 @@ interface ProtoInputRuntime {
    * (AI-written, based on Nucleus ProtoInput.cs (DisableMessageFilter), ProtoInputLoader InstallMessageFilter.cpp, ProtoInputHooks MessageFilterHook.cpp (SetFilterEnabled). Not from the official docs.)
    * @param instanceHandle The player's Proto Input instance, Player.ProtoInputInstanceHandle (or PlayerList[i].ProtoInputInstanceHandle). (AI-written)
    * @param filterID Which filter to turn off: a ProtoInput.Values.*FilterID value, the same one passed to EnableMessageFilter. (AI-written)
-   * The most common call in Hub handlers: 349 of the 355 that use it:
+   * From Hub handlers:
    * @example for (var i = 0; i < PlayerList.Count; i++) {
   var player = PlayerList[i];
   ProtoInput.DisableMessageFilter(
@@ -4253,7 +4253,7 @@ interface ProtoInputRuntime {
   /**
    * Blocks a window message in the game instance: the game reads it as an empty message (`WM_NULL`). Parameters: the instance handle (`Player.ProtoInputInstanceHandle`) and the message number. Only acts while the `MessageFilterHookID` hook is installed, and the number goes through Proto Input's own message table, so an unlisted number can block a different message.
    * (AI-written, based on Nucleus ProtoInput.cs (EnableMessageBlock), ProtoInputLoader InstallMessageFilter.cpp, ProtoInputHooks PipeCommunication.cpp (SetupMessageBlock, MessageList::GetBlocked), ProtoInputHooks MessageFilterHook.cpp (FilterMessage). Not from the official docs.)
-   * The most common call in Hub handlers: 8 of the 12 that use it:
+   * From Hub handlers:
    * @example for (var i = 0; i < PlayerList.Count; i++) {
   var player = PlayerList[i];
   ProtoInput.EnableMessageBlock(
@@ -4266,7 +4266,7 @@ interface ProtoInputRuntime {
   /**
    * Stops blocking a window message that `ProtoInput.EnableMessageBlock` blocked. Parameters: the instance handle (`Player.ProtoInputInstanceHandle`) and the message number.
    * (AI-written, based on Nucleus ProtoInput.cs (DisableMessageBlock), ProtoInputLoader InstallMessageFilter.cpp, ProtoInputHooks PipeCommunication.cpp (SetupMessageBlock). Not from the official docs.)
-   * The most common call in Hub handlers: 8 of the 10 that use it:
+   * From Hub handlers:
    * @example for (var i = 0; i < PlayerList.Count; i++) {
   var player = PlayerList[i];
   ProtoInput.DisableMessageBlock(
@@ -4315,7 +4315,7 @@ interface ProtoInputRuntime {
    * Pauses the focus message loop started by `ProtoInput.StartFocusMessageLoop`. Parameter: the instance handle.
    * (AI-written, based on Nucleus ProtoInput.cs (StopFocusMessageLoop), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (StopFocusMessageLoop), ProtoInputHooks FocusMessageLoop.cpp (PauseMessageLoop). Not from the official docs.)
    * @param instanceHandle The player's Proto Input instance, Player.ProtoInputInstanceHandle (or PlayerList[i].ProtoInputInstanceHandle). (AI-written)
-   * The most common call in Hub handlers: 228 of the 228 that use it:
+   * From Hub handlers:
    * @example for (var i = 0; i < PlayerList.Count; i++) {
   var player = PlayerList[i];
   ProtoInput.StopFocusMessageLoop(
@@ -4332,7 +4332,7 @@ interface ProtoInputRuntime {
    * (AI-written, based on Nucleus ProtoInput.cs (SetDrawFakeCursor); verified Hub handlers, counted 2026-11-17.)
    * @param instanceHandle The player's Proto Input instance, Player.ProtoInputInstanceHandle (or PlayerList[i].ProtoInputInstanceHandle). (AI-written)
    * @param enable true draws Proto Input's fake mouse cursor in that instance, false hides it. (AI-written)
-   * The most common call in Hub handlers: 288 of the 290 that use it:
+   * From Hub handlers:
    * @example for (var i = 0; i < PlayerList.Count; i++) {
   var player = PlayerList[i];
   ProtoInput.SetDrawFakeCursor(
@@ -4345,7 +4345,7 @@ interface ProtoInputRuntime {
   /**
    * Switches the fake cursor to an alternative drawing mode that offsets it by the cursor image's detected hotspot and does not resize it for the monitor scale. It does not turn drawing on: `ProtoInput.SetDrawFakeCursor` does. Parameters: the instance handle and `true`/`false`.
    * (AI-written, based on Nucleus ProtoInput.cs (SetDrawFakeCursorFix), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetDrawFakeCursorFix), ProtoInputHooks FakeCursor.cpp (setmonitorscale, DrawFakeCursorFix). Not from the official docs.)
-   * The most common call in Hub handlers: 5 of the 5 that use it:
+   * From Hub handlers:
    * @example for (var i = 0; i < PlayerList.Count; i++) {
   var player = PlayerList[i];
   ProtoInput.SetDrawFakeCursorFix(
@@ -4470,7 +4470,7 @@ interface ProtoInputRuntime {
    * (AI-written, based on Nucleus ProtoInput.cs (SetRawInputBypass), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetRawInputBypass), ProtoInputHooks RawInput.cpp (ProcessRawInput). Not from the official docs.)
    * @param instanceHandle The player's Proto Input instance, Player.ProtoInputInstanceHandle (or PlayerList[i].ProtoInputInstanceHandle). (AI-written)
    * @param enable true passes raw input from every device to the game, not just the player's; false lets Proto Input filter it per device. (AI-written)
-   * The most common call in Hub handlers: 42 of the 42 that use it:
+   * From Hub handlers:
    * @example for (var i = 0; i < PlayerList.Count; i++) {
   var player = PlayerList[i];
   ProtoInput.SetRawInputBypass(

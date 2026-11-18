@@ -428,16 +428,33 @@ test('language status: the checks and the game folder beside the handler languag
   assert.deepEqual(checksText([d(m.DiagnosticSeverity.Error), d(m.DiagnosticSeverity.Warning), d(m.DiagnosticSeverity.Error)]), { text: '2 errors, 1 warning', severity: 'error' });
 });
 
-test('Docs panel: 👍/👎 per part as command links; a second click is shown as taking the vote back', async () => {
-  const { voteSection } = await import('../docspanel');
-  const html = voteSection('Game.KillMutex', [{ part: 'doc', label: 'The doc' }, { part: 'practice', label: '"In practice" (AI-written)' }], { 'doc/Game.KillMutex': 'up' }, true);
-  assert.equal((html.match(/command:splitscreenme\.docsVote\?/g) ?? []).length, 4);
-  assert.match(html, /class="vote on"[^>]*aria-label="The doc: you said Right\. Activate to take it back"[^>]*title="You said: Right/);
-  assert.doesNotMatch(html, /role="button"/, 'links, as they behave (no script for Space)');
+test('Docs panel: 👍/👎 inside each part as command links; the follow-up link only after a vote', async () => {
+  const { voteLine, placeVotes, fallbackMarkdown } = await import('../docspanel');
+  const { docsPage } = await import('../core/docspage');
+  const up = voteLine('Game.KillMutex', 'doc', 'The doc', { 'doc/Game.KillMutex': 'up' }, true);
+  assert.equal((up.match(/command:splitscreenme\.docsVote\?/g) ?? []).length, 2);
+  assert.match(up, /class="vote on"[^>]*aria-label="The doc: you said Right\. Activate to take it back"[^>]*title="You said: Right/);
+  assert.doesNotMatch(up, /role="button"/, 'links, as they behave (no script for Space)');
+  assert.match(up, />Give feedback</);
+  assert.match(up, /title=Doc%20feedback%3A%20Game\.KillMutex/);
+  assert.doesNotMatch(up, /Tell us what's wrong/);
+  const down = voteLine('Game.KillMutex', 'practice', '"In practice" (AI-written)', { 'practice/Game.KillMutex': 'down' }, true);
+  assert.match(down, /Tell us what's wrong/);
+  assert.match(down, /title=Doc%20review%3A%20Game\.KillMutex/);
+  // No vote (or one taken back): no follow-up link.
+  assert.doesNotMatch(voteLine('Game.KillMutex', 'doc', 'The doc', {}, true), /class="follow"/);
+  assert.match(voteLine('Game.KillMutex', 'doc', 'The doc', {}, false), /telemetry is off/);
+  // Placed inside its part: the doc's under the description, "In practice"'s inside its box.
+  const page = docsPage('q:Game.KillMutex', (v) => v, true);
+  const html = placeVotes(fallbackMarkdown(page.markdown), 'Game.KillMutex', [{ part: 'doc', label: 'The doc' }, { part: 'practice', label: '"In practice" (AI-written)' }], {}, true);
+  assert.doesNotMatch(html, /@@slot/);
+  const box = /<section class="practice"[^>]*>([\s\S]*?)<\/section>/.exec(html);
+  assert.ok(box && /In practice/.test(box[1]) && /Is this right\?/.test(box[1]), 'the practice vote in its box');
+  assert.ok(html.indexOf('Is this doc right?') < html.indexOf('<section class="practice"'), 'the doc vote before "In practice"');
+  assert.doesNotMatch(html, /Is it wrong\? Tell us/, 'the vote leads there instead');
   // Markdown (Search text is in it) never renders the vote command; docs links still work.
-  const { fallbackMarkdown } = await import('../docspanel');
   assert.doesNotMatch(fallbackMarkdown('[x](command:splitscreenme.docsVote?%5B%22a%22%5D)'), /href/);
   assert.match(fallbackMarkdown('[x](command:splitscreenme.showDocs?%5B%22a%22%5D)'), /href="command:splitscreenme\.showDocs\?/);
-  assert.match(voteSection('Game.KillMutex', [{ part: 'doc', label: 'The doc' }], {}, false), /telemetry is off/);
-  assert.equal(voteSection('Game.KillMutex', [], {}, true), '');
+  // Without slots (hovers, the workbench) the text has no markers.
+  assert.doesNotMatch(docsPage('q:Game.KillMutex', (v) => v).markdown, /@@slot/);
 });

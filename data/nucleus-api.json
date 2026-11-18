@@ -297,7 +297,7 @@
      "byEngine": "By engine: more common in Source games.",
      "example": "Game.SupportsPositioning = true;",
      "exampleBy": "hub",
-     "exampleNote": "The most common value in Hub handlers: 67 of the 87 that set it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "top"
     },
     "SymlinkExe": {
@@ -555,7 +555,7 @@
      },
      "example": "Game.DPIHandling = Nucleus.DPIHandling.InvScaled;",
      "exampleBy": "hub",
-     "exampleNote": "The most common value in Hub handlers: 19 of the 23 that set it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "top"
     },
     "DpiAwarenessMode": {
@@ -580,7 +580,7 @@
      },
      "example": "Game.StartArguments = \"\";",
      "exampleBy": "hub",
-     "exampleNote": "The most common value in Hub handlers: 48 of the 114 that set it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "top"
     },
     "BinariesFolder": {
@@ -683,7 +683,7 @@
      "byEngine": "By engine: rarer in Source and Unreal Engine games.",
      "example": "Game.SendFakeFocusMsg = true;",
      "exampleBy": "hub",
-     "exampleNote": "The most common value in Hub handlers: 164 of the 172 that set it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "top"
     },
     "SplitDivCompatibility": {
@@ -866,7 +866,7 @@
      "byEngine": "By engine: more common in Source games.",
      "example": "Game.WorkingFolder = \"\";",
      "exampleBy": "hub",
-     "exampleNote": "The most common value in Hub handlers: 12 of the 14 that set it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "top"
     },
     "NeedsSteamEmulation": {
@@ -1494,7 +1494,7 @@
      },
      "example": "Game.GoldbergNoWarning = true;",
      "exampleBy": "hub",
-     "exampleNote": "The most common value in Hub handlers: 11 of the 11 that set it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "top"
     },
     "OrigSteamDllPath": {
@@ -1587,7 +1587,7 @@
      },
      "example": "Game.SteamlessPatch = [\"false\", \"--quiet --keepbind\", \"5000\"];",
      "exampleBy": "hub",
-     "exampleNote": "The most common value in Hub handlers: 5 of the 25 that set it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "top"
     },
     "UseGoldbergNoOGSteamDlls": {
@@ -3160,7 +3160,7 @@
      },
      "example": "Game.IgnoreWindowBorderCheck = true;",
      "exampleBy": "hub",
-     "exampleNote": "The most common value in Hub handlers: 12 of the 27 that set it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "top"
     },
     "WriteToProcessMemory": {
@@ -4312,7 +4312,7 @@
      },
      "example": "Game.LockInputSuspendsExplorer = true;",
      "exampleBy": "hub",
-     "exampleNote": "The most common value in Hub handlers: 498 of the 538 that set it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "top"
     },
     "ToggleUnfocusOnInputsLock": {
@@ -4330,7 +4330,7 @@
      },
      "example": "Game.ToggleUnfocusOnInputsLock = true;",
      "exampleBy": "hub",
-     "exampleNote": "The most common value in Hub handlers: 50 of the 51 that set it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "top"
     },
     "CustomHotkeys": {
@@ -4693,7 +4693,7 @@
      "practiceBasis": "Nucleus Tools/SDL2Dll/SDL2Dll.cs (SetupSDL2Dll), GenericGameHandler.cs (gen.Hook.SDL2Enabled), Controls/SetupScreen/DevicesFunctions.cs (SDL2 devices); verified Hub handlers, counted 2026-11-18",
      "example": "Game.Hook.SDL2Enabled = true;",
      "exampleBy": "hub",
-     "exampleNote": "The most common value in Hub handlers: 16 of the 16 that set it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "top"
     },
     "XInputNames": {
@@ -4797,7 +4797,7 @@
      },
      "example": "Game.Hook.BlockMouseEvents = true;",
      "exampleBy": "hub",
-     "exampleNote": "The most common value in Hub handlers: 6 of the 10 that set it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "top"
     },
     "BlockKeyboardEvents": {
@@ -4815,7 +4815,7 @@
      },
      "example": "Game.Hook.BlockKeyboardEvents = false;",
      "exampleBy": "hub",
-     "exampleNote": "The most common value in Hub handlers: 10 of the 10 that set it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "top"
     },
     "BlockInputEvents": {
@@ -4833,7 +4833,7 @@
      },
      "example": "Game.Hook.BlockInputEvents = true;",
      "exampleBy": "hub",
-     "exampleNote": "The most common value in Hub handlers: 6 of the 10 that set it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "top"
     },
     "FixResolution": {
@@ -6250,7 +6250,7 @@
      "byEngine": "By engine: more common in Unity games, rarer in Source games.",
      "example": "Game.ProtoInput.EnableToggleFakeCursorVisibilityShortcut = false;",
      "exampleBy": "hub",
-     "exampleNote": "The most common value in Hub handlers: 162 of the 193 that set it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "top"
     },
     "ToggleFakeCursorVisibilityShortcutVkey": {
@@ -8589,7 +8589,7 @@
      },
      "example": "Context.HideDesktop();",
      "exampleBy": "hub",
-     "exampleNote": "The most common call in Hub handlers: 13 of the 15 that use it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "Game.Play"
     },
     "CopyFolder": {
@@ -8704,7 +8704,7 @@
      },
      "example": "Context.HideTaskBar();",
      "exampleBy": "hub",
-     "exampleNote": "The most common call in Hub handlers: 15 of the 15 that use it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "Game.Play"
     },
     "BackupFile": {
@@ -8978,7 +8978,7 @@
      },
      "example": "Context.ConvertToBytes(Context.AspectRatioDecimal);",
      "exampleBy": "hub",
-     "exampleNote": "The most common call in Hub handlers: 13 of the 14 that use it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "Game.Play"
     },
     "RunAdditionalFiles": {
@@ -10395,7 +10395,7 @@
      "practiceBasis": "Nucleus GenericContext.cs (Wait: Thread.Sleep); verified Hub handlers, counted 2026-11-17; engines from data/hub-engines.json",
      "example": "Context.Wait(1500);",
      "exampleBy": "hub",
-     "exampleNote": "The most common call in Hub handlers: 27 of the 56 that use it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "Game.Play"
     },
     "KillProcessesMatchingProcessName": {
@@ -11603,7 +11603,7 @@
      "practiceBasis": "Nucleus ProtoInput.cs (InstallHook, ExposedValues); verified Hub handlers, counted 2026-11-17",
      "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.InstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.GetCursorPosHookID\n  );\n}",
      "exampleBy": "hub",
-     "exampleNote": "The most common call in Hub handlers: 336 of the 352 that use it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
     },
     "UninstallHook": {
@@ -11640,7 +11640,7 @@
      },
      "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.UninstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.GetCursorPosHookID\n  );\n}",
      "exampleBy": "hub",
-     "exampleNote": "The most common call in Hub handlers: 336 of the 352 that use it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "Game.ProtoInput.OnInputUnlocked"
     },
     "EnableMessageFilter": {
@@ -11679,7 +11679,7 @@
      "practiceBasis": "Nucleus ProtoInput.cs (EnableMessageFilter, ExposedValues); ProtoInputHooks MessageFilterHook.cpp; verified Hub handlers, counted 2026-11-17",
      "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.EnableMessageFilter(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.MouseButtonFilterID\n  );\n}",
      "exampleBy": "hub",
-     "exampleNote": "The most common call in Hub handlers: 348 of the 355 that use it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
     },
     "DisableMessageFilter": {
@@ -11716,7 +11716,7 @@
      },
      "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.DisableMessageFilter(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.MouseButtonFilterID\n  );\n}",
      "exampleBy": "hub",
-     "exampleNote": "The most common call in Hub handlers: 349 of the 355 that use it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "Game.ProtoInput.OnInputUnlocked"
     },
     "EnableMessageBlock": {
@@ -11749,7 +11749,7 @@
      },
      "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.EnableMessageBlock(\n    player.ProtoInputInstanceHandle,\n    0x0006\n  );\n}",
      "exampleBy": "hub",
-     "exampleNote": "The most common call in Hub handlers: 8 of the 12 that use it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
     },
     "DisableMessageBlock": {
@@ -11782,7 +11782,7 @@
      },
      "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.DisableMessageBlock(\n    player.ProtoInputInstanceHandle,\n    0x0006\n  );\n}",
      "exampleBy": "hub",
-     "exampleNote": "The most common call in Hub handlers: 8 of the 10 that use it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
     },
     "WakeUpProcess": {
@@ -11989,7 +11989,7 @@
      },
      "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.StopFocusMessageLoop(\n    player.ProtoInputInstanceHandle\n  );\n}",
      "exampleBy": "hub",
-     "exampleNote": "The most common call in Hub handlers: 228 of the 228 that use it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
     },
     "SetDrawFakeCursor": {
@@ -12028,7 +12028,7 @@
      "practiceBasis": "Nucleus ProtoInput.cs (SetDrawFakeCursor); verified Hub handlers, counted 2026-11-17",
      "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.SetDrawFakeCursor(\n    player.ProtoInputInstanceHandle,\n    false\n  );\n}",
      "exampleBy": "hub",
-     "exampleNote": "The most common call in Hub handlers: 288 of the 290 that use it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "Game.ProtoInput.OnInputUnlocked"
     },
     "SetDrawFakeCursorFix": {
@@ -12061,7 +12061,7 @@
      },
      "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.SetDrawFakeCursorFix(\n    player.ProtoInputInstanceHandle,\n    false\n  );\n}",
      "exampleBy": "hub",
-     "exampleNote": "The most common call in Hub handlers: 5 of the 5 that use it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
     },
     "SetExternalFreezeFakeInput": {
@@ -12686,7 +12686,7 @@
      },
      "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.SetRawInputBypass(\n    player.ProtoInputInstanceHandle,\n    false\n  );\n}",
      "exampleBy": "hub",
-     "exampleNote": "The most common call in Hub handlers: 42 of the 42 that use it.",
+     "exampleNote": "From Hub handlers",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
     },
     "SetPointerInMouse": {

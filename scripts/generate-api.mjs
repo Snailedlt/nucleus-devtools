@@ -825,12 +825,13 @@ for (const [obj, label] of Object.entries(LABELS)) {
       continue;
     }
     // The most common value (options) or call (methods), when at least 5 handlers and a fifth of its users agree.
+    // Its note says only where it comes from: counts go stale and say little.
     const [top, count] = (m.kind === 'method' ? hub?.calls : !inCallback && !m.readonly ? hub?.values : undefined)?.[0] ?? [];
     // (Not an "off" value the docs' own example was left out for: it would contradict the doc just the same.)
     if (top && count >= 5 && count >= hub.n / 5 && !(offExample.has(key) && isOffValue(top))) {
       // A call on `player` (Proto Input's, in the lock callbacks, which get no arguments): in the loop that defines it.
       const code = m.kind === 'method' ? (/\bplayer\./.test(top) ? forEachPlayer(`${top};`) : `${top};`) : `${key} = ${top};`;
-      Object.assign(m, { example: code, exampleBy: 'hub', exampleNote: m.kind === 'method' ? `The most common call in Hub handlers: ${count} of the ${hub.n} that use it.` : `The most common value in Hub handlers: ${count} of the ${hub.n} that set it.`, exampleIn });
+      Object.assign(m, { example: code, exampleBy: 'hub', exampleNote: 'From Hub handlers', exampleIn });
       continue;
     }
     // Otherwise, mechanically from the type: a switch set to the value that changes something (the opposite of its
