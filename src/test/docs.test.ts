@@ -1,18 +1,19 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import raw from '../../data/claude-docs.json';
-import { aiBasisParts, aiBasisSummary, api, claudeNote, memberMarkdown } from '../core/api';
+import { aiBasisSummary, aiBasisWords, aiEnginesText, aiSourceItems, api, claudeNote, memberMarkdown, type AiBasis } from '../core/api';
+import { basisWords } from '../../scripts/basis.mjs';
 import { aiTip } from '../core/aimark';
 import practiceRaw from '../../data/claude-practice.json';
 import { markdownReference } from '../core/lookup';
 import { codeOf } from '../core/importhooks';
 
-const docs = (raw as unknown as { docs: Record<string, { doc: string; basis: string; override?: boolean }> }).docs;
+const docs = (raw as unknown as { docs: Record<string, { doc: string; basis: AiBasis; override?: boolean }> }).docs;
 const OBJ: Record<string, string> = { Hub: 'Hub', 'Hub.Handler': 'HubHandler', 'Hub.Maintainer': 'HubMaintainer', Game: 'Game', 'Game.Hook': 'GameHook', 'Game.ProtoInput': 'GameProtoInput', Context: 'Context', Player: 'PlayerInfo', ProtoInput: 'ProtoInputRuntime', 'ProtoInput.Values': 'ProtoInputValues' };
 
 test('Claude-written docs: each says what it is based on, and the tools label it', () => {
   for (const [key, d] of Object.entries(docs)) {
-    assert.ok(d.doc.trim() && d.basis.trim(), `${key}: doc and basis`);
+    assert.ok(d.doc.trim() && d.basis, `${key}: doc and basis`);
     assert.ok(!/—/.test(d.doc), `${key}: no em dashes`);
     const i = key.lastIndexOf('.');
     const obj = api.objects[OBJ[key.slice(0, i)]];
@@ -79,7 +80,7 @@ test('"In practice" parts: real members, labelled, with what they are based on; 
   const file = JSON.parse(require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'data', 'claude-practice.json'), 'utf8')).practice as Record<string, { text: string; basis: string; example?: string }>;
   const { lint } = require('../core/lint');
   for (const [key, p] of Object.entries(file)) {
-    assert.ok(p.text.trim() && p.basis.trim(), `${key}: text and basis`);
+    assert.ok(p.text.trim() && p.basis, `${key}: text and basis`);
     assert.ok(!/—/.test(p.text), `${key}: no em dashes`);
     const i = key.lastIndexOf('.');
     const m = api.objects[OBJ[key.slice(0, i)]]?.members[key.slice(i + 1)];
@@ -165,35 +166,37 @@ test('AI votes: checked, sent as aivote/<part>/<name>, never as a person\'s vote
   delete process.env.NCDEV_NO_FEEDBACK;
 });
 
-test('aiBasisParts: a basis in labelled groups (Source, Hub handlers, Engines), on real basis strings', () => {
-  const kill = aiBasisParts('Nucleus GenericGameHandler.cs (the mutex kill before the next instance), ProcessUtil.cs; verified Hub handlers, counted 2026-11-17; Source games from data/hub-engines.json');
-  assert.deepEqual(kill.source, [
-    { origin: 'Nucleus', file: 'GenericGameHandler.cs', detail: 'the mutex kill before the next instance' },
-    { origin: '', file: 'ProcessUtil.cs', detail: '' },
-  ]);
-  assert.deepEqual(kill.hub, ['verified handlers, counted 2026-11-17']);
-  assert.deepEqual(kill.engines, ['Source games, from Hub game engines (Wikidata/IGDB)']);
-  assert.deepEqual(kill.paths, ['data/hub-engines.json']);
-  assert.equal(aiBasisSummary(kill), 'Source: Nucleus GenericGameHandler.cs (the mutex kill before the next instance), ProcessUtil.cs · Hub handlers: verified handlers, counted 2026-11-17 · Engines: Source games, from Hub game engines (Wikidata/IGDB)');
-  assert.deepEqual(aiBasisParts('engines from data/hub-engines.json').engines, ['from Hub game engines (Wikidata/IGDB)']);
-  // A `;` inside parentheses stays in its item; several origins in one part split per file.
-  const root = aiBasisParts('Nucleus GenericGameHandler.cs (rootFolder from exeFolder.ToLower() and BinariesFolder; context.OrigRootFolder = rootFolder)');
-  assert.equal(root.source.length, 1);
-  assert.match(root.source[0].detail, /BinariesFolder; context\.OrigRootFolder/);
-  const pi = aiBasisParts('Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks GetCursorPosHook.cpp (Hook_GetCursorPos)');
-  assert.deepEqual(pi.source.map((i) => [i.origin, i.file]), [['Nucleus', 'ProtoInput.cs'], ['ProtoInputHooks', 'GetCursorPosHook.cpp']]);
-  // Not a file list: kept whole, under Source.
-  assert.deepEqual(aiBasisParts('the Proto Input guide (protoinput.md, Handler development with Nucleus Co-op)').source, [{ origin: '', file: '', detail: 'the Proto Input guide (protoinput.md, Handler development with Nucleus Co-op)' }]);
-  // Every real basis: something in a group, no raw repo path left in the words, no empty item.
-  const practice = (practiceRaw as unknown as { practice: Record<string, { basis: string }> }).practice;
-  for (const [key, b] of [...Object.entries(docs), ...Object.entries(practice)].map(([k, v]) => [k, v.basis] as const)) {
-    const p = aiBasisParts(b);
-    assert.ok(p.source.length + p.hub.length + p.engines.length, key);
-    assert.doesNotMatch(aiBasisSummary(p), /data\/hub-|;\s*$/, key);
-    for (const i of p.source) assert.ok(i.file || i.detail, key);
+test('AI basis as data: every entry has typed fields, and every renderer builds its text from them', () => {
+  const practice = (practiceRaw as unknown as { practice: Record<string, { basis: AiBasis }> }).practice;
+  const params = JSON.parse(require('node:fs').readFileSync(require('node:path').join(__dirname, '..', 'data', 'claude-param-docs.json'), 'utf8')).params as Record<string, { basis: AiBasis }>;
+  const all = [...Object.entries(docs), ...Object.entries(practice), ...Object.entries(params)] as [string, { basis: AiBasis }][];
+  const KEYS = new Set(['source', 'hub', 'engines', 'note']);
+  for (const [key, { basis: b }] of all) {
+    assert.equal(typeof b, 'object', `${key}: basis is an object ({ source, hub, engines, note }), not a sentence`);
+    for (const k of Object.keys(b)) assert.ok(KEYS.has(k), `${key}: unknown basis field ${k}`);
+    assert.ok(b.source?.length || b.note, `${key}: a source or a note`);
+    for (const i of b.source ?? []) {
+      for (const k of Object.keys(i)) assert.ok(['project', 'file', 'what'].includes(k), `${key}: unknown source field ${k}`);
+      assert.ok(i.file || i.what || i.project, `${key}: an empty source`);
+      if (i.file) assert.match(i.file, /^[\w ./-]+\.(cs|cpp|h|js|md|txt|json)$/, `${key}: one file per item (${i.file})`);
+    }
+    if (b.hub) assert.match(b.hub.counted, /^\d{4}-\d\d-\d\d$/, `${key}: hub.counted is a date`);
+    if (b.engines !== undefined) assert.ok(b.engines === true || (Array.isArray(b.engines) && b.engines.length), `${key}: engines is true or the families`);
+    // The scripts' words (the .d.ts, the doc-review bot) are the tools' words.
+    assert.equal(basisWords(b), aiBasisWords(b), key);
+    assert.doesNotMatch(aiBasisSummary(b), /data\/hub-|undefined/, key);
   }
-  // The tooltip: a heading, the labelled list with files as code, the path only when asked.
+  const kill: AiBasis = { source: [{ project: 'Nucleus', file: 'GenericGameHandler.cs', what: 'the mutex kill before the next instance' }, { project: 'Nucleus', file: 'ProcessUtil.cs' }], hub: { counted: '2026-11-17' }, engines: ['Source'] };
+  assert.equal(aiBasisSummary(kill), 'Source: Nucleus GenericGameHandler.cs (the mutex kill before the next instance), ProcessUtil.cs · Hub handlers: verified handlers, counted 2026-11-17 · Engines: Source games, from Hub game engines (Wikidata/IGDB)');
+  assert.equal(aiBasisWords(kill), 'Nucleus GenericGameHandler.cs (the mutex kill before the next instance), ProcessUtil.cs; verified Hub handlers, counted 2026-11-17; Hub game engines (Source)');
+  assert.equal(aiEnginesText({ engines: true }), 'From Hub game engines (Wikidata/IGDB)');
+  // The project is named where it changes; the note comes last.
+  assert.deepEqual(aiSourceItems({ source: [{ project: 'Nucleus', file: 'ProtoInput.cs' }, { project: 'ProtoInputHooks', file: 'A.cpp' }, { project: 'ProtoInputHooks', file: 'B.cpp' }], note: 'x' }), ['Nucleus ProtoInput.cs', 'ProtoInputHooks A.cpp', 'B.cpp', 'x']);
+  // The model carries the fields (npm run generate).
   const m = api.objects.Game.members.KillMutex;
+  assert.deepEqual(JSON.parse(JSON.stringify(m.practiceBasis)), practice['Game.KillMutex'].basis);
+  assert.ok(api.objects.Context.members.GetFolder.paramsBasis?.source?.length, 'the parameter docs\' basis in the model');
+  // The tooltip: a heading, the labelled list with files as code, the data files only when asked.
   const tip = aiTip(m, 'practice', 't');
   assert.match(tip, /<span class="ai-tip-h"><span aria-hidden="true">✨ <\/span>AI-written/);
   assert.match(tip, /<span class="ai-tip-k">Source<span class="sr-only">: <\/span><\/span>[\s\S]*<code class="ai-file">GenericGameHandler\.cs<\/code>/);

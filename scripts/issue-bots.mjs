@@ -2,6 +2,7 @@
 // and add a comment the reporter can't edit. The logic is here, as plain functions, so src/test/bots.test.ts can test it
 // with real issue bodies and check that the forms (.github/ISSUE_TEMPLATE/*.yml) still have the fields it reads.
 // Never runs code from the issue: it only reads the body as text.
+import { basisFiles, basisWords } from './basis.mjs';
 
 /** The form fields the bots read, by template: GitHub turns each field's label into a `### <label>` heading. */
 export const DETAILS = 'Details from the tool';
@@ -70,9 +71,10 @@ export function docReviewMember(body) {
 /** The doc-review comment: the doc as it is now, with its basis and links to the Nucleus source; or a request for the name. */
 export function docReviewComment(member, d, sha) {
   if (!d) return `${DOC_MARKER}\nI couldn't find an AI-written doc for \`${member || '(no name given)'}\`. Please put the exact name in **Which name** (e.g. \`Game.AddOption\`) by editing the issue, and I'll add the doc here.`;
-  const search = (file) => `https://github.com/search?q=repo%3ASplitScreen-Me%2Fsplitscreenme-nucleus+path%3A${encodeURIComponent(file)}&type=code`;
-  const files = [...new Set(d.basis.match(/[\w.]+\.(cs|cpp|h)\b/g) || [])];
-  return `${DOC_MARKER}\n**The AI-written doc** for \`${member}\` (data/claude-docs.json @ ${sha}):\n\n> ${d.doc.replace(/\n/g, '\n> ')}\n\n**Based on:** ${d.basis}\n\n${files.length ? `**Source:** ${files.map((f) => `[${f}](${search(f)})`).join(' · ')}\n\n` : ''}A maintainer checks the report against Nucleus. When it's settled, the doc is fixed or marked \`checkedBy\` in data/claude-docs.json.`;
+  // A Proto Input file is searched in Proto Input's repository, the rest in Nucleus'.
+  const search = (f) => `https://github.com/search?q=repo%3ASplitScreen-Me%2Fsplitscreenme-${/^Proto ?Input/.test(f.project) ? 'protoInput' : 'nucleus'}+path%3A${encodeURIComponent(f.file.split('/').pop())}&type=code`;
+  const files = basisFiles(d.basis).filter((f) => /\.(cs|cpp|h)$/.test(f.file));
+  return `${DOC_MARKER}\n**The AI-written doc** for \`${member}\` (data/claude-docs.json @ ${sha}):\n\n> ${d.doc.replace(/\n/g, '\n> ')}\n\n**Based on:** ${basisWords(d.basis)}\n\n${files.length ? `**Source:** ${files.map((f) => `[${f.file}](${search(f)})`).join(' · ')}\n\n` : ''}A maintainer checks the report against Nucleus. When it's settled, the doc is fixed or marked \`checkedBy\` in data/claude-docs.json.`;
 }
 
 /** report-details.yml: on a new issue, keep the details block as a comment. */

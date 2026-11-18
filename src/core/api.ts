@@ -48,8 +48,8 @@ export interface Member {
   doc: string;
   /** Set when the doc was written by Claude (data/claude-docs.json) rather than taken from the official docs. */
   docBy?: 'claude';
-  /** What a Claude-written doc is based on (source files and functions). */
-  docBasis?: string;
+  /** What a Claude-written doc is based on (source files and functions, Hub data): AiBasis. */
+  docBasis?: AiBasis;
   /** A person who checked a Claude-written doc against Nucleus (data/claude-docs.json "checkedBy"), and when. */
   docCheckedBy?: string;
   docCheckedOn?: string;
@@ -64,7 +64,9 @@ export interface Member {
   /** "In practice": what it really does in Nucleus' source and how Hub handlers use it, written by Claude (AI) from
    *  them (data/claude-practice.json), apart from `doc`. */
   practice?: string;
-  practiceBasis?: string;
+  practiceBasis?: AiBasis;
+  /** What the AI-written parameter docs are based on (data/claude-param-docs.json basis). */
+  paramsBasis?: AiBasis;
   practiceCheckedBy?: string;
   practiceCheckedOn?: string;
   /** How many of the verified Hub handlers use it (api.hubHandlers.count of them). */
@@ -405,10 +407,10 @@ export function ownerLabel(owner: string): string {
 }
 
 /** The label shown with a doc Claude wrote (empty for human-written docs). */
-export const claudeNote = (m: { docBy?: string; docBasis?: string; docCheckedBy?: string; docCheckedOn?: string }) =>
+export const claudeNote = (m: { docBy?: string; docBasis?: AiBasis; docCheckedBy?: string; docCheckedOn?: string }) =>
   m.docBy !== 'claude' ? ''
-  : m.docCheckedBy ? `AI-written, based on ${m.docBasis}. Checked by ${m.docCheckedBy}${m.docCheckedOn ? ` on ${m.docCheckedOn}` : ''}.`
-  : `AI-written, based on ${m.docBasis}. Not from the official docs.`;
+  : m.docCheckedBy ? `AI-written, based on ${aiBasisWords(m.docBasis)}. Checked by ${m.docCheckedBy}${m.docCheckedOn ? ` on ${m.docCheckedOn}` : ''}.`
+  : `AI-written, based on ${aiBasisWords(m.docBasis)}. Not from the official docs.`;
 
 /** The "Doc review" issue form for a Claude-written doc, with its name filled in (.github/ISSUE_TEMPLATE/doc-review.yml;
  *  the doc-review workflow adds the doc itself as a comment the reporter can't remove). */
@@ -421,7 +423,7 @@ export const docFeedbackUrl = (path: string) =>
 /** The label of an AI-written "In practice" part (empty without one). */
 export const practiceNote = (m: Member) =>
   !m.practice ? ''
-  : `AI-written, based on ${m.practiceBasis}.${m.practiceCheckedBy ? ` Checked by ${m.practiceCheckedBy}${m.practiceCheckedOn ? ` on ${m.practiceCheckedOn}` : ''}.` : ''}`;
+  : `AI-written, based on ${aiBasisWords(m.practiceBasis)}.${m.practiceCheckedBy ? ` Checked by ${m.practiceCheckedBy}${m.practiceCheckedOn ? ` on ${m.practiceCheckedOn}` : ''}.` : ''}`;
 /** "Used by 564 of 899 Hub handlers" (empty when no Hub handler uses it). Not shown with "In practice", which has no
  *  counts; kept for the workbench. */
 export const hubUseText = (m: Member) => (m.hubUse && api.hubHandlers ? `Used by ${m.hubUse} of ${api.hubHandlers.count} Hub handlers` : '');
@@ -501,83 +503,58 @@ export function isAiPart(m: Member, part: AiPart): boolean {
   if (part === 'example') return m.exampleBy === 'claude' && Boolean(m.example);
   return (m.overloads ?? []).some((o) => o.params.some((p) => p.doc && p.docBy === 'claude'));
 }
-/** Where an AI-written part comes from, raw as data/claude-*.json says it ('' when the part isn't AI-written). */
-export function aiBasisRaw(m: Member, part: AiPart): string {
-  if (!isAiPart(m, part)) return '';
-  const basis = part === 'doc' ? m.docBasis : part === 'params' ? 'the Nucleus source' : m.practiceBasis;
-  return (basis ?? 'the Nucleus source').replace(/\.$/, '').trim();
-}
+/** One source an AI-written part rests on (data/claude-*.json `basis.source`): `project` (Nucleus, ProtoInputHooks,
+ *  Proto Input guide, …), `file` (shown as code) and `what` in it (functions, call sites); each optional. */
+export interface AiSource { project?: string; file?: string; what?: string }
+/** What an AI-written part is based on, as data (data/claude-docs.json, claude-practice.json, claude-param-docs.json
+ *  `basis`): the `source` files, the verified Hub handlers (`hub.counted`: the date they were counted), the Hub games'
+ *  engines (`engines`: true, or the families the text names) and a `note` for anything else. Every place that shows
+ *  it builds its text from these fields: the sparkle's tooltip (core/aimark.ts aiTip), the Markdown line
+ *  (aiBasisSummary), the words for agents (aiBasisWords; scripts/generate-api.mjs has the same for the .d.ts). */
+export interface AiBasis { source?: AiSource[]; hub?: { counted: string }; engines?: true | string[]; note?: string }
 
-/** One source of an AI-written part: `origin` ("Nucleus", "ProtoInputHooks", … as written; '' when the item before
- *  names it), `file` (a file or a Class.Method, shown as code; '' when the item isn't one) and `detail` (what in it, or
- *  the whole text of an item that isn't a file). */
-export interface AiSourceItem { origin: string; file: string; detail: string }
-/** A basis in labelled groups (aiBasisParts): Source, Hub handlers, Engines, and the repo paths behind the last two
- *  (shown only where developers look: the docs pages). */
-export interface AiBasisParts { source: AiSourceItem[]; hub: string[]; engines: string[]; paths: string[] }
-
-/** `s` split at `sep` outside parentheses. */
-function splitTop(s: string, sep: string): string[] {
-  const out: string[] = [];
-  let depth = 0, cur = '';
-  for (const c of s) {
-    if (c === '(') depth++;
-    else if (c === ')') depth = Math.max(0, depth - 1);
-    if (c === sep && !depth) { out.push(cur); cur = ''; } else cur += c;
-  }
-  out.push(cur);
-  return out.map((x) => x.trim()).filter(Boolean);
+/** The basis of an AI-written part (undefined when the part isn't AI-written). */
+export function aiBasisOf(m: Member, part: AiPart): AiBasis | undefined {
+  if (!isAiPart(m, part)) return undefined;
+  const b = part === 'doc' ? m.docBasis : part === 'params' ? m.paramsBasis : m.practiceBasis;
+  return b ?? { note: 'the Nucleus source' };
 }
-const BASIS_ORIGIN = /^(Nucleus(?:\.\w+)?|Proto Input|ProtoInput\w*)\s+(?=[\w./\\-]*\w\.\w)/;
-const BASIS_FILE = /^([\w./\\-]*\w\.\w+(?:\s+(?:\+|and)\s+[\w./\\-]*\w\.\w+)*)(?:\s+\((.*)\))?$/s;
-const ENGINES_FROM = 'from Hub game engines (Wikidata/IGDB)';
-
-/**
- * A basis ("Nucleus GenericGameHandler.cs (…), ProcessUtil.cs; verified Hub handlers, counted 2026-11-17; Source games
- * from data/hub-engines.json") in labelled groups, for the sparkle's tooltip and the Markdown line: its `;` parts
- * (outside parentheses) are the Hub handlers count, the engines (data/hub-engines.json, named for what it is) or the
- * source; a source part is split at its commas into one item per file when every piece is a file, else kept whole.
- */
-export function aiBasisParts(basis: string): AiBasisParts {
-  const r: AiBasisParts = { source: [], hub: [], engines: [], paths: [] };
-  const add = (list: string[], x: string) => { if (x && !list.includes(x)) list.push(x); };
-  for (const part of splitTop(basis.replace(/\.$/, ''), ';')) {
-    if (/hub-engines\.json/.test(part)) {
-      const what = part.replace(/\s*(?:,\s*)?(?:from\s+)?data\/hub-engines\.json.*$/, '').replace(/^engines$/i, '').trim();
-      add(r.engines, what ? `${what}, ${ENGINES_FROM}` : ENGINES_FROM);
-      add(r.paths, 'data/hub-engines.json');
-    } else if (/\bHub handlers\b|hub-examples\.json/i.test(part)) {
-      const m = /hub-examples\.json/.exec(part);
-      if (m) add(r.paths, 'data/hub-examples.json');
-      add(r.hub, part.replace(/\s*(?:,\s*)?(?:from\s+)?data\/hub-examples\.json/, '').replace(/\bverified Hub handlers\b/i, 'verified handlers').trim() || 'verified handlers');
-    } else {
-      const items = splitTop(part, ',').map((x) => {
-        const origin = BASIS_ORIGIN.exec(x)?.[1] ?? '';
-        const f = BASIS_FILE.exec(x.slice(origin ? origin.length : 0).trim());
-        return f ? { origin, file: f[1], detail: f[2] ?? '' } : null;
-      });
-      if (items.every(Boolean)) r.source.push(...(items as AiSourceItem[]));
-      else r.source.push({ origin: '', file: '', detail: part });
-    }
-  }
-  return r;
+/** The source items as text, the project named only where it changes ("Nucleus GenericGameHandler.cs (StartGame)",
+ *  "ProcessUtil.cs"); the note last. `code` wraps a file name (HTML callers make it <code>). */
+export function aiSourceItems(b: AiBasis, code: (file: string) => string = (f) => f, text: (s: string) => string = (s) => s): string[] {
+  let prev = '';
+  const out = (b.source ?? []).map((i) => {
+    const project = i.project && i.project !== prev ? i.project : '';
+    prev = i.project ?? prev;
+    const head = [project ? text(project) : '', i.file ? code(i.file) : ''].filter(Boolean).join(' ');
+    return head ? `${head}${i.what ? ` (${text(i.what)})` : ''}` : text(i.what ?? '');
+  });
+  return b.note ? [...out, text(b.note)] : out;
 }
-/** A source item as plain text: "Nucleus GenericGameHandler.cs (StartGame)". */
-export const aiSourceText = (i: AiSourceItem) => (i.file ? `${i.origin ? `${i.origin} ` : ''}${i.file}${i.detail ? ` (${i.detail})` : ''}` : i.detail);
-/** The labelled groups of a basis on one line: "Source: … · Hub handlers: … · Engines: …". */
-export function aiBasisSummary(p: AiBasisParts): string {
-  return [
-    p.source.length ? `Source: ${p.source.map(aiSourceText).join(', ')}` : '',
-    p.hub.length ? `Hub handlers: ${p.hub.join(', ')}` : '',
-    p.engines.length ? `Engines: ${p.engines.join(', ')}` : '',
-  ].filter(Boolean).join(' · ');
+/** "verified handlers, counted 2026-11-17" ('' without Hub data). */
+export const aiHubText = (b: AiBasis) => (b.hub ? `verified handlers, counted ${b.hub.counted}` : '');
+/** "Source games, from Hub game engines (Wikidata/IGDB)" ('' without engine data). */
+export const aiEnginesText = (b: AiBasis) =>
+  !b.engines ? '' : `${Array.isArray(b.engines) && b.engines.length ? `${b.engines.join(', ')} games, f` : 'F'}rom Hub game engines (Wikidata/IGDB)`;
+/** The repo files behind the Hub data (for the docs pages, where developers look). */
+export const aiDataFiles = (b: AiBasis) => [b.hub ? 'data/hub-examples.json' : '', b.engines ? 'data/hub-engines.json' : ''].filter(Boolean);
+/** The labelled groups on one line, for Markdown: "Source: … · Hub handlers: … · Engines: …". */
+export function aiBasisSummary(b: AiBasis): string {
+  const src = aiSourceItems(b);
+  return [src.length ? `Source: ${src.join(', ')}` : '', b.hub ? `Hub handlers: ${aiHubText(b)}` : '', b.engines ? `Engines: ${aiEnginesText(b)}` : ''].filter(Boolean).join(' · ');
 }
-/** Where an AI-written part comes from, on one labelled line: "Source: GenericGameHandler.cs … · Hub handlers: verified
- *  handlers, counted 2026-11-17" ('' when the part isn't AI-written). Shown on its own small line in Markdown; where HTML
- *  frames the part, the ✨'s tooltip lays the same groups out as a list (core/aimark.ts aiTip). */
+/** The basis in words, for agents (CLI, MCP, api.md: "AI-written, based on …"): "Nucleus GenericGameHandler.cs (…),
+ *  ProcessUtil.cs; verified Hub handlers, counted 2026-11-17; Hub game engines (Source)". scripts/generate-api.mjs
+ *  basisWords is the same for the .d.ts (a test checks they agree). */
+export function aiBasisWords(b: AiBasis | undefined): string {
+  if (!b) return 'the Nucleus source';
+  const eng = b.engines ? `Hub game engines${Array.isArray(b.engines) && b.engines.length ? ` (${b.engines.join(', ')})` : ''}` : '';
+  return [aiSourceItems(b).join(', '), b.hub ? `verified Hub handlers, counted ${b.hub.counted}` : '', eng].filter(Boolean).join('; ');
+}
+/** Where an AI-written part comes from, on one labelled line ('' when the part isn't AI-written): aiBasisSummary. */
 export function aiBasis(m: Member, part: AiPart): string {
-  const raw = aiBasisRaw(m, part);
-  return raw ? aiBasisSummary(aiBasisParts(raw)) : '';
+  const b = aiBasisOf(m, part);
+  return b ? aiBasisSummary(b) : '';
 }
 /** "Checked by Ann on 2026-11-01" for an AI-written part a person checked ('' otherwise): stays visible, small. */
 export function aiChecked(m: Member, part: AiPart): string {

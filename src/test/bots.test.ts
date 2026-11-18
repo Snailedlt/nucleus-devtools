@@ -73,7 +73,7 @@ test('bots: a real doc review issue (#7) gets both comments', () => {
   assert.ok(details.startsWith(bots.DETAILS_MARKER));
   assert.match(details, /✅ Checksum matches/);
   assert.ok(details.includes('Doc: Context.Arch'));
-  const doc = bots.docReviewComment('Context.Arch', { doc: 'Architecture of the game executable.', basis: 'Nucleus GenericContext.cs' }, 'abc1234');
+  const doc = bots.docReviewComment('Context.Arch', { doc: 'Architecture of the game executable.', basis: { source: [{ project: 'Nucleus', file: 'GenericContext.cs', what: 'Arch' }] } }, 'abc1234');
   assert.ok(doc.startsWith(bots.DOC_MARKER));
   assert.match(doc, /\*\*The AI-written doc\*\* for `Context\.Arch`/);
   assert.match(doc, /\[GenericContext\.cs\]\(https:\/\/github\.com\/search\?q=/);

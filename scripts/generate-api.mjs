@@ -11,6 +11,7 @@
 //   https://github.com/SplitScreen-Me/splitscreenme-www
 
 import { engineLine } from './hub-engines.mjs';
+import { basisWords } from './basis.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
@@ -621,6 +622,8 @@ function buildObject(objName, docPrefix, parsed) {
         ...(internal ? { internal } : {}),
         ...(d.category ? { category: d.category } : {}),
       });
+      // What the AI-written parameter docs rest on (data/claude-param-docs.json basis), once any is used.
+      if (claudeParamDocs[key]?.basis && m.params.some((p) => claudeParamDocs[key].params?.[p.name])) entry.paramsBasis = claudeParamDocs[key].basis;
       entry.overloads.push({
         returns: tsType(m.csType),
         params: m.params.filter((p) => !p.out).map((p) => ({
@@ -863,7 +866,7 @@ fs.writeFileSync(path.join(root, 'data', 'nucleus-api.json'), JSON.stringify(mod
 // TypeScript declarations
 // ---------------------------------------------------------------------------
 
-const claudeNote = (m) => (m.docBy === 'claude' ? [`(AI-written, based on ${m.docBasis}.${m.docCheckedBy ? ` Checked by ${m.docCheckedBy}${m.docCheckedOn ? ` on ${m.docCheckedOn}` : ''}.` : ' Not from the official docs.'})`] : []);
+const claudeNote = (m) => (m.docBy === 'claude' ? [`(AI-written, based on ${basisWords(m.docBasis)}.${m.docCheckedBy ? ` Checked by ${m.docCheckedBy}${m.docCheckedOn ? ` on ${m.docCheckedOn}` : ''}.` : ' Not from the official docs.'})`] : []);
 /** A statement about `player`, in the loop over the players that Hub handlers write in the Proto Input callbacks. */
 function forEachPlayer(stmt) {
   // A call too long for 60 columns: one argument per line, as prettier lays it out (the loop is kept as written).
@@ -877,7 +880,7 @@ const exampleTag = (m) => (m.exampleBy === 'claude' ? ' (AI-written example)' : 
 const exampleLines = (m) => (m.example ? [...(exampleTag(m) ? [exampleTag(m).trim().replace(/^\((.*)\)$/, '$1').replace(/\.$/, '') + ':'] : []), `@example ${m.example}`] : []);
 // The AI-written "In practice" part, as a paragraph of its own with its label.
 const practiceNote = (m) => [
-  ...(m.practice ? ['', `In practice: ${m.practice}`, `(AI-written, based on ${m.practiceBasis}.${m.practiceCheckedBy ? ` Checked by ${m.practiceCheckedBy}.` : ''})`] : []),
+  ...(m.practice ? ['', `In practice: ${m.practice}`, `(AI-written, based on ${basisWords(m.practiceBasis)}.${m.practiceCheckedBy ? ` Checked by ${m.practiceCheckedBy}.` : ''})`] : []),
   // The mechanical per-engine counts (not AI-written), after "In practice" or alone.
   ...(m.byEngine ? ['', m.byEngine] : []),
 ];

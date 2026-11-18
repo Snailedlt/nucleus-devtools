@@ -4,7 +4,7 @@
 // tells screen readers; "Checked by …" stays visible as a small mark, since it changes how far to trust it. Human
 // docs stay plain. Markdown, which has no frames (hovers, suggestion docs), gets a ✨ before the text instead
 // (core/api.ts memberMarkdown). No DOM: the callers bring their own icon and CSS (the same class names).
-import { aiBasisParts, aiBasisRaw, aiChecked, type AiPart, type Member } from './api';
+import { aiBasisOf, aiChecked, aiDataFiles, aiEnginesText, aiHubText, aiSourceItems, type AiPart, type Member } from './api';
 import { partVotes, verifiedLabel } from './docvotes';
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
@@ -16,29 +16,25 @@ export interface AiTipOptions { path?: string; paths?: boolean }
 /**
  * The sparkle's tooltip, structured: a heading ("✨ AI-written", "✓ Checked by …", "Verified by people (N votes)" when
  * they apply), then the basis as a short labelled list (Source, one item per file with the file as code; Hub handlers;
- * Engines), from aiBasisParts. Visually hidden punctuation makes it one readable sentence for screen readers
- * (aria-describedby reads it flat). Phrasing content only (spans), so it fits in a summary or a span.
+ * Engines), built from the basis' fields (api.ts AiBasis). Visually hidden punctuation makes it one readable
+ * sentence for screen readers (aria-describedby reads it flat). Phrasing content only (spans), so it fits in a summary or a span.
  */
 export function aiTip(m: Member, part: AiPart, id: string, o: AiTipOptions = {}): string {
-  const p = aiBasisParts(aiBasisRaw(m, part));
+  const b = aiBasisOf(m, part) ?? {};
   const sr = (s: string) => `<span class="sr-only">${s}</span>`;
   const checked = aiChecked(m, part);
   const verified = o.path && (part === 'doc' || part === 'practice') ? verifiedLabel(partVotes(o.path, part)) : '';
   const head = `<span class="ai-tip-h"><span aria-hidden="true">✨ </span>AI-written`
     + (checked ? `<span class="ai-tip-ok"> · ✓ ${esc(checked)}</span>` : '')
     + (verified ? `<span class="ai-tip-ok"> · ${esc(verified)}</span>` : '') + `${sr('. ')}</span>`;
-  let prev = '';
-  const source = p.source.map((i) => {
-    const origin = i.origin && i.origin !== prev ? `${esc(i.origin)} ` : '';
-    if (i.origin) prev = i.origin;
-    return i.file ? `${origin}<code class="ai-file">${esc(i.file)}</code>${i.detail ? ` (${esc(i.detail)})` : ''}` : esc(i.detail);
-  });
+  const source = aiSourceItems(b, (f) => `<code class="ai-file">${esc(f)}</code>`, esc);
   const row = (k: string, items: string[]) => (items.length
     ? `<span class="ai-tip-k">${k}${sr(': ')}</span><span class="ai-tip-v">${items.map((x, n) => `<span class="ai-tip-i">${x}${sr(n < items.length - 1 ? '; ' : '. ')}</span>`).join('')}</span>`
     : '');
-  const rows = row('Source', source) + row('Hub handlers', p.hub.map(esc)) + row('Engines', p.engines.map(esc));
+  const rows = row('Source', source) + row('Hub handlers', b.hub ? [esc(aiHubText(b))] : []) + row('Engines', b.engines ? [esc(aiEnginesText(b))] : []);
+  const files = aiDataFiles(b);
   return `<span class="ai-tip" role="tooltip" id="${esc(id)}">${head}${rows ? `<span class="ai-tip-l">${rows}</span>` : ''}`
-    + (o.paths && p.paths.length ? `<span class="ai-tip-path">${sr('Files: ')}${p.paths.map(esc).join(', ')}</span>` : '') + `</span>`;
+    + (o.paths && files.length ? `<span class="ai-tip-path">${sr('Files: ')}${files.map(esc).join(', ')}</span>` : '') + `</span>`;
 }
 
 /** The corner of an AI-written part's frame: "Checked by …" (when a person did) and the sparkle with its tooltip
