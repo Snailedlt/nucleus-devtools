@@ -110,7 +110,8 @@ jobs:
           fi
           cd playground/dist/pages
           npx --yes vercel@latest link --yes --project "$VERCEL_PROJECT" --scope "$VERCEL_SCOPE" --token "$VERCEL_TOKEN" >/dev/null
-          url=$(npx --yes vercel@latest deploy --yes --scope "$VERCEL_SCOPE" --token "$VERCEL_TOKEN")
+          # One archive instead of ~1,150 files: the free plan allows 5,000 uploaded files a day.
+          url=$(npx --yes vercel@latest deploy --yes --archive=tgz --scope "$VERCEL_SCOPE" --token "$VERCEL_TOKEN")
           if [ "$NEXT" = true ]; then
             npx --yes vercel@latest alias set "$url" "$NEXT_URL" --scope "$VERCEL_SCOPE" --token "$VERCEL_TOKEN"
             url="https://$NEXT_URL"
