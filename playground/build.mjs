@@ -336,6 +336,12 @@ const feedbackSite = (() => {
   console.warn('FEEDBACK_GOATCOUNTER is set but is not a GoatCounter site code (letters, digits, -) or https://<code>.goatcounter.com: anonymous counts stay off.');
   return null;
 })();
+// Where pages read live vote counts (GoatCounter's public counter): the feedback site, or for previews, which send
+// nothing, FEEDBACK_COUNTS_GOATCOUNTER (vercel-build.sh names the live site), so their scores are the real ones.
+const countsSite = feedbackSite ?? (() => {
+  const code = (process.env.FEEDBACK_COUNTS_GOATCOUNTER ?? '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\.goatcounter\.com\/?.*$/, '');
+  return /^[a-z0-9-]{2,50}$/.test(code) ? code : null;
+})();
 // Nucleus Co-op's logo (the extension's media/nucleus-handler.svg: the logo with a JS tag): the handler's file icon, as in VS Code.
 const logoFile = path.join(coreRepo, 'media', 'nucleus-handler.svg');
 const handlerLogo = fs.existsSync(logoFile) ? 'data:image/svg+xml,' + encodeURIComponent(fs.readFileSync(logoFile, 'utf8').trim()) : null;
@@ -731,7 +737,7 @@ let checksNav = [];
   const { RULES, JS_RULES } = await import('data:text/javascript;base64,' + Buffer.from(lintAll.outputFiles[0].text).toString('base64'));
   const { writeRulePages } = await import('./rules-pages.mjs');
   let ruleIds;
-  ({ ids: ruleIds, nav: checksNav } = writeRulePages({ hl: hlSem, outDir: path.join(here, 'dist', 'pages', 'rules'), startHtml: fs.readFileSync(path.join(here, 'src', 'start.html'), 'utf8'), RULES, RULE_DOCS, JS_RULES, base: PAGES_BASE, preview: PREVIEW, noindex: NOINDEX, feedbackSite }));
+  ({ ids: ruleIds, nav: checksNav } = writeRulePages({ hl: hlSem, outDir: path.join(here, 'dist', 'pages', 'rules'), startHtml: fs.readFileSync(path.join(here, 'src', 'start.html'), 'utf8'), RULES, RULE_DOCS, JS_RULES, base: PAGES_BASE, preview: PREVIEW, noindex: NOINDEX, feedbackSite, countsSite }));
   if (!PREVIEW) fs.writeFileSync(path.join(here, 'dist', 'pages', 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[PAGES_BASE, `${PAGES_BASE}start/`, `${PAGES_BASE}tools/`, `${PAGES_BASE}rules/`, `${PAGES_BASE}learn/`, `${PAGES_BASE}docs/`, ...ruleIds.map((id) => `${PAGES_BASE}rules/${id}/`)].map((u) => `  <url><loc>${u}</loc></url>`).join('\n')}\n</urlset>\n`);
 }
 // Learn (learn/): the lessons, one page with its own small bundle (src/learn/): the editor, the checks and Try it,
@@ -767,7 +773,7 @@ let docValues = [];
   // The pages show the votes and the "Verified by people" labels from the newest votes report too.
   D.setDocVotes(docVotes);
   const { writeDocPages } = await import('./docs-pages.mjs');
-  docValues = writeDocPages({ hl: hlSem, checks: checksNav, outDir: path.join(here, 'dist', 'pages', 'docs'), startHtml: fs.readFileSync(path.join(here, 'src', 'start.html'), 'utf8'), docsPage: D.docsPage, docsView: D.docsView, docsValue: D.docsValue, allEntries: D.allEntries, groups: D.DOCS_GROUPS, enums: Object.keys(D.api.enums), docReviewUrl: D.docReviewUrl, partVotes: D.partVotes, placeAiFrames: D.placeAiFrames, aiFrameCss: D.aiFrameCss, aiTipScript: D.AI_TIP_SCRIPT, feedbackSite, base: PAGES_BASE, preview: PREVIEW, noindex: NOINDEX });
+  docValues = writeDocPages({ hl: hlSem, checks: checksNav, outDir: path.join(here, 'dist', 'pages', 'docs'), startHtml: fs.readFileSync(path.join(here, 'src', 'start.html'), 'utf8'), docsPage: D.docsPage, docsView: D.docsView, docsValue: D.docsValue, allEntries: D.allEntries, groups: D.DOCS_GROUPS, enums: Object.keys(D.api.enums), docReviewUrl: D.docReviewUrl, partVotes: D.partVotes, placeAiFrames: D.placeAiFrames, aiFrameCss: D.aiFrameCss, aiTipScript: D.AI_TIP_SCRIPT, feedbackSite, countsSite, base: PAGES_BASE, preview: PREVIEW, noindex: NOINDEX });
   // Each docs page in the sitemap too (written with the rule pages above).
   const sm = path.join(here, 'dist', 'pages', 'sitemap.xml');
   if (!PREVIEW && fs.existsSync(sm)) fs.writeFileSync(sm, fs.readFileSync(sm, 'utf8').replace('</urlset>', docValues.filter(Boolean).map((v) => `  <url><loc>${PAGES_BASE}docs/${v}/</loc></url>\n`).join('') + '</urlset>'));

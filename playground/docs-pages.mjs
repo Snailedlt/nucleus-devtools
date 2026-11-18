@@ -198,7 +198,7 @@ ${docsDrawer(up, here0, o.groups.map((g) => `<li><a href="${up}docs/${g.key}/">$
       if (m.doc && !html.includes('data-kind="doc"')) html += line('doc', 'Is the doc right?');
     }
     html = html.replace(/<p>@@slot:[\w-]+@@<\/p>\n?/g, '');
-    return votes ? html + docFeedbackScript(o.feedbackSite ?? null) + (o.aiTipScript ? `<script>${o.aiTipScript}</script>` : '') : html;
+    return votes ? html + docFeedbackScript(o.feedbackSite ?? null, o.countsSite ?? o.feedbackSite ?? null) + (o.aiTipScript ? `<script>${o.aiTipScript}</script>` : '') : html;
   };
   for (const v of values) {
     if (v && !folderOf(v)) continue;

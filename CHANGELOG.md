@@ -28,6 +28,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 ### ⚠️ Changed
 
+- **Vote scores update within a minute.** The /docs pages read the counts live from GoatCounter instead of waiting for the daily snapshot (which stays as the fallback); previews show the real site's scores.
 - **Previews are built by Vercel itself.** Every pushed branch gets one, with the extension's branch of the same name; the next release's site is rebuilt after each test build.
 - **Form and Blocks are hidden for now.** The visual editor is being reworked and may not come back in this form, so the workbench shows only Code. A handler you had open in Form or Blocks opens in Code, unchanged; Lines still lists every name a handler can use.
 

@@ -18,4 +18,6 @@ npm ci --no-audit --no-fund
 git clone -q --depth 1 --branch data https://github.com/Snailedlt/nucleuscoop-handler-testbench.git .hubdata
 EXTRA=()
 [ "$BRANCH" = claude/next-release ] && EXTRA=(--test-build)
+# Live vote counts from the real site (read only: previews never send votes).
+export FEEDBACK_COUNTS_GOATCOUNTER="${FEEDBACK_COUNTS_GOATCOUNTER:-nucleus-workbench}"
 node build.mjs --core .core --hub-data .hubdata --preview "${EXTRA[@]}"

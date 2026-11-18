@@ -88,8 +88,11 @@ export const DOC_FEEDBACK_CSS = `
 .doc-fb.inline .vote-btn { padding: 3px 7px; }
 .ai-box .doc-fb.inline { margin: 10px 0 0; }
 `;
-/** The script for the votes; `site` is the GoatCounter site code, or null (then votes stay in the browser). */
-export function docFeedbackScript(site) {
+/** The script for the votes; `site` is the GoatCounter site code, or null (then votes stay in the browser).
+ *  `countsSite` (default `site`): where the live counts are read from (GoatCounter's public counter, /counter/<event>.json,
+ *  with "Allow adding visitor counts" on), so a score is about a minute behind instead of a day; previews read the live
+ *  site's counts without sending any. Unreachable: the build's daily snapshot stays. */
+export function docFeedbackScript(site, countsSite = site) {
   return `<script>
 (function () {
   var KEY = 'nucleus-workbench-votes';
@@ -109,12 +112,14 @@ export function docFeedbackScript(site) {
     if (dn) dn.hidden = v !== 'down';
     if (upl) upl.hidden = v !== 'up';
     if (box.dataset.up == null) return;
-    var up = +box.dataset.up + (v === 'up' ? 1 : 0), down = +box.dataset.down + (v === 'down' ? 1 : 0);
+    // Live counts already hold the vote this browser sent before they were read (base): only the change since counts.
+    var was = box.dataset.live ? base : undefined;
+    var up = +box.dataset.up + (v === 'up' ? 1 : 0) - (was === 'up' ? 1 : 0), down = +box.dataset.down + (v === 'down' ? 1 : 0) - (was === 'down' ? 1 : 0);
     var s = box.querySelector('.vote-score'), t = box.querySelector('.vote-tip');
     if (s) s.textContent = score(up - down);
     if (t) t.textContent = voteTipText(up, down, +box.dataset.aiup, +box.dataset.aidown);
   }
-  var site = ${JSON.stringify(site)};
+  var site = ${JSON.stringify(site)}, counts = ${JSON.stringify(countsSite)};
   // navigator.webdriver: a browser driven by a program (tests, an AI agent's browser) never counts as a person.
   function off() { return !site || navigator.webdriver === true || navigator.doNotTrack === '1' || navigator.globalPrivacyControl === true || get('nucleus-workbench-feedback-off') === '1' || get('skipgc') === 't'; }
   function send(path) {
@@ -137,6 +142,21 @@ export function docFeedbackScript(site) {
     ctl.addEventListener('keydown', function (e) { if (e.key === 'Escape') ctl.classList.add('tip-off'); });
     ctl.addEventListener('mouseleave', function () { ctl.classList.remove('tip-off'); });
     ctl.addEventListener('focusout', function () { ctl.classList.remove('tip-off'); });
+  }
+  var base = off() ? undefined : votes()[id];
+  if (counts && box.dataset.up != null && window.fetch && window.Promise) {
+    var n = function (p) {
+      return fetch('https://' + counts + '.goatcounter.com/counter/' + encodeURIComponent(p) + '.json')
+        .then(function (r) { return r.ok ? r.json() : { count: '0' }; }) // 404: nobody has voted that way yet
+        .then(function (j) { return parseInt(String(j.count).replace(/\\D/g, ''), 10) || 0; });
+    };
+    var k = ['up', 'down', 'undo-up', 'undo-down'];
+    Promise.all(k.map(function (x) { return n('vote/' + id + '/' + x); }).concat(k.map(function (x) { return n('aivote/' + id + '/' + x); })))
+      .then(function (c) {
+        box.dataset.up = Math.max(0, c[0] - c[2]); box.dataset.down = Math.max(0, c[1] - c[3]);
+        box.dataset.aiup = Math.max(0, c[4] - c[6]); box.dataset.aidown = Math.max(0, c[5] - c[7]);
+        box.dataset.live = '1'; show();
+      }, function () {});
   }
   show();
   });
