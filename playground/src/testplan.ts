@@ -3,6 +3,7 @@
 // AT THE FULL (NON-BETA) RELEASE: set BETA to false (the guide and its entry points disappear), or rewrite the plan for
 // what still needs testing. AGENTS.md › Releasing says so too.
 import { VISUAL } from './visual';
+import type { IconName } from './icons';
 export const BETA = true;
 
 /** Who's testing: how much they code, and how well they know Nucleus Co-op's handlers and API. */
@@ -61,7 +62,7 @@ export const priority = (t: { id: string }) => PRIORITY[t.id] ?? { need: 2 as co
 export interface TestItem {
   id: string; areas: Area[]; kinds: Kind[]; title: string; steps: string; look: string;
   /** A link that starts the task (a workbench #link), shown beside Report. */
-  link?: { href: string; label: string };
+  link?: { href: string; label: string; icon?: IconName };
 }
 
 const ALL_ITEMS: TestItem[] = [
@@ -87,7 +88,7 @@ const ALL_ITEMS: TestItem[] = [
 
   // --- Newcomers: can you get a working handler without help?
   { id: 'first-run', areas: ['uiux', 'devx'], kinds: ['explore'], title: 'The first-visit choice', steps: 'In a private window, open the workbench twice: once answer "I write code", once "Guide me". Work for a few minutes each way.', look: '"I write code" should start compact (no tips, no banner), "Guide me" should help. Anything on screen you didn\'t ask for, or help you couldn\'t find.' },
-  { id: 'tour', areas: ['uiux'], kinds: ['task'], title: 'Take the tour', steps: 'Take the tour (the link here, or Menu › Take the tour) and do each step: click or press what it points at. Skip it halfway once, then Take the tour again to carry on. It ticks itself here when you finish.', look: 'A step that didn\'t react when you did it, moved on too soon or too late, or pointed at the wrong place. Optional: tell us what you thought of the tour with Report what you found.', link: { href: '#tour', label: '🧭 Take the tour' } },
+  { id: 'tour', areas: ['uiux'], kinds: ['task'], title: 'Take the tour', steps: 'Take the tour (the link here, or Menu › Take the tour) and do each step: click or press what it points at. Skip it halfway once, then Take the tour again to carry on. It ticks itself here when you finish.', look: 'A step that didn\'t react when you did it, moved on too soon or too late, or pointed at the wrong place. Optional: tell us what you thought of the tour with Report what you found.', link: { href: '#tour', label: 'Take the tour', icon: 'compass' } },
   { id: 'tutorial', areas: ['uiux'], kinds: ['task'], title: 'Learn: making your first handler', steps: 'Menu › Learn: do every lesson without Solve, as if you had never seen a handler, then test the handler in Nucleus Co-op with Sonic Robo Blast 2 (free).', look: 'A lesson you couldn\'t finish, a tick that came too early or never came, a word you didn\'t know, or a step in Nucleus Co-op that didn\'t go as the lesson said.' },
   { id: 'first-handler', areas: ['uiux'], kinds: ['task', 'nucleus'], title: 'Make your first handler', steps: 'New handler… → fill in a game you own → fix what Check finds → Try it → Save (Ctrl+S) → install it in Nucleus Co-op.', look: 'Could you finish without asking anyone? Which step was unclear? Did the game start in Nucleus?' },
   { id: 'messages', areas: ['uiux'], kinds: ['explore'], title: 'Do the messages make sense?', steps: 'Open "Handler with common mistakes" (Ctrl+P). Read each problem in Check and on hover, without opening Technical details.', look: 'Any word or sentence you didn\'t understand, or a fix you were afraid to press.' },

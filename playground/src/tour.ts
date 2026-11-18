@@ -20,6 +20,7 @@
 // Text is plain words with keys in backticks (`Ctrl+B`): they're drawn as keys (kbd.ts), never as code.
 
 import { kbdify } from './kbd';
+import { icon } from './icons';
 
 const KEY = 'nucleus-workbench-tour';
 const escHtml = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -87,7 +88,7 @@ export function initTour(d: TourDeps) {
   dlg.setAttribute('aria-describedby', 'tour-text tour-act');
   dlg.innerHTML = `<div class="tour-block" aria-hidden="true"></div><div class="tour-hole" aria-hidden="true"></div>
 <div class="tour-card" role="document">
-  <p class="tour-count"><span class="tour-ico" aria-hidden="true">🧭</span> <span id="tour-count"></span></p>
+  <p class="tour-count"><span class="tour-ico" aria-hidden="true">${icon('compass')}</span> <span id="tour-count"></span></p>
   <h2 id="tour-title" tabindex="-1"></h2>
   <p id="tour-text"></p>
   <p class="tour-act" id="tour-act" hidden></p>
