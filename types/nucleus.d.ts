@@ -1746,6 +1746,9 @@ interface GameHook {
   XInputEnabled: boolean;
   /**
    * If the game supports sdl2 joysticks(not a hook)
+   *
+   * In practice: Not a hook: Nucleus lists SDL2 controllers for the game and, for each instance, copies its own SDL2.dll (utils\SDL2\<arch>) next to the game's .exe, or into each folder in Game.SDLPaths, and writes SDL2.ini with that player's controller number. So it only works for games that load SDL2.dll as a separate file; a game with SDL built into its .exe (or a differently named SDL DLL such as SDL264.dll) keeps its own SDL and ignores it. 16 Hub handlers use it, 3 with Game.SDLPaths.
+   * (AI-written, based on Nucleus Tools/SDL2Dll/SDL2Dll.cs (SetupSDL2Dll), GenericGameHandler.cs (gen.Hook.SDL2Enabled), Controls/SetupScreen/DevicesFunctions.cs (SDL2 devices); verified Hub handlers, counted 2026-11-18.)
    * @example Game.Hook.SDL2Enabled = true; (The most common value in Hub handlers: 16 of the 16 that set it.)
    */
   SDL2Enabled: boolean;
@@ -1981,11 +1984,17 @@ interface GameProtoInput {
   TranslateXDeadzone: number;
   /**
    * This hook will unsubscribe the game from Raw Input (if it has already subscribed to it), and then subscribes Proto Input to receive raw input instead. Raw input received is forwarded back to the game if it uses raw input. Proto Input receives all keyboard/mouse input from this hook so it always needs to be enabled.
+   *
+   * In practice: This is the switch that makes Proto Input read each player's own keyboard and mouse: installing it is the only place Proto Input registers its raw input window, and it takes raw input away from the game (the game's own registrations are redirected to Proto Input). Everything per-player for keyboards and mice depends on it: the Send…Messages options post each player's input to their window, and the cursor and key state hooks (GetCursorPosHook, GetKeyStateHook, …) answer from the state it fills. Without it those hooks see no keys pressed and a frozen cursor. 503 of the 567 Hub handlers that use Proto Input turn it on, 229 of them from Game.ProtoInput.OnInputLocked with ProtoInput.InstallHook.
+   * (AI-written, based on Proto Input ProtoInputHooks/RegisterRawInputHook.cpp (InstallImpl: FindAlreadySubscribedWindows, RawInput::UnregisterGameFromRawInput, RawInput::RegisterProtoForRawInput), RawInput.cpp (ProcessRawInput, Send…Messages), FakeMouseKeyboard; Nucleus ProtoInputLauncher.cs; verified Hub handlers, counted 2026-11-18.)
    * @example Game.ProtoInput.RegisterRawInputHook = true;
    */
   RegisterRawInputHook: boolean;
   /**
    * When forwarding the input back to the game, you need to create a handle to the input data. However these handles can only be created by Windows. To get around this, Proto Input will send a dummy WM_INPUT message to the game (from the Register Raw Input hook). The game then calls GetRawInputData using the dummy handle. This hook intercepts the call and passes in the saved data. This hook is required to make forwarding raw input work, so it should always be enabled.
+   *
+   * In practice: Only matters for games that read raw input themselves. With Game.ProtoInput.RegisterRawInputHook on, Proto Input posts each player's raw input as WM_INPUT to the windows the game registered, tagged with its own signature; this hook lets the game's GetRawInputData read that data. Without the raw input hook it has nothing to pass on. 500 of the 567 Hub handlers that use Proto Input turn it on, nearly all together with the raw input hook (497).
+   * (AI-written, based on Proto Input ProtoInputHooks/GetRawInputDataHook.cpp (0xAB000000 signature, RawInput::inputBuffer), RawInput.cpp (forwardingWindows, PostMessageW WM_INPUT), RegisterRawInputHook.cpp; verified Hub handlers, counted 2026-11-18.)
    * @example Game.ProtoInput.GetRawInputDataHook = true;
    */
   GetRawInputDataHook: boolean;
@@ -1999,6 +2008,9 @@ interface GameProtoInput {
   MessageFilterHook: boolean;
   /**
    * The GetCursorPos is one way of obtaining the cursor position, so this hook redirects it to the "fake" cursor position. Should always be enabled.
+   *
+   * In practice: Answers the game's GetCursorPos with the player's own (fake) cursor position, kept by Proto Input from the raw input of the keyboard and mouse picked in Nucleus. That state is only filled while Game.ProtoInput.RegisterRawInputHook is on; without it the cursor seems frozen. It also answers from the controller when TranslateXinputtoMKB is on. 495 of the 567 Hub handlers that use Proto Input turn it on (often from OnInputLocked), and 491 of those also have the raw input hook.
+   * (AI-written, based on Proto Input ProtoInputHooks/GetCursorPosHook.cpp (Hook_GetCursorPos returns FakeMouseKeyboard state), RegisterRawInputHook.cpp, RawInput.cpp; verified Hub handlers, counted 2026-11-18.)
    * @example Game.ProtoInput.GetCursorPosHook = true;
    */
   GetCursorPosHook: boolean;
@@ -2009,16 +2021,25 @@ interface GameProtoInput {
   SetCursorPosHook: boolean;
   /**
    * Hooks GetKeyState to return the "fake" keyboard state. You should almost always have this enabled even if it appears to have no effect: when using multiple keyboards at the game time, they may interfere without this hook.
+   *
+   * In practice: Answers the game's GetKeyState with the player's own keys, kept by Proto Input from the raw input of the keyboard and mouse picked in Nucleus. That state is only filled while Game.ProtoInput.RegisterRawInputHook is on; without it the game sees no key pressed at all. Key hooks are used as a set: most handlers turn on all three. 486 of the 567 Hub handlers that use Proto Input turn it on (often from OnInputLocked), and 485 of those also have the raw input hook.
+   * (AI-written, based on Proto Input ProtoInputHooks/GetKeyStateHook.cpp (Hook_GetKeyState returns FakeMouseKeyboard state), RegisterRawInputHook.cpp, RawInput.cpp; verified Hub handlers, counted 2026-11-18.)
    * @example Game.ProtoInput.GetKeyStateHook = true;
    */
   GetKeyStateHook: boolean;
   /**
    * Similar to Get Key State. Async also tells the caller whether the key was pressed since the last call, so this can resolve issues where keys are pressed or release when they shouldn't. Should almost always be enabled.
+   *
+   * In practice: Answers the game's GetAsyncKeyState with the player's own keys, kept by Proto Input from the raw input of the keyboard and mouse picked in Nucleus. That state is only filled while Game.ProtoInput.RegisterRawInputHook is on; without it the game sees no key pressed at all. Key hooks are used as a set: most handlers turn on all three. 487 of the 567 Hub handlers that use Proto Input turn it on (often from OnInputLocked), and 485 of those also have the raw input hook.
+   * (AI-written, based on Proto Input ProtoInputHooks/GetAsyncKeyStateHook.cpp (Hook_GetAsyncKeyState returns FakeMouseKeyboard state), RegisterRawInputHook.cpp, RawInput.cpp; verified Hub handlers, counted 2026-11-18.)
    * @example Game.ProtoInput.GetAsyncKeyStateHook = true;
    */
   GetAsyncKeyStateHook: boolean;
   /**
    * Basically the same as Get Key State, except it returns the state of the entire keyboard. Should almost always be enabled.
+   *
+   * In practice: Answers the game's GetKeyboardState with the player's own keys, kept by Proto Input from the raw input of the keyboard and mouse picked in Nucleus. That state is only filled while Game.ProtoInput.RegisterRawInputHook is on; without it the game sees no key pressed at all. Key hooks are used as a set: most handlers turn on all three. 486 of the 567 Hub handlers that use Proto Input turn it on (often from OnInputLocked), and 485 of those also have the raw input hook.
+   * (AI-written, based on Proto Input ProtoInputHooks/GetKeyboardStateHook.cpp (Hook_GetKeyboardState returns FakeMouseKeyboard state), RegisterRawInputHook.cpp, RawInput.cpp; verified Hub handlers, counted 2026-11-18.)
    * @example Game.ProtoInput.GetKeyboardStateHook = true;
    */
   GetKeyboardStateHook: boolean;

@@ -937,6 +937,23 @@
                   "Off"
                 ]
               },
+              "protoinput-needs-raw-input": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
               "needs-option": {
                 "type": "string",
                 "enum": [

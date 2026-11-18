@@ -764,6 +764,24 @@ test('protoinput-needs-hook: BlockedMessages and filters need MessageFilterHook'
   assert.equal(only(HEADER + PI + 'Game.ProtoInput.MessageFilterHook = true;\nGame.ProtoInput.BlockedMessages = [0x0008];\n', 'protoinput-needs-hook').length, 0);
   assert.equal(only(HEADER + PI + 'Game.ProtoInput.BlockedMessages = [];\n', 'protoinput-needs-hook').length, 0);
 });
+test('protoinput-needs-raw-input: key and cursor hooks need the raw input hook', () => {
+  const KBM = PI + 'Game.SupportsMultipleKeyboardsAndMice = true;\n';
+  const d = only(HEADER + KBM + 'Game.ProtoInput.GetCursorPosHook = true;\nGame.ProtoInput.GetKeyStateHook = true;\n', 'protoinput-needs-raw-input');
+  assert.equal(d.length, 1);
+  assert.equal(d[0].severity, 'info');
+  assert.match(d[0].message, /GetCursorPosHook.*GetKeyStateHook/);
+  assert.equal(d[0].fixes![0].edits[0].text, 'Game.ProtoInput.RegisterRawInputHook = true;\n');
+  // With the raw input hook, as an option or installed at runtime: nothing to say.
+  assert.equal(only(HEADER + KBM + 'Game.ProtoInput.RegisterRawInputHook = true;\nGame.ProtoInput.GetKeyStateHook = true;\n', 'protoinput-needs-raw-input').length, 0);
+  assert.equal(only(HEADER + KBM + 'Game.ProtoInput.GetKeyStateHook = true;\nGame.ProtoInput.OnInputLocked = function () {\n  ProtoInput.InstallHook(PlayerList[0].ProtoInputInstanceHandle, ProtoInput.Values.RegisterRawInputHookID);\n};\n', 'protoinput-needs-raw-input').length, 0);
+  assert.equal(only(HEADER + KBM + 'Game.ProtoInput.GetKeyStateHook = true;\nif (true) {\n  Game.ProtoInput.RegisterRawInputHook = true;\n}\n', 'protoinput-needs-raw-input').length, 0);
+  // Controller-only handler: nothing to say.
+  assert.equal(only(HEADER + PI + 'Game.ProtoInput.GetCursorPosHook = true;\n', 'protoinput-needs-raw-input').length, 0);
+  // Hooks off, Proto Input not started, or the state comes from a controller: nothing to say.
+  assert.equal(only(HEADER + KBM + 'Game.ProtoInput.GetKeyStateHook = false;\n', 'protoinput-needs-raw-input').length, 0);
+  assert.equal(only(HEADER + 'Game.SupportsMultipleKeyboardsAndMice = true;\nGame.ProtoInput.GetKeyStateHook = true;\n', 'protoinput-needs-raw-input').length, 0);
+  assert.equal(only(HEADER + KBM + 'Game.ProtoInput.TranslateXinputtoMKB = true;\nGame.ProtoInput.GetCursorPosHook = true;\n', 'protoinput-needs-raw-input').length, 0);
+});
 test('blocked-message: unlisted, past the end, and repeated numbers', () => {
   const ok = HEADER + PI + 'Game.ProtoInput.MessageFilterHook = true;\nGame.ProtoInput.BlockedMessages = [0x0008, 0x02a3, 0x02a1, 6];\n';
   assert.equal(only(ok, 'blocked-message').length, 0);

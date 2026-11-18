@@ -163,6 +163,13 @@ const NUCLEUS: Record<string, RuleDoc> = {
     good: 'Game.ProtoInput.InjectStartup = true;\nGame.ProtoInput.MessageFilterHook = true;\nGame.ProtoInput.BlockedMessages = [0x0008];',
     fix: 'Pick the message by name from the list (hover a number to see which message it is).',
   },
+  'protoinput-needs-raw-input': {
+    title: 'Key or cursor hooks without raw input',
+    why: 'GetCursorPosHook and the key state hooks answer the game with the player\'s own cursor and keys. Proto Input only reads those keyboards and mice when Game.ProtoInput.RegisterRawInputHook is on, so without it the game sees no key pressed and a frozen cursor.',
+    bad: 'Game.ProtoInput.InjectStartup = true;\nGame.SupportsMultipleKeyboardsAndMice = true;\nGame.ProtoInput.GetKeyStateHook = true;',
+    good: 'Game.ProtoInput.InjectStartup = true;\nGame.SupportsMultipleKeyboardsAndMice = true;\nGame.ProtoInput.RegisterRawInputHook = true;\nGame.ProtoInput.GetKeyStateHook = true;',
+    fix: 'Turn the raw input hook on (the quick fix adds it). Shown only in handlers with Game.SupportsMultipleKeyboardsAndMice; for controller-only players a frozen cursor is harmless.',
+  },
   'needs-option': {
     title: 'An option that needs another one',
     why: 'Nucleus only reads some options when another is on: FakeFocusInterval needs FakeFocus, SteamlessArgs needs UseSteamless, and so on. Alone, it does nothing.',
