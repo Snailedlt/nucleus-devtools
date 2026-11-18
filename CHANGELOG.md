@@ -31,6 +31,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 ### ✨ New
 
+- **Which hooks does your game need? Its files say.** With the game's folder linked (Files › *Your game on this PC*), Check reads the game's .exe and DLLs on this device and suggests the Proto Input hooks they call for (XInput, the cursor clip, raw input), each with one button to add it and how many Hub handlers use it. Nothing is uploaded.
 - **Learn has a second chapter: launch options and config files.** Nine short lessons build a handler for Codename CURE, a free Source engine co-op game on Steam: launch arguments, each window's size in `Game.Play`, a choice the players make (and why saved choices come back as text), a config file for each player, a "fix the mistakes" quiz checked by the real Check, a test in Nucleus Co-op and a comparison with the Hub handler.
 - **A Hint button in Learn.** Next to *Show me*, *Hint* says what the lesson's check still misses and where to look (the line under `// The game`, say), and follows your code as you type. Nothing shows until you press it.
 - **Each chapter starts with an overview.** What you'll build, what you need first, and every lesson with its minutes, marking the ones done on your PC.

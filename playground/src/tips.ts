@@ -192,7 +192,7 @@ const FEATURES_ = T('Feature', [
   { id: 'f-density', text: 'Want more or less in Check? Settings › Check: Compact (one line each), Comfortable or Detailed.' },
   { id: 'f-tabs', text: 'Open more than one handler: + next to the tabs opens a new one, and your changes stay in their own tab. Ctrl+Shift+[ and ] switch between them.' },
   { id: 'f-rail', text: 'Want more room for code? Settings › Layout › Side rail puts the tools in a strip on the left; › at its bottom shows their names. Files and Lines can sit on either side of the code.' },
-  { id: 'f-gamefolder', text: 'Files › Your game on this PC: link the folder your game is installed in, and Check compares the executable and file lists with the real files. Only names are read, in your browser.' },
+  { id: 'f-gamefolder', text: 'Files › Your game on this PC: link the folder your game is installed in, and Check compares the executable and file lists with the real files, and hints at the Proto Input hooks the game\'s .exe and DLLs call for. Read in your browser only.' },
   { id: 'f-expand', text: 'A long value in Form or Blocks? Alt+Enter (or the expand button next to it) opens it in a larger editor, with the option’s docs beside it. Esc takes you back.' },
   { id: 'f-blocks', text: 'Blocks, next to Code and Form, shows Game.Play as steps: "If … then", "Set … to", "Do …". Every change edits the code, and your comments stay.' },
   { id: 'f-settings-io', text: 'New computer or browser? Settings › Updates and backup exports your settings to a file, and imports them there.' },

@@ -52,7 +52,7 @@ import { mountFormView, type FormView } from './formview';
 import { mountBlocksView, type BlocksView } from './blocksview';
 import { initPackageUI, fileIcon } from './packageui';
 import type { PkgProblem } from './pkgcheck';
-import { pickGameFolder, checkAgainstFolder, initFolderPickers, folderSummaryHtml, type GameFolder, type FolderProblem } from './gamefolder';
+import { pickGameFolder, checkAgainstFolder, initFolderPickers, folderSummaryHtml, gameBinariesNow, importProblems, type GameFolder, type FolderProblem } from './gamefolder';
 import { openMenu, type MenuItem } from './menus';
 import { initTestGuide } from './testguide';
 import { initTestPins } from './testpins';
@@ -318,7 +318,11 @@ const editor = CodeMirror($('#editor'), {
       analyze(text).then((r) => {
         current = r.diagnostics;
         currentText = text;
-        folderProblems = gameFolder ? checkAgainstFolder(text, gameFolder) : [];
+        if (gameFolder) {
+          // The game's .exe and DLLs are read in the background; their hints join once read (then Check runs again).
+          const bins = gameBinariesNow(gameFolder, () => (editor as any).performLint());
+          folderProblems = [...checkAgainstFolder(text, gameFolder), ...(bins ? importProblems(text, bins) : [])];
+        } else folderProblems = [];
         pkgProblems = pkgUI ? pkgUI.problems() : [];
         setFixCount(r.fixable, r.cleanups ?? 0);
         renderProblems(text);
@@ -549,7 +553,7 @@ function afterFolderChange() {
 function gameSection(): string {
   return `<section class="fp-game" aria-label="Your game on this PC"><div class="fp-head">Your game on this PC</div>${gameFolder
     ? `<div class="fp-gname"><span class="fi-badge fi-dir" aria-hidden="true">▸</span>${esc(gameFolder.name)}</div><p>Check compares the handler's paths and file names with this folder, and the symlink options get a file picker. Nothing is uploaded.</p><div class="fp-gacts"><button class="btn" type="button" data-gf="show">What's in it</button><button class="btn" type="button" data-gf="pick">Pick another</button><button class="btn" type="button" data-gf="forget">Unlink</button></div>`
-    : `<p>Link the folder your game is installed in, and Check tells you when <code>ExecutableName</code>, <code>BinariesFolder</code> or a symlink option names a file that isn't there. Only names and sizes are read, on this device.</p><div class="fp-gacts"><button class="btn" type="button" data-gf="pick">Link the game's folder…</button></div>`}</section>`;
+    : `<p>Link the folder your game is installed in, and Check tells you when <code>ExecutableName</code>, <code>BinariesFolder</code> or a symlink option names a file that isn't there. Only names and sizes are read, and the game's .exe and DLLs for hints about hooks, on this device.</p><div class="fp-gacts"><button class="btn" type="button" data-gf="pick">Link the game's folder…</button></div>`}</section>`;
 }
 async function onGameAction(act: string) {
   if (act === 'pick') return void (await pickFolder());
