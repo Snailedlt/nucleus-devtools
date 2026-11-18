@@ -431,6 +431,54 @@ function votesMarkdown(path: string, part: DocPart, aiWritten: boolean): string 
   return [verified ? `**✓ ${verified}**` : '', votesLine(v)].filter(Boolean).join(' · ');
 }
 
+/**
+ * The first sentence of a Markdown doc, for a hover: the first paragraph up to its first full stop (not one in code,
+ * a name such as `Game.Play`, or "e.g."), or the official docs' " | " separator; a very short one ("Optional.") takes
+ * the next sentence too. Cut at a word with "…" past `max`.
+ */
+export function firstSentence(md: string, max = 200): string {
+  const para = (md.split(/\n\s*\n/).find((x) => x.trim() && !x.trim().startsWith('```')) ?? '').replace(/\s*\n\s*/g, ' ').trim();
+  let code = false;
+  let end = para.length;
+  for (let i = 0; i < para.length; i++) {
+    const c = para[i];
+    if (c === '`') code = !code;
+    if (code) continue;
+    const bar = c === ' ' && para.slice(i, i + 3) === ' | ';
+    const stop = (c === '.' || c === '!' || c === '?') && (i + 1 === para.length || /\s/.test(para[i + 1]));
+    if (!bar && !stop) continue;
+    if (stop && c === '.' && /(?:\be\.g|\bi\.e|\betc|\bvs|\bcf)$/i.test(para.slice(0, i))) continue;
+    if (i < 25 && !bar) continue; // "Optional.", "Hub metadata.": too little on its own
+    end = bar ? i : i + 1;
+    break;
+  }
+  let out = para.slice(0, end).trim();
+  if (out.length > max) {
+    const cut = out.lastIndexOf(' ', max);
+    out = out.slice(0, cut > max / 2 ? cut : max).replace(/[,;:(\s]+$/, '');
+    // An unclosed code span would swallow the rest of the hover.
+    if ((out.match(/`/g) ?? []).length % 2) out += '`';
+    out += '…';
+  } else if (out && !/[.!?…:]$/.test(out)) out += '.';
+  return out;
+}
+
+/**
+ * A member's hover: the signature, the doc's first sentence (with its AI-written mark) and nothing else. The full doc,
+ * "In practice", votes, the engine line and examples stay in the Docs view and the completion docs (memberMarkdown):
+ * help on request, not on screen. The caller adds the links to the full docs.
+ */
+export function memberHoverMarkdown(owner: string, name: string, m: Member): string {
+  const parts: string[] = ['```ts\n' + memberSignature(owner, name, m).map((x) => prettySignature(x)).join('\n') + '\n```'];
+  if (m.deprecated) parts.push(`**${m.deprecated}**`);
+  const first = m.doc ? firstSentence(m.doc) : '';
+  if (first) parts.push(first);
+  if (first && claudeNote(m)) parts.push(`_✎ ${claudeNote(m)}_`);
+  if (m.required) parts.push('**Required**');
+  if (isJsBuiltin(owner)) parts.push(`[MDN: ${owner ? `${owner}.` : ''}${name}](${mdnUrl(owner, name)})`);
+  return parts.join('\n\n');
+}
+
 export function memberMarkdown(owner: string, name: string, m: Member): string {
   const parts: string[] = [];
   // Each overload laid out as prettier would (one parameter per line when it's long), the example too.

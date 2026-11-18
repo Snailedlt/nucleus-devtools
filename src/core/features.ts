@@ -4,7 +4,7 @@
 // same behaviour. Positions are UTF-16 offsets into the text (what JavaScript strings index), which
 // is also what LSP counts by default. No `vscode` import here, no Node APIs either.
 import { blockedItemAt, blockedListAt, blockedLists, blockTarget, COMMON_MESSAGES, hex, messageMarkdown, WM_HUB_SAMPLE } from './wm';
-import { api, claudeNote, DOCS_URL, paramType, isStringMember, Member, memberMarkdown, memberSignature, membersOf, ownerLabel, Resolved, resolveCall, resolveGlobal, resolveIndex, resolveMember } from './api';
+import { api, claudeNote, DOCS_URL, firstSentence, memberHoverMarkdown, paramType, isStringMember, Member, memberMarkdown, memberSignature, membersOf, ownerLabel, Resolved, resolveCall, resolveGlobal, resolveIndex, resolveMember } from './api';
 import { callContextAt, memberContextAt, resolveAt, valueContextAt } from './complete';
 export { explainLine, type LineExplanation } from './explain';
 import { Diagnostic, lineOf, lineStart, looksLikeHandler, RuleId, RULES, Severity, TextEdit } from './lint';
@@ -29,6 +29,8 @@ export interface FeatureOptions {
   explicit?: boolean;
   /** Turns API names in the docs into links (to the editor's docs view, or the workbench's `#docs-…`). */
   docsLink?: (path: string) => string;
+  /** The web docs page of a name, when docsLink opens the editor's own docs view (VS Code): the hover links both. */
+  webDocsLink?: (path: string) => string;
 }
 
 /** `Context.Options["…` with the cursor in (or right after `[` before) the key. */
@@ -109,7 +111,9 @@ export function hoverAt(text: string, offset: number, opts: FeatureOptions = {})
     : res.kind === 'enum' || res.kind === 'nucleusClass' ? `Nucleus.${res.name}`
     : res.kind === 'enumValue' ? `Nucleus.${res.enumName}`
     : apiPathOf(text.slice(r!.start, r!.end));
-  return { ...h, markdown: linkApiNames(h.markdown, opts.docsLink) + (self ? `\n\n[Open in Docs](${opts.docsLink(self)})` : '') };
+  // The hover is short (help on request, not on screen): the full docs, "In practice" and examples are one click away.
+  const links = self ? [`[Full docs](${opts.docsLink(self)})`, ...(opts.webDocsLink ? [`[On the web](${opts.webDocsLink(self)})`] : [])].join(' · ') : '';
+  return { ...h, markdown: linkApiNames(h.markdown, opts.docsLink) + (links ? `\n\n${links}` : '') };
 }
 function hoverAtRaw(text: string, offset: number, opts: FeatureOptions = {}): HoverInfo | undefined {
   // A number in Game.ProtoInput.BlockedMessages: the window message's name and what it does.
@@ -129,7 +133,7 @@ function hoverAtRaw(text: string, offset: number, opts: FeatureOptions = {}): Ho
   switch (res.kind) {
     case 'member': {
       if (res.member.own) break; // the handler's own function: below
-      let md = memberMarkdown(res.owner, res.name, res.member);
+      let md = memberHoverMarkdown(res.owner, res.name, res.member);
       // Context.Options: the keys this handler adds.
       if (res.owner === 'Context' && res.name === 'Options') {
         const opts = addedOptions(text, offset);
@@ -139,20 +143,20 @@ function hoverAtRaw(text: string, offset: number, opts: FeatureOptions = {}): Ho
     }
     case 'enum': {
       const e = api.enums[res.name];
-      return { markdown: '```ts\nenum Nucleus.' + res.name + '\n```\n\n' + (e.doc ?? '') + '\n\n' + Object.entries(e.values).map(([k, v]) => `- \`${k}\` = ${v}`).join('\n'), range };
+      return { markdown: '```ts\nenum Nucleus.' + res.name + '\n```\n\n' + firstSentence(e.doc ?? '') + '\n\n' + Object.entries(e.values).map(([k, v]) => `- \`${k}\` = ${v}`).join('\n'), range };
     }
     case 'enumValue':
-      return { markdown: '```ts\nNucleus.' + res.enumName + '.' + res.value + ' = ' + api.enums[res.enumName].values[res.value] + '\n```\n\n' + (api.enums[res.enumName].doc ?? ''), range };
+      return { markdown: '```ts\nNucleus.' + res.enumName + '.' + res.value + ' = ' + api.enums[res.enumName].values[res.value] + '\n```\n\n' + firstSentence(api.enums[res.enumName].doc ?? ''), range };
     case 'nucleusClass': {
       const c = api.nucleusClasses[res.name];
-      return { markdown: '```ts\nnew Nucleus.' + res.name + '(' + c.params.join(', ') + ')\n```\n\n' + c.doc, range };
+      return { markdown: '```ts\nnew Nucleus.' + res.name + '(' + c.params.join(', ') + ')\n```\n\n' + firstSentence(c.doc), range };
     }
     case 'object':
     case 'list':
     case 'nucleus': {
       const g = api.globals[word];
       if (!g) break;
-      return { markdown: '```ts\n' + `${word}: ${g.type}` + '\n```\n\n' + g.doc + (g.topLevel ? '' : notTopLevel) + `\n\n[Handler API docs](${DOCS_URL})`, range };
+      return { markdown: '```ts\n' + `${word}: ${g.type}` + '\n```\n\n' + firstSentence(g.doc) + (g.topLevel ? '' : notTopLevel) + (opts.docsLink ? '' : `\n\n[Handler API docs](${DOCS_URL})`), range };
     }
   }
   return opts.own === false ? undefined : ownHover(text, offset);

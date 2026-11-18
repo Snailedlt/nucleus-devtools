@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { apiPathOf, hoverAt, linkApiNames, signatureHelpAt, workbenchDocsUrl } from '../core/features';
 import { docsPageUrl, docsPage, docsView, docsValue } from '../core/docspage';
+import { api, firstSentence, memberMarkdown } from '../core/api';
 import { lint } from '../core/lint';
 import { fallbackMarkdown, highlightCode, renderDocsPanel, docsCommandLink, linksSection } from '../docspanel';
 
@@ -23,15 +24,46 @@ test('docs links: API names in Markdown become links; code blocks, existing link
   assert.equal(workbenchDocsUrl('Context.ModifySaveFile', 'neovim'), 'https://snailedlt.github.io/nucleuscoop-handler-testbench/?ref=neovim#docs-Context.ModifySaveFile');
 });
 
-test('docs links: hover ends with "Open in Docs" for the name; signature docs link names; nothing without docsLink', () => {
+test('docs links: hover ends with "Full docs" for the name (and the web page beside it); signature docs link names; nothing without docsLink', () => {
   const text = 'Game.Play = function () {\n  Context.ModifySaveFile(a, b, Nucleus.SaveType.INI, []);\n};';
   const at = text.indexOf('ModifySaveFile') + 3;
-  assert.match(hoverAt(text, at, { docsLink: link })!.markdown, /\[Open in Docs\]\(L\(Context\.ModifySaveFile\)\)$/);
-  assert.doesNotMatch(hoverAt(text, at)!.markdown, /Open in Docs/);
+  assert.match(hoverAt(text, at, { docsLink: link })!.markdown, /\[Full docs\]\(L\(Context\.ModifySaveFile\)\)$/);
+  assert.match(hoverAt(text, at, { docsLink: link, webDocsLink: (p) => docsPageUrl(p, 'vscode') })!.markdown,
+    /\[Full docs\]\(L\(Context\.ModifySaveFile\)\) · \[On the web\]\(https:\/\/snailedlt\.github\.io\/nucleuscoop-handler-testbench\/docs\/Context\.ModifySaveFile\/\?ref=vscode\)$/);
+  assert.doesNotMatch(hoverAt(text, at)!.markdown, /Full docs/);
   const own = 'function go() {}\ngo();';
-  assert.doesNotMatch(hoverAt(own, own.lastIndexOf('go') + 1, { docsLink: link })?.markdown ?? '', /Open in Docs/, 'own functions have no API docs');
+  assert.doesNotMatch(hoverAt(own, own.lastIndexOf('go') + 1, { docsLink: link })?.markdown ?? '', /Full docs/, 'own functions have no API docs');
   const sig = signatureHelpAt(text, text.indexOf('(a') + 1, { docsLink: link })!;
   assert.ok(sig.signatures.length);
+});
+
+test('hover is short: signature, first sentence, AI mark, links; no "In practice", votes, engines or examples', () => {
+  // Members with a long doc, "In practice", a "By engine" line and an example: none of it beyond the first sentence.
+  for (const [owner, name, code] of [['Game', 'KillMutex', 'Game.KillMutex = [];'], ['Context', 'ModifySaveFile', 'Game.Play = function () {\n  Context.ModifySaveFile(a, b, c, d);\n};'], ['Game', 'ExecutableContext', 'Game.ExecutableContext = [];']] as const) {
+    const m = api.objects[owner].members[name];
+    assert.ok(m.practice && m.example && m.byEngine, `${owner}.${name} still has practice, an example and an engine line`);
+    const md = hoverAt(code, code.indexOf(name) + 2, { docsLink: link })!.markdown;
+    assert.doesNotMatch(md, /In practice|```js|👍|votes|Is it wrong/, md);
+    assert.ok(!md.includes(m.byEngine!), md);
+    assert.match(md, new RegExp(`\\[Full docs\\]\\(L\\(${owner}\\.${name}\\)\\)$`));
+    const prose = md.replace(/```[\s\S]*?```/g, '').replace(/_✎[^\n]*_/g, '').replace(/\[Full docs\][^\n]*/, '').trim();
+    assert.ok(prose.length <= 260, `${owner}.${name}: ${prose.length} characters\n${prose}`);
+    if (m.docBy === 'claude') assert.match(md, /_✎ AI-written, based on /, 'the AI-written mark stays');
+    // The completion docs keep everything.
+    assert.match(memberMarkdown(owner, name, m), /In practice/);
+  }
+});
+
+test('firstSentence: stops at the first full stop outside code and abbreviations, or at " | "', () => {
+  assert.equal(firstSentence('Runs `Game.Play` per player. Then more.'), 'Runs `Game.Play` per player.');
+  assert.equal(firstSentence('Use names, e.g. `a.b`, here. Not this.'), 'Use names, e.g. `a.b`, here.');
+  assert.equal(firstSentence('Enable hooks | default: false.'), 'Enable hooks.');
+  assert.equal(firstSentence('```js\nx.y\n```\n\nThe text after the code block. More.'), 'The text after the code block.');
+  assert.equal(firstSentence('Optional. When using the emulator. More.'), 'Optional. When using the emulator.', 'a very short one takes the next');
+  assert.equal(firstSentence('The first line\ncontinues on the next one. Two.'), 'The first line continues on the next one.');
+  const long = firstSentence('word '.repeat(80) + 'end.');
+  assert.ok(long.length <= 201 && long.endsWith('…'), long);
+  assert.equal(firstSentence('An `open code span ' + 'x '.repeat(120), 60).split('`').length % 2, 1, 'code spans stay closed');
 });
 
 test('docsPageUrl: a name with a page goes to it, anything else to the workbench', () => {

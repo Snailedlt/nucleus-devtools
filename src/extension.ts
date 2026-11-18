@@ -6,6 +6,7 @@ import { registerCommands } from './commands';
 import { registerTryIt } from './tryit';
 import { registerReports, REPORT_COMMANDS, type CheckArgs } from './reportvscode';
 import { docsCommandLink, OPEN_DOCS, registerDocsPanel } from './docspanel';
+import { docsPageUrl } from './core/docspage';
 import { ruleOverrides } from './settings';
 import { definitionAt } from './core/definition';
 import { rangeFormatEdits } from './core/features';
@@ -499,7 +500,7 @@ function hover(doc: vscode.TextDocument, pos: vscode.Position): vscode.Hover | u
     const e = explainLine(doc.getText(), doc.offsetAt(pos));
     if (e) return new vscode.Hover(markdown(e.markdown), doc.lineAt(pos.line).range);
   }
-  const h = hoverAt(doc.getText(), doc.offsetAt(pos), { own: ownNames(doc), docsLink: docsCommandLink });
+  const h = hoverAt(doc.getText(), doc.offsetAt(pos), { own: ownNames(doc), docsLink: docsCommandLink, webDocsLink: (path) => docsPageUrl(path, 'vscode') });
   return h && new vscode.Hover(markdown(h.markdown), toRange(doc, h.range));
 }
 
