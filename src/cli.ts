@@ -32,7 +32,7 @@ import { EVERY_KEYBOARD } from './core/sim';
 import { formatSimulation } from './simformat';
 import { serve } from './mcp';
 import { readGameBinaries } from './gamefolder-node';
-import { analyse, findExes, importsReport } from './core/importhooks';
+import { analyse, exePath, findExes, importsReport } from './core/importhooks';
 import type { PeFile } from './core/pe';
 import { serve as serveLsp } from './lsp';
 import { buildReport, DISCORD_THREAD, findDuplicates, handlerHelp, handlerOrigin, simSummary, type ReportInput } from './core/report';
@@ -621,7 +621,7 @@ function cmdImports(args: Args, json: boolean): number {
   const exeHits = exe ? findExes(files.filter((f) => !f.dll), exe) : [];
   if (exe && !exeHits.length)
     throw new Error(`--exe: no program called ${exe} there (found: ${files.filter((f) => !f.dll).map((f) => f.fileName).join(', ') || 'none'})`);
-  if (exeHits.length > 1) throw new Error(`--exe: ${exe} could be ${exeHits.map((f) => f.fileName).join(' or ')}; give one of those paths`);
+  if (exeHits.length > 1) throw new Error(`--exe: ${exe} could be ${exeHits.map(exePath).join(' or ')}; give one of those paths`);
   const a = analyse(files, exeHits[0]);
   const opts = { controllers: !has(args, '--no-controllers'), kbm: !has(args, '--no-kbm') };
   const listing = (f: PeFile) => [

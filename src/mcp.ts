@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
 import { readGameBinaries } from './gamefolder-node';
-import { analyse, findExes, importsReport } from './core/importhooks';
+import { analyse, exePath, findExes, importsReport } from './core/importhooks';
 import { lint, lineOf, lineStart, RULES } from './core/lint';
 import { fixAll } from './core/fix';
 import { formatHandler } from './core/format';
@@ -323,7 +323,7 @@ export const TOOLS: Tool[] = [
       const exe = a.exe ? String(a.exe) : undefined;
       const exeHits = exe ? findExes(files.filter((f) => !f.dll), exe) : [];
       if (exe && !exeHits.length) return { text: `No program called ${exe} at ${a.path} (found: ${files.filter((f) => !f.dll).map((f) => f.fileName).join(', ') || 'none'}).`, isError: true };
-      if (exeHits.length > 1) return { text: `${exe} could be ${exeHits.map((f) => f.fileName).join(' or ')}: give one of these paths (relative to ${a.path}) in \`exe\`, e.g. \`exe: "${exeHits[0]!.fileName}"\`.`, isError: true };
+      if (exeHits.length > 1) return { text: `${exe} could be ${exeHits.map(exePath).join(' or ')}: give one of these paths (relative to ${a.path}) in \`exe\`, e.g. \`exe: "${exePath(exeHits[0]!)}"\`.`, isError: true };
       const r = analyse(files, exeHits[0]);
       const controllers = a.controllers !== false, kbm = a.kbm !== false;
       return {

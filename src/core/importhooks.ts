@@ -124,6 +124,11 @@ export function findExes(exes: PeFile[], name: string): PeFile[] {
   if (given !== want) return [];
   return exes.filter((f) => rel(f).endsWith('/' + want));
 }
+/** A program's path as `findExes` takes it back without ambiguity: one at the top gets `./` (a bare name matches every
+ *  program of that name). */
+export function exePath(f: PeFile): string {
+  return f.fileName.replace(/\\/g, '/').includes('/') ? f.fileName : './' + f.fileName;
+}
 /** The program a name points at, or undefined when none or several match (give the path then: `findExes` lists them). */
 export function findExe(exes: PeFile[], name: string): PeFile | undefined {
   const all = findExes(exes, name);

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { parsePE, NotAProgram, PE_WORK_LIMIT, type PeFile } from '../core/pe';
-import { analyse, importHints, importsReport, handlerHooks, importProblems, jsString, findExe, findExes, lastSwitch, RULES, HUB_SHARES } from '../core/importhooks';
+import { analyse, importHints, importsReport, handlerHooks, importProblems, jsString, findExe, findExes, exePath, lastSwitch, RULES, HUB_SHARES } from '../core/importhooks';
 import { api } from '../core/api';
 
 const FIX = path.join(__dirname, '..', 'src', 'test', 'fixtures', 'pe');
@@ -178,6 +178,9 @@ test('importhooks: file names become string literals; an explicit path wins; com
   assert.deepEqual(findExes([root, sub], 'Game.exe'), [root, sub]);
   assert.deepEqual(findExes([root, sub], './Game.exe'), [root]);
   assert.deepEqual(findExes([root, sub], 'bin/Game.exe'), [sub]);
+  // The paths the ambiguity messages list each pick their own program again.
+  for (const f of [root, sub]) assert.deepEqual(findExes([root, sub], exePath(f)), [f]);
+  assert.equal(exePath(root), './Game.exe');
   // A hook in a block comment is not on.
   assert.ok(!handlerHooks('/* Game.ProtoInput.XinputHook = true; */').has('XinputHook'));
   // SDL2.dll in another folder: Game.SDLPaths as a proper string literal, whatever the folder's name.
