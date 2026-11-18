@@ -443,10 +443,13 @@ export function importProblems(text: string, files: PeFile[]): FolderProblem[] {
     return o >= 0 && seg.indexOf('*/', o + 2) < 0 && code[ls + o] !== '/';
   };
   // The whole statement on one line (`=` too: `Name\n= true;` would get the lines between name and value).
-  const pis = [...code.matchAll(/^Game\.ProtoInput\.\w+[ \t]*=(?!=).*$/gm)].filter((m) => top(m) && complete(m[0]) && !endsInComment(lineEnd(m.index!)));
+  // A line without `;` is only a statement end when the next code doesn't continue it (`.replace(…)`, `+ x`, `(`…).
+  const continues = (at: number) => /^\s*[.([+\-*/%?:,=&|<>]/.test(code.slice(at));
+  const pis = [...code.matchAll(/^Game\.ProtoInput\.\w+[ \t]*=(?!=).*$/gm)].filter((m) => top(m) && complete(m[0]) && !endsInComment(lineEnd(m.index!)) && (/;\s*$/.test(m[0]) || !continues(m.index! + m[0].length)));
   // Else after Game.ExecutableName's statement, when it ends on the line its string ends on (only `;` after it).
   const exeEnd = exe ? lineEnd(exe.end + 1) : -1;
-  const exeSafe = !!exe && /^[ \t]*;?[ \t]*\r?\n?$/.test(code.slice(exe.end + 1, exeEnd)) && !endsInComment(exeEnd);
+  const exeSafe = !!exe && /^[ \t]*;?[ \t]*\r?\n?$/.test(code.slice(exe.end + 1, exeEnd)) && !endsInComment(exeEnd)
+    && (/;/.test(code.slice(exe.end + 1, exeEnd)) || !continues(exeEnd));
   const insertAt = pis.length ? lineEnd(pis[pis.length - 1]!.index!) : exe ? (exeSafe ? exeEnd : -1) : 0;
   const nl = insertAt > 0 && text[insertAt - 1] !== '\n' ? '\n' : '';
   // Startup injection into a launcher: the fix swaps the one active top-level InjectStartup line (a trailing comment

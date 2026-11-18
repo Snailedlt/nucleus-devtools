@@ -302,6 +302,12 @@ test('importhooks: Game.BinariesFolder picks the program Nucleus starts', () => 
   // Game.ExecutableName that two programs have, and no Game.BinariesFolder to pick one: no hints (no guessing by size).
   assert.deepEqual(importProblems('Game.ExecutableName = "Game.exe";\nGame.ProtoInput.InjectStartup = true;\n', [a, b]), []);
   assert.ok(importProblems('Game.ExecutableName = "Game.exe";\nGame.ProtoInput.InjectStartup = true;\n', [b]).some((p) => /XinputHook/.test(p.title)));
+  // Game.ExecutableName without `;` whose expression goes on (`.replace(…)` on the next line): no fix rather than one that breaks it.
+  {
+    const cont = 'Game.ExecutableName = "Game.exe"\n  .replace("Game", "Game");\nGame.ProtoInput.InjectStartup\n= true;\n';
+    for (const p of importProblems(cont, [b])) assert.ok(!p.fix, 'no fix: ' + p.title);
+    assert.ok(importProblems(cont.replace('"Game.exe"\n', '"Game.exe";\n'), [b]).some((p) => p.fix), 'with `;` the fix is back');
+  }
   // A name no program has: no hints either (not the largest program instead).
   assert.deepEqual(importProblems('Game.ExecutableName = "Foo.exe";\nGame.ProtoInput.InjectStartup = true;\n', [b]), []);
 });
