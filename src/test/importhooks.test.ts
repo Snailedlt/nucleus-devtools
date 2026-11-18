@@ -326,6 +326,9 @@ test('importhooks: Game.BinariesFolder picks the program Nucleus starts', () => 
     const cont = 'Game.ExecutableName = "Game.exe"\n  .replace("Game", "Game");\nGame.ProtoInput.InjectStartup\n= true;\n';
     for (const p of importProblems(cont, [b])) assert.ok(!p.fix, 'no fix: ' + p.title);
     assert.ok(importProblems(cont.replace('"Game.exe"\n', '"Game.exe";\n'), [b]).some((p) => p.fix), 'with `;` the fix is back');
+    // `!=` (and other operators) on the next line go on too.
+    const ne = 'Game.ExecutableName = "Game.exe"\n  != "Other.exe" ? "Game.exe" : "Other.exe";\nGame.ProtoInput.InjectStartup\n= true;\n';
+    for (const p of importProblems(ne, [b])) assert.ok(!p.fix, 'no fix: ' + p.title);
   }
   // A name no program has: no hints either (not the largest program instead).
   assert.deepEqual(importProblems('Game.ExecutableName = "Foo.exe";\nGame.ProtoInput.InjectStartup = true;\n', [b]), []);
