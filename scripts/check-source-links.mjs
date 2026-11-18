@@ -1,7 +1,8 @@
 // Checks every link the AI docs' sources lead to (npm run check-links): each source item's `url` in the generated
 // model (docBasis, practiceBasis, paramsBasis), the Hub and engines links (`basisLinks`) and the fixed links in
 // data/sources.json. Fails (exit 1) on a broken one, with the reason. Needs the network, so it isn't part of npm test
-// (which checks offline that every source has a link and GitHub links are permalinks); the Sync workflow and CI run
+// (which checks offline that every source has a link and GitHub links are permalinks at the last commit that changed
+// the file); the Sync workflow and CI run
 // it. A GitHub file is checked on raw.githubusercontent.com (no rate limit to speak of), a folder on github.com (the
 // API, then a file of the model's under it, when github.com refuses). A few requests at a time, retried on 429/5xx.
 //   node scripts/check-source-links.mjs [--verbose]

@@ -125,7 +125,8 @@ export interface ApiModel {
   hubHandlers?: { count: number; takenAt: string; /** Handlers per engine family (data/hub-engines.json), families with enough of them. */ engines?: Record<string, number> };
   /** The links of the basis' `hub` and `engines` items (data/sources.json `data`, a repository file made a permalink). */
   basisLinks?: Partial<Record<'hub' | 'engines', string | null>>;
-  /** The commit every source link points at, per GitHub repository ("owner/name": sha; scripts/sources.mjs). */
+  /** The tip each repository's source links were looked up from ("owner/name": sha; each link is at its file's last
+   *  change before it, the item's `commit`: scripts/sources.mjs). */
   sourceCommits?: Record<string, string>;
 }
 
@@ -510,8 +511,9 @@ export function isAiPart(m: Member, part: AiPart): boolean {
 }
 /** One source an AI-written part rests on (data/claude-*.json `basis.source`): `project` (Nucleus, ProtoInputHooks,
  *  Proto Input guide, …: data/sources.json `projects`), `file` (shown as code) and `what` in it (functions, call
- *  sites); each optional. `url`: the link to it, which npm run generate looks up (scripts/sources.mjs). */
-export interface AiSource { project?: string; file?: string; what?: string; url?: string }
+ *  sites); each optional. `url`: the link to it, and `commit`: the last commit that changed it (the link is at that
+ *  commit), which npm run generate looks up (scripts/sources.mjs). */
+export interface AiSource { project?: string; file?: string; what?: string; url?: string; commit?: string }
 /** What an AI-written part is based on, as data (data/claude-docs.json, claude-practice.json, claude-param-docs.json
  *  `basis`): the `source` files, the verified Hub handlers (`hub.counted`: the date they were counted), the Hub games'
  *  engines (`engines`: true, or the families the text names) and a `note` for anything else. Every place that shows

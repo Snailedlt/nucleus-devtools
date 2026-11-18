@@ -1,4 +1,6 @@
 import { test } from 'node:test';
+import { execFileSync } from 'node:child_process';
+import path from 'node:path';
 import assert from 'node:assert/strict';
 import raw from '../../data/claude-docs.json';
 import sources from '../../data/sources.json';
@@ -8,6 +10,8 @@ import { aiTip } from '../core/aimark';
 import practiceRaw from '../../data/claude-practice.json';
 import { markdownReference } from '../core/lookup';
 import { codeOf } from '../core/importhooks';
+
+const ROOT = path.join(__dirname, '..');
 
 const docs = (raw as unknown as { docs: Record<string, { doc: string; basis: AiBasis; override?: boolean }> }).docs;
 const OBJ: Record<string, string> = { Hub: 'Hub', 'Hub.Handler': 'HubHandler', 'Hub.Maintainer': 'HubMaintainer', Game: 'Game', 'Game.Hook': 'GameHook', 'Game.ProtoInput': 'GameProtoInput', Context: 'Context', Player: 'PlayerInfo', ProtoInput: 'ProtoInputRuntime', 'ProtoInput.Values': 'ProtoInputValues' };
@@ -197,25 +201,46 @@ test('AI basis as data: every entry has typed fields, and every renderer builds 
   assert.equal(aiBasisItemText({ project: 'Proto Input docs', what: 'Send messages', url: 'u' }, { link: (h, u) => `<${u}>${h}` }), '<u>Proto Input docs: Send messages');
   // The model carries the fields (npm run generate) and a link for every source file found in its repository.
   const m = api.objects.Game.members.KillMutex;
-  const strip = (b?: AiBasis) => JSON.parse(JSON.stringify(b, (k, v) => (k === 'url' ? undefined : v)));
+  const strip = (b?: AiBasis) => JSON.parse(JSON.stringify(b, (k, v) => (k === 'url' || k === 'commit' ? undefined : v)));
   assert.deepEqual(strip(m.practiceBasis), practice['Game.KillMutex'].basis);
   assert.ok(api.objects.Context.members.GetFolder.paramsBasis?.source?.length, 'the parameter docs\' basis in the model');
-  // GitHub links are permalinks at the commit npm run generate found the file in (the model's sourceCommits): they
-  // never break when a file moves. scripts/check-source-links.mjs (npm run check-links) checks them over the network.
+  // GitHub links are permalinks at the last commit that changed the file (the item's `commit`, before or at the tip
+  // recorded in sourceCommits): they move only when the file does and never break when it moves later.
+  // scripts/check-source-links.mjs (npm run check-links) checks them over the network.
   const commits = api.sourceCommits ?? {};
-  const permalink = (url: string, where: string) => {
-    const g = url.match(/^https:\/\/github\.com\/([\w.-]+\/[\w.-]+)\/(blob|tree)\/([0-9a-f]{40})(\/\S+)?$/);
+  const own = sources.repos.devtools.github;
+  const ownLinks: { sha: string; file: string; where: string }[] = [];
+  const permalink = (url: string, where: string, commit?: string) => {
+    const g = url.match(/^https:\/\/github\.com\/([\w.-]+\/[\w.-]+)\/(blob|tree)\/([0-9a-f]{40})(?:\/(\S+))?$/);
     if (!g) return assert.match(url, /^https:\/\/www\.splitscreen\.me\/docs\/[\w-]+$/, `${where}: a GitHub permalink or a docs page (${url})`);
-    assert.equal(g[3], commits[g[1]], `${where}: the link's commit is the one recorded for ${g[1]}`);
+    assert.ok(commits[g[1]], `${where}: a tip is recorded for ${g[1]}`);
+    if (commit !== undefined) assert.equal(g[3], commit, `${where}: the link's commit is the item's recorded commit`);
+    if (g[1] === own && g[2] === 'blob') ownLinks.push({ sha: g[3], file: decodeURIComponent(g[4] ?? ''), where });
   };
   for (const [on, o] of Object.entries(api.objects)) for (const [mn, mm] of Object.entries(o.members)) for (const b of [mm.docBasis, mm.practiceBasis, mm.paramsBasis])
     for (const i of b?.source ?? []) {
       const proj = (sources.projects as Record<string, { url?: string }>)[i.project ?? ''];
       assert.ok(i.url, `${on}.${mn}: ${i.project} ${i.file ?? ''} has a link`);
-      if (!proj?.url) permalink(i.url!, `${on}.${mn}`);
+      if (!proj?.url) {
+        assert.match(i.commit ?? '', /^[0-9a-f]{40}$/, `${on}.${mn}: ${i.project} ${i.file ?? ''} has the commit it links to`);
+        permalink(i.url!, `${on}.${mn}`, i.commit);
+      }
     }
-  assert.ok(Object.keys(commits).length >= 3 && Object.values(commits).every((c) => /^[0-9a-f]{40}$/.test(c)), 'the commits behind the links');
+  assert.ok(Object.keys(commits).length >= 3 && Object.values(commits).every((c) => /^[0-9a-f]{40}$/.test(c)), 'the tips behind the links');
   permalink(api.basisLinks?.engines ?? '', 'basisLinks.engines');
+  // This repository's own files (data/hub-engines.json, …): the linked commit last changed the file and holds it as
+  // it is now. Changing one without npm run generate (after committing and pushing it) fails here. Needs the history
+  // (CI checks out with fetch-depth 0); a shallow clone skips it outside CI.
+  const git = (...a: string[]) => { try { return execFileSync('git', a, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); } catch { return null; } };
+  const shallow = git('rev-parse', '--is-shallow-repository');
+  if (shallow === 'false' || process.env.CI) {
+    assert.equal(shallow, 'false', 'the history is there for the own-file links (actions/checkout fetch-depth: 0)');
+    assert.ok(ownLinks.length, 'the engines data links to this repository');
+    for (const { sha, file, where } of ownLinks) {
+      assert.equal(git('log', '-1', '--format=%H', sha, '--', file), sha, `${where}: ${sha.slice(0, 7)} changed ${file}`);
+      assert.equal(git('rev-parse', `${sha}:${file}`), git('hash-object', file), `${where}: ${file} changed since ${sha.slice(0, 7)}: commit and push it, then npm run generate`);
+    }
+  }
   assert.equal(api.basisLinks?.hub, sources.data.hub.url);
   // The tooltip: a heading, "Based on" and one item per source, each linked where it can be; no category labels.
   const tip = aiTip(m, 'practice', 't');
