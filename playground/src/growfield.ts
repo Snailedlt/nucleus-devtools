@@ -3,6 +3,8 @@
 // where that isn't supported). Enter keeps its one-line meaning (no new line); Shift+Enter adds one where the value
 // allows it. Long values get an expand button (also Alt+Enter): a larger editor under the field, or a dialog on
 // phones, with the option's docs beside it. Esc closes it and focus goes back to the field.
+import { keysText } from './kbd';
+
 const NATIVE = typeof CSS !== 'undefined' && CSS.supports?.('field-sizing', 'content');
 const LONG = 40;
 let seq = 0;
@@ -82,7 +84,7 @@ export function growField(ta: HTMLTextAreaElement, o: GrowOptions): HTMLElement 
     big.value = ta.value;
     const hint = document.createElement('p');
     hint.className = 'xf-keys';
-    hint.textContent = opts.multiline ? 'Shift+Enter adds a line. Enter or Esc closes it.' : 'Enter or Esc closes it.';
+    hint.innerHTML = keysText(opts.multiline ? 'Shift+Enter adds a line. `Enter` or `Esc` closes it.' : '`Enter` or `Esc` closes it.');
     big.setAttribute('aria-describedby', `${id}-keys`);
     hint.id = `${id}-keys`;
     p.append(head, big, hint);

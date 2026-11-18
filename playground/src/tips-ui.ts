@@ -4,6 +4,7 @@ import { voteButtons } from './feedback';
 import { CONTEXT_TIPS, GENERAL_TIPS, Tip, TipContext, TipShow, tipShown } from './tips';
 import { scanHandler, inCallback, Scan } from './lines';
 import { narrow } from './dom';
+import { keysText } from './kbd';
 import { BETA } from './testplan';
 
 const ON_KEY = 'nucleus-workbench-tips';
@@ -56,15 +57,8 @@ export function initTips({ editor, actions, toast, targets, audience }: Deps) {
     // Testers looking at other audiences' tips see whom each is for.
     const whom = show === 'mode' ? '' : ` · for ${tip.for === 'newcomer' ? 'newcomers' : tip.for === 'developer' ? 'developers' : 'everyone'}`;
     label.textContent = (contextual ? 'Heads up' : tip.topic ?? 'Tip') + whom;
-    body.textContent = '';
-    // `code` spans
-    tip.text.split(/(`[^`]+`)/).forEach((part) => {
-      if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
-        const c = document.createElement('code');
-        c.textContent = part.slice(1, -1);
-        body.append(c);
-      } else body.append(document.createTextNode(part));
-    });
+    // `code` spans; shortcuts as keys (kbd.ts: with a modifier in plain text, a lone key such as `F8` in backticks).
+    body.innerHTML = keysText(tip.text);
     $('#tip-votes').innerHTML = voteButtons('tip', tip.id, { up: 'Useful tip', down: 'Not useful' });
     document.querySelectorAll('.tip-target').forEach((e) => e.classList.remove('tip-target'));
     if (tip.action && on) {

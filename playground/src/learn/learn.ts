@@ -11,7 +11,8 @@ import 'codemirror/addon/edit/closebrackets';
 import 'codemirror/addon/hint/show-hint';
 import { hoverAt, completionsAt, explainLine, signatureHelpAt, type CompletionEntry } from '@core/features';
 import { formatHandler } from '@core/format';
-import { kbdify } from '../kbd';
+import { kbdify, KEYS_CSS } from '../kbd';
+import { revealHistoryChanges } from '../undoreveal';
 import { createDrafts } from './drafts';
 import { semanticMarks } from '../semmarks';
 import type { Diagnostic } from '@core/lint';
@@ -128,6 +129,10 @@ const editor = CodeMirror($('#code'), {
 } as any);
 // The workbench's keys (keybindings.ts, VS Code's: Ctrl+/, Alt+Up, Ctrl+D, Ctrl+F…), plus the ones that show things here.
 semanticMarks(editor); // Nucleus names in their own colours, as in the workbench (semmarks.ts)
+revealHistoryChanges(editor); // Undo and redo go to the change, as in the workbench (undoreveal.ts)
+// Shortcuts look like keys (kbd.ts), in the lessons and in the code bar's line.
+document.head.insertAdjacentHTML('beforeend', `<style>${KEYS_CSS}</style>`);
+{ const bar = document.querySelector('.code-bar .keys'); if (bar) bar.innerHTML = kbdify(bar.innerHTML); }
 editor.setOption('extraKeys', codeKeyMap(
   {
     ...codeHandlers,

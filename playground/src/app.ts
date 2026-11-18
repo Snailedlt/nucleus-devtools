@@ -64,6 +64,8 @@ import { feedbackUrl, openReport, setReportState } from './report';
 import { openReportFlow, ensureReportStyles } from './reportflow';
 import { initErrorReports } from './errorcatch';
 import { reportButton, reportIcon, REPORT_ACTIONS } from '@core/reporticons';
+import { fillIcons, icon, type IconName } from './icons';
+import { revealHistoryChanges } from './undoreveal';
 import { firstRunDone, initFirstRun } from './firstrun';
 import { countVisit, feedbackAvailable, feedbackBlockedByBrowser, feedbackOn, setFeedback, totalsUrl, use, wireVotes } from './feedback';
 import { blockedItemAt, messageMarkdown } from '@core/wm';
@@ -414,6 +416,10 @@ editor.on('change', () => {
     /* ignore */
   }
 });
+// Undo and redo put the cursor at the change and scroll only if it's off screen, as VS Code does (undoreveal.ts).
+revealHistoryChanges(editor);
+// The page's static icons (<span data-icon>), from the one icon set.
+fillIcons();
 // The hidden textarea CodeMirror types into is what screen readers see: name it.
 editor.getInputField().setAttribute("aria-label", "Handler code");
 // CodeMirror scrolls the code in a div of its own, which keyboard users reach through the editor: one
@@ -1330,7 +1336,7 @@ function renameSymbol(justFind = false) {
   const at = editor.getCursor();
   const n = selectReferences(editor);
   if (!n) codeNote(editor, at.line, 'Not a variable or function of this handler. (Nucleus\'s own names can\'t be renamed.)', { mood: 'info' });
-  else codeNote(editor, at.line, justFind ? `${n} use${n === 1 ? '' : 's'}, all selected.` : `${n} use${n === 1 ? '' : 's'} selected: type the new name, Esc when done.`, { mood: 'info' });
+  else codeNote(editor, at.line, justFind ? `${n} use${n === 1 ? '' : 's'}, all selected.` : `${n} use${n === 1 ? '' : 's'} selected: type the new name, \`Esc\` when done.`, { mood: 'info' });
   editor.focus();
 }
 
@@ -2783,22 +2789,22 @@ const addItems = (): MenuItem[] => [
   { label: 'Examples and Hub handlers', hint: 'Ctrl K', run: () => showOpen() },
   ...(lastClosed ? [{ kind: 'separator' as const, label: '' }, { label: `Reopen ${lastClosed.tab.meta.name}`, run: reopenClosed }] : []),
 ];
-// The Menu's icons (aria-hidden; the labels are the names): the shared report icons where there is one, emoji else.
-const RAIL_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M9 4.5v15"/></svg>';
+// The Menu's icons (aria-hidden; the labels are the names): one set (icons.ts, Lucide), the shared report icons for reports.
+const MI = (name: IconName) => icon(name, 16);
 const appItems = (): MenuItem[] => [
-  { label: 'Advanced mode', icon: '🛠️', checked: mode === 'dev', run: () => ($('#advanced') as HTMLInputElement).click() },
-  { label: 'Tools in a side rail', icon: RAIL_ICON, checked: layout() === 'rail', run: () => setLayout(layout() === 'rail' ? 'bar' : 'rail') },
+  { label: 'Advanced mode', icon: MI('wrench'), checked: mode === 'dev', run: () => ($('#advanced') as HTMLInputElement).click() },
+  { label: 'Tools in a side rail', icon: MI('panel-left'), checked: layout() === 'rail', run: () => setLayout(layout() === 'rail' ? 'bar' : 'rail') },
   { kind: 'separator', label: '' },
-  { label: 'Settings…', icon: '⚙️', hint: 'Ctrl ,', run: () => settings.open() },
-  { label: 'Keyboard shortcuts', icon: '⌨️', hint: '?', run: () => helpDialog.showModal() },
-  { label: "What's new", icon: '✨', run: () => ($('#news-open-2') as HTMLButtonElement).click() },
-  { label: 'Take the tour', icon: '🧭', run: () => tour.take() },
+  { label: 'Settings…', icon: MI('settings'), hint: 'Ctrl ,', run: () => settings.open() },
+  { label: 'Keyboard shortcuts', icon: MI('keyboard'), hint: '?', run: () => helpDialog.showModal() },
+  { label: "What's new", icon: MI('sparkles'), run: () => ($('#news-open-2') as HTMLButtonElement).click() },
+  { label: 'Take the tour', icon: MI('compass'), run: () => tour.take() },
   { label: 'Report a problem…', icon: reportIcon('flag'), run: () => openReportFlow({ kind: 'problem', handlerCode: editor.getValue() }) },
   { label: 'Request a feature…', icon: reportIcon('idea'), run: () => openReportFlow({ kind: 'feature' }) },
   { kind: 'separator', label: '' },
-  { label: 'Home: about these tools', icon: '🏠', run: () => (location.href = homeHref()) },
-  { label: 'Learn: making your first handler', icon: '📘', run: () => openLearn() },
-  ...(document.getElementById('test-open') ? [{ label: 'Help test this beta', icon: '🧪', run: () => testGuide.open() }] : []),
+  { label: 'Home: about these tools', icon: MI('house'), run: () => (location.href = homeHref()) },
+  { label: 'Learn: making your first handler', icon: MI('book-open'), run: () => openLearn() },
+  ...(document.getElementById('test-open') ? [{ label: 'Help test this beta', icon: MI('flask-conical'), run: () => testGuide.open() }] : []),
 ];
 $('#tab-add').addEventListener('click', () => openMenu($('#tab-add'), 'New or open', addItems()));
 $('#app-menu-open').addEventListener('click', () => openMenu($('#app-menu-open'), 'Menu', appItems()));

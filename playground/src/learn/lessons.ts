@@ -1008,7 +1008,7 @@ const CURE: Lesson[] = [
       'Check, under the code, runs the same checks as the workbench and the editors. It finds all three: fix them by hand, or with Check\'s fix buttons. **Why?** on each says what would go wrong in Nucleus.',
     ],
     task: 'Fix the three mistakes Check finds.',
-    hint: 'Press F8 to jump to the first mistake Check marks, and open *Why?* on it to see what Nucleus would do. One is `Game.GameName` in single quotes (the Hub install fails on that line), one is a `Context` name missing its last letter, and one compares `Context.Options["fps"]` with a number, though a saved choice comes back as text.',
+    hint: 'Press `F8` to jump to the first mistake Check marks, and open *Why?* on it to see what Nucleus would do. One is `Game.GameName` in single quotes (the Hub install fails on that line), one is a `Context` name missing its last letter, and one compares `Context.Options["fps"]` with a number, though a saved choice comes back as text.',
     notes: [
       { kind: 'why', text: 'None of these stops the handler from loading: Nucleus would start every copy, and you\'d only find out by playing (or, for the Hub one, when someone installs it). That\'s what Check is for.' },
     ],

@@ -25,7 +25,8 @@ How to write it (people and AI agents read this, and the workbench shows it):
 ### 🛠️ Improved
 
 - **The tour is done by doing.** Nearly every step asks you to click or press the part it points at (+, Ctrl+Space, Check, Try it, Docs, Lines, Files, the Save arrow, the menu) and shows what opens before going on; it puts back what it opened, never saves a file or changes a setting, and Next, Back and Skip always work. A last step shows how to help test the beta, and *Help test this beta* has a new task, *Take the tour*, ticked when you finish it.
-- **Icons in the Menu.** Every Menu entry has a small icon in one column, so the labels line up: the tour 🧭, What's new ✨, the report flag, the feature bulb, Settings, Keyboard shortcuts and more. *Take the tour* has its 🧭 in the footer, Settings and the ? dialog too.
+- **Icons in the Menu.** Every Menu entry has a small icon in one column, so the labels line up: one plain set of line icons (Lucide) in the text colour, with the report flag and the feature bulb for reports. *Take the tour* has its compass in the footer, Settings and the ? dialog too, and *Help test this beta* its flask in the side rail.
+- **Shortcuts look like keys everywhere.** Tips, What's new, notes in the code, Docs, the debugger and Learn draw shortcuts such as Ctrl+Z, Alt+Enter and F8 as keys, as the Keyboard shortcuts list does.
 - **Hint only where there is something to work out.** Lessons that show the lines to add, with a Copy button, no longer have a Hint button: the lesson is the hint. Fix-it lessons keep it, and Show me stays everywhere.
 - **Show me selects the problem and opens its card.** In Check, Show me moves to the exact code, selects it and opens the same card hovering it shows.
 - **Start over a finished lesson in one click.** Once a lesson is done, by hand or with Show me, Start over sits where Hint and Show me were.
@@ -43,6 +44,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 ### 🐛 Fixed
 
+- **Undo no longer jumps around the code.** Ctrl+Z and Ctrl+Y (or Ctrl+Shift+Z) put the cursor where the code changed and scroll only when that's off screen, as VS Code does. Before, undoing Format Document or a fix jumped to the top of the file or back to where the cursor had been.
 - **Taking a vote back hides its link again.** Pressing the same 👍 or 👎 a second time no longer leaves *Tell us what's wrong* on screen.
 
 ### ⚠️ Changed

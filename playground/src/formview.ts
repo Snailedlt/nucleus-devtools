@@ -19,6 +19,7 @@ import { allLines, matches, USAGE_TOTAL, type Line } from './lines';
 import { memberCard } from './doccard';
 import { CodeField, codeFieldOf } from './codefield';
 import { hlCode } from './codehl';
+import { keysText } from './kbd';
 import { fit, growField } from './growfield';
 import { optionLabel, UNIT_TEXT } from './formlabels';
 
@@ -603,7 +604,9 @@ export function mountFormView(container: HTMLElement, host: FormHost): FormView 
           if (codeEditing.delete(row.entry.key)) setTimeout(update);
         };
         const ed = h('div', 'fv-code-ed');
-        ed.append(f.el, h('p', 'fv-code-keys', {}, 'Suggestions after . and =, Shift+Alt+F formats, Esc then Tab leaves.'));
+        const keys = h('p', 'fv-code-keys');
+        keys.innerHTML = keysText('Suggestions after `.` and `=`, Shift+Alt+F formats, `Esc` then `Tab` leaves.');
+        ed.append(f.el, keys);
         row.moreCtl.append(ed);
         const b = h('button', 'btn fv-jump', { type: 'button', id: vid, 'data-fv': `${e.key}:value`, 'aria-describedby': idOf(`${e.key}:label`), 'aria-controls': idOf(`${e.key}:more`) }, 'Edit');
         b.addEventListener('click', () => {

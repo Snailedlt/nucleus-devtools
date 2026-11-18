@@ -675,3 +675,39 @@ test('Check counts the package and game folder problems too (checklist.ts)', asy
   assert.equal(C.shownInCheck('hint', false, 'all'), false);
   assert.equal(C.shownInCheck('hint', false, 'hint'), true);
 });
+
+test('undo reveal: the region two texts differ in', async () => {
+  const U = await load('playground/src/undoreveal.ts');
+  assert.equal(U.changedRegion('abc', 'abc'), null);
+  assert.deepEqual(U.changedRegion('var a = 1;\nvar b = 2;\n', 'var a = 1;\nvar b = 3;\n'), { start: 19, endBefore: 20, endAfter: 20 });
+  assert.deepEqual(U.changedRegion('ab', 'aXb'), { start: 1, endBefore: 1, endAfter: 2 }, 'an insertion');
+  assert.deepEqual(U.changedRegion('aXb', 'ab'), { start: 1, endBefore: 2, endAfter: 1 }, 'a deletion');
+  assert.deepEqual(U.changedRegion('aa', 'aaa'), { start: 2, endBefore: 2, endAfter: 3 }, 'repeated text: the end never passes the start');
+});
+
+test('icons: one set, decorative, sized to the text', async () => {
+  const I = await load('playground/src/icons.ts');
+  for (const name of Object.keys(I.ICONS)) {
+    const svg = I.icon(name);
+    assert.match(svg, /aria-hidden="true"/);
+    assert.match(svg, /stroke="currentColor"/);
+    assert.match(svg, /width="1em"/);
+    assert.doesNotMatch(I.ICONS[name], /fill="#|stroke="#|style=/, `${name}: no colours of its own`);
+  }
+  const src = fs.readFileSync(path.join(root, 'playground/src/app.ts'), 'utf8');
+  const menu = src.slice(src.indexOf('const appItems'), src.indexOf("$('#tab-add')"));
+  assert.doesNotMatch(menu, /icon: '[^<']/, 'Menu icons come from icons.ts or reporticons.ts, not emoji');
+});
+
+test('shortcuts as keys: plain sentences and backticked keys', async () => {
+  const K = await load('playground/src/kbd.ts');
+  const h = K.keysText('Press Ctrl+Z, then `F8`; `Escape` closes it. `Game.Play` stays code & <safe>.');
+  assert.match(h, /<kbd class="keys"><kbd>Ctrl<\/kbd><span class="kplus">\+<\/span><kbd>Z<\/kbd><\/kbd>/);
+  assert.match(h, /<kbd class="keys"><kbd>F8<\/kbd><\/kbd>/);
+  assert.match(h, /<kbd class="keys"><kbd>Escape<\/kbd><\/kbd>/);
+  assert.match(h, /<code>Game\.Play<\/code>/);
+  assert.match(h, /&amp; &lt;safe&gt;/);
+  const T = await load('playground/src/codetext.ts');
+  assert.equal(T.looksLikeCodeText('Ctrl+.'), false, 'a shortcut in backticks is keys, not coloured code');
+  assert.equal(T.looksLikeCodeText('Game.Play'), true);
+});

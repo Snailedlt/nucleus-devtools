@@ -4,6 +4,7 @@
 // stays until the code is edited or it is closed.
 import { mascot, mascotsOn } from './mascots';
 import { announce } from './toast';
+import { keysText } from './kbd';
 
 type CM = any; // CodeMirror 5
 let open: { clear: () => void } | null = null;
@@ -13,7 +14,8 @@ export function codeNote(editor: CM, line: number, text: string, opts: { action?
   const el = document.createElement('div');
   el.className = `code-note ${opts.mood ?? 'ok'}`;
   el.innerHTML = `${mascotsOn() ? mascot(opts.mood === 'info' ? 'n-idle' : 'n-ok', { size: 28, zoom: 1.7 }) : ''}<span class="cn-text"></span>${opts.action ? `<button class="link cn-act" type="button"></button>` : ''}<button class="cn-x" type="button" aria-label="Dismiss" title="Dismiss">×</button>`;
-  (el.querySelector('.cn-text') as HTMLElement).textContent = text;
+  // Plain text; `code` and shortcuts drawn as keys (kbd.ts keysText).
+  (el.querySelector('.cn-text') as HTMLElement).innerHTML = keysText(text);
   const act = el.querySelector('.cn-act') as HTMLButtonElement | null;
   const ln = Math.max(0, Math.min(line, editor.lineCount() - 1));
   const w = editor.addLineWidget(ln, el, { coverGutter: false, noHScroll: true });
@@ -33,5 +35,5 @@ export function codeNote(editor: CM, line: number, text: string, opts: { action?
   arm();
   open = { clear };
   editor.scrollIntoView({ line: ln, ch: 0 }, 60);
-  announce(text + (opts.action ? ` ${opts.action.label} is next to it.` : ''));
+  announce(text.replace(/`/g, '') + (opts.action ? ` ${opts.action.label} is next to it.` : ''));
 }

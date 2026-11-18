@@ -1679,6 +1679,13 @@ header #app-menu-open { width: var(--hdr-ctl); }
 .app-menu.am-icons .am-check { text-align: right; }
 .app-menu .am-sep { height: 1px; background: var(--line); margin: 5px 4px; }
 .app-menu .am-h { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; padding: 6px 10px 2px; }
+/* UI icons (icons.ts): drawn in the text colour, sized to the text, beside a label */
+[data-icon] { display: inline-flex; vertical-align: -.125em; }
+[data-icon] svg, .ui-ico { flex: none; }
+/* A shortcut as keys (kbd.ts keysHtml / kbdify): each key a keycap, the combination around them plain */
+kbd.keys { border: 0; background: none; padding: 0; font: inherit; color: inherit; white-space: nowrap; }
+kbd.keys > kbd { color: var(--fg); }
+kbd.keys .kplus { color: var(--muted); padding: 0 1px; }
 /* Side rail */
 :root[data-layout="rail"] .rail { display: flex; flex-direction: column; align-items: center; gap: 6px; position: fixed; left: 0; top: 0; bottom: 0; width: 52px; padding: 12px 0; background: var(--surface); border-right: 1px solid var(--line); z-index: 20; }
 :root[data-layout="rail"] .app { padding-left: calc(52px + 12px); }
@@ -2314,7 +2321,7 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
       <button class="rail-btn" type="button" data-rail="lines" aria-label="Lines"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="rail-label" aria-hidden="true">Lines</span></button>
       <button class="rail-btn" type="button" data-rail="share" aria-label="Share: a link, the code, or a post for Discord"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="rail-label" aria-hidden="true">Share</span></button><button class="rail-btn" type="button" data-rail="save" aria-label="Save the handler"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="rail-label" aria-hidden="true">Save</span></button>
       <span class="rail-sp"></span>
-      <button class="rail-btn" type="button" data-rail="test" aria-label="Help test this beta">🧪<span class="rail-label" aria-hidden="true">Help test this beta</span></button>
+      <button class="rail-btn" type="button" data-rail="test" aria-label="Help test this beta"><span data-icon="flask-conical" data-icon-size="18"></span><span class="rail-label" aria-hidden="true">Help test this beta</span></button>
       <button class="rail-btn" type="button" data-rail="menu" aria-label="Menu: settings, Advanced mode, help" aria-haspopup="menu"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="rail-label" aria-hidden="true">Settings and menu</span></button>
       <button class="rail-btn rail-toggle" type="button" id="rail-toggle" aria-expanded="false" aria-label="Show labels in the sidebar" title="Show labels"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="rail-label" aria-hidden="true">Hide labels</span></button>
     </nav>
@@ -2398,7 +2405,7 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
           <button class="filter" type="button" data-filter="warning" aria-pressed="false">Warnings <span id="f-warning"></span></button>
           <button class="filter" type="button" data-filter="info" aria-pressed="false">Info <span id="f-info"></span></button>
           <button class="filter" type="button" data-filter="hint" aria-pressed="false">Hints <span id="f-hint"></span></button>
-          <span class="muted tip-line">F8 next problem · hover code for docs · <kbd>.</kbd> or <kbd>Ctrl Space</kbd> completes</span>
+          <span class="muted tip-line"><kbd>F8</kbd> next problem · hover code for docs · <kbd>.</kbd> or <kbd>Ctrl</kbd> <kbd>Space</kbd> completes</span>
         </div>
         <ul id="problems"></ul>
         <ul id="extra-problems" aria-label="More problems: the game folder and the package" hidden></ul>
@@ -2424,7 +2431,7 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
       <div role="tabpanel" id="panel-probes" hidden><div id="probes"></div></div>
     </section>
   </main>
-  <footer><span id="build-info" class="dev-only"></span><span>Your draft is kept in this browser only.</span><button class="link foot-dup" id="tour-open" type="button"><span aria-hidden="true">🧭</span> Take the tour</button><button class="link tg-open" id="test-open" type="button">🧪 Help test this beta</button><button class="link foot-dup" id="help-open-2" type="button">Keyboard shortcuts</button><button class="link foot-dup" type="button" data-tips-toggle aria-pressed="true">Tips: on</button><button class="link foot-dup" type="button" id="news-open-2">What's new</button><a class="link start-link foot-dup" href="https://snailedlt.github.io/nucleuscoop-handler-testbench/start/" title="What the workbench and the VS Code extension do, and how to install them">About these tools</a><span class="comm-foot">Questions? <a class="link" href="__DISCORD_INVITE__" target="_blank" rel="noopener">Discord</a> · <a class="link" href="__REDDIT__" target="_blank" rel="noopener">r/nucleuscoop</a></span><span class="made-by">Made by <a class="link" href="https://github.com/Snailedlt" rel="author" target="_blank">Snailedlt</a> (Jørgen KH)</span></footer>
+  <footer><span id="build-info" class="dev-only"></span><span>Your draft is kept in this browser only.</span><button class="link foot-dup" id="tour-open" type="button"><span data-icon="compass"></span> Take the tour</button><button class="link tg-open" id="test-open" type="button"><span data-icon="flask-conical"></span> Help test this beta</button><button class="link foot-dup" id="help-open-2" type="button">Keyboard shortcuts</button><button class="link foot-dup" type="button" data-tips-toggle aria-pressed="true">Tips: on</button><button class="link foot-dup" type="button" id="news-open-2">What's new</button><a class="link start-link foot-dup" href="https://snailedlt.github.io/nucleuscoop-handler-testbench/start/" title="What the workbench and the VS Code extension do, and how to install them">About these tools</a><span class="comm-foot">Questions? <a class="link" href="__DISCORD_INVITE__" target="_blank" rel="noopener">Discord</a> · <a class="link" href="__REDDIT__" target="_blank" rel="noopener">r/nucleuscoop</a></span><span class="made-by">Made by <a class="link" href="https://github.com/Snailedlt" rel="author" target="_blank">Snailedlt</a> (Jørgen KH)</span></footer>
 </div>
 
 <div id="tip" hidden></div>
@@ -2550,7 +2557,7 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
   <div class="set-panel" role="tabpanel" id="sp-help" aria-labelledby="st-help" data-label="Tips and help" hidden>
 
     <div class="set-sec"><h3>Start-up questions</h3><p class="muted small" style="margin:0 0 6px">Nucli's two questions from your first visit: how much guidance, and where the tools go.</p><button class="btn" type="button" id="fr-again">Ask me again</button></div>
-    <div class="set-sec"><h3>Guided tour</h3><p class="muted small" style="margin:0 0 6px">A short walk past the parts of the workbench: tabs, code, Check, Try it, Docs and the rest.</p><button class="btn" type="button" id="set-tour"><span aria-hidden="true">🧭</span> Take the tour</button></div>
+    <div class="set-sec"><h3>Guided tour</h3><p class="muted small" style="margin:0 0 6px">A short walk past the parts of the workbench: tabs, code, Check, Try it, Docs and the rest.</p><button class="btn" type="button" id="set-tour"><span data-icon="compass"></span> Take the tour</button></div>
     <div class="set-sec">
       <label class="set-check"><input type="checkbox" id="set-tips"> <span>Tips under the code<small>General tips, and a heads-up when the code makes one relevant</small></span></label>
       <button class="link" type="button" id="set-heads">Show heads-ups again</button></div>
@@ -2654,8 +2661,8 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
   <div class="more-list">
     <button class="btn no-touch" type="button" data-proxy="#help-open">Keyboard shortcuts</button>
     <button class="btn" type="button" data-proxy="#news-open-2">What's new</button>
-    <button class="btn" type="button" data-proxy="#test-open">🧪 Help test this beta</button>
-    <button class="btn" type="button" data-proxy="a.home-link">⌂ Home: about these tools</button>
+    <button class="btn" type="button" data-proxy="#test-open"><span data-icon="flask-conical"></span> Help test this beta</button>
+    <button class="btn" type="button" data-proxy="a.home-link"><span data-icon="house"></span> Home: about these tools</button>
   </div>
   <div class="actions"><button class="btn" type="button" id="more-close">Close</button></div>
 </dialog>
@@ -2692,7 +2699,7 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
 
 <dialog id="help-dialog" aria-label="Keyboard shortcuts">
   <h2 tabindex="-1" autofocus>Keyboard shortcuts</h2>
-  <p class="muted" style="margin:0 0 8px">The editor uses VS Code's keys. On a Mac, ⌘ instead of Ctrl. Keys with <kbd>[</kbd> <kbd>]</kbd> <kbd>/</kbd> <kbd>\</kbd> <kbd>;</kbd> go by position, as in VS Code: on a German, Spanish or Nordic keyboard, press the key where a US keyboard has that one (e.g. <kbd>Ü</kbd> for <kbd>[</kbd>). <button class="link" type="button" id="help-rebind">Change shortcuts</button> · <button class="link" type="button" id="help-tour"><span aria-hidden="true">🧭</span> Take the tour</button></p>
+  <p class="muted" style="margin:0 0 8px">The editor uses VS Code's keys. On a Mac, ⌘ instead of Ctrl. Keys with <kbd>[</kbd> <kbd>]</kbd> <kbd>/</kbd> <kbd>\</kbd> <kbd>;</kbd> go by position, as in VS Code: on a German, Spanish or Nordic keyboard, press the key where a US keyboard has that one (e.g. <kbd>Ü</kbd> for <kbd>[</kbd>). <button class="link" type="button" id="help-rebind">Change shortcuts</button> · <button class="link" type="button" id="help-tour"><span data-icon="compass"></span> Take the tour</button></p>
   <table class="keys"><tbody>
     <tr class="kh"><th colspan="2">Workbench</th></tr>
     <tr><td><kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>P</kbd> · <kbd>F1</kbd></td><td>Command palette: every command (format, fix, try it, theme…)</td></tr>
