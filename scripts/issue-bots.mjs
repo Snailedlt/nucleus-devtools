@@ -113,12 +113,23 @@ export const FIXED_MARKER = '<!-- fixed-in-bot -->';
 export function deliveredIssues(text, repo, { commits = false } = {}) {
   const out = new Map();
   const own = repo.toLowerCase();
-  let group = '';
+  let group = '', thanks = 0, fence = '';
   const add = (n, kind) => { if (n > 0 && out.get(n) !== 'fixed') out.set(n, kind); };
   for (const raw of String(text || '').split(/\r?\n/)) {
-    if (/^#{2,4}\s/.test(raw)) { group = raw; continue; }
+    // Code blocks (an example of the format) deliver nothing.
+    const f = raw.match(/^\s*(`{3,}|~{3,})/);
+    if (fence) { if (f && f[1][0] === fence[0] && f[1].length >= fence.length) fence = ''; continue; }
+    if (f) { fence = f[1]; continue; }
+    const h = raw.match(/^(#{2,6})\s/);
+    if (h) {
+      // A heading under Thanks ("#### Testers") is still Thanks, until one at Thanks' level or higher.
+      if (thanks && h[1].length > thanks) continue;
+      group = raw;
+      thanks = /thank/i.test(raw) ? h[1].length : 0;
+      continue;
+    }
     // Thanks lines name people and their reports, never deliveries (release notes only: commits have no groups).
-    if (!commits && /thank/i.test(group)) continue;
+    if (!commits && thanks) continue;
     const kind = /fix/i.test(group) ? 'fixed' : 'added';
     // This repository's references only: "#12", "owner/name#12", an issues/12 link.
     const ownNums = (s) => {

@@ -42,6 +42,12 @@ test('engines from the handlers\' code: real handlers\' lines, and Source not co
   assert.equal(eng.classifyCode('Context.StartArguments = "+set fs_game baseq3 +exec autoexec.cfg";'), 'id Tech');
   assert.equal(eng.classifyCode('Game.ExecutableName = "hl.exe";'), 'GoldSrc');
   assert.equal(eng.classifyCode('Game.ExecutableName = "game.exe";'), '');
+  // A "/*" inside a regular expression starts no comment; a block comment keeps its line breaks.
+  assert.equal(eng.withoutComments('var d = /[/*]/;\nx = "UnityPlayer.dll";'), 'var d = /[/*]/;\nx = "UnityPlayer.dll";');
+  assert.equal(eng.steamIdOf('Game.GameName = "X"; /* note\n*/ Game.SteamID = "123";'), '123');
+  assert.match(eng.withoutComments('a; /* x\ny */ b'), /^a;  ?\n b$/);
+  // Division is no regular expression.
+  assert.equal(eng.withoutComments('x = a / b; // c'), 'x = a / b; ');
 });
 
 test('classify: Wikidata by Steam ID, then by IGDB game, a copied Steam ID ignored, a definite code layout wins', () => {

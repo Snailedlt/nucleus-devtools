@@ -5,8 +5,7 @@
 import * as vscode from 'vscode';
 import path from 'node:path';
 import { checkAgainstFolder, folderLists, folderSummary, pickerOptions, type FolderFix } from './core/gamefolder';
-import { folderAt, forgetFolder, readGameFolder, gameBinariesNow, forgetBinaries } from './gamefolder-node';
-import { importProblems } from './core/importhooks';
+import { folderAt, forgetFolder, readGameFolder, gameBinariesNow, forgetBinaries, importProblemsFor } from './gamefolder-node';
 import { RULES_URL } from './core/features';
 import { log, status } from './log';
 export { readGameFolder };
@@ -37,7 +36,7 @@ export function gameFolderDiagnostics(doc: vscode.TextDocument, source: string, 
   const binaries = gameBinariesNow(dir!, () => {
     for (const d of vscode.workspace.textDocuments) if (linkedFolder(d) === dir) recheckLater?.(d);
   });
-  const problems = [...checkAgainstFolder(doc.getText(), folder), ...(binaries ? importProblems(doc.getText(), binaries) : [])];
+  const problems = [...checkAgainstFolder(doc.getText(), folder), ...(binaries ? importProblemsFor(doc.getText(), dir!, binaries) : [])];
   return problems.map((p) => {
     // A fact about the game (its engine, Steam, …) is a hint: no squiggle, shown on hover and in the language status.
     const d = new vscode.Diagnostic(new vscode.Range(doc.positionAt(p.start), doc.positionAt(Math.max(p.end, p.start))), `${p.title}. ${p.why}`, p.fact ? vscode.DiagnosticSeverity.Hint : severity[p.severity]);

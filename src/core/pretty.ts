@@ -77,7 +77,8 @@ function printNode(n: any, src: string): Doc {
         for (const l of rest) if (l.trim()) common = Math.min(common, l.match(/^ */)![0].length);
         body = raw.map((l, i) => (inline && i === 0 ? l.trim() : l.slice(Number.isFinite(common) ? common : 0)));
       }
-      return [...head, '{', indent(...body.flatMap((d) => [hardline, d])), hardline, '}'];
+      // One array, not spread: a long body would overflow the call's arguments.
+      return [...head, '{', indent(body.flatMap((d) => [hardline, d])), hardline, '}'];
     }
     default:
       throw new Unsupported();

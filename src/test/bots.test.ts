@@ -196,6 +196,8 @@ test('bots: the release comments only on this repository\'s fixed issues, once',
   // A reference in passing in parentheses isn't a delivery; a commit subject's "(#12)" (a PR number) isn't either.
   assert.deepEqual(bots.deliveredIssues('### 🛠️ Improved\n- **X.** Better (see #12). (#13, #14)', 'Snailedlt/splitscreenme-vscode').map((x) => x.n), [13, 14]);
   assert.deepEqual(bots.deliveredIssues('Tidy the docs (#15)\n\nFixes #16', 'Snailedlt/splitscreenme-vscode', { commits: true }).map((x) => x.n), [16]);
+  // A subsection of Thanks is Thanks too; references in a code block deliver nothing; the next group counts again.
+  assert.deepEqual(bots.deliveredIssues('### 🙏 Thanks\n#### Testers\n- Ann (#12)\n### 🐛 Fixed\n```md\n- **X.** Y. (#20)\n```\n- **Z.** W. (#21)', 'Snailedlt/splitscreenme-vscode').map((x) => x.n), [21]);
   assert.doesNotMatch(bots.fixedComment({ tag: 'v1', url: 'u', reporter: 'Snailedlt', owner: 'Snailedlt' }), /Thanks/);
 });
 

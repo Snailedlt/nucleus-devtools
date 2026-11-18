@@ -553,12 +553,35 @@ test('lsp: the default "This check is wrong" opens the form without the flagged 
   }
 });
 
+test('lsp: the default report leaves out what it reads from the handler (Game.GameName, Hub id)', async () => {
+  const c = showDocumentClient();
+  try {
+    await c.start();
+    const text = 'Game.GUID = "A";\nGame.GameName = "PrivateGame77";\nGame.ExecutableName = "a.exe";\nHub.Handler.Id = "hubid99";\nGame.Hook.ForceFocuss = true;\n';
+    const { rep, show } = await c.reportDefault('file:///tmp/nucleus-lsp-test/handlers/Named.js', text, 'unknown-member');
+    assert.ok(rep.choices.some((ch: any) => ch.url.includes('PrivateGame77')), 'the full report names the handler');
+    assert.ok(!show.params.uri.includes('PrivateGame77') && !show.params.uri.includes('hubid99'), show.params.uri);
+    c.write({ jsonrpc: '2.0', id: show.id, result: { success: true } });
+    const msg = await c.next((m) => m.method === 'window/showMessage' && /Opened the report/.test(m.params.message));
+    assert.match(msg.params.message, /the handler's name/);
+  } finally {
+    c.kill();
+  }
+});
+
 test('lsp: the default report leaves out a check message that quotes the handler (option-compare)', async () => {
   const c = showDocumentClient();
   try {
     await c.start();
     const text = HEADER + 'Game.AddOption("Fps", "", "fps", [30, 60]);\nGame.Play = function () {\n  var topsecret42 = Context.Options["fps"];\n  if (topsecret42 === 60) {}\n};\n';
-    const { show } = await c.reportDefault('file:///tmp/nucleus-lsp-test/handlers/Compare.js', text, 'option-compare');
+    const { rep, show } = await c.reportDefault('file:///tmp/nucleus-lsp-test/handlers/Compare.js', text, 'option-compare');
+    // The full report (a choice) has the message, so the check below tests the left-out part.
+    assert.ok(rep.choices.some((ch: any) => new URL(ch.url).searchParams.get('message')?.includes('topsecret42')), 'the full report quotes the handler');
+    // The choice without the flagged code leaves out the message as well.
+    const without = rep.choices.find((ch: any) => /without the flagged code/.test(ch.title));
+    assert.ok(without, 'a choice without the flagged code');
+    const wv = [...new URL(without.url).searchParams.values()].join('\n');
+    assert.ok(!wv.includes('topsecret42') && !wv.includes('Context.Options'), wv);
     const opened = new URL(show.params.uri);
     const values = [...opened.searchParams.values()].join('\n');
     assert.ok(!values.includes('topsecret42') && !values.includes('Context.Options'), values);

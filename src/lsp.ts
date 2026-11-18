@@ -19,8 +19,7 @@ import { checkPackage } from './core/pkgcheck';
 import { forgetPackageFiles, packageFilePath, packageFilesFor } from './pkgfiles';
 import fs from 'node:fs';
 import { checkAgainstFolder, folderLists, pickerOptions } from './core/gamefolder';
-import { folderAt, gameBinariesNow } from './gamefolder-node';
-import { importProblems } from './core/importhooks';
+import { folderAt, gameBinariesNow, importProblemsFor } from './gamefolder-node';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { publishedNow } from './published';
@@ -262,7 +261,7 @@ export class Server {
     if (!folder) return [];
     const gdir = this.gameFolderDir(uri);
     const binaries = gdir ? gameBinariesNow(gdir, () => (this.docs.has(uri) ? this.schedule(uri, 0) : void this.fromDisk(uri))) : undefined;
-    return [...checkAgainstFolder(d.text, folder), ...(binaries ? importProblems(d.text, binaries) : [])];
+    return [...checkAgainstFolder(d.text, folder), ...(binaries && gdir ? importProblemsFor(d.text, gdir, binaries) : [])];
   }
   private schedule(uri: string, delay = 200) {
     clearTimeout(this.timers.get(uri));
@@ -797,12 +796,15 @@ export class Server {
     const from = Number.isInteger(a.line) ? Math.max(0, a.line) : undefined;
     // The flagged lines only while the check still flags that line of the current text: an action made before an
     // edit above it would otherwise send other code.
-    const stillFlagged = () => {
-      if (text === undefined || from === undefined || typeof a.rule !== 'string') return false;
+    // The excerpt runs from that diagnostic's start to its end now (an edit may have shortened it), at most 20 lines.
+    const flagged = (): { from: number; to: number } | undefined => {
+      if (text === undefined || from === undefined || typeof a.rule !== 'string') return undefined;
       const lineOf = (o: number) => text.slice(0, o).split('\n').length - 1;
-      return this.lintDoc(doc!).some((x) => x.rule === a.rule && (typeof a.message !== 'string' || x.message === a.message) && lineOf(x.start) === from);
+      const d = this.lintDoc(doc!).find((x) => x.rule === a.rule && (typeof a.message !== 'string' || x.message === a.message) && lineOf(x.start) === from);
+      return d ? { from, to: Math.max(from, lineOf(Math.max(d.start, d.end - 1))) } : undefined;
     };
-    const code = kind === 'check' && from !== undefined && stillFlagged() ? lines.slice(from, Math.min(Number.isInteger(a.endLine) ? a.endLine : from, from + 19) + 1).join('\n') : undefined;
+    const span = kind === 'check' ? flagged() : undefined;
+    const code = span ? lines.slice(span.from, Math.min(span.to, span.from + 19) + 1).join('\n') : undefined;
     let sim: string | undefined;
     if (kind === 'tryit' && text !== undefined) {
       const file = pathOf(doc!.uri);
@@ -825,7 +827,9 @@ export class Server {
       handler: text !== undefined ? handlerOrigin(text) : undefined,
     };
     const r = buildReport(input);
-    const withoutCode = code?.trim() ? buildReport({ ...input, code: undefined }).url : r.url;
+    // Without the flagged code means without the check's message too (some quote the handler's code): its plain title.
+    const plainMessage = input.rule ? RULE_DOCS[input.rule]?.title ?? input.rule : undefined;
+    const withoutCode = code?.trim() ? buildReport({ ...input, code: undefined, message: plainMessage }).url : r.url;
     const hits = process.env.NCDEV_NO_ISSUE_SEARCH ? [] : await findDuplicates(r, { userAgent: `ncdev/${VERSION}` });
     const help = kind === 'problem' && input.handler?.hubId ? handlerHelp(input.handler) : undefined;
     const choices = [
@@ -839,12 +843,14 @@ export class Server {
       // Opened without being asked first: never with the flagged code, the check's message (some quote the handler's
       // code) or the Try it summary (GitHub would get them before the person chose to share them): the check's plain
       // title instead. The form says how to add them; the choices (choose) offer the full report.
-      const auto = buildReport({ ...input, code: undefined, sim: undefined, message: input.rule ? RULE_DOCS[input.rule]?.title ?? input.rule : undefined }).url;
-      const left = [code?.trim() ? 'the flagged code' : '', input.message ? "the check's message" : '', sim ? 'the Try it summary' : ''].filter(Boolean);
+      // Nor anything read from the handler (Game.GameName, its Hub id and version): only whether it is a Hub handler.
+      const auto = buildReport({ ...input, code: undefined, sim: undefined, message: plainMessage, handler: input.handler ? { kind: input.handler.kind } : undefined }).url;
+      const named = !!(input.handler?.name || input.handler?.hubId);
+      const left = [code?.trim() ? 'the flagged code' : '', input.message ? "the check's message" : '', sim ? 'the Try it summary' : '', named ? "the handler's name" : ''].filter(Boolean);
       const more = `${hits.length ? ` Maybe the same: ${hits.map((h) => h.url).join(' ')}` : ''} No GitHub account? Post it in the testers' Discord thread: ${DISCORD_THREAD}${help ? ` A problem in this handler itself? Ask on its Hub page: ${help.links[0].url}` : ''}`;
       void this.request('window/showDocument', { uri: auto, external: true }).then((res) =>
         this.notify('window/showMessage', res?.success
-          ? { type: 3, message: `Opened the report on GitHub: check it, then submit.${left.length ? ` ${left.join(' and ').replace(/^./, (c) => c.toUpperCase())} ${left.length > 1 ? 'were' : 'was'} left out: paste ${left.length > 1 ? 'them' : 'it'} into the form if you want to share ${left.length > 1 ? 'them' : 'it'}.` : ''}${more}` }
+          ? { type: 3, message: `Opened the report on GitHub: check it, then submit.${left.length ? ` ${(left.length > 2 ? left.slice(0, -1).join(', ') + ' and ' + left[left.length - 1] : left.join(' and ')).replace(/^./, (c) => c.toUpperCase())} ${left.length > 1 ? 'were' : 'was'} left out: paste ${left.length > 1 ? 'them' : 'it'} into the form if you want to share ${left.length > 1 ? 'them' : 'it'}.` : ''}${more}` }
           : { type: 3, message: `Couldn't open the browser. The report: ${auto}${more}` }),
       );
     }

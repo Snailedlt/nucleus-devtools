@@ -54,7 +54,8 @@ export function handlerOrigin(code: string | undefined, known: Partial<HandlerOr
 export function originText(o: HandlerOrigin | undefined): string {
   if (!o) return '';
   const name = o.name ? `${o.name}, ` : '';
-  if (o.kind === 'hub' || o.hubId) return `${name}Hub ${o.hubId ?? '?'}${o.hubVersion ? ` v${o.hubVersion}` : ''}${o.hubId ? ` (${hubHandlerPage(o.hubId)})` : ''}`;
+  if ((o.kind === 'hub' || o.hubId) && !o.hubId) return `${name}a Hub handler`;
+  if (o.kind === 'hub' || o.hubId) return `${name}Hub ${o.hubId}${o.hubVersion ? ` v${o.hubVersion}` : ''}${o.hubId ? ` (${hubHandlerPage(o.hubId)})` : ''}`;
   if (o.kind === 'example') return `${name}an example in the tools${o.link ? ` (${o.link})` : ''}`;
   if (o.kind === 'template') return `${name}a template${o.link ? ` (${o.link})` : ''}`;
   if (o.kind === 'own') return `${name}own code (not included)`;

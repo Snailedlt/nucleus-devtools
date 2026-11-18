@@ -191,6 +191,7 @@ async function main(argv: string[]): Promise<number> {
   if (cmd === 'report') {
     const i = argv.indexOf('--check');
     if (i >= 0 && argv[i + 1] && !argv[i + 1].startsWith('-')) argv.splice(i, 2, '--check-rule', argv[i + 1]);
+    else if (i >= 0) throw new Usage('report --check: give the check (its rule id, e.g. --check unknown-member)');
   }
   const args = parseArgs(argv);
   if (!cmd) {
@@ -620,8 +621,8 @@ function cmdImports(args: Args, json: boolean): number {
   const exeHits = exe ? findExes(files.filter((f) => !f.dll), exe) : [];
   if (exe && !exeHits.length)
     throw new Error(`--exe: no program called ${exe} there (found: ${files.filter((f) => !f.dll).map((f) => f.fileName).join(', ') || 'none'})`);
-  if (exeHits.length > 1) throw new Error(`--exe: ${exe} could be ${exeHits.map((f) => f.fileName).join(' or ')}; give its path`);
-  const a = analyse(files, exe);
+  if (exeHits.length > 1) throw new Error(`--exe: ${exe} could be ${exeHits.map((f) => f.fileName).join(' or ')}; give one of those paths`);
+  const a = analyse(files, exeHits[0]);
   const opts = { controllers: !has(args, '--no-controllers'), kbm: !has(args, '--no-kbm') };
   const listing = (f: PeFile) => [
     `${f.fileName} (${f.is64 ? '64' : '32'}-bit ${f.dll ? 'DLL' : 'program'}, ${a.roles.get(f)})`,
@@ -649,15 +650,19 @@ function cmdPackage(args: Args, json: boolean): number {
 }
 
 /** Saves the newest release's workbench.html: the whole browser workbench in one offline file. */
-/** Opens a link in the default browser; false when it can't. */
-function openInBrowser(url: string): boolean {
-  try {
-    const [c, a] = process.platform === 'win32' ? ['cmd', ['/c', 'start', '""', url.replace(/&/g, '^&')]] : process.platform === 'darwin' ? ['open', [url]] : ['xdg-open', [url]];
-    spawn(c, a as string[], { detached: true, stdio: 'ignore', windowsVerbatimArguments: process.platform === 'win32' }).on('error', () => undefined).unref();
-    return true;
-  } catch {
-    return false;
-  }
+/** Opens a link in the default browser: true once the opener started, false when it couldn't (no xdg-open: the
+ *  error comes after spawn returns, so this waits for one or the other). */
+function openInBrowser(url: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    try {
+      const [c, a] = process.platform === 'win32' ? ['cmd', ['/c', 'start', '""', url.replace(/&/g, '^&')]] : process.platform === 'darwin' ? ['open', [url]] : ['xdg-open', [url]];
+      const p = spawn(c, a as string[], { detached: true, stdio: 'ignore', windowsVerbatimArguments: process.platform === 'win32' });
+      p.once('spawn', () => { p.unref(); resolve(true); });
+      p.once('error', () => resolve(false));
+    } catch {
+      resolve(false);
+    }
+  });
 }
 
 async function cmdReport(args: Args, json: boolean): Promise<number> {
@@ -694,7 +699,7 @@ async function cmdReport(args: Args, json: boolean): Promise<number> {
   }
   const hits = process.env.NCDEV_NO_ISSUE_SEARCH ? [] : await findDuplicates(r, { userAgent: `ncdev/${VERSION}`, timeoutMs: 5000 });
   const help = kind === 'problem' && input.handler?.hubId ? handlerHelp(input.handler) : undefined;
-  const opened = has(args, '--open') && openInBrowser(r.url);
+  const opened = has(args, '--open') && (await openInBrowser(r.url));
   print(json, { title: r.title, repo: r.repo, template: r.template, url: r.url, duplicates: hits, handlerHelp: help, opened }, () =>
     [
       `${r.title || (kind === 'feature' ? 'A feature request' : 'A report')} (${r.repo}, ${r.template})`,

@@ -13,6 +13,9 @@ export interface AiVoteResult { ok: boolean; message: string; path?: string; par
  *  both send, and the second gets the first one's outcome. */
 const sent = new Map<string, 'up' | 'down'>();
 const sending = new Map<string, Promise<AiVoteResult>>();
+/** Votes sent whose answer never came (a timeout, a dropped connection): they may have been counted, so another vote
+ *  on that part isn't sent in this session (the same one again may be: the counter takes a path once). */
+const unconfirmed = new Map<string, 'up' | 'down'>();
 /** How long to wait for the counter. */
 const DEADLINE_MS = 8000;
 
@@ -29,6 +32,8 @@ export async function sendAiVote(name: string, part: string, vote: string, versi
   const key = `${part}/${e.path}`;
   const was = sent.get(key);
   if (was) return { ok: true, message: `Already voted ${was === 'up' ? '👍' : '👎'} on ${key} in this session.`, path: e.path, part, vote: was };
+  const maybe = unconfirmed.get(key);
+  if (maybe && maybe !== vote) return { ok: false, message: `An earlier ${maybe === 'up' ? '👍' : '👎'} on ${key} in this session was never confirmed and may have been counted, so a different vote isn't sent.`, path: e.path, part, vote: maybe };
   const inFlight = sending.get(key);
   if (inFlight) {
     const r = await inFlight;
@@ -43,9 +48,11 @@ export async function sendAiVote(name: string, part: string, vote: string, versi
       if (!res.ok) return { ok: false, message: `The vote counter answered ${res.status}.` };
     } catch (err) {
       const x = err as Error;
+      unconfirmed.set(key, vote);
       return { ok: false, message: x?.name === 'TimeoutError' ? `The vote counter didn't answer within ${DEADLINE_MS / 1000} s, so the vote could not be confirmed (it may or may not have been counted).` : `Could not reach the vote counter: ${x?.message}` };
     }
     sent.set(key, vote);
+    unconfirmed.delete(key);
     return { ok: true, message: `AI vote ${vote === 'up' ? '👍' : '👎'} on ${part === 'doc' ? 'the doc' : 'the "In practice" part'} of ${e.path} sent. It is counted with the AI votes, apart from people's, and shows in the docs after their next build.`, path: e.path, part, vote };
   })();
   sending.set(key, send);

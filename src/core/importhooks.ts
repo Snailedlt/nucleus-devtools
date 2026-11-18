@@ -126,10 +126,10 @@ export function findExe(exes: PeFile[], name: string): PeFile | undefined {
 }
 
 /** Which program is the game (following launchers), which DLLs are its own and which are libraries. */
-function roles(files: PeFile[], mainName?: string) {
+function roles(files: PeFile[], mainName?: string | PeFile) {
   const exes = files.filter((f) => !f.dll);
   const bn = (f: PeFile) => base(f.fileName).toLowerCase();
-  const main = (mainName && findExe(exes, mainName))
+  const main = (typeof mainName === 'string' ? findExe(exes, mainName) : mainName && exes.includes(mainName) ? mainName : undefined)
     || exes.filter((f) => !NOT_GAME_EXE.test(base(f.fileName))).sort((a, b) => b.size - a.size)[0] || exes[0];
   // A launcher: a program that starts another program of the folder by name. The game is the one it starts.
   const names = (f: PeFile, g: PeFile) => f.mentions.some((x) => x === bn(g) || x.endsWith(' ' + bn(g)) || x.endsWith('\\' + bn(g)));
@@ -154,7 +154,19 @@ function roles(files: PeFile[], mainName?: string) {
   return { main: game, launchers, role };
 }
 
-export function analyse(files: PeFile[], mainName?: string): Analysis {
+/** Where Nucleus' copy of the game starts (GenericGameHandler: rootFolder, which Instance<i> mirrors): the .exe's folder,
+ *  minus Game.BinariesFolder at its end when the handler sets one. Folders relative to the scanned folder, "/"-separated. */
+function instanceRoot(exeDir: string, binariesFolder?: string): string {
+  const bin = (binariesFolder ?? '').replace(/\\/g, '/').replace(/^\/+|\/+$/g, '').toLowerCase();
+  if (!bin) return exeDir;
+  const dir = exeDir.toLowerCase();
+  if (dir === bin) return '';
+  return dir.endsWith('/' + bin) ? exeDir.slice(0, exeDir.length - bin.length - 1) : exeDir;
+}
+
+/** The analysis. `main` picks the game's program (a name or path for `findExe`, or the file itself); `binariesFolder` is
+ *  the handler's Game.BinariesFolder, for paths relative to the copy's root (Game.SDLPaths). */
+export function analyse(files: PeFile[], mainName?: string | PeFile, where: { binariesFolder?: string } = {}): Analysis {
   const { main, launchers, role } = roles(files, mainName);
   // A DLL of the other bitness can't load into the game, so it's no evidence for its hooks (still listed).
   const use = files.filter((f) => role.get(f) !== 'other' && role.get(f) !== 'launcher' && !(f.dll && main && f.is64 !== main.is64));
@@ -184,9 +196,12 @@ export function analyse(files: PeFile[], mainName?: string): Analysis {
     let lines = r.code ?? [...(r.pre ?? []), ...opts.map((o) => `Game.ProtoInput.${o} = true;`)];
     // SDL2.dll in another folder than the .exe: Nucleus copies its SDL2.dll into each Game.SDLPaths folder (SDL2Dll.cs),
     // and only there.
-    if (r.id === 'sdl' && sdl?.size && main && dirOf(sdl.fileName) !== dirOf(main.fileName)) {
-      // Each path is relative to the instance's root, the game folder (SDL2Dll.cs: Instance<i>\<path>).
-      lines = [...lines, `Game.SDLPaths = [${jsString(dirOf(sdl.fileName).replace(/\//g, '\\'))}];`];
+    if (r.id === 'sdl' && sdl?.size && main && dirOf(sdl.fileName).toLowerCase() !== dirOf(main.fileName).toLowerCase()) {
+      // Each path is relative to the instance's root (SDL2Dll.cs: Instance<i>\<path>), which mirrors Nucleus' rootFolder:
+      // the .exe's folder, or above it by Game.BinariesFolder. An SDL2.dll outside that root can't be named: no line.
+      const root = instanceRoot(dirOf(main.fileName), where.binariesFolder), dir = dirOf(sdl.fileName);
+      const rel = !root ? dir : dir.toLowerCase().startsWith(root.toLowerCase() + '/') ? dir.slice(root.length + 1) : undefined;
+      if (rel) lines = [...lines, `Game.SDLPaths = [${jsString(rel.replace(/\//g, '\\'))}];`];
     }
     found.push({ rule: r, hits, opts, lines });
   }
@@ -259,6 +274,20 @@ export function handlerHooks(text: string): Set<string> {
   return on;
 }
 const isOn = (text: string, opt: string) => new RegExp(`\\bGame\\.${opt.replace(/\./g, '\\.')}\\s*=\\s*true\\b`).test(noComments(text));
+/** What a handler's assignments leave in a Game.<opt> switch: the last one's true/false when every assignment is a plain
+ *  `= true`/`= false` statement on its own line at the top level; undefined when it never sets it; 'unclear' otherwise
+ *  (one inside a block or a one-line `if`, or a value that isn't true/false). */
+export function lastSwitch(text: string, opt: string): boolean | undefined | 'unclear' {
+  const { code, depth } = codeOf(text);
+  let v: boolean | undefined;
+  for (const m of code.matchAll(new RegExp(`\\bGame\\.${opt.replace(/\./g, '\\.')}\\s*=(?!=)\\s*([^;\\n]*)`, 'g'))) {
+    const lineStart = code.lastIndexOf('\n', m.index! - 1) + 1;
+    const val = m[1]!.trim();
+    if (depth[code.slice(0, lineStart).split('\n').length - 1] !== 0 || code.slice(lineStart, m.index!).trim() || !/^(true|false)$/.test(val)) return 'unclear';
+    v = val === 'true';
+  }
+  return v;
+}
 export function startsProtoInput(text: string) {
   return ['InjectStartup', 'InjectRuntime_RemoteLoadMethod', 'InjectRuntime_EasyHookMethod', 'InjectRuntime_EasyHookStealthMethod'].some((k) => isOn(text, 'ProtoInput.' + k));
 }
@@ -284,17 +313,21 @@ export function importHints(text: string, a: Analysis): ImportHint[] {
   const kbm = isOn(text, 'SupportsMultipleKeyboardsAndMice');
   const used = (f: Finding) => f.hits.slice(0, 3).map((h) => (h.how === 'loads' ? `loads ${h.dll}` : h.how === 'imports' ? h.fn : h.fn)).join(', ');
   // Startup injection with a launcher goes into the launcher, so none of the hooks reach the game.
-  const runtimeInject = ['InjectRuntime_RemoteLoadMethod', 'InjectRuntime_EasyHookMethod', 'InjectRuntime_EasyHookStealthMethod'].some((k) => isOn(text, 'ProtoInput.' + k));
+  // The last assignment of each counts (true, then false: off). A runtime method set somewhere it can't tell: no fix.
+  const methods = ['InjectRuntime_RemoteLoadMethod', 'InjectRuntime_EasyHookMethod', 'InjectRuntime_EasyHookStealthMethod'].map((k) => lastSwitch(text, 'ProtoInput.' + k));
+  const runtimeInject = methods.includes(true);
+  const runtimeUnclear = !runtimeInject && methods.includes('unclear');
+  const startup = lastSwitch(text, 'ProtoInput.InjectStartup');
   // A launcher named (a non-empty string), and startup injection on: it goes into the launcher. With a runtime method
   // as well, the runtime one never runs (GenericGameHandler: only when InjectStartup is off), so the fix turns startup off.
-  if (/\bGame\.LauncherExe\s*=\s*(["'])[^"'\n]+\1/.test(noComments(text)) && isOn(text, 'ProtoInput.InjectStartup'))
+  if (/\bGame\.LauncherExe\s*=\s*(["'])[^"'\n]+\1/.test(noComments(text)) && (startup === true || (startup === 'unclear' && isOn(text, 'ProtoInput.InjectStartup'))))
     out.push({
       rule: 'launcher-startup',
       title: 'Game.ProtoInput.InjectStartup injects Proto Input into the launcher, not the game',
       why: runtimeInject
         ? 'With Game.LauncherExe, the program Nucleus starts is the launcher (GenericGameHandler), so its hooks never reach the game; and with InjectStartup on, the runtime injection this handler also sets never runs. Turn startup injection off: Nucleus then injects into the game process it finds.'
         : 'With Game.LauncherExe, the program Nucleus starts is the launcher (GenericGameHandler), so its hooks never reach the game. Inject at runtime instead (it only runs with InjectStartup off): Nucleus then injects into the game process it finds.',
-      lines: [runtimeInject ? 'Game.ProtoInput.InjectStartup = false;' : 'Game.ProtoInput.InjectRuntime_EasyHookMethod = true;'],
+      lines: runtimeUnclear ? [] : [runtimeInject ? 'Game.ProtoInput.InjectStartup = false;' : 'Game.ProtoInput.InjectRuntime_EasyHookMethod = true;'],
       severity: 'warning',
       fact: false,
     });
@@ -355,6 +388,13 @@ export function importsReport(a: Analysis, opts: { controllers?: boolean; kbm?: 
   return lines.join('\n');
 }
 
+/** A JavaScript string literal's value (quotes included in `lit`): the escapes ES5 knows. */
+function decodeString(lit: string): string {
+  const esc: Record<string, string> = { n: '\n', r: '\r', t: '\t', b: '\b', f: '\f', v: '\v', '0': '\0' };
+  return lit.slice(1, -1).replace(/\\(u[0-9a-fA-F]{4}|x[0-9a-fA-F]{2}|[\s\S])/g, (_, e: string) =>
+    e.length > 1 ? String.fromCharCode(parseInt(e.slice(1), 16)) : esc[e] ?? (e === '\n' ? '' : e));
+}
+
 // ---------------------------------------------------------------------------------------------------------------
 // As game-folder problems (VS Code, ncdev lsp, the workbench): quiet hints next to Game.ExecutableName, each with a
 // fix that adds its lines after the handler's last top-level Game.ProtoInput line (else after ExecutableName).
@@ -363,15 +403,26 @@ import type { FolderProblem } from './gamefolder';
 export function importProblems(text: string, files: PeFile[]): FolderProblem[] {
   if (!files.length) return [];
   const { code, depth } = codeOf(text);
-  const exe = code.match(/^\s*Game\.ExecutableName\s*=\s*["']([^"']+)["']/m);
+  // A string literal's value (escapes decoded: "bin\\Win64" is bin\Win64), and where its text is, for the diagnostic.
+  const setting = (name: string) => {
+    const m = code.match(new RegExp(`^\\s*Game\\.${name}\\s*=\\s*("(?:[^"\\\\\\n]|\\\\.)*"|'(?:[^'\\\\\\n]|\\\\.)*')`, 'm'));
+    if (!m) return undefined;
+    const value = decodeString(m[1]!);
+    const start = m.index! + m[0].length - m[1]!.length + 1;
+    return value ? { value, index: m.index!, start, end: start + m[1]!.length - 2 } : undefined;
+  };
+  const exe = setting('ExecutableName');
   // Nucleus starts Game.BinariesFolder\Game.ExecutableName: with a binaries folder, that path picks the program.
-  const bin = code.match(/^\s*Game\.BinariesFolder\s*=\s*["']([^"']+)["']/m)?.[1];
+  const bin = setting('BinariesFolder')?.value;
   const exes = files.filter((f) => !f.dll);
-  const withBin = exe && bin ? bin.replace(/[\\/]+$/, '') + '\\' + exe[1] : undefined;
-  const a = analyse(files, withBin && findExe(exes, withBin) ? withBin : exe?.[1]);
+  const withBin = exe && bin ? bin.replace(/[\\/]+$/, '') + '\\' + exe.value : undefined;
+  const name = withBin && findExe(exes, withBin) ? withBin : exe?.value;
+  // A name several programs of the folder have (old/Game.exe and new/Game.exe): no guessing which one, no hints.
+  if (name && findExes(exes, name).length > 1) return [];
+  const a = analyse(files, name, { binariesFolder: bin });
   const hints = importHints(text, a);
   if (!hints.length) return [];
-  const anchor = exe ? { start: exe.index! + exe[0].indexOf(exe[1]!), end: exe.index! + exe[0].indexOf(exe[1]!) + exe[1]!.length } : { start: 0, end: 0 };
+  const anchor = exe ? { start: exe.start, end: exe.end } : { start: 0, end: 0 };
   const lineEnd = (at: number) => {
     const n = text.indexOf('\n', at);
     return n < 0 ? text.length : n + 1;
@@ -385,15 +436,25 @@ export function importProblems(text: string, files: PeFile[]): FolderProblem[] {
     return t.endsWith(';') && open(/[({[]/g) === open(/[)}\]]/g);
   };
   const top = (m: RegExpMatchArray) => depth[lineNo(m.index!)] === 0;
-  const pis = [...code.matchAll(/^Game\.ProtoInput\.\w+\s*=.*$/gm)].filter((m) => top(m) && complete(m[0]));
-  const insertAt = pis.length ? lineEnd(pis[pis.length - 1]!.index!) : exe ? lineEnd(exe.index!) : 0;
+  // A line whose end is inside a block comment that goes on (`x = 1; /* note` + newline): adding there would put the
+  // lines inside the comment.
+  const endsInComment = (at: number) => {
+    const ls = text.lastIndexOf('\n', at - 2) + 1, seg = text.slice(ls, at), o = seg.lastIndexOf('/*');
+    return o >= 0 && seg.indexOf('*/', o + 2) < 0 && code[ls + o] !== '/';
+  };
+  // The whole statement on one line (`=` too: `Name\n= true;` would get the lines between name and value).
+  const pis = [...code.matchAll(/^Game\.ProtoInput\.\w+[ \t]*=(?!=).*$/gm)].filter((m) => top(m) && complete(m[0]) && !endsInComment(lineEnd(m.index!)));
+  // Else after Game.ExecutableName's statement, when it ends on the line its string ends on (only `;` after it).
+  const exeEnd = exe ? lineEnd(exe.end + 1) : -1;
+  const exeSafe = !!exe && /^[ \t]*;?[ \t]*\r?\n?$/.test(code.slice(exe.end + 1, exeEnd)) && !endsInComment(exeEnd);
+  const insertAt = pis.length ? lineEnd(pis[pis.length - 1]!.index!) : exe ? (exeSafe ? exeEnd : -1) : 0;
   const nl = insertAt > 0 && text[insertAt - 1] !== '\n' ? '\n' : '';
   // Startup injection into a launcher: the fix swaps the one active top-level InjectStartup line (a trailing comment
   // stays). Several InjectStartup assignments, or one inside a block: no fix, it can't tell which one counts.
   const assigns = [...code.matchAll(/\bGame\.ProtoInput\.InjectStartup\s*=/g)];
-  const startup = assigns.length === 1 ? code.match(/^[ \t]*(Game\.ProtoInput\.InjectStartup\s*=\s*true\s*;?)[ \t]*$/m) : null;
+  const startup = assigns.length === 1 ? code.match(/^[ \t]*(Game\.ProtoInput\.InjectStartup\s*=\s*true\b(?:[ \t]*;)?)[ \t]*$/m) : null;
   const swap = startup && top(startup) ? { start: startup.index! + startup[0].indexOf('Game.'), end: startup.index! + startup[0].indexOf('Game.') + startup[1]!.length } : undefined;
-  return hints.map((h) => h.rule === 'launcher-startup' && swap ? {
+  return hints.map((h) => h.rule === 'launcher-startup' && swap && h.lines.length ? {
     ...anchor,
     severity: h.severity,
     title: h.title,
@@ -407,6 +468,6 @@ export function importProblems(text: string, files: PeFile[]): FolderProblem[] {
     why: h.why + ' (From the game’s program files.)',
     fact: h.fact ? (true as const) : undefined,
     // launcher-startup without a line it can swap: no fix (adding runtime injection would leave startup injection on).
-    fix: h.lines.length && h.rule !== 'launcher-startup' ? { title: `Add ${h.lines.length === 1 ? h.lines[0]!.replace(/ = true;$/, '') : h.lines.length + ' lines'}`, text: nl + h.lines.join('\n') + '\n', start: insertAt, end: insertAt } : undefined,
+    fix: h.lines.length && h.rule !== 'launcher-startup' && insertAt >= 0 ? { title: `Add ${h.lines.length === 1 ? h.lines[0]!.replace(/ = true;$/, '') : h.lines.length + ' lines'}`, text: nl + h.lines.join('\n') + '\n', start: insertAt, end: insertAt } : undefined,
   }));
 }

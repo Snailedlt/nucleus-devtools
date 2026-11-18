@@ -11,6 +11,7 @@ export function engineFamily(label: string): string;
 export function classifyCode(src: string, opts?: { definite?: boolean }): string;
 export function classifyWikidata(engines: WikidataEngine[] | undefined): string;
 export function steamIdOf(src: string): string;
+export function withoutComments(src: string): string;
 export function igdbSlugOf(url: string | undefined): string;
 export function classify(src: string, cache: WikidataCache | null, igdbSlug?: string): { engine: string; source: '' | 'wikidata' | 'code'; via?: 'steam' | 'igdb' };
 export function notableEngines(use: Record<string, number> | undefined, n: number, totals: Record<string, number>, handlers: number): { family: string; used: number; total: number; share: number }[];

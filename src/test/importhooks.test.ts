@@ -187,10 +187,82 @@ test('importhooks: file names become string literals; an explicit path wins; com
   assert.equal(y.fix!.start, flat.indexOf('Game.ProtoInput.OnInputLocked'));
   // A "//" inside a string is no comment: the line still counts.
   assert.ok(handlerHooks('var u = "http://x"; Game.ProtoInput.XinputHook = true;').has('XinputHook'));
-  // Game.SDLPaths is relative to the instance's root (the game folder), not the .exe's folder.
+  // Game.SDLPaths is relative to the instance's root (Nucleus' rootFolder): the .exe's folder without
+  // Game.BinariesFolder, the folder above it with Game.BinariesFolder = "bin".
   const exe2: PeFile = { ...pe('bin/Game.exe', 100), imports: [{ dll: 'SDL2.dll', fns: [{ name: 'SDL_Init' }], delay: false }] };
   const sdl2: PeFile = { ...pe('bin/plugins/SDL2.dll', 50), dll: true };
-  assert.ok(analyse([exe2, sdl2]).found.find((f) => f.rule.id === 'sdl')!.lines.includes('Game.SDLPaths = ["bin\\\\plugins"];'));
+  const sdlLines = (o?: { binariesFolder?: string }) => analyse([exe2, sdl2], undefined, o).found.find((f) => f.rule.id === 'sdl')!.lines;
+  assert.ok(sdlLines().includes('Game.SDLPaths = ["plugins"];'), sdlLines().join('\n'));
+  assert.ok(sdlLines({ binariesFolder: 'bin' }).includes('Game.SDLPaths = ["bin\\\\plugins"];'));
+  assert.ok(sdlLines({ binariesFolder: 'bin\\' }).includes('Game.SDLPaths = ["bin\\\\plugins"];'));
+  // Outside the root (a sibling of the .exe's folder): no path can name it.
+  assert.ok(!analyse([exe2, { ...sdl2, fileName: 'plugins/SDL2.dll' }]).found.find((f) => f.rule.id === 'sdl')!.lines.some((l) => l.startsWith('Game.SDLPaths')));
+  // From the handler's own Game.BinariesFolder (importProblems).
+  const t = 'Game.ExecutableName = "Game.exe";\nGame.BinariesFolder = "bin";\n';
+  const fix = importProblems(t, [exe2, sdl2]).find((p) => /SDL2/.test(p.title))!.fix!;
+  assert.match(fix.text, /Game\.SDLPaths = \["bin\\\\plugins"\];/);
+});
+
+test('importhooks: the last assignment of a runtime method counts; unclear ones withhold the fix', () => {
+  const files = read('launcher');
+  const warn = (t: string) => importProblems(t, files).find((p) => p.title.startsWith('Game.ProtoInput.InjectStartup injects'));
+  const head = 'Game.ExecutableName = "war3.exe";\nGame.LauncherExe = "Frozen Throne.exe";\nGame.ProtoInput.InjectStartup = true;\n';
+  // On, then off: no runtime method, so the fix adds one instead of turning startup off.
+  const w = warn(head + 'Game.ProtoInput.InjectRuntime_RemoteLoadMethod = true;\nGame.ProtoInput.InjectRuntime_RemoteLoadMethod = false;\n')!;
+  assert.equal(w.fix!.title, 'Inject at runtime instead');
+  // Set inside a block: can't tell, no fix.
+  const u = warn(head + 'if (x) {\n  Game.ProtoInput.InjectRuntime_RemoteLoadMethod = true;\n}\n')!;
+  assert.ok(u && !u.fix);
+  // Startup on, then off: no warning.
+  assert.equal(warn('Game.ExecutableName = "war3.exe";\nGame.LauncherExe = "Frozen Throne.exe";\nGame.ProtoInput.InjectStartup = true;\nGame.ProtoInput.InjectStartup = false;\n'), undefined);
+});
+
+test('importhooks: no fix inside a block comment that a ProtoInput line opens', () => {
+  const files = read('game');
+  const text = 'Game.ExecutableName = "MyGame.exe";\nGame.ProtoInput.InjectStartup = true;\nGame.ProtoInput.FocusHooks = true; /* note\n end */\n';
+  const x = importProblems(text, files).find((p) => /XinputHook/.test(p.title))!;
+  const fixed = text.slice(0, x.fix!.start) + x.fix!.text + text.slice(x.fix!.end);
+  assert.match(fixed, /InjectStartup = true;\nGame\.ProtoInput\.XinputHook = true;\nGame\.ProtoInput\.FocusHooks/);
+});
+
+test('importhooks: a statement split over lines is never split by the fix', () => {
+  const files = read('game');
+  const apply = (t: string) => {
+    const x = importProblems(t, files).find((p) => /XinputHook/.test(p.title))!;
+    assert.ok(x, 'a hint');
+    return x.fix ? t.slice(0, x.fix.start) + x.fix.text + t.slice(x.fix.end) : undefined;
+  };
+  // A Game.ProtoInput assignment with "=" on the next line: not a place to add after; Game.ExecutableName is.
+  const a = apply('Game.ExecutableName = "MyGame.exe";\nGame.ProtoInput.InjectStartup\n= true;\n')!;
+  assert.match(a, /^Game\.ExecutableName = "MyGame\.exe";\nGame\.ProtoInput\.XinputHook = true;\nGame\.ProtoInput\.InjectStartup\n= true;\n$/);
+  // Game.ExecutableName's statement going on after its string: no safe place, no fix.
+  assert.equal(apply('Game.ExecutableName = "MyGame.exe" +\n  "";\nGame.ProtoInput.InjectStartup\n= true;\n'), undefined);
+  // Its value on the next line (blank lines before it): after the line the statement ends on.
+  const c = apply('\n\nGame.ExecutableName =\n  "MyGame.exe";\nGame.ProtoInput.InjectStartup\n= true;\n')!;
+  assert.match(c, /^\n\nGame\.ExecutableName =\n {2}"MyGame\.exe";\nGame\.ProtoInput\.XinputHook = true;\n/);
+});
+
+test('importhooks: several input folders keep same-named programs apart', async () => {
+  const os = await import('node:os');
+  const { readGameBinaries } = await import('../gamefolder-node');
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ncdev-imports-'));
+  try {
+    for (const d of ['one', 'two']) {
+      fs.mkdirSync(path.join(root, d));
+      fs.copyFileSync(path.join(FIX, 'game', 'MyGame.exe'), path.join(root, d, 'MyGame.exe'));
+    }
+    const files = readGameBinaries([path.join(root, 'one'), path.join(root, 'two')]);
+    const exes = files.filter((f) => !f.dll);
+    assert.equal(exes.length, 2);
+    assert.equal(findExes(exes, 'MyGame.exe').length, 2, 'a bare name is ambiguous');
+    const two = findExes(exes, path.join(root, 'two', 'MyGame.exe'));
+    assert.equal(two.length, 1);
+    assert.equal(analyse(files, two[0]).main, two[0]);
+    // One folder: names relative to it, as before.
+    assert.deepEqual(readGameBinaries([path.join(root, 'one')]).map((f) => f.fileName), ['MyGame.exe']);
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true });
+  }
 });
 
 test('importhooks: launcher startup only with a real launcher; in a block comment or twice, no fix; with runtime injection too, turn startup off', () => {
@@ -214,12 +286,22 @@ test('importhooks: launcher startup only with a real launcher; in a block commen
 });
 
 test('importhooks: Game.BinariesFolder picks the program Nucleus starts', () => {
-  const pe = (fileName: string, size: number): PeFile => ({ fileName, size, is64: true, machine: 0x8664, dll: false, imports: [{ dll: 'XINPUT1_3.dll', fns: [{ name: 'XInputGetState' }], delay: false }], exports: [], exportName: '', starts: false, mentions: [], rt: [] });
-  const a = pe('old/Game.exe', 500), b = pe('bin/Game.exe', 100);
+  // Only bin/Game.exe imports XInput, and old/Game.exe is larger: a hint means bin/Game.exe was read.
+  const pe = (fileName: string, size: number, xinput: boolean): PeFile => ({ fileName, size, is64: true, machine: 0x8664, dll: false, imports: xinput ? [{ dll: 'XINPUT1_3.dll', fns: [{ name: 'XInputGetState' }], delay: false }] : [], exports: [], exportName: '', starts: false, mentions: [], rt: [] });
+  const a = pe('old/Game.exe', 500, false), b = pe('bin/Game.exe', 100, true), w = pe('bin/Win64/Game.exe', 100, true);
   const t = 'Game.ExecutableName = "Game.exe";\nGame.BinariesFolder = "bin";\nGame.ProtoInput.InjectStartup = true;\n';
   const x = importProblems(t, [a, b]).find((p) => /XinputHook/.test(p.title));
   assert.ok(x, 'a hint');
   assert.equal(analyse([a, b], 'bin\\Game.exe').main, b);
+  // A string with escapes is read as its value ("bin\\Win64" is bin\Win64); the hint still points at the name.
+  const t2 = 'Game.ExecutableName = "Game.exe";\nGame.BinariesFolder = "bin\\\\Win64";\nGame.ProtoInput.InjectStartup = true;\n';
+  const y = importProblems(t2, [a, w]).find((p) => /XinputHook/.test(p.title));
+  assert.ok(y, 'a hint for bin/Win64/Game.exe');
+  assert.equal(t2.slice(y!.start, y!.end), 'Game.exe');
+  assert.equal(importProblems(t2, [a, w, b]).filter((p) => /XinputHook/.test(p.title)).length, 1);
+  // Game.ExecutableName that two programs have, and no Game.BinariesFolder to pick one: no hints (no guessing by size).
+  assert.deepEqual(importProblems('Game.ExecutableName = "Game.exe";\nGame.ProtoInput.InjectStartup = true;\n', [a, b]), []);
+  assert.ok(importProblems('Game.ExecutableName = "Game.exe";\nGame.ProtoInput.InjectStartup = true;\n', [b]).some((p) => /XinputHook/.test(p.title)));
 });
 
 test('importhooks: launcher startup is a warning (not a quiet note); its fix keeps a trailing comment', () => {
@@ -230,6 +312,11 @@ test('importhooks: launcher startup is a warning (not a quiet note); its fix kee
   const fixed = text.slice(0, w.fix!.start) + w.fix!.text + text.slice(w.fix!.end);
   assert.match(fixed, /^Game\.ProtoInput\.InjectRuntime_EasyHookMethod = true; \/\/ hooks$/m);
   assert.doesNotMatch(fixed, /InjectStartup/);
+  // No semicolon and a trailing comment: only the statement is replaced, the comment stays.
+  const bare = 'Game.ExecutableName = "war3.exe";\nGame.LauncherExe = "Frozen Throne.exe";\nGame.ProtoInput.InjectStartup = true // hooks\n';
+  const wb = importProblems(bare, files).find((p) => p.title.startsWith('Game.ProtoInput.InjectStartup injects'))!;
+  const fb = bare.slice(0, wb.fix!.start) + wb.fix!.text + bare.slice(wb.fix!.end);
+  assert.match(fb, /^Game\.ProtoInput\.InjectRuntime_EasyHookMethod = true; \/\/ hooks$/m);
   // The launcher is found from the game too (war3.exe picked by name, Frozen Throne.exe starts it).
   const a = analyse(files, 'war3.exe');
   assert.equal(a.main?.fileName, 'war3.exe');

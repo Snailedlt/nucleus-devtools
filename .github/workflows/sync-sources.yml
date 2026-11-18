@@ -75,12 +75,15 @@ jobs:
           git clone --quiet --depth 1 --filter=blob:none https://github.com/SplitScreen-Me/splitscreenme-protoInput ../splitscreenme-protoInput
           npm ci
           npm run generate
-          # Hub usage counted against the model this PR publishes (new members included), then the docs again: only
-          # when both snapshots were made above. A failed count stops the step (set -e) before the build and tests.
-          if [ "${{ steps.data.outputs.hubok }}" = true ] && [ "${{ steps.check.outputs.changed }}" = true ]; then
+          # Hub usage counted against the model this PR publishes (new members included, also when upstream moved after
+          # the check above), then the docs again: whenever both snapshots were made above. A failed count stops the
+          # step (set -e) before the build and tests.
+          if [ "${{ steps.data.outputs.hubok }}" = true ]; then
             node scripts/hub-examples.mjs --hub ../hubdata
-            # Only the date moved (the data without takenAt is the same as committed): keep the committed file.
-            if node -e 'const fs=require("fs"),cp=require("child_process");const f=process.argv[1];const strip=(t)=>{const j=JSON.parse(t);delete j.takenAt;return JSON.stringify(j)};let old="";try{old=cp.execSync("git show HEAD:"+f,{encoding:"utf8",maxBuffer:1e9})}catch{process.exit(1)}process.exit(strip(old)===strip(fs.readFileSync(f,"utf8"))?0:1)' data/hub-examples.json; then git checkout -- data/hub-examples.json; fi
+            # Each snapshot on its own: one whose data didn't change (only takenAt moved) stays as committed.
+            for f in data/hub-examples.json data/hub-engines.json; do
+              if node -e 'const fs=require("fs"),cp=require("child_process");const f=process.argv[1];const strip=(t)=>{const j=JSON.parse(t);delete j.takenAt;return JSON.stringify(j)};let old="";try{old=cp.execSync("git show HEAD:"+f,{encoding:"utf8",maxBuffer:1e9})}catch{process.exit(1)}process.exit(strip(old)===strip(fs.readFileSync(f,"utf8"))?0:1)' "$f"; then git checkout -- "$f"; fi
+            done
             npm run generate
           fi
           npm run build

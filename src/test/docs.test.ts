@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import raw from '../../data/claude-docs.json';
 import { api, claudeNote, memberMarkdown } from '../core/api';
 import { markdownReference } from '../core/lookup';
+import { codeOf } from '../core/importhooks';
 
 const docs = (raw as unknown as { docs: Record<string, { doc: string; basis: string; override?: boolean }> }).docs;
 const OBJ: Record<string, string> = { Hub: 'Hub', 'Hub.Handler': 'HubHandler', 'Hub.Maintainer': 'HubMaintainer', Game: 'Game', 'Game.Hook': 'GameHook', 'Game.ProtoInput': 'GameProtoInput', Context: 'Context', Player: 'PlayerInfo', ProtoInput: 'ProtoInputRuntime', 'ProtoInput.Values': 'ProtoInputValues' };
@@ -82,8 +83,8 @@ test('"In practice" parts: real members, labelled, with what they are based on; 
     if (!m.example || !m.exampleBy) continue;
     const where = m.exampleIn ?? 'top';
     // (Proto Input examples in a handler that starts Proto Input, as they would be.)
-    // (Only when the example doesn't set an injection mode itself: a second one would be another handler.)
-    const pi = /ProtoInput/.test(m.example + where) && !/\bGame\.ProtoInput\.(InjectStartup|InjectRuntime_\w+)\s*=/.test(m.example) ? 'Game.ProtoInput.InjectStartup = true;\n' : '';
+    // (Only when the example doesn't set an injection mode itself, in code, not a comment: a second one would be another handler.)
+    const pi = /ProtoInput/.test(m.example + where) && !/\bGame\.ProtoInput\.(InjectStartup|InjectRuntime_\w+)\s*=/.test(codeOf(m.example).code) ? 'Game.ProtoInput.InjectStartup = true;\n' : '';
     const handler = 'Game.GUID = "x";\nGame.GameName = "x";\nGame.ExecutableName = "x.exe";\n' + pi + (where === 'top' ? `${m.example}\n` : `${where} = function () {\n${m.example}\n};\n`);
     // Callbacks get no arguments: an example defines what it uses. Nothing flagged at all (info included).
     // (needs-option: an example shows one option; the one it depends on is in its doc.)
@@ -139,6 +140,17 @@ test('AI votes: checked, sent as aivote/<part>/<name>, never as a person\'s vote
   const slow = (async (url: string) => { urls.push(url); await new Promise((r) => setTimeout(r, 20)); return { ok: true, status: 200 }; }) as any;
   await Promise.all([sendAiVote('Game.KillMutex', 'doc', 'up', 't', slow), sendAiVote('Game.KillMutex', 'doc', 'down', 't', slow)]);
   assert.equal(urls.length, 2, 'one more, not two');
+  // No answer (a timeout): the vote may have counted, so a different one on that part isn't sent; the same one may be.
+  const lost = (async (url: string) => { urls.push(url); const e = new Error('timeout'); e.name = 'TimeoutError'; throw e; }) as any;
+  assert.equal((await sendAiVote('Game.Play', 'doc', 'up', 't', lost)).ok, false);
+  const n = urls.length;
+  assert.equal((await sendAiVote('Game.Play', 'doc', 'down', 't', fake)).ok, false);
+  assert.equal(urls.length, n, 'not sent');
+  assert.ok((await sendAiVote('Game.Play', 'doc', 'up', 't', fake)).ok, 'the same vote again');
+  // A refusal from the counter is an answer: another vote may follow.
+  const no = (async (url: string) => { urls.push(url); return { ok: false, status: 500 }; }) as any;
+  assert.equal((await sendAiVote('Game.ExecutableName', 'doc', 'up', 't', no)).ok, false);
+  assert.ok((await sendAiVote('Game.ExecutableName', 'doc', 'down', 't', fake)).ok);
   process.env.NCDEV_NO_FEEDBACK = '1';
   assert.equal((await sendAiVote('Game.Play', 'doc', 'up', 't', fake)).ok, false, 'off when asked');
   delete process.env.NCDEV_NO_FEEDBACK;

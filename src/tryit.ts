@@ -267,10 +267,15 @@ export function registerTryIt(context: vscode.ExtensionContext, isHandler: (doc:
     vscode.commands.registerCommand(TEST_ALL, async () => {
       // From the palette with no Try it panel yet: open it on the handler first; an open one comes to the front.
       // The handler and panel asked for are noted first: if either changed while it opened, don't start.
+      // The panel is noted as open() makes it (synchronously), before its first render is awaited: closed and reopened
+      // meanwhile, it is another panel and this run doesn't start.
       const want = panel && doc ? doc : vscode.window.activeTextEditor?.document;
-      if (!panel || !doc) await open();
-      else panel.reveal(undefined, true);
-      const wantPanel = panel;
+      let wantPanel = panel;
+      if (!panel || !doc) {
+        const opening = open();
+        wantPanel = panel;
+        await opening;
+      } else panel.reveal(undefined, true);
       if (!panel || !doc || doc !== want || panel !== wantPanel) return;
       const d = doc;
       const code = d.getText();

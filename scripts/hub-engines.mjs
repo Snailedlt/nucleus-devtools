@@ -125,11 +125,13 @@ export function classifyWikidata(engines) {
   return families.length === 1 ? families[0] : '';
 }
 
-/** The code without its comments (a commented-out line or a note about another engine is no evidence). Strings stay
- *  whole: a "//" or "/*" inside quotes (a URL, a launch argument) is text, not a comment. */
+/** The code without its comments (a commented-out line or a note about another engine is no evidence). Strings and
+ *  regular expressions stay whole: a "//" or "/*" inside quotes (a URL, a launch argument) or in `/[/*]/` is text,
+ *  not a comment. A block comment keeps its line breaks, so what follows it stays on its own line. */
 export function withoutComments(src) {
   const t = String(src);
   let out = '';
+  let prev = ''; // the last character that isn't space: a "/" after one of these starts a regular expression
   for (let i = 0; i < t.length; i++) {
     const c = t[i], n = t[i + 1];
     if (c === '/' && n === '/') {
@@ -139,18 +141,28 @@ export function withoutComments(src) {
     }
     if (c === '/' && n === '*') {
       const e = t.indexOf('*/', i + 2);
-      out += ' ';
-      i = e < 0 ? t.length : e + 1;
+      const end = e < 0 ? t.length : e + 2;
+      out += ' ' + t.slice(i, end).replace(/[^\n]/g, '');
+      i = end - 1;
       continue;
     }
-    if (c === '"' || c === "'") {
-      let k = i + 1;
-      for (; k < t.length && t[k] !== c && t[k] !== '\n'; k++) if (t[k] === '\\') k++;
+    if (c === '"' || c === "'" || (c === '/' && (!prev || /[(,=:[!&|?{};+\-*%<>~^]/.test(prev)))) {
+      let k = i + 1, cls = false;
+      for (; k < t.length && t[k] !== '\n'; k++) {
+        const x = t[k];
+        if (x === '\\') { k++; continue; }
+        if (c === '/' && x === '[') cls = true;
+        else if (c === '/' && x === ']') cls = false;
+        else if (x === c && !cls) break;
+      }
+      if (t[k] === '\n') k--;
       out += t.slice(i, k + 1);
       i = k;
+      prev = c;
       continue;
     }
     out += c;
+    if (!/\s/.test(c)) prev = c;
   }
   return out;
 }

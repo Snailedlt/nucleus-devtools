@@ -28,13 +28,13 @@ export function registerHandlerFiles(context: vscode.ExtensionContext, isHandler
     gen.set(p, g);
     return g;
   };
-  const check = async (uri: vscode.Uri) => {
+  const check = async (uri: vscode.Uri, fromDisk = false) => {
     if (uri.scheme !== 'file' || !/\.js$/i.test(uri.fsPath)) return;
     const g = bump(uri.fsPath);
     let on = false;
     try {
-      // An open file: as the editor sees it (its language mode, its unsaved text); else from disk.
-      const open = vscode.workspace.textDocuments.find((d) => d.uri.toString() === uri.toString());
+      // An open file: as the editor sees it (its language mode, its unsaved text); else (or just closed) from disk.
+      const open = fromDisk ? undefined : vscode.workspace.textDocuments.find((d) => d.uri.toString() === uri.toString());
       on = open ? isHandler(open) : isHandlerText(uri.fsPath, await fs.readFile(uri.fsPath, 'utf8'));
     } catch {
       /* gone or unreadable */
@@ -57,9 +57,27 @@ export function registerHandlerFiles(context: vscode.ExtensionContext, isHandler
       })
       .catch(() => {});
   vscode.workspace.textDocuments.forEach(doc);
+  // Unsaved edits can make a file a handler or not: classified again a moment after typing stops.
+  const typing = new Map<string, ReturnType<typeof setTimeout>>();
   context.subscriptions.push(
     vscode.workspace.onDidOpenTextDocument(doc),
     vscode.workspace.onDidSaveTextDocument(doc),
+    vscode.workspace.onDidChangeTextDocument((e) => {
+      const d = e.document;
+      if (d.uri.scheme !== 'file' || !/\.js$/i.test(d.uri.fsPath)) return;
+      clearTimeout(typing.get(d.uri.fsPath));
+      typing.set(d.uri.fsPath, setTimeout(() => {
+        typing.delete(d.uri.fsPath);
+        if (!d.isClosed) doc(d);
+      }, 300));
+    }),
+    // Closed (perhaps unsaved, or in another language mode): what the file on disk is decides again.
+    vscode.workspace.onDidCloseTextDocument((d) => {
+      clearTimeout(typing.get(d.uri.fsPath));
+      typing.delete(d.uri.fsPath);
+      void check(d.uri, true);
+    }),
+    { dispose: () => typing.forEach((t) => clearTimeout(t)) },
   );
   if (vscode.workspace.workspaceFolders?.length) {
     scan();

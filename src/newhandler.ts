@@ -157,13 +157,22 @@ export async function newHandler() {
       }
     }
   } else {
-    // Other file systems (remote, virtual): a create that fails when the file exists, never a plain write.
+    // Other file systems (remote, virtual): a create that fails when the file exists, never a plain write. Replacing
+    // an existing handler is a text edit of the whole file, then a save, so Undo gives the old text back (a create
+    // with overwrite would record deleting the file as its undo).
     for (;;) {
+      if (replace) {
+        const doc = await vscode.workspace.openTextDocument(file);
+        const edit = new vscode.WorkspaceEdit();
+        edit.replace(file, new vscode.Range(doc.positionAt(0), doc.positionAt(doc.getText().length)), content);
+        if (!(await vscode.workspace.applyEdit(edit)) || !(await doc.save())) throw new Error(`Couldn't replace ${file.toString(true)}.`);
+        break;
+      }
       const edit = new vscode.WorkspaceEdit();
-      edit.createFile(file, { overwrite: replace, contents: Buffer.from(content, 'utf8') });
+      edit.createFile(file, { overwrite: false, contents: Buffer.from(content, 'utf8') });
       if (await vscode.workspace.applyEdit(edit)) break;
       const exists = await vscode.workspace.fs.stat(file).then(() => true, () => false);
-      if (!exists || replace) throw new Error(`Couldn't create ${file.toString(true)}.`);
+      if (!exists) throw new Error(`Couldn't create ${file.toString(true)}.`);
       if (!(await askReplace())) return;
       replace = true;
     }

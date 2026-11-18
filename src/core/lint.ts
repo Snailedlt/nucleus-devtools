@@ -2070,11 +2070,15 @@ class Analyzer {
     if (!started) return;
     // Installed at runtime (ProtoInput.InstallHook(..., RegisterRawInputHookID)) counts. So does the option set to true:
     // by the last top-level assignment, or (when no top-level `= false` wins) anywhere, such as inside an option's `if`.
-    if (/\bInstallHook\s*\([^;]*\bRegisterRawInputHookID\b/.test(codeNoStrings)) return;
+    // Only Proto Input's own InstallHook: a function of the handler's called InstallHook installs nothing.
+    if (/\bProtoInput\s*\.\s*InstallHook\s*\([^;]*\bRegisterRawInputHookID\b/.test(codeNoStrings)) return;
     const raw = last('RegisterRawInputHook');
     if (isTrue('RegisterRawInputHook')) return;
     const rawOff = raw && raw.right.type === 'Literal' && raw.right.value === false;
-    if (!rawOff && /\bGame\.ProtoInput\.RegisterRawInputHook\s*=\s*true\b/.test(codeNoStrings)) return;
+    // A `= true` anywhere counts when no top-level `= false` wins, and after that `= false` too (a block that runs later,
+    // `if (true) { … }`): the hook may well be on, so no warning and no fix that would change the default.
+    const enables = [...codeNoStrings.matchAll(/\bGame\.ProtoInput\.RegisterRawInputHook\s*=\s*true\b/g)];
+    if (enables.some((m) => !rawOff || m.index! > raw!.start)) return;
     if (isTrue('TranslateXinputtoMKB')) return; // the state then comes from the controller
     // Only where players can bring keyboards and mice: for controller-only players a frozen cursor is harmless.
     if (!/\bGame\.SupportsMultipleKeyboardsAndMice\s*=\s*true\b/.test(code)) return;

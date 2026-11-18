@@ -802,6 +802,11 @@ test('protoinput-needs-raw-input: key and cursor hooks need the raw input hook',
   const rawFixed = apply(rawSrc, f[0].fixes![0]);
   assert.match(rawFixed, /^Game\.ProtoInput\.RegisterRawInputHook = true;$/m);
   assert.match(rawFixed, /^Game\.ProtoInput\.GetKeyStateHook = true;$/m);
+  assert.equal(only(rawFixed, 'protoinput-needs-raw-input').length, 0, 'the fixed handler passes');
+  // A later `= true` in a block after the top-level false: it may be on, no warning (and no fix to the default).
+  assert.equal(only(rawSrc + 'if (true) {\n  Game.ProtoInput.RegisterRawInputHook = true;\n}\n', 'protoinput-needs-raw-input').length, 0);
+  // The handler's own function called InstallHook installs nothing.
+  assert.equal(only(HEADER + KBM + 'Game.ProtoInput.GetKeyStateHook = true;\nfunction InstallHook(RegisterRawInputHookID) {}\n', 'protoinput-needs-raw-input').length, 1);
   // A later false wins over an earlier true; the ID only in a string installs nothing; an unknown last value: no fix.
   assert.equal(only(HEADER + KBM + 'Game.ProtoInput.RegisterRawInputHook = true;\nGame.ProtoInput.GetKeyStateHook = true;\nGame.ProtoInput.RegisterRawInputHook = false;\n', 'protoinput-needs-raw-input').length, 1);
   assert.equal(only(HEADER + KBM + 'Game.ProtoInput.GetKeyStateHook = true;\nvar s = "InstallHook(RegisterRawInputHookID)";\n', 'protoinput-needs-raw-input').length, 1);

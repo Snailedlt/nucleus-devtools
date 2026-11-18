@@ -65,6 +65,8 @@ export const forgetFolder = (dir: string) => cache.delete(dir);
 // The game's program files (.exe, .dll, .asi), read for the import hints (core/pe.ts, core/importhooks.ts). Only
 // the files' tables and names written in them are used; nothing is run or sent anywhere.
 import { parsePE, type PeFile } from './core/pe';
+import { importProblems } from './core/importhooks';
+import type { FolderProblem } from './core/gamefolder';
 
 const PE_EXT = /\.(exe|dll|asi)$/i;
 /** A file over this size is skipped; files are read until this total. */
@@ -97,12 +99,15 @@ function readCappedSync(abs: string, budget: Budget): Uint8Array | undefined {
     if (fd !== undefined) try { fs.closeSync(fd); } catch { /* ignore */ }
   }
 }
-async function readCapped(abs: string, budget: Budget): Promise<Uint8Array | undefined> {
+/** `gate` (the background scans): called with the opened file's size before anything is allocated; it waits for room
+ *  in the shared in-flight limit for exactly that size, and false skips the file. Only that many bytes are read. */
+async function readCapped(abs: string, budget: Budget, gate?: (size: number) => Promise<boolean>): Promise<Uint8Array | undefined> {
   let fh: fs.promises.FileHandle | undefined;
   try {
     fh = await fs.promises.open(abs, OPEN_FLAGS);
     const st = await fh.stat();
     if (!st.isFile() || st.size > PE_FILE_LIMIT || st.size > budget.left) return undefined;
+    if (gate && !(await gate(st.size))) return undefined;
     budget.left -= st.size;
     const buf = Buffer.alloc(st.size);
     let got = 0;
@@ -137,6 +142,9 @@ export function readGameBinaries(paths: string[]): PeFile[] {
     const f = parseOr(readCappedSync(abs, budget), rel);
     if (f) out.push(f);
   };
+  // Several inputs: each file's name starts with the input it came from, so two folders' Game.exe stay apart.
+  const many = paths.length > 1;
+  const label = (p: string) => p.replace(/\\/g, '/').replace(/\/+$/, '');
   for (const p of paths) {
     let st: fs.Stats;
     try {
@@ -145,8 +153,8 @@ export function readGameBinaries(paths: string[]): PeFile[] {
       continue;
     }
     if (st.isDirectory()) {
-      for (const f of readGameFolder(p).files) if (PE_EXT.test(f.path)) add(path.join(p, f.path), f.path, f.size);
-    } else if (st.isFile() && PE_EXT.test(p)) add(p, path.basename(p), st.size);
+      for (const f of readGameFolder(p).files) if (PE_EXT.test(f.path)) add(path.join(p, f.path), many ? label(p) + '/' + f.path : f.path, f.size);
+    } else if (st.isFile() && PE_EXT.test(p)) add(p, many ? label(p) : path.basename(p), st.size);
   }
   return out;
 }
@@ -200,12 +208,18 @@ export function gameBinaries(dir: string): Promise<PeFile[]> {
     for (const f of folder.files) {
       if (scans.get(dir) !== scan) break; // forgotten (relinked or changed): stop early
       if (!PE_EXT.test(f.path) || f.size > PE_FILE_LIMIT || f.size > budget.left) continue;
-      const release = await reserve(f.size);
+      // The reservation is for the size of the file as opened (it may have grown since the folder was listed), and is
+      // held until the bytes are parsed. A scan forgotten while it waited for room reads nothing more.
+      let release: (() => void) | undefined;
       try {
-        const pf = parseOr(await readCapped(path.join(dir, f.path), budget), f.path);
+        const bytes = await readCapped(path.join(dir, f.path), budget, async (size) => {
+          release = await reserve(size);
+          return scans.get(dir) === scan;
+        });
+        const pf = parseOr(bytes, f.path);
         if (pf) out.push(pf);
       } finally {
-        release();
+        release?.();
       }
       await new Promise((r) => setImmediate(r)); // let the editor breathe between files
     }
@@ -236,6 +250,14 @@ export function gameBinariesNow(dir: string, ready?: () => void): PeFile[] | und
   void gameBinaries(dir);
   if (ready) scans.get(dir)?.waiters.add(ready);
   return settled.get(dir)?.files;
+}
+/** Whether the settled result is current (not one kept while a newer scan runs): fixes come only from a current one. */
+export const binariesCurrent = (dir: string) => fresh(dir);
+/** The import hints for a handler; while the folder is being read again, without their fixes (the program may have
+ *  changed: an old fix could add a setting the new files no longer call for). */
+export function importProblemsFor(text: string, dir: string, files: PeFile[]): FolderProblem[] {
+  const current = binariesCurrent(dir);
+  return importProblems(text, files).map((p) => (current || !p.fix ? p : { ...p, fix: undefined }));
 }
 export const forgetBinaries = (dir: string) => {
   const old = scans.get(dir);

@@ -16,6 +16,13 @@ import path from 'node:path';
 import { execSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
+/** false, or a number literal worth zero in any notation Hub values keep as text (0, 0.0, 0x0, 0b0, 0o0, 00). */
+const isOffValue = (v) => {
+  const t = String(v).trim();
+  if (t === 'false') return true;
+  if (!/^[-+]?(0[xX][0-9a-fA-F]+|0[bB][01]+|0[oO][0-7]+|\d*\.?\d+(e[-+]?\d+)?)$/i.test(t)) return false;
+  return Number(t.replace(/^[-+]/, '')) === 0;
+};
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const args = Object.fromEntries(
   process.argv.slice(2).reduce((acc, a, i, arr) => (a.startsWith('--') ? [...acc, [a.slice(2), arr[i + 1]]] : acc), []),
@@ -820,7 +827,7 @@ for (const [obj, label] of Object.entries(LABELS)) {
     // The most common value (options) or call (methods), when at least 5 handlers and a fifth of its users agree.
     const [top, count] = (m.kind === 'method' ? hub?.calls : !inCallback && !m.readonly ? hub?.values : undefined)?.[0] ?? [];
     // (Not an "off" value the docs' own example was left out for: it would contradict the doc just the same.)
-    if (top && count >= 5 && count >= hub.n / 5 && !(offExample.has(key) && /^(false|0)$/.test(String(top).trim()))) {
+    if (top && count >= 5 && count >= hub.n / 5 && !(offExample.has(key) && isOffValue(top))) {
       // A call on `player` (Proto Input's, in the lock callbacks, which get no arguments): in the loop that defines it.
       const code = m.kind === 'method' ? (/\bplayer\./.test(top) ? forEachPlayer(`${top};`) : `${top};`) : `${key} = ${top};`;
       Object.assign(m, { example: code, exampleBy: 'hub', exampleNote: m.kind === 'method' ? `The most common call in Hub handlers: ${count} of the ${hub.n} that use it.` : `The most common value in Hub handlers: ${count} of the ${hub.n} that set it.`, exampleIn });

@@ -113,7 +113,11 @@ export function parsePE(input: Uint8Array | ArrayBuffer, fileName: string): PeFi
   // One budget for every record decoded from this file.
   let work = 0;
   const spend = () => ++work <= PE_WORK_LIMIT;
-  const str = (rva: number) => strEnd(rva)[0];
+  // A name without its terminating zero (the file ends in it) is no name: '' (not evidence for a hook).
+  const str = (rva: number) => {
+    const [t, ok] = strEnd(rva);
+    return ok ? t : '';
+  };
   /** A string and whether its terminating zero was found within the file-backed bytes (and before `limit`, an RVA). */
   const strEnd = (rva: number, limit = Infinity): [string, boolean] => {
     let [o, end] = at(rva), out = '';
