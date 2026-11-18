@@ -148,7 +148,7 @@ main h1 { overflow-wrap: anywhere; } /* a long name (Game.ProtoInput.RegisterRaw
 pre.cfg { white-space: pre-wrap; overflow-wrap: anywhere; }
 .dlist { padding-left: 20px; } .dlist li { margin: 0 0 6px; }
 ${AI_SPARK_CSS}
-${o.aiFrameCss ? o.aiFrameCss({ fg: 'var(--fg)', muted: 'var(--muted)', line: 'var(--line)', surface: 'var(--surface)' }) : ''}
+${o.aiFrameCss ? o.aiFrameCss({ fg: 'var(--fg)', muted: 'var(--muted)', line: 'var(--line)', surface: 'var(--surface)', link: 'var(--accent)' }) : ''}
 ${SITE_HEADER_CSS}${DOC_FEEDBACK_CSS}
 ${DRAWER_CSS}
 table { border-collapse: collapse; margin: 0 0 16px; font-size: 14px; } th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
@@ -190,7 +190,7 @@ ${docsDrawer(up, here0, o.groups.map((g) => `<li><a href="${up}docs/${g.key}/">$
     if (votes) md = md.replace(/(^|\n\n)((?:\*\*✓ [^\n]*?\*\*)?)((?: · )?(?:People|AIs): \d+ 👍 \d+ 👎)+(?=\n\n|$)/g, (_, pre, ver) => (ver ? `${pre}${ver}` : pre ? '' : '')).replace(/\n{3,}/g, '\n\n');
     let html = mdToHtml(md, href);
     // The page was made with slots (memberMarkdown): frame the AI-written parts, then each part's 👍/👎 where its slot is.
-    if (m && o.placeAiFrames) html = o.placeAiFrames(html, m, { icon: SPARK, level: 2, path: page.path, paths: true });
+    if (m && o.placeAiFrames) html = o.placeAiFrames(html, m, { icon: SPARK, level: 2, path: page.path });
     const line = (part, q) => docFeedback(page.path, o.docReviewUrl(page.path), esc, part, q, { inline: true, feedbackUrl: feedbackUrl(page.path), counts: o.partVotes ? o.partVotes(page.path, part) : undefined });
     if (votes) {
       html = html.replace('<p>@@slot:practice@@</p>', () => line('practice', 'Is "In practice" right?'));

@@ -9,7 +9,7 @@
 import { withContext } from './report';
 import { reportIcon } from '@core/reporticons';
 import { aiBasis, api, docReviewUrl, exampleSource, isAiPart, ownerLabel, type AiPart, type Member } from '@core/api';
-import { aiMeta, aiTip, aiTipCss } from '@core/aimark';
+import { aiMeta, aiTipCss } from '@core/aimark';
 import type { DocPart } from '@core/docvotes';
 import { myVote, feedbackOn } from './feedback';
 import { snapshotVotes, liveVotes, scoreText, voteTipText } from './votecounts';
@@ -108,12 +108,12 @@ function tagRow(owner: string, m: Member): string {
   ].filter(Boolean);
   return chips.length ? `<div class="dc-facts">${chips.join('')}</div>` : '';
 }
-/** The layout inside a sparkle's tooltip (heading, labelled list: core/aimark.ts aiTip), from the core, in the page's
+/** The layout inside a sparkle's tooltip (heading, "Based on" and the linked sources: core/aimark.ts aiTip), from the core, in the page's
  *  colours; the frame and tooltip box are page.html's .ai-box/.ai-tip. Added once, when the cards first load. */
 if (typeof document !== 'undefined' && !document.getElementById('ai-tip-css')) {
   const st = document.createElement('style');
   st.id = 'ai-tip-css';
-  st.textContent = aiTipCss({ muted: 'var(--muted)', fg: 'var(--fg)' });
+  st.textContent = aiTipCss({ muted: 'var(--muted)', fg: 'var(--fg)', link: 'var(--link, var(--accent))' });
   document.head.append(st);
 }
 /** The sparkle in an AI-written part's corner (page.html .ai-spark). */
@@ -124,12 +124,10 @@ const uid = (part: string) => `ai-${part}-${++uids}`;
 /** `html` in an AI-written part's frame when that part is AI-written (core/aimark.ts aiMeta: the sparkle, its tooltip
  *  with the basis, a hidden "AI-written", "Checked by …"); as it is otherwise. */
 const aiFrame = (m: Member, part: AiPart, html: string, path?: string) => (isAiPart(m, part) ? `<div class="ai-box" data-ai="${part}">${aiMeta(m, part, SPARK, uid(part), { path })}${html}</div>` : html);
-/** "How handlers use it" ("In practice", always AI-written), folded, in its frame. The summary is the toggle, so the
- *  sparkle in it is no control of its own: hovering it, or focusing the summary, shows where it comes from. */
+/** "How handlers use it" ("In practice", always AI-written), folded, in its frame. The sparkle sits in the frame
+ *  beside the summary, not in it: its tooltip has links, which a toggle can't hold. */
 function practicePart(m: Member, path: string): string {
-  const id = uid('practice');
-  const checked = m.practiceCheckedBy ? `<span class="ai-checked">✓ Checked by ${esc(m.practiceCheckedBy)}${m.practiceCheckedOn ? ` on ${esc(m.practiceCheckedOn)}` : ''}</span>` : '';
-  return `<details class="dc-practice ai-box" data-ai="practice"><summary class="dc-pr-h" aria-describedby="${id}"><span class="dc-pr-t">How handlers use it</span><span class="ai-meta">${checked}<span class="ai-badge">${SPARK}<span class="sr-only">AI-written</span>${aiTip(m, 'practice', id, { path })}</span></span></summary>${paras(m.practice!)}${voteLine(path, 'practice')}</details>`;
+  return `<div class="dc-practice-box ai-box" data-ai="practice">${aiMeta(m, 'practice', SPARK, uid('practice'), { path })}<details class="dc-practice"><summary class="dc-pr-h"><span class="dc-pr-t">How handlers use it</span></summary>${paras(m.practice!)}${voteLine(path, 'practice')}</details></div>`;
 }
 
 /** "More common in: Source · Less common in: Unity": the engine families whose Hub handlers use it notably more or
@@ -229,13 +227,13 @@ if (typeof document !== 'undefined' && document.addEventListener) {
     if (line) setTimeout(() => syncVoteLinks(line), 0);
   });
   // Escape hides a sparkle's tooltip until the pointer or focus leaves it (WCAG 1.4.13).
-  const tipHosts = '.ai-badge, .dc-pr-h, .dc-check .vote-ctl';
+  const tipHosts = '.ai-badge, .dc-check .vote-ctl';
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') document.querySelectorAll(`.ai-badge:hover, .ai-badge:focus, .dc-pr-h:focus, .dc-check .vote-ctl:hover, .dc-check .vote-ctl:focus-within`).forEach((b) => b.classList.add('tip-off'));
+    if (e.key === 'Escape') document.querySelectorAll(`.ai-badge:hover, .ai-badge:focus-within, .dc-check .vote-ctl:hover, .dc-check .vote-ctl:focus-within`).forEach((b) => b.classList.add('tip-off'));
   });
   for (const ev of ['mouseout', 'focusout'] as const) document.addEventListener(ev, (e) => {
     const b = (e.target as HTMLElement | null)?.closest?.(tipHosts);
-    if (b && !(ev === 'mouseout' && b.contains((e as MouseEvent).relatedTarget as Node | null))) b.classList.remove('tip-off');
+    if (b && !b.contains((e as MouseEvent | FocusEvent).relatedTarget as Node | null)) b.classList.remove('tip-off');
   });
 }
 

@@ -722,10 +722,14 @@ li.CodeMirror-hint-active .hint-type { color: var(--muted); opacity: 1; }
 .ai-badge > .ai-spark { width: 16px; height: 16px; }
 .ai-tip { position: absolute; z-index: 5; right: 0; top: 100%; margin-top: 4px; width: max-content; max-width: min(340px, 80vw); padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--r-ctl, 6px); background: var(--surface); color: var(--fg); font-size: 12.5px; font-weight: 400; line-height: 1.45; text-align: left; white-space: normal; box-shadow: 0 4px 14px rgb(0 0 0 / .18); visibility: hidden; }
 .ai-tip::before { content: ''; position: absolute; left: 0; right: 0; top: -6px; height: 6px; }
-.ai-badge:hover .ai-tip, .ai-badge:focus .ai-tip, .dc-pr-h:focus-visible .ai-tip { visibility: visible; }
-.ai-badge.tip-off .ai-tip, .dc-pr-h.tip-off .ai-tip { visibility: hidden; }
+/* It has links (where each source lives): it stays open while the pointer is on it or focus is in it. */
+.ai-badge:hover .ai-tip, .ai-badge:focus-within .ai-tip { visibility: visible; }
+.ai-badge.tip-off .ai-tip { visibility: hidden; }
 .dc-example.ai-box { padding-top: 6px; }
-.dc-practice.ai-box .ai-meta { float: none; margin: 0 0 0 auto; }
+/* "How handlers use it": the frame holds the sparkle beside the fold, not in its summary (a toggle can't hold links). */
+.dc-practice-box.ai-box { margin-top: 12px; padding: 0 10px; }
+.dc-practice-box > .ai-meta { margin-top: 8px; }
+.dc-practice-box > .dc-practice { margin: 0; padding: 0; }
 .dc-hit-ai { width: 1em; height: 1em; }
 .dc-chip.kind { color: var(--fg); }
 /* "How handlers use it": the AI-written "In practice" part, folded, set apart from the doc. */
