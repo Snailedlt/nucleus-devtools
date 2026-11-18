@@ -112,7 +112,6 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write # the GitHub release with the update's notes
-      issues: write # "This is in workbench-<date>" on the issues the update fixes
       pages: write
       id-token: write
     environment:
@@ -136,12 +135,14 @@ jobs:
           node tools/announce.mjs post.json
           { echo "### 💬 Workbench update ($RELEASE)"; echo; echo '```text'; cat post.txt; echo '```'; echo; if [ -n "${{ secrets.DISCORD_WEBHOOKS != '' && 'yes' || '' }}" ]; then echo "Posted to Discord automatically (DISCORD_WEBHOOKS)."; else echo "Not posted: add a DISCORD_WEBHOOKS secret (one webhook URL per line) to post it automatically."; fi; } >> "$GITHUB_STEP_SUMMARY"
       - name: Publish the update as a GitHub release (the same notes as What's new)
+        id: publish
         if: needs.build.outputs.release != ''
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE: ${{ needs.build.outputs.release }}
         run: |
           tag=$(node tools/release-post.mjs "$RELEASE" --tag)
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
           node tools/release-post.mjs "$RELEASE" --notes > notes.md
           if gh release view "$tag" >/dev/null 2>&1; then
             echo "Release $tag already exists."
@@ -149,28 +150,44 @@ jobs:
             gh release create "$tag" --target "$GITHUB_SHA" --title "Workbench update · $RELEASE" --notes-file notes.md --latest
             echo "Published the GitHub release $tag." >> "$GITHUB_STEP_SUMMARY"
           fi
-      # Close the loop: "This is in workbench-<date>" on each issue this update fixes ("Fixes #N" in the commits since
-      # the last update, issues named under Fixed or as (#N) in its notes), this repository's only, once each, with a
-      # thanks to the reporter. The logic is splitscreenme-vscode's scripts/issue-bots.mjs (tested there), as on main.
+    outputs:
+      tag: ${{ steps.publish.outputs.tag }}
+  # Close the loop: "This is in workbench-<date>" on each issue this update fixes ("Fixes #N" in the commits since
+  # the last update, issues named under Fixed or as (#N) in its notes), this repository's only, once each, with a
+  # thanks to the reporter. The logic is splitscreenme-vscode's scripts/issue-bots.mjs (tested there), as on main.
+  # A job of its own: the code from the other repository never runs where the token can write contents or Pages,
+  # and a failure here never fails the deploy.
+  issues:
+    needs: [build, deploy]
+    if: needs.build.outputs.release != '' && needs.deploy.outputs.tag != ''
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    permissions:
+      contents: read
+      issues: write
+    steps:
       - uses: actions/checkout@v4
-        if: needs.build.outputs.release != ''
+        with:
+          persist-credentials: false
+      - uses: actions/checkout@v4
         with:
           repository: Snailedlt/splitscreenme-vscode
           ref: main
           path: devtools
+          persist-credentials: false
           sparse-checkout: scripts/issue-bots.mjs
           sparse-checkout-cone-mode: false
       - name: Tell the issues it fixes (never fails the deploy)
-        if: needs.build.outputs.release != ''
         continue-on-error: true
         uses: actions/github-script@v7
         env:
           RELEASE: ${{ needs.build.outputs.release }}
+          TAG: ${{ needs.deploy.outputs.tag }}
         with:
           script: |
             const { execSync } = require('child_process');
             const bots = await import(`${process.env.GITHUB_WORKSPACE}/devtools/scripts/issue-bots.mjs`);
-            const tag = execSync(`node tools/release-post.mjs "${process.env.RELEASE}" --tag`).toString().trim();
+            const tag = process.env.TAG;
             const notes = execSync(`node tools/release-post.mjs "${process.env.RELEASE}" --notes`).toString();
             const url = `https://github.com/${context.repo.owner}/${context.repo.repo}/releases/tag/${tag}`;
             const commits = await bots.commitsSincePrevious({ github, context, tag, prefix: 'workbench-' });

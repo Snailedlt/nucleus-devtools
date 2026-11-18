@@ -27,10 +27,6 @@ permissions:
   contents: read
   pull-requests: write
 
-concurrency:
-  group: preview-${{ github.event.pull_request.number || 'next' }}
-  cancel-in-progress: true
-
 env:
   VERCEL_SCOPE: snailedlts-projects
   VERCEL_PROJECT: nucleus-workbench-preview
@@ -41,15 +37,25 @@ jobs:
   preview:
     # After a test build: only when it published one (a skipped hourly run publishes nothing).
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
+    # On the job, so a skipped run (a failed test build) never cancels a preview; a manual run for another branch
+    # has its own group, apart from the next release's.
+    concurrency:
+      group: preview-${{ github.event.pull_request.number || (github.event_name == 'workflow_dispatch' && github.ref_name != 'claude/next-release' && format('branch-{0}', github.ref_name)) || 'next' }}
+      cancel-in-progress: true
     runs-on: ubuntu-latest
     steps:
       - name: Pull request or the next release
         id: mode
+        # Branch names through the environment, never written into the script.
+        env:
+          EVENT: ${{ github.event_name }}
+          HEAD_REF: ${{ github.head_ref }}
+          REF_NAME: ${{ github.ref_name }}
         run: |
-          if [ "${{ github.event_name }}" = pull_request ]; then
-            echo "next=false" >> "$GITHUB_OUTPUT"; echo "ref=${{ github.head_ref }}" >> "$GITHUB_OUTPUT"
-          elif [ "${{ github.event_name }}" = workflow_dispatch ] && [ "${{ github.ref_name }}" != "$NEXT_BRANCH" ]; then
-            echo "next=false" >> "$GITHUB_OUTPUT"; echo "ref=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          if [ "$EVENT" = pull_request ]; then
+            echo "next=false" >> "$GITHUB_OUTPUT"; echo "ref=$HEAD_REF" >> "$GITHUB_OUTPUT"
+          elif [ "$EVENT" = workflow_dispatch ] && [ "$REF_NAME" != "$NEXT_BRANCH" ]; then
+            echo "next=false" >> "$GITHUB_OUTPUT"; echo "ref=$REF_NAME" >> "$GITHUB_OUTPUT"
           else
             echo "next=true" >> "$GITHUB_OUTPUT"; echo "ref=$NEXT_BRANCH" >> "$GITHUB_OUTPUT"
           fi
@@ -65,7 +71,10 @@ jobs:
         run: |
           want="$WANT"
           if [ -z "$want" ]; then
-            if git ls-remote --exit-code --heads https://github.com/Snailedlt/splitscreenme-vscode.git "$BRANCH" >/dev/null; then want="$BRANCH"; else want=main; fi
+            # The exact branch (refs/heads/<name>, not one ending in it); main only when there is none (exit code 2),
+            # a failed lookup fails the run.
+            rc=0; git ls-remote --exit-code https://github.com/Snailedlt/splitscreenme-vscode.git "refs/heads/$BRANCH" >/dev/null || rc=$?
+            if [ "$rc" = 0 ]; then want="$BRANCH"; elif [ "$rc" = 2 ]; then want=main; else echo "::error::Couldn't look up $BRANCH."; exit 1; fi
           fi
           echo "Building with splitscreenme-vscode@$want"
           echo "ref=$want" >> "$GITHUB_OUTPUT"
@@ -128,6 +137,6 @@ jobs:
             const { owner, repo } = context.repo;
             const issue_number = context.payload.pull_request.number;
             const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number, per_page: 100 });
-            const mine = comments.find((c) => c.body?.includes(marker));
+            const mine = comments.find((c) => c.user?.login === 'github-actions[bot]' && c.body?.includes(marker)); // ours, not a quote of it
             if (mine) await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body });
             else await github.rest.issues.createComment({ owner, repo, issue_number, body });
