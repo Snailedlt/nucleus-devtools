@@ -23,7 +23,8 @@ function readBinaries(folder: GameFolder): Promise<PeFile[]> {
       let total = 0;
       for (const { path, file } of peHandles.get(folder) ?? []) {
         if (file.size > PE_FILE_LIMIT || total + file.size > PE_TOTAL_LIMIT) continue;
-        try { out.push(parsePE(new Uint8Array(await file.arrayBuffer()), path)); total += file.size; } catch { /* not a program */ }
+        total += file.size; // counted before reading: files that turn out not to be programs use the budget too
+        try { out.push(parsePE(new Uint8Array(await file.arrayBuffer()), path)); } catch { /* not a program */ }
         await new Promise((r) => setTimeout(r)); // keep the page responsive between files
       }
       return out;

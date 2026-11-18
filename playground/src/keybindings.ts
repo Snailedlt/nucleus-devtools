@@ -186,7 +186,8 @@ export function appActionFor(e: KeyboardEvent): string | 'pending' | undefined {
   const now = Date.now();
   const first = pending && now - pending.at < 2000 ? pending.step : null;
   pending = null;
-  for (const a of ACTIONS) {
+  // A key someone set themselves wins over a default that uses it too (a default added later, like F6 for Next pane).
+  for (const a of [...ACTIONS].sort((x, y) => Number(isCustom(y.id)) - Number(isCustom(x.id)))) {
     if (a.where !== 'app') continue;
     const b = steps(binding(a.id));
     if (!b.length) continue;

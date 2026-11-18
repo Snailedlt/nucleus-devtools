@@ -623,6 +623,22 @@ export function mountBlocksView(container: HTMLElement, host: BlocksHost): Block
     requestAnimationFrame(() => placeKind(document.activeElement)); // again once the row has settled
   });
   root.addEventListener('input', (ev) => placeKind(ev.target));
+  // Esc hides a folded comment's popup under the pointer (WCAG 1.4.13) until the pointer leaves it.
+  document.addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Escape') return;
+    root.querySelectorAll<HTMLElement>('.bv-note-long:hover').forEach((n) => {
+      n.classList.add('bv-pop-off');
+      n.addEventListener('mouseleave', () => n.classList.remove('bv-pop-off'), { once: true });
+    });
+  });
+  // The field being typed in, only while its input event runs (the expanded editor passes its field's input on), so
+  // a keyboard move made with a field focused stays an undo step of its own.
+  let typingIn = '';
+  root.addEventListener('input', (ev) => {
+    const t = ev.target as HTMLElement;
+    typingIn = t instanceof HTMLTextAreaElement || (t instanceof HTMLInputElement && t.type === 'text') ? (t.closest('[data-bv]')?.getAttribute('data-bv') ?? '') : '';
+  }, true);
+  root.addEventListener('input', () => { typingIn = ''; });
 
   let model: Model = { callbacks: [], optionNames: [], varNames: [] };
   let text = '';
@@ -668,9 +684,7 @@ export function mountBlocksView(container: HTMLElement, host: BlocksHost): Block
       return false;
     }
     // Typing in a field may merge into one undo step (per field); every other action is an undo step of its own.
-    const act = document.activeElement as HTMLElement | null;
-    const typed = act && root.contains(act) && (act instanceof HTMLTextAreaElement || (act instanceof HTMLInputElement && act.type === 'text')) ? (act.closest('[data-bv]')?.getAttribute('data-bv') ?? '') : '';
-    host.applyEdits([...edits].sort((a, b) => a.start - b.start), typed);
+    host.applyEdits([...edits].sort((a, b) => a.start - b.start), typingIn);
     log.push({ before, edits });
     if (log.length > 200) log = log.slice(-200);
     if (focus) focusWant = focus;
@@ -1535,16 +1549,18 @@ export function mountBlocksView(container: HTMLElement, host: BlocksHost): Block
 
   /** Swaps the view state kept under step key `a` (and everything inside it) with that under `b`. */
   function swapKeys(a: string, b: string): (k: string) => string {
+    // A key inside a step's: its controls (:), steps (/), condition parts (~), branches (>), groups (*), slots (|).
     const swap = (k: string): string => {
-      for (const [x, y] of [[a, b], [b, a]]) if (k === x || k.startsWith(`${x}/`) || k.startsWith(`${x}:`) || k.startsWith(`${x}|`)) return y + k.slice(x.length);
+      for (const [x, y] of [[a, b], [b, a]]) if (k === x || (k.startsWith(x) && '/:|~>*'.includes(k[x.length]))) return y + k.slice(x.length);
       return k;
     };
-    for (const set of [toggled, notesToggled, forcedCode, codeEditing]) {
+    for (const set of [toggled, notesToggled, forcedCode, codeEditing, gToggled]) {
       const all = [...set];
       set.clear();
       for (const k of all) set.add(swap(k));
     }
-    for (const k of [...parts.keys()]) if (swap(k) !== k) parts.delete(k);
+    // Cached rows are keyed `row:<key>`, `if:<key>`, ...: rebuilt at both places.
+    for (const k of [...parts.keys()]) { const inner = k.replace(/^[a-z]+:/, ''); if (swap(k) !== k || swap(inner) !== inner) parts.delete(k); }
     return swap;
   }
 

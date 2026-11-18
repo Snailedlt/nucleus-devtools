@@ -263,7 +263,8 @@ const lineEnd = (t: string, at: number) => {
 const indentOf = (t: string, at: number) => /^[ \t]*/.exec(t.slice(lineStart(t, at)))![0];
 const unitOf = (t: string) => (/^\t/m.test(t) && !/^ {2}/m.test(t) ? '\t' : /^ {4}\S/m.test(t) && !/^ {2}\S/m.test(t) ? '    ' : '  ');
 const lineAt = (t: string, at: number) => t.slice(0, at).split('\n').length - 1;
-const norm = (s: string) => s.replace(/\s+/g, '').replace(/;$/, '');
+// Spacing between tokens doesn't count (`[]` and `[ ]` are the same); inside a string it does.
+const norm = (s: string) => s.replace(/("(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*')|\s+/g, (_m, str?: string) => str ?? '').replace(/;$/, '');
 
 /**
  * Where a doc's example goes, as Lines (scanHandler) sees the handler: an option assignment at the top level, replacing
@@ -302,14 +303,15 @@ export function placeExample(text: string, path: string, example: string, where 
   };
 
   if (where === 'top') {
-    const at = foundIn(top, example);
-    if (at >= 0) return { text, action: 'same', line: lineAt(text, top[at].start), where: 'the top level' };
-    // Set already: the (last) top-level assignment gets the example's value.
+    // Set already: the last top-level assignment (the one that counts) gets the example's value.
     const have = top.filter((s) => pathOfStmt(s) === path);
     let mine: any;
     try {
-      mine = assignOf((parseLikeJint(example, { ecmaVersion: 'latest', sourceType: 'script' }).program as any).body[0]);
+      const ex = (parseLikeJint(example, { ecmaVersion: 'latest', sourceType: 'script' }).program as any).body;
+      if (ex.length === 1) mine = assignOf(ex[0]);
     } catch { /* not one statement: inserted as it is */ }
+    const at = have.length && mine ? -1 : foundIn(top, example);
+    if (at >= 0) return { text, action: 'same', line: lineAt(text, top[at].start), where: 'the top level' };
     if (have.length && mine) {
       const s = have[have.length - 1];
       const a = assignOf(s);
@@ -326,7 +328,9 @@ export function placeExample(text: string, path: string, example: string, where 
     const same = top.filter((s) => { const p = pathOfStmt(s); return p && !isFn(s) && p.slice(0, p.lastIndexOf('.')) === owner; });
     const after = same[same.length - 1] ?? options[options.length - 1];
     if (after) {
-      const at = lineEnd(text, after.end);
+      // After its line, unless more code follows it on that line (`Game.GUID = "x"; Game.Play = function () {`).
+      const eol = lineEnd(text, after.end);
+      const at = /^\s*(\/\/.*)?$/.test(text.slice(after.end, eol)) ? eol : after.end;
       return insertAt(at, `\n${block(example, indentOf(text, after.start))}`, 'the top level');
     }
     if (firstFn) return insertAt(lineStart(text, firstFn.start), `${example}\n\n`, 'the top level');
@@ -339,25 +343,43 @@ export function placeExample(text: string, path: string, example: string, where 
   // write there (made when the callback has none).
   const usesPlayer = /\bplayer\./.test(example);
   const loop = (code: string, ind: string) => `${ind}for (var i = 0; i < PlayerList.Count; i++) {\n${ind}${unit}var player = PlayerList[i];\n${block(code, ind + unit)}\n${ind}}`;
-  const fnStmt = top.filter((s) => pathOfStmt(s) === where && isFn(s)).pop();
+  let fnStmt = top.filter((s) => pathOfStmt(s) === where && isFn(s)).pop();
+  let fn = fnStmt && assignOf(fnStmt).right;
+  // Set by name (`Game.Play = play;`): the top-level function of that name; anything else is left alone (undefined).
+  const byRef = top.filter((s) => pathOfStmt(s) === where).pop();
+  if (byRef && !isFn(byRef)) {
+    const r = assignOf(byRef).right;
+    const decl = r.type === 'Identifier' ? top.filter((s) => s.type === 'FunctionDeclaration' && s.id?.name === r.name).pop() : undefined;
+    if (!decl) return undefined;
+    fnStmt = decl;
+    fn = decl;
+  }
   if (!fnStmt) {
     const inner = usesPlayer && where !== 'Game.Play' ? loop(example, unit) : block(where === 'Game.Play' ? example.replace(/\bplayer\./g, 'Player.') : example, unit);
     const code = `${where} = function () {\n${inner}\n};\n`;
     const at = text.length;
     const lead = !text ? '' : text.endsWith('\n\n') ? '' : text.endsWith('\n') ? '\n' : '\n\n';
     const out = text + lead + code;
-    return { text: out, action: 'callback', line: lineAt(out, at + lead.length) + 1, where };
+    // The example's line (inside the new loop, when there is one).
+    return { text: out, action: 'callback', line: lineAt(out, at + lead.length) + 1 + (usesPlayer && where !== 'Game.Play' ? 2 : 0), where };
   }
-  const fn = assignOf(fnStmt).right;
   let code = example;
   let body = fn.body;
   let wrap = false;
   if (usesPlayer && where === 'Game.Play') code = code.replace(/\bplayer\./g, 'Player.');
   else if (usesPlayer) {
     // The callback's own loop over PlayerList (`var p = PlayerList[i];` in a for loop's body), else a new one.
-    const forLoop = (fn.body.body as any[]).filter((s) => s.type === 'ForStatement' && s.body.type === 'BlockStatement').map((s) => {
-      const decl = s.body.body.find((d: any) => d.type === 'VariableDeclaration' && d.declarations.some((x: any) => x.init?.type === 'MemberExpression' && x.init.computed && x.init.object.type === 'Identifier' && x.init.object.name === 'PlayerList'));
-      return decl ? { s, name: decl.declarations.find((x: any) => x.init?.object?.name === 'PlayerList').id.name } : undefined;
+    // Only a loop over the whole list: `for (var i = 0; i < PlayerList.Count; i++)` with `PlayerList[i]`.
+    const isId = (n: any, name?: string) => n?.type === 'Identifier' && (!name || n.name === name);
+    const whole = (s: any) => {
+      const t = s.test, init = s.init?.type === 'VariableDeclaration' ? s.init.declarations[0] : s.init?.type === 'AssignmentExpression' ? { id: s.init.left, init: s.init.right } : undefined;
+      const idx = isId(t?.left) ? t.left.name : undefined;
+      return idx && t.operator === '<' && t.right?.type === 'MemberExpression' && isId(t.right.object, 'PlayerList') && isId(t.right.property, 'Count') && isId(init?.id, idx) && init.init?.type === 'Literal' && init.init.value === 0 ? idx : undefined;
+    };
+    const forLoop = (fn.body.body as any[]).filter((s) => s.type === 'ForStatement' && s.body.type === 'BlockStatement' && whole(s)).map((s) => {
+      const idx = whole(s);
+      const x = s.body.body.flatMap((d: any) => (d.type === 'VariableDeclaration' ? d.declarations : [])).find((x: any) => x.init?.type === 'MemberExpression' && x.init.computed && isId(x.init.object, 'PlayerList') && isId(x.init.property, idx) && isId(x.id));
+      return x ? { s, name: x.id.name as string } : undefined;
     }).filter(Boolean).pop();
     if (forLoop) {
       body = forLoop.s.body;
@@ -371,10 +393,14 @@ export function placeExample(text: string, path: string, example: string, where 
   const last = stmts[stmts.length - 1];
   const ind = last && lineStart(text, last.start) > body.start ? indentOf(text, last.start) : outer + unit;
   if (wrap) code = loop(code, '');
+  const shift = (p: Placed): Placed => (wrap ? { ...p, line: p.line + 2 } : p); // the example's line, inside the new loop
+  // Ending in `return;` on a line of its own: before it, or the call would never run.
+  const ls = last ? lineStart(text, last.start) : -1;
+  if (last?.type === 'ReturnStatement' && ls > body.start && /^\s*$/.test(text.slice(ls, last.start))) return shift(insertAt(ls, `${block(code, ind)}\n`, where));
   const close = body.end - 1;
   const cls = lineStart(text, close);
-  if (cls > body.start && /^\s*$/.test(text.slice(cls, close))) return insertAt(cls, `${block(code, ind)}\n`, where);
+  if (cls > body.start && /^\s*$/.test(text.slice(cls, close))) return shift(insertAt(cls, `${block(code, ind)}\n`, where));
   // `function () {}` or `{ a(); }` on one line: open it up.
   const out = text.slice(0, body.start + 1) + text.slice(body.start + 1, close).replace(/^\s+|\s+$/g, '').replace(/^(.+)$/, `\n${ind}$1`) + `\n${block(code, ind)}\n${outer}` + text.slice(close);
-  return { text: out, action: 'insert', line: lineAt(out, body.start) + (stmts.length ? 2 : 1), where };
+  return shift({ text: out, action: 'insert', line: lineAt(out, body.start) + (stmts.length ? 2 : 1), where });
 }

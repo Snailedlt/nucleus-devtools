@@ -4,6 +4,7 @@ import { voteButtons } from './feedback';
 import { CONTEXT_TIPS, GENERAL_TIPS, Tip, TipContext, TipShow, tipShown } from './tips';
 import { scanHandler, inCallback, Scan } from './lines';
 import { narrow } from './dom';
+import { BETA } from './testplan';
 
 const ON_KEY = 'nucleus-workbench-tips';
 const SEEN_KEY = 'nucleus-workbench-tips-seen';
@@ -33,7 +34,9 @@ interface Deps {
 }
 
 export function initTips({ editor, actions, toast, targets, audience }: Deps) {
-  let show = (get(SHOW_KEY) as TipShow | null) ?? 'mode';
+  // Settings › Testing's choice: beta only (after the full release tips follow the mode; the choice stays saved).
+  const saved = BETA ? get(SHOW_KEY) : null;
+  let show: TipShow = saved === 'all' || saved === 'newcomer' || saved === 'developer' || saved === 'everyone' ? saved : 'mode';
   const forNow = (t: Tip) => tipShown(t, show, audience?.() ?? 'newcomer');
   let on = get(ON_KEY) !== '0';
   const seen = new Set<string>(JSON.parse(get(SEEN_KEY) || '[]'));
@@ -46,7 +49,9 @@ export function initTips({ editor, actions, toast, targets, audience }: Deps) {
   const label = $('#tip-label');
   let currentAction: (() => void) | undefined;
 
+  let shown: Tip | undefined;
   function render(tip: Tip, contextual: boolean) {
+    shown = tip;
     bar.classList.toggle('contextual', contextual);
     // Testers looking at other audiences' tips see whom each is for.
     const whom = show === 'mode' ? '' : ` · for ${tip.for === 'newcomer' ? 'newcomers' : tip.for === 'developer' ? 'developers' : 'everyone'}`;
@@ -156,7 +161,7 @@ export function initTips({ editor, actions, toast, targets, audience }: Deps) {
     },
     /** The mode changed (Guided / Advanced): swap the shown tip if it isn't for this mode. */
     refresh: () => {
-      if (on && !bar.classList.contains('contextual') && !forNow(GENERAL_TIPS[general])) showGeneral(1);
+      if (on && shown && !forNow(shown)) showGeneral(1); // a heads-up or tip not for this mode any more
     },
     /** Show the heads-up tips again (they are shown once each). */
     reset: () => {

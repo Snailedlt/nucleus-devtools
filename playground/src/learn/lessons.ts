@@ -635,11 +635,11 @@ const FIRST: Lesson[] = [
       const r = run(t);
       if (!r.loaded) return `The handler doesn't load: ${r.loadError ?? 'see Check'}`;
       if (!r.hasPlay) return 'Add the Game.Play function at the end.';
-      return /Context\s*\.\s*EnvironmentPlayer\s*\+\s*Context\s*\.\s*UserProfileConfigPath\s*\+\s*"\\\\bm_settings\.ini"/.test(t) ? null : 'Inside Game.Play: var VideoConfig = Context.EnvironmentPlayer + Context.UserProfileConfigPath + "\\\\bm_settings.ini";';
+      return /Context\s*\.\s*EnvironmentPlayer\s*\+\s*Context\s*\.\s*UserProfileConfigPath\s*\+\s*"\\\\bm_settings\.ini"/.test(noComments(t)) ? null : 'Inside Game.Play: var VideoConfig = Context.EnvironmentPlayer + Context.UserProfileConfigPath + "\\\\bm_settings.ini";';
     },
     goals: [
       { label: 'Game.Play', ok: (t) => /^\s*Game\s*\.\s*Play\s*=\s*function/m.test(t) },
-      { label: 'the path', ok: (t) => /Context\s*\.\s*EnvironmentPlayer\s*\+\s*Context\s*\.\s*UserProfileConfigPath/.test(t) },
+      { label: 'the path', ok: (t) => /Context\s*\.\s*EnvironmentPlayer\s*\+\s*Context\s*\.\s*UserProfileConfigPath/.test(noComments(t)) },
     ],
     unit: 'parts',
     pane: 'tryit',
@@ -671,7 +671,7 @@ const FIRST: Lesson[] = [
       if (!r.hasPlay) return 'Add the Game.Play function at the end.';
       return r.players.every((_, i) => iniWrites(r, i).some((w) => /^bm_settings\.ini: \[Video\] Fullscreen = "0"$/.test(w))) ? null : 'In Try it, each player should change bm_settings.ini: [Video] Fullscreen = "0".';
     },
-    goals: [{ label: 'Fullscreen = "0"', ok: (t) => { const r = run(t); return r.loaded && r.players.every((_, i) => iniWrites(r, i).some((w) => /Fullscreen = "0"$/.test(w))); } }],
+    goals: [{ label: 'Fullscreen = "0"', ok: (t) => { const r = run(t); return r.loaded && r.players.every((_, i) => iniWrites(r, i).some((w) => /^bm_settings\.ini: \[Video\] Fullscreen = "0"$/.test(w))); } }],
     unit: 'setting',
     pane: 'tryit',
   },
@@ -707,11 +707,11 @@ const FIRST: Lesson[] = [
 // the last lesson says what that one does differently, and why.
 
 /** Each player's Context.WriteTextFile calls: the file name and its lines. */
-export function textWrites(r: SimResult, player: number): { file: string; lines: string[] }[] {
-  const out: { file: string; lines: string[] }[] = [];
+export function textWrites(r: SimResult, player: number): { file: string; path: string; lines: string[] }[] {
+  const out: { file: string; path: string; lines: string[] }[] = [];
   for (const c of r.players[player]?.calls ?? []) {
     const m = /^Context\.WriteTextFile\("((?:[^"\\]|\\.)*)", \[([\s\S]*)\]\)$/.exec(c);
-    if (m) out.push({ file: m[1].split(/\\\\|\//).pop()!, lines: [...m[2].matchAll(/"((?:[^"\\]|\\.)*)"/g)].map((x) => x[1].replace(/\\(.)/g, '$1')) });
+    if (m) out.push({ file: m[1].split(/\\\\|\//).pop()!, path: m[1], lines: [...m[2].matchAll(/"((?:[^"\\]|\\.)*)"/g)].map((x) => x[1].replace(/\\(.)/g, '$1')) });
   }
   return out;
 }
@@ -800,10 +800,10 @@ const CURE: Lesson[] = [
       if (e) return e;
       const v = str(t, 'Game.StartArguments');
       if (v === undefined) return 'Still to add: ' + C_ARGS_L.trim();
-      const miss = ARGS.filter((a) => !v.split(/\s+/).join(' ').includes(a));
+      const miss = ARGS.filter((a) => !hasArg(v, a));
       return miss.length ? `Not quite yet: the arguments still need ${miss.join(', ')}` : null;
     },
-    goals: ['-windowed', '-noborder', '-game cure', '-novid', '-insecure'].map((a) => ({ label: a, ok: (t: string) => (str(t, 'Game.StartArguments') ?? '').split(/\s+/).join(' ').includes(a) })),
+    goals: ['-windowed', '-noborder', '-game cure', '-novid', '-insecure'].map((a) => ({ label: a, ok: (t: string) => hasArg(str(t, 'Game.StartArguments') ?? '', a) })),
     unit: 'arguments',
     pane: 'tryit',
   },
@@ -905,8 +905,9 @@ const CURE: Lesson[] = [
       if (e) return e;
       const r = run(t);
       return r.players.every((_, i) => {
-        const w = textWrites(r, i).find((x) => x.file.toLowerCase() === 'autoexec.cfg');
-        return w && w.lines.includes('engine_no_focus_sleep 0') && (r.players[i].calls.find((c) => c.startsWith('Context.WriteTextFile(')) ?? '').includes(`\\\\Instance${i}\\\\cure\\\\cfg\\\\autoexec.cfg`);
+        // The last write to this player's autoexec.cfg (the one that stays) has the line.
+        const w = textWrites(r, i).filter((x) => x.path.toLowerCase().endsWith(`\\\\instance${i}\\\\cure\\\\cfg\\\\autoexec.cfg`)).pop();
+        return !!w && w.lines.includes('engine_no_focus_sleep 0');
       }) ? null : 'In Try it, each player should write Instance<n>\\cure\\cfg\\autoexec.cfg with engine_no_focus_sleep 0.';
     },
     goals: [
@@ -944,8 +945,8 @@ const CURE: Lesson[] = [
       const r = run(t, 2, true);
       const kb = autoexecOf(r, 0), pad = autoexecOf(r, 1);
       if (!kb || !pad) return 'Each player should still write autoexec.cfg.';
-      if (!kb.lines.includes('joystick 0')) return 'In Try it, player 1 (keyboard) should get joystick 0.';
-      return pad.lines.includes('joystick 1') ? null : 'In Try it, player 2 (controller) should get joystick 1.';
+      if (!kb.lines.includes('joystick 0') || kb.lines.includes('joystick 1')) return 'In Try it, player 1 (keyboard) should get joystick 0 (and not joystick 1).';
+      return pad.lines.includes('joystick 1') && !pad.lines.includes('joystick 0') ? null : 'In Try it, player 2 (controller) should get joystick 1 (and not joystick 0).';
     },
     goals: [
       { label: 'the if', ok: (t) => /if\s*\(\s*Player\s*\.\s*IsKeyboardPlayer\s*\)/.test(t) },
@@ -1026,12 +1027,14 @@ const CURE: Lesson[] = [
     download: 'zip',
   },
 ];
+/** Whole arguments only: `-novideo` isn't `-novid`, and `-game` needs `cure` after it. */
+const hasArg = (v: string, a: string) => ` ${v.trim().split(/\s+/).join(' ')} `.includes(` ${a} `);
 const ARGS = ['-windowed', '-noborder', '-game cure', '-novid', '-insecure'];
 /** The quiz's three mistakes, each fixed when its test holds. */
 const QUIZ: [string, (t: string) => boolean][] = [
   ['Game.GameName in double quotes', (t) => str(t, 'Game.GameName') === 'Codename CURE Tutorial' && !lint(t).some((d) => d.rule === 'hub-install-parse')],
   ['Context.StartArguments', (t) => /Context\s*\.\s*StartArguments\s*\+=\s*" -w "/.test(t) && !/StartArgument\b/.test(t)],
-  ['the option compared as text', (t) => /Context\s*\.\s*Options\s*\[\s*"fps"\s*\]\s*[!=]==?\s*"?144"?/.test(t) && !lint(t).some((d) => d.rule === 'option-compare')],
+  ['the option compared as text', (t) => /Context\s*\.\s*Options\s*\[\s*"fps"\s*\]\s*===?\s*"?144"?/.test(t) && !lint(t).some((d) => d.rule === 'option-compare')],
 ];
 CURE.find((l) => l.id === 'fix-it')!.goals = QUIZ.map(([label, ok]) => ({ label, ok }));
 

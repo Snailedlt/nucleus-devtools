@@ -15,8 +15,9 @@ export function stepShape(s: StepLike): string | undefined {
   if (s.kind === 'call') return `call ${s.path ?? s.calleeText}`;
   if (s.kind === 'set') {
     const t = s.path ?? s.calleeText ?? '';
-    const i = t.lastIndexOf('.');
-    return `set ${i > 0 ? t.slice(0, i + 1) : t}`;
+    // The object it's set on: before the last `.name` or `[key]` (a dot inside a key, `o["a.b"]`, doesn't split).
+    const m = /^(.+?)(?:\.[A-Za-z_$][\w$]*|\[(?:"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[^\]"']*)\])$/.exec(t);
+    return `set ${m ? `${m[1]}.` : t}`;
   }
   if (s.kind === 'var') return `var ${s.varName}`;
   return undefined; // conditions and code: never grouped

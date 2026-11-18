@@ -16,7 +16,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 ### ✨ New
 
-- **Which hooks does your game need? Its files say.** With the game's folder linked (Files › *Your game on this PC*), Check reads the game's .exe and DLLs on this device and suggests the Proto Input hooks they call for (XInput, the cursor clip, raw input), each with one button to add it and how many Hub handlers use it. Nothing is uploaded.
+- **Which hooks does your game need? Its files say.** With the game's folder linked (Files › *Your game on this PC*), Check reads the game's .exe and DLLs on this device and suggests the Proto Input hooks they call for (XInput, the cursor clip, raw input), each with one button to add it and how many Hub handlers use it. Nothing is uploaded. Suggested by messenils.
 - **Learn has a second chapter: launch options and config files.** Nine short lessons build a handler for Codename CURE, a free Source engine co-op game on Steam: launch arguments, each window's size in `Game.Play`, a choice the players make (and why saved choices come back as text), a config file for each player, a "fix the mistakes" quiz checked by the real Check, a test in Nucleus Co-op and a comparison with the Hub handler.
 - **A Hint button in Learn.** Next to *Show me*, *Hint* says what the lesson's check still misses and where to look (the line under `// The game`, say), and follows your code as you type. Nothing shows until you press it.
 - **Each chapter starts with an overview.** What you'll build, what you need first, and every lesson with its minutes, marking the ones done on your PC.
@@ -82,6 +82,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 - **Learn's "Different for you? Tell us" asks about the tip.** The report it opens is titled *This tip is different for me* and asks what happens instead.
 - **The 👍/👎 under a doc and under "In practice" have names of their own.** Screen readers say which part you vote on.
 - **Settings › AI fits on a phone.** The provider list no longer runs off the screen.
+- **Insert into handler, Learn's checks and a few smaller things behave as expected.** *Insert into handler* compares string values exactly, updates the assignment that counts, never lands inside a callback or after a `return;`, and finds a `Game.Play` set by name; Learn's checks no longer accept partial launch arguments, conflicting joystick lines or commented-out code. Problem reports never carry a `#share-` link (it holds your code), a vote made by an automated browser isn't saved, Blocks keeps the state of moved steps, and Esc closes a comment's popup.
 
 ### 🙏 Thanks
 

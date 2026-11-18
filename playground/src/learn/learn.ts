@@ -412,7 +412,7 @@ function renderTryIt(text: string, miss: string | null = null) {
   // and the arguments every copy gets.
   if (!r.hasPlay) {
     const cols = tryPlayers <= 2 ? tryPlayers : 2, rows = Math.ceil(tryPlayers / cols);
-    const args = /^\s*Game\.StartArguments\s*=\s*"((?:[^"\\]|\\.)*)"/m.exec(text)?.[1] ?? '';
+    const args = /^\s*Game\.StartArguments\s*=\s*(["'])((?:(?!\1)[^\\]|\\.)*)\1/m.exec(text)?.[2] ?? '';
     r.players = Array.from({ length: tryPlayers }, (_, i) => ({ index: i, startArguments: args, calls: [], effects: [], window: `${Math.floor(1920 / cols)} × ${Math.floor(1080 / rows)}` }));
   }
   const card = (p: SimResult['players'][number], i: number) => {
@@ -729,7 +729,7 @@ $('#next').addEventListener('click', () => go(index + 1));
 addEventListener('hashchange', () => { const f = findLesson(location.hash); chapter = f.chapter; go(f.index); });
 // Alt+← / Alt+→ go back and on (in the editor too).
 addEventListener('keydown', (e) => {
-  if (!e.altKey || e.ctrlKey || e.metaKey) return;
+  if (!e.altKey || e.ctrlKey || e.metaKey || document.querySelector('dialog[open]')) return; // not behind a report dialog
   if (e.key === 'ArrowRight' && !$('#next').hasAttribute('disabled')) { e.preventDefault(); go(index + 1); }
   else if (e.key === 'ArrowLeft' && !$('#back').hasAttribute('disabled')) { e.preventDefault(); go(index - 1); }
 });

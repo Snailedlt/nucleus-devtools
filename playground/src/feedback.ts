@@ -107,6 +107,7 @@ export const myVote = (kind: string, id: string): Vote | undefined => votes()[`$
 export function vote(kind: VoteKind, id: string, v: Vote): Vote | undefined {
   const all = votes();
   const k = `${kind}/${id}`;
+  if (automated()) return all[k]; // never sent, so not saved as a person's vote either
   const now = all[k] === v ? undefined : v;
   if (now) all[k] = now; else delete all[k];
   set(KEY, JSON.stringify(all));

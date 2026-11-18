@@ -38,8 +38,11 @@ export const SITE_HEADER_CSS = `
  * switched off), and each browser's own vote is kept in the same storage, so the buttons agree with the workbench.
  */
 export function docFeedback(name, reportUrl, esc, kind = 'doc', question = 'Is this right?') {
+  // A docs page can have two boxes (the doc and "In practice"): each button's name says which part it rates.
+  // (The same names as the workbench's, doccard.ts VOTE_LABELS.)
+  const [up, down] = kind === 'practice' ? ['“In practice” is correct', '“In practice” is wrong or unclear'] : kind === 'doc' ? ['The doc is correct', 'The doc is wrong or unclear'] : ['Correct', 'Wrong or unclear'];
   return `<div class="doc-fb" data-kind="${kind}" data-doc="${esc(name)}"><span>${esc(question)}</span>
-<button type="button" class="vote-btn" data-vote="up" aria-pressed="false" aria-label="Correct" title="Correct">👍</button><button type="button" class="vote-btn" data-vote="down" aria-pressed="false" aria-label="Wrong or unclear" title="Wrong or unclear">👎</button>
+<button type="button" class="vote-btn" data-vote="up" aria-pressed="false" aria-label="${up}" title="Correct">👍</button><button type="button" class="vote-btn" data-vote="down" aria-pressed="false" aria-label="${down}" title="Wrong or unclear">👎</button>
 <a href="${esc(reportUrl)}" target="_blank" rel="noopener">Tell us what's wrong</a><span class="doc-fb-thanks" role="status"></span></div>`;
 }
 export const DOC_FEEDBACK_CSS = `

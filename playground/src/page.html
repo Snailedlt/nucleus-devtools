@@ -897,7 +897,7 @@ a { color: var(--accent); }
 /* Help on request: only on the cursor's list (.near), on hover of its line, or with a menu open */
 .CodeMirror .wm-hint:not(.near), .CodeMirror .wm-add:not(.near) { display: none; }
 .CodeMirror .CodeMirror-line:hover .wm-hint, .CodeMirror .CodeMirror-line:hover .wm-add { display: inline; }
-.CodeMirror .CodeMirror-line:hover .wm-add, .CodeMirror .wm-add.near { display: inline-block; }
+.CodeMirror .CodeMirror-line:hover .wm-add, .CodeMirror .wm-add.near, .CodeMirror .wm-add.open { display: inline-block; }
 .wm-menu { position: fixed; z-index: 40; width: min(420px, calc(100vw - 16px)); max-height: 60vh; overflow: auto; padding: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--sh-3, 0 10px 30px rgba(0,0,0,.25)); }
 .wm-menu-h { padding: 6px 8px; font-weight: 700; font-size: 13px; }
 .wm-menu button { display: grid; grid-template-columns: auto auto 1fr; gap: 2px 8px; align-items: baseline; width: 100%; text-align: left; padding: 8px; border: 0; border-radius: 8px; background: transparent; color: var(--fg); cursor: pointer; font: inherit; font-size: 13.5px; }
@@ -2146,7 +2146,7 @@ details[open] > .fv-group-title::before { transform: rotate(45deg); }
 .bv-note-open > .bv-note-more { display: inline-block; margin: 2px 0 0 8px; }
 .bv-note-pop { position: absolute; left: 0; top: calc(100% + 2px); z-index: 4; width: max-content; max-width: min(48em, 100%); max-height: 40vh; overflow: auto; white-space: pre-wrap; font: 12.5px/1.45 var(--font-body); font-style: normal; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 8px 10px; box-shadow: 0 4px 16px rgb(0 0 0 / .18); visibility: hidden; opacity: 0; transition: opacity .12s, visibility 0s .12s; }
 .bv-note.bv-pop-up > .bv-note-pop { top: auto; bottom: calc(100% + 2px); }
-.bv-note-long:not(.bv-note-open):hover > .bv-note-pop { visibility: visible; opacity: 1; transition: opacity .12s .35s, visibility 0s .35s; }
+.bv-note-long:not(.bv-note-open):not(.bv-pop-off):hover > .bv-note-pop { visibility: visible; opacity: 1; transition: opacity .12s .35s, visibility 0s .35s; }
 @media (hover: none) { .bv-note-pop { display: none; } }
 
 #extra-problems { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }

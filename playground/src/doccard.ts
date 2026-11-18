@@ -16,7 +16,17 @@ declare const BUILD: { docVotes?: VoteSnapshot | null };
 try { setDocVotes(BUILD.docVotes); } catch { /* no BUILD (tests) */ }
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
-const inline = (s: string) => esc(s).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/\[([^\]]+)\]\((https:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+// Code spans and links are set aside first, so bold never reaches into them (nor a link into code), then put back.
+const inline = (s: string) => {
+  const kept: string[] = [];
+  const keep = (html: string) => `\u0000${kept.push(html) - 1}\u0000`;
+  return esc(s.replace(/\u0000/g, ''))
+    .replace(/`([^`]+)`/g, (_m, c: string) => keep(`<code>${c}</code>`))
+    .replace(/\[([^\]]+)\]\((https:\/\/[^)\s]+)\)/g, (_m, t: string, u: string) => keep(`<a href="${u}" target="_blank" rel="noopener">${t.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')}</a>`))
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/\u0000(\d+)\u0000/g, (_m, i: string) => kept[Number(i)])
+    .replace(/\u0000(\d+)\u0000/g, (_m, i: string) => kept[Number(i)]); // code inside a link's text
+};
 // Parameters accept numbers and booleans too (Jint converts them to text); the signature shows the declared type.
 const ty = (t: string) => `<span class="sg-t">${esc(t.replace(/ \| number \| boolean$/, '').replace(/^string \| number \| boolean$/, 'string'))}</span>`;
 

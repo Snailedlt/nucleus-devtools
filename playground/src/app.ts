@@ -9,7 +9,7 @@ import { applyTheme, initDevBar } from './devbar';
 import { applyCodeTheme, applyCustomTheme } from './customtheme';
 import { watchPictures } from './themed';
 import { announce, clearNotice, confirmOn, initToasts, notice, toast as showToast, type ToastOptions } from './toast';
-import { decodeShare, DISCORD_LIMIT, encodeShare, isNamedLink, missingFilesText, shareAdvice, shareFileMessage } from './share';
+import { decodeShare, DISCORD_LIMIT, encodeShare, isNamedLink, missingFilesText, SHARE_PREFIX, shareAdvice, shareFileMessage } from './share';
 import CodeMirror from 'codemirror';
 import 'codemirror/mode/javascript/javascript';
 import 'codemirror/addon/lint/lint';
@@ -316,11 +316,15 @@ const editor = CodeMirror($('#editor'), {
   lint: {
     getAnnotations: (text: string) =>
       analyze(text).then((r) => {
+        // An older result (the text changed or another tab opened meanwhile): its offsets are for other text, and a
+        // newer Check is already on its way.
+        if (text !== editor.getValue()) return [];
         current = r.diagnostics;
         currentText = text;
         if (gameFolder) {
           // The game's .exe and DLLs are read in the background; their hints join once read (then Check runs again).
-          const bins = gameBinariesNow(gameFolder, () => (editor as any).performLint());
+          const folder = gameFolder;
+          const bins = gameBinariesNow(folder, () => { if (gameFolder === folder) (editor as any).performLint(); });
           folderProblems = [...checkAgainstFolder(text, gameFolder), ...(bins ? importProblems(text, bins) : [])];
         } else folderProblems = [];
         pkgProblems = pkgUI ? pkgUI.problems() : [];
@@ -1332,7 +1336,7 @@ function placeDocExample(path: string, m: Member) {
 }
 function insertExample(path: string, m: Member) {
   const r = placeDocExample(path, m);
-  if (!r) return toast("The handler doesn't parse, so there's no telling where the example goes. Fix it first (Check lists what's wrong).");
+  if (!r) return toast("There's no telling where the example goes: the handler doesn't parse (Check lists what's wrong), or its callback is set to a function made elsewhere. Add it by hand.");
   if (r.action === 'same') {
     editor.setCursor({ line: r.line, ch: 0 });
     editor.scrollIntoView({ line: r.line, ch: 0 }, 80);
@@ -2453,7 +2457,7 @@ function edgeMenu(edge: PanelEdge, at: { x: number; y: number }) {
     { label: 'Reset all panel sizes', run: () => panels.reset() },
     { label: 'Tools in a side rail', checked: layout() === 'rail', run: () => setLayout(layout() === 'rail' ? 'bar' : 'rail') },
     { label: 'Layout settings…', run: () => settings.open('layout') },
-  ], 'right');
+  ], 'right', document.getElementById(`split-${edge}`) ?? undefined); // focus back to the edge, not the position marker
 }
 $('#set-reset-sizes').addEventListener('click', () => (panels.reset(), confirmOn($('#set-reset-sizes'), 'Back to defaults ✓', 'Panel sizes are back to their defaults.')));
 const moreDialog = $('#more-dialog') as HTMLDialogElement;
@@ -3019,8 +3023,10 @@ setReportState(() => ({
   handler: {
     name: doc.name,
     kind: doc.kind === 'draft' || doc.kind === 'new' ? 'own code, not included' : doc.kind,
-    link: doc.hash && editor.getValue() === loadedText ? `${location.origin}${location.pathname}#${doc.hash}` : undefined,
-    ...(doc.kind === 'hub' && doc.hubIndex !== undefined ? { hubId: HUB_EXAMPLES.handlers[doc.hubIndex].id, hubVersion: String(HUB_EXAMPLES.handlers[doc.hubIndex].version ?? '') || undefined } : {}),
+    // A #share-… link carries the code itself: never in a report (only named links such as #hub-… are sent).
+    link: doc.hash && !doc.hash.startsWith(SHARE_PREFIX) && editor.getValue() === loadedText ? `${location.origin}${location.pathname}#${doc.hash}` : undefined,
+    // From the saved #hub-<id> and version, not the catalogue index (a newer catalogue may have moved it).
+    ...(doc.kind === 'hub' && doc.hash?.startsWith('hub-') ? { hubId: doc.hash.slice(4), hubVersion: doc.published?.version !== undefined ? String(doc.published.version) : undefined } : {}),
   },
   view: viewMode,
 }));

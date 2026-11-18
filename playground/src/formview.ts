@@ -382,6 +382,12 @@ export function mountFormView(container: HTMLElement, host: FormHost): FormView 
     return h('abbr', 'fv-unit', { id: idOf(`${e.key}:unit`), title: UNIT_TEXT[u].long }, UNIT_TEXT[u].short);
   };
 
+  /** The unit in words for a field's name (the code editor has no unit beside it): ", in milliseconds". */
+  const unitName = (e: Entry) => {
+    const u = e.member && optionLabel(e.path, e.member).unit;
+    return u ? `, in ${UNIT_TEXT[u].long}` : '';
+  };
+
   function makeRow(e: Entry): Row {
     const el = h('div', 'fv-row', { 'data-key': e.key });
     const line = h('div', 'fv-line');
@@ -583,7 +589,7 @@ export function mountFormView(container: HTMLElement, host: FormHost): FormView 
         const src = e.source ?? '';
         const shown = h('code', 'fv-src hl cm-s-default', { 'data-fv': `${e.key}:src` });
         shown.innerHTML = hlCode(src);
-        const f = new CodeField({ attrs: { 'data-fv': `${e.key}:code`, id: idOf(`${e.key}:code`) }, label: `${e.path} (code)`, value: src, multiline: src.includes('\n'), baseIndent: () => indentAt(text, row.entry.value.start), unit: () => (/^\t/m.test(text) ? '\t' : /^ {2}\S/m.test(text) ? '  ' : '    ') });
+        const f = new CodeField({ attrs: { 'data-fv': `${e.key}:code`, id: idOf(`${e.key}:code`) }, label: `${e.path} (code${unitName(e)})`, value: src, multiline: src.includes('\n'), baseIndent: () => indentAt(text, row.entry.value.start), unit: () => (/^\t/m.test(text) ? '\t' : /^ {2}\S/m.test(text) ? '  ' : '    ') });
         f.el.classList.add('fv-code');
         f.oninput = () => {
           const cur = row.entry;

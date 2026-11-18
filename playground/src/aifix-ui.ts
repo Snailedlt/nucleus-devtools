@@ -130,8 +130,9 @@ export function initFixes(deps: FixesDeps): void {
   $('#fix-all').addEventListener('click', () => {
     deps.used('fix-all');
     // Harmless cleanups (lines that do nothing) wait unless they are all there is: the result offers them.
-    const onlyCleanups = ($('#fix-all') as HTMLButtonElement).dataset.cleanupsOnly === '1';
-    runFixAll(onlyCleanups);
+    // Decided on the code as it is now, not on the last Check's count (an edit since may have changed it).
+    const base = editor.getValue();
+    runFixAll(fixAll(base, { ...deps.lintCtx(), cleanups: false }).code === base);
   });
   function runFixAll(cleanups: boolean) {
     const base = editor.getValue();

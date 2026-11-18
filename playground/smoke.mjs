@@ -915,8 +915,9 @@ await m.ctx.close();
     const s = await page(theme, { viewport: { width: 1366, height: 800 } });
     await s.p.goto(BASE + 'learn/#first-handler/why');
     await s.p.waitForTimeout(500);
-    CH2 ||= await s.p.evaluate(() => document.querySelectorAll('#drawer-list .d-chapter')[1]?.querySelector('a')?.getAttribute('href')?.replace(/^#/, '').split('/')[0] ?? '');
-    check(!!CH2, `learn ${theme}: chapter 2 is in the lesson list`);
+    const ch2Here = await s.p.evaluate(() => document.querySelectorAll('#drawer-list .d-chapter')[1]?.querySelector('a')?.getAttribute('href')?.replace(/^#/, '').split('/')[0] ?? '');
+    check(!!ch2Here && (!CH2 || ch2Here === CH2), `learn ${theme}: chapter 2 is in the lesson list`);
+    CH2 ||= ch2Here;
     check(await s.p.isVisible('#scene [data-scene=next]'), `learn ${theme}: the intro starts with one step`);
     for (let i = 0; i < 3; i++) { await s.p.click('#scene [data-scene=next]'); await s.p.waitForTimeout(150); }
     await s.p.waitForTimeout(1200); // the list's fade-in

@@ -657,7 +657,8 @@ const toolsSrc = (() => {
     .replace(/(<meta (?:property="og|name="twitter):description" content=")[^"]*"/g, `$1${desc}"`)
     .replace(/__BASE__start\/"/g, '__BASE__tools/"')
     .replace(/(content="__BASE__)tools\/og\.png"/g, '$1start/og.png"')
-    + '<body>\n' + hlLangBlocks(fs.readFileSync(path.join(here, 'src', 'tools.html'), 'utf8'));
+    // Its <script> stays as written (hlLangBlocks only on the HTML around it).
+    + '<body>\n' + fs.readFileSync(path.join(here, 'src', 'tools.html'), 'utf8').split(/(<script\b[\s\S]*?<\/script>)/i).map((part, i) => (i % 2 ? part : hlLangBlocks(part))).join('');
 })();
 const toolsDir = path.join(here, 'dist', 'pages', 'tools');
 fs.mkdirSync(toolsDir, { recursive: true });
@@ -843,7 +844,7 @@ for (const f of fs.readdirSync(path.join(here, 'src', 'editor-icons'))) if (f.en
     if (b < 0 || e < 0) return html;
     // Inline code that is clearly code (Game.Play, a call, a string) coloured like the editor; then the keys. Only in
     // the page's text: a page's own <script> builds HTML in template strings, which must stay as written.
-    const body = outsideScripts(hlLangBlocks(withCommunity(html.slice(b, e)).replaceAll('__EDITOR_POLL__', COMMUNITY.editorPoll).replaceAll('__DISCORD_INVITE__', COMMUNITY.discord)), (part) => kbdify(part.replace(/<code>([^<]*)<\/code>/g, (m, inner) => {
+    const body = outsideScripts(withCommunity(html.slice(b, e)).replaceAll('__EDITOR_POLL__', COMMUNITY.editorPoll).replaceAll('__DISCORD_INVITE__', COMMUNITY.discord), (part) => kbdify(hlLangBlocks(part).replace(/<code>([^<]*)<\/code>/g, (m, inner) => {
       const t = inner.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
       return hlSem.looksLikeCode(t) ? `<code class="hl">${hlSem(t)}</code>` : m;
     })));

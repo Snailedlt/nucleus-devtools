@@ -20,7 +20,8 @@ export function initKeySettings(root: HTMLElement) {
   {
     const box = root.querySelector<HTMLInputElement>('.kb-dshift')!;
     try { box.checked = localStorage.getItem('nucleus-workbench-double-shift') !== '0'; } catch { box.checked = true; }
-    box.addEventListener('change', () => { try { localStorage.setItem('nucleus-workbench-double-shift', box.checked ? '1' : '0'); } catch { /* not kept */ } });
+    // Not saved (storage unavailable): the box goes back, so it shows what Double Shift really does.
+    box.addEventListener('change', () => { try { localStorage.setItem('nucleus-workbench-double-shift', box.checked ? '1' : '0'); } catch { box.checked = !box.checked; } });
   }
   const body = root.querySelector('tbody')!;
   const q = root.querySelector<HTMLInputElement>('.kb-q')!;
@@ -109,6 +110,8 @@ export function initKeySettings(root: HTMLElement) {
       render();
     } else if (t.closest('[data-kb-reset-all]')) {
       resetAll();
+      const dshift = root.querySelector<HTMLInputElement>('.kb-dshift')!;
+      try { localStorage.removeItem('nucleus-workbench-double-shift'); dshift.checked = true; } catch { /* not kept */ }
       msg.textContent = 'Every shortcut is back to its default.';
       render();
     }

@@ -61,7 +61,8 @@ export function initSettings(d: Deps) {
     ($('#set-wrap') as HTMLInputElement).checked = ed.wrap;
     ($('#set-keybar') as HTMLInputElement).checked = ed.keybar;
     ($('#set-tips') as HTMLInputElement).checked = d.tips.isOn();
-    ($('#set-tips-show') as HTMLSelectElement).value = d.tips.show();
+    const tipsShow = document.querySelector<HTMLSelectElement>('#set-tips-show'); // Testing tab: gone when not a beta
+    if (tipsShow) tipsShow.value = d.tips.show();
     ($('#set-lines') as HTMLInputElement).checked = d.lines.isOpen();
     ($('#set-advanced') as HTMLInputElement).checked = d.advanced.checked;
     ($('#set-devbar') as HTMLInputElement).checked = d.devBar.isOn();
@@ -220,7 +221,7 @@ export function initSettings(d: Deps) {
   $('#set-tips').addEventListener('change', (e) => d.tips.set((e.target as HTMLInputElement).checked));
   // Settings › Testing: beta only (testplan.ts BETA).
   if (!BETA) document.querySelectorAll<HTMLElement>('#settings-dialog [data-beta]').forEach((e) => e.remove());
-  $('#set-tips-show').addEventListener('change', (e) => {
+  document.querySelector('#set-tips-show')?.addEventListener('change', (e) => {
     const v = (e.target as HTMLSelectElement).value as TipShow;
     if (v !== 'mode') d.tips.set(true); // reading them needs the tip bar
     d.tips.setShow(v);

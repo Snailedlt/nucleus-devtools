@@ -140,7 +140,7 @@ const PITFALLS = T('Pitfall', [
 
 const SHORTCUTS = T('Shortcut', [
   { id: 's-palette', text: 'Ctrl+Shift+P (or F1) opens the command palette, as in VS Code: format, fix, Try it, theme and the rest, each with its shortcut.' },
-  { id: 's-open', text: 'Ctrl+P (or Ctrl+K) opens the examples, templates and Hub handlers. Type `>` there to switch to commands.', action: { label: 'Examples', run: 'examples' } },
+  { id: 's-open', text: 'Ctrl+P (or Ctrl+K, or Shift twice) opens the examples, templates and Hub handlers. Type `>` there to switch to commands. Double Shift can be turned off in Settings › Keyboard shortcuts.', action: { label: 'Examples', run: 'examples' } },
   { id: 'f-looks-past', text: 'Miss the old Nucleus Co-op? Settings (Ctrl+,) → Theme has vlxst\'s Mac style and the original alpha 8 look, light and dark.' },
   { id: 'f-code-colours', text: 'Prefer your editor\'s colours? Settings (Ctrl+,) → Theme → Code colours: GitHub, VS Code, Xcode, One, Monokai or Dracula, with any look.' },
   { id: 'f-custom-theme', text: 'Make the workbench yours: Settings (Ctrl+,) → Theme → "Download this look as a theme file", keep only the colours you change, then "Load a theme file…". It shows up under Look, next to the built-in ones.' },
@@ -153,7 +153,7 @@ const SHORTCUTS = T('Shortcut', [
   { id: 's-lines', text: 'Ctrl+B shows or hides Lines (Ctrl+Shift+L too, outside the code: in the code it selects every occurrence, as in VS Code).', action: { label: 'Show Lines', run: 'lines' } },
   { id: 's-docs-insert', text: 'Docs show an example for most names: Insert into handler puts it where it belongs (an option with the others, a call in `Game.Play`), or updates the value when the handler sets it already. Ctrl+Z undoes it.' },
   { id: 's-docs-page', text: 'Every name in Docs has a page of its own to link to: open one and choose Open as a page, or send someone docs/Context.ModifySaveFile/ on the site.' },
-  { id: 's-tutorial', text: 'New to handlers? Learn walks you through making your first one, for a free game, a few lines at a time, checked as you type. At the end, you test it in Nucleus Co-op.', action: { label: 'Start it', run: 'tutorial' } },
+  { id: 's-tutorial', text: 'New to handlers? Learn walks you through making your first one, for a free game, a few lines at a time, checked as you type. At the end, you test it in Nucleus Co-op. Stuck on a step? Hint says what\'s missing without giving the answer away.', action: { label: 'Start it', run: 'tutorial' } },
   { id: 's-find-all', text: 'Add the same text after every match: Ctrl+F, type what to find, Alt+Enter selects every match, then → puts a cursor after each (← before each) and you type once for all.' },
   { id: 's-edit', text: 'VS Code’s editing keys work: Ctrl+/ comments a line, Alt+↑/↓ moves it, Shift+Alt+↑/↓ copies it, Ctrl+D selects the next match.' },
   { id: 's-explain', text: 'Not sure what a line does? Put the cursor on it and press Ctrl+Alt+E: what it does in plain words, the docs of its names, and what Check says about it.' },
@@ -191,6 +191,7 @@ const FEATURES_ = T('Feature', [
   { id: 'f-votes', text: 'Was a tip useful? The 👍 and 👎 next to it tell us, anonymously. The AI-written docs have them too.' },
   { id: 'f-density', text: 'Want more or less in Check? Settings › Check: Compact (one line each), Comfortable or Detailed.' },
   { id: 'f-tabs', text: 'Open more than one handler: + next to the tabs opens a new one, and your changes stay in their own tab. Ctrl+Shift+[ and ] switch between them.' },
+  { id: 'f-edge-menu', text: 'Right-click the edge between two panels (or focus it and press the keyboard\'s menu key) for its layout menu: reset its size, move Files or Lines to the other side, or hide it.' },
   { id: 'f-rail', text: 'Want more room for code? Settings › Layout › Side rail puts the tools in a strip on the left; › at its bottom shows their names. Files and Lines can sit on either side of the code.' },
   { id: 'f-gamefolder', text: 'Files › Your game on this PC: link the folder your game is installed in, and Check compares the executable and file lists with the real files, and hints at the Proto Input hooks the game\'s .exe and DLLs call for. Read in your browser only.' },
   { id: 'f-expand', text: 'A long value in Form or Blocks? Alt+Enter (or the expand button next to it) opens it in a larger editor, with the option’s docs beside it. Esc takes you back.' },

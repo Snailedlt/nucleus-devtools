@@ -13,20 +13,21 @@ export interface MenuItem {
 }
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
-let open: { el: HTMLElement; anchor: HTMLElement; off: () => void } | null = null;
+let open: { el: HTMLElement; anchor: HTMLElement; back?: HTMLElement; off: () => void } | null = null;
 
 export function closeMenu(focusBack = false) {
   if (!open) return;
-  const { el, anchor, off } = open;
+  const { el, anchor, back, off } = open;
   open = null;
   off();
   (el.parentElement ?? el).remove();
   anchor.setAttribute('aria-expanded', 'false');
-  if (focusBack) anchor.focus();
+  // Back to `back` when given (an anchor that can't take focus, like a pointer position) and still shown.
+  if (focusBack) (back?.isConnected && back.getClientRects().length ? back : anchor).focus();
 }
 
 /** Opens a menu for `anchor`; `side` puts it to the right of the anchor (the side rail) instead of under it. */
-export function openMenu(anchor: HTMLElement, label: string, items: MenuItem[], side: 'below' | 'right' = 'below') {
+export function openMenu(anchor: HTMLElement, label: string, items: MenuItem[], side: 'below' | 'right' = 'below', back?: HTMLElement) {
   const was = open?.anchor;
   closeMenu();
   if (was === anchor) return; // a second click on the same button closes it
@@ -74,5 +75,5 @@ export function openMenu(anchor: HTMLElement, label: string, items: MenuItem[], 
   const away = () => closeMenu();
   document.addEventListener('pointerdown', outside, true);
   addEventListener('resize', away);
-  open = { el, anchor, off: () => { document.removeEventListener('pointerdown', outside, true); removeEventListener('resize', away); } };
+  open = { el, anchor, back, off: () => { document.removeEventListener('pointerdown', outside, true); removeEventListener('resize', away); } };
 }

@@ -272,11 +272,9 @@ test('learn: optional lessons are skippable in one click, and the chapter works 
   assert.equal(m.total + m.optional, ch2.lessons.reduce((n, l) => n + l.minutes, 0));
   assert.ok(m.local > 0 && m.local < m.total);
   // A chapter's former ids still open it (links live for ever).
-  const was = ch2.formerIds;
-  ch2.formerIds = ['old-id'];
-  assert.equal(findLesson('#old-id/window-size').chapter, ch2);
-  assert.equal(findLesson('#old-id/window-size').index, ch2.lessons.findIndex((l) => l.id === 'window-size'));
-  ch2.formerIds = was;
+  assert.ok(ch2.formerIds?.includes('launch-options'));
+  assert.equal(findLesson('#launch-options/window-size').chapter, ch2);
+  assert.equal(findLesson('#launch-options/window-size').index, ch2.lessons.findIndex((l) => l.id === 'window-size'));
   // Unverified tips: marked in the data, so Learn adds "Different for you? Tell us".
   const tips = CHAPTERS.flatMap((c) => c.lessons.flatMap((l) => (l.steps ?? []).flatMap((st) => (typeof st === 'string' ? [] : st.trouble ?? []))));
   assert.ok(tips.filter(isUnverified).map(tipText).some((t) => /firewall|network/.test(t)) && tips.filter(isUnverified).map(tipText).some((t) => /DirectX/.test(t)), 'the firewall and first-start tips are marked unverified');
@@ -568,6 +566,17 @@ test('docs: "Insert into handler" puts an example where it belongs (lines.ts pla
   const looped = 'Game.ProtoInput.OnInputLocked = function() {\n    for (var i = 0; i < PlayerList.Count; i++) {\n        var p = PlayerList[i];\n        ProtoInput.X(p.ProtoInputInstanceHandle);\n    }\n};\n';
   r = L.placeExample(looped, 'ProtoInput.InstallHook', 'ProtoInput.InstallHook(player.ProtoInputInstanceHandle, 1);', 'Game.ProtoInput.OnInputLocked');
   assert.match(r.text, /        ProtoInput\.X\(p\.ProtoInputInstanceHandle\);\n        ProtoInput\.InstallHook\(p\.ProtoInputInstanceHandle, 1\);\n    \}/);
+  // Strings compare exactly; the last assignment is the one that counts; never inside a callback or after `return;`;
+  // a callback set by name is the function of that name; only a loop over the whole PlayerList is reused.
+  assert.equal(L.placeExample('Game.KillMutex = ["My Mutex"];\n', 'Game.KillMutex', 'Game.KillMutex = ["MyMutex"];').action, 'update');
+  assert.equal(L.placeExample('Game.MaxPlayers = 4;\nGame.MaxPlayers = 2;\n', 'Game.MaxPlayers', 'Game.MaxPlayers = 4;').action, 'update');
+  assert.match(L.placeExample('Game.GUID = "x"; Game.Play = function () {\n};\n', 'Game.MaxPlayers', 'Game.MaxPlayers = 4;').text, /^Game\.GUID = "x";\nGame\.MaxPlayers = 4; Game\.Play/);
+  assert.match(L.placeExample('Game.Play = function () {\n  a();\n  return;\n};\n', 'Context.Wait', 'Context.Wait(1);', 'Game.Play').text, /Context\.Wait\(1\);\n  return;/);
+  assert.match(L.placeExample('function play() {\n  a();\n}\nGame.Play = play;\n', 'Context.Wait', 'Context.Wait(1);', 'Game.Play').text, /a\(\);\n  Context\.Wait\(1\);\n\}\nGame\.Play = play;\n$/);
+  assert.equal(L.placeExample('Game.Play = other.fn;\n', 'Context.Wait', 'Context.Wait(1);', 'Game.Play'), undefined);
+  r = L.placeExample('Game.ProtoInput.OnInputLocked = function () {\n  for (var j = 0; j < 1; j++) {\n    var p = PlayerList[j];\n  }\n};\n', 'X', 'X(player.H);', 'Game.ProtoInput.OnInputLocked');
+  assert.match(r.text, /i < PlayerList\.Count/);
+  assert.equal(r.text.split('\n')[r.line].trim(), 'X(player.H);');
   // A handler that doesn't parse: no guessing.
   assert.equal(L.placeExample('Game.Play = function( {', 'Context.Wait', 'Context.Wait(1);', 'Game.Play'), undefined);
   // Every example in the docs goes somewhere in an empty handler and in a typical one, and the result still parses.

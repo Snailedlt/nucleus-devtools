@@ -24,18 +24,31 @@ export function importSettings(text: string): { set: number; reset: number } {
   if (data?.format !== FORMAT || typeof data.settings !== 'object' || !data.settings || Array.isArray(data.settings)) throw new Error("This isn't a workbench settings file.");
   // Only known settings, as text, and not huge (a custom theme is the biggest, a few KB).
   const values = new Map<string, string>();
+  const invalid = new Set<string>(); // in the file but not usable: left as they are, not reset
   for (const [k, v] of Object.entries(data.settings)) {
     const key = `nucleus-workbench-${k}`;
-    if (SETTINGS.includes(key) && typeof v === 'string' && v.length <= 200_000) values.set(key, v);
+    if (!SETTINGS.includes(key)) continue;
+    if (typeof v === 'string' && v.length <= 200_000) values.set(key, v); else invalid.add(key);
   }
+  // Switched-off usage counts stay off unless the file switches them on itself (a file from before the switch
+  // existed, or one that leaves it out, never turns counting back on).
+  const KEEP = new Set(['nucleus-workbench-feedback-off']);
   let set = 0;
   let reset = 0;
+  // What was there, to put back if the browser refuses partway through.
+  const before = new Map<string, string | null>();
   try {
     for (const key of SETTINGS) {
       const v = values.get(key);
-      if (v !== undefined) { localStorage.setItem(key, v); set++; }
-      else if (localStorage.getItem(key) !== null) { localStorage.removeItem(key); reset++; }
+      if (v !== undefined) { before.set(key, localStorage.getItem(key)); localStorage.setItem(key, v); set++; }
+      else if (!invalid.has(key) && !KEEP.has(key) && localStorage.getItem(key) !== null) { before.set(key, localStorage.getItem(key)); localStorage.removeItem(key); reset++; }
     }
-  } catch { throw new Error("This browser didn't let the page store settings."); }
+  } catch {
+    let restored = true;
+    for (const [key, v] of before) {
+      try { if (v === null) localStorage.removeItem(key); else localStorage.setItem(key, v); } catch { restored = false; }
+    }
+    throw new Error(restored ? "This browser didn't let the page store settings; nothing changed." : "This browser didn't let the page store settings, and only some were imported.");
+  }
   return { set, reset };
 }
