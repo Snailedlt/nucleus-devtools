@@ -12,7 +12,7 @@
 
 import { engineLine } from './hub-engines.mjs';
 import { basisWords } from './basis.mjs';
-import { linkBasis } from './sources.mjs';
+import { linkBasis, dataLinks, usedCommits } from './sources.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
@@ -365,7 +365,7 @@ function handleBlock(lines, proseText, category) {
       example: isSig ? undefined : example,
       signatureDoc: isSig ? example : undefined,
       category,
-      deprecated: deprecated ? 'Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).' : undefined,
+      deprecated: deprecated ? 'Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).' : undefined,
     });
   }
 }
@@ -866,6 +866,10 @@ const unusedClaude = Object.keys(claudeDocs).filter((k) => !usedClaude.has(k));
 if (unusedClaude.length) console.log(`data/claude-docs.json entries not used (a human doc exists now, or no such member): ${unusedClaude.join(', ')}`);
 const unusedParamDocs = Object.keys(claudeParamDocs).filter((k) => !usedParamDocs.has(k));
 if (unusedParamDocs.length) console.log(`data/claude-param-docs.json entries not used (no such method): ${unusedParamDocs.join(', ')}`);
+// The other kinds of basis' links (the Hub handlers, the engines data) and the commit of every repository the
+// source links point at (permalinks: scripts/sources.mjs).
+model.basisLinks = dataLinks((w) => sourceWarnings.add(w));
+model.sourceCommits = usedCommits();
 fs.mkdirSync(path.join(root, 'data'), { recursive: true });
 fs.writeFileSync(path.join(root, 'data', 'nucleus-api.json'), JSON.stringify(model, null, 1) + '\n');
 

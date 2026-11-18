@@ -423,7 +423,7 @@ Game.DPIHandling = Nucleus.DPIHandling.InvScaled;
 ### Game.DrawFakeMouseCursor
 `DrawFakeMouseCursor: boolean`
 default `true` · Support for multiple mice and keyboards
-**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).**
+**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).**
 This enables the fake mouse cursor to be drawn over the game by Nucleus Coop. 
  If the game uses a custom cursor, you will probably not need this option. (This will be obvious if you see the games custom cursor and a fake cursor drawn over it). 
  Be aware this is a 'fake' mouse cursor in the sense that Nucleus Coop will fake mouse input to the game via the other options and then the fake mouse cursor is drawn where the game should be responding to mouse input. 
@@ -739,7 +739,7 @@ Game.ForceWindowTitle = false;
 ### Game.ForwardRawKeyboardInput
 `ForwardRawKeyboardInput: boolean`
 default `false` · Support for multiple mice and keyboards
-**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).**
+**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).**
 The same as ForwardRawMouseInput, but for keyboards. Again, this should almost never be used instead of re-register raw input.
 In practice (AI-written): Read by Nucleus' own raw input forwarding (RawInputProcessor.cs), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. No Hub handler sets it true.
 _✎ AI-written, based on Nucleus RawInputProcessor.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17._
@@ -751,7 +751,7 @@ Game.ForwardRawKeyboardInput = false;
 ### Game.ForwardRawMouseInput
 `ForwardRawMouseInput: boolean`
 default `false` · Support for multiple mice and keyboards
-**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).**
+**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).**
 In some cases, you may need to forward raw mouse input. This is almost never needed as re-register raw input has the same effect with a much more efficient method. Forwarding input forwards raw input from Nucleus Coop to the game. This has a high CPU usage and many input events will not pass, resulting in choppy movement.
 In practice (AI-written): Read by Nucleus' own raw input forwarding (RawInputProcessor.cs), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. No Hub handler sets it true.
 _✎ AI-written, based on Nucleus RawInputProcessor.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17._
@@ -1046,7 +1046,7 @@ _✎ AI-written, based on Nucleus GenericGameInfo.cs, GenericGameHandler.cs. Not
 ### Game.HookDontUpdateLegacyInMouseMsg
 `HookDontUpdateLegacyInMouseMsg: boolean`
 Support for multiple mice and keyboards
-**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).**
+**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).**
 ****Nucleus Co-op will hook mouse movement messages and the GetCursorPos function to work around legacy input. Some games only need the GetCursorPos hook and conflict when mouse movement messages are edited. If this is the case, enable this option***
 In practice (AI-written): Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. No Hub handler sets it true.
 _✎ AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17._
@@ -1058,7 +1058,7 @@ Game.HookDontUpdateLegacyInMouseMsg = false;
 ### Game.HookFilterMouseMessages
 `HookFilterMouseMessages: boolean`
 Support for multiple mice and keyboards
-**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).**
+**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).**
 This hook filters many mouse messages to position the mouse cursor and other necessary changes from within the game itself. 
  This should almost always be enabled unless it causes some conflict.
 In practice (AI-written): Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs, only with `Game.SupportsMultipleKeyboardsAndMice`), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
@@ -1071,7 +1071,7 @@ Game.HookFilterMouseMessages = false;
 ### Game.HookFilterRawInput
 `HookFilterRawInput: boolean`
 Support for multiple mice and keyboards
-**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).**
+**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).**
 This filters raw input messages inside the application. This makes sure each instance only receives input for its designated input device.
 In practice (AI-written): Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs, only with `Game.SupportsMultipleKeyboardsAndMice`), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
 _✎ AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17._
@@ -1098,7 +1098,7 @@ Game.HookFocus = true;
 ### Game.HookGetAsyncKeyState
 `HookGetAsyncKeyState: boolean`
 default `true` · Support for multiple mice and keyboards
-**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).**
+**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).**
 HookGetAsyncKeyState is usually the only one that's needed, but leave the others enabled if there are no problems.
 In practice (AI-written): Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs, only with `Game.SupportsMultipleKeyboardsAndMice`), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
 _✎ AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17._
@@ -1110,7 +1110,7 @@ Game.HookGetAsyncKeyState = true;
 ### Game.HookGetCursorPos
 `HookGetCursorPos: boolean`
 default `true` · Support for multiple mice and keyboards
-**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).**
+**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).**
 This will hook the GetCursorPos Windows function which the game may use to get the mouse position.
 In practice (AI-written): Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs, only with `Game.SupportsMultipleKeyboardsAndMice`), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
 _✎ AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17._
@@ -1122,7 +1122,7 @@ Game.HookGetCursorPos = true;
 ### Game.HookGetKeyboardState
 `HookGetKeyboardState: boolean`
 default `true` · Support for multiple mice and keyboards
-**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).**
+**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).**
 Some games may conflict with these hooks, so try toggling some of them if keyboard input isn't working properly.
 In practice (AI-written): Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs, only with `Game.SupportsMultipleKeyboardsAndMice`), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
 _✎ AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17._
@@ -1134,7 +1134,7 @@ Game.HookGetKeyboardState = false;
 ### Game.HookGetKeyState
 `HookGetKeyState: boolean`
 default `true` · Support for multiple mice and keyboards
-**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).**
+**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).**
 These options hook Windows functions that can be used by the game to detect if keys are down.
 In practice (AI-written): Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs, only with `Game.SupportsMultipleKeyboardsAndMice`), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
 _✎ AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17._
@@ -1162,7 +1162,7 @@ Game.HookInitDelay = true;
 ### Game.HookMouseVisibility
 `HookMouseVisibility: boolean`
 default `true` · Support for multiple mice and keyboards
-**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).**
+**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).**
 Used for games that toggle the mouse visibility, e.g. hidden in first person movement and visible in menus. 
  This shows/hides the fake mouse cursor when the game tries to show/hide the 'real' mouse cursor. 
  ***!!!!Most of the time this one is the cause of crashes.!!!!***
@@ -1176,7 +1176,7 @@ Game.HookMouseVisibility = false;
 ### Game.HookReRegisterRawInput
 `HookReRegisterRawInput: boolean`
 default `false` · Support for multiple mice and keyboards
-**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).**
+**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).**
 Re-register raw input from directly within game process | Recommended to disable forwarding input while using this
 In practice (AI-written): Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
 _✎ AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17._
@@ -1188,7 +1188,7 @@ Game.HookReRegisterRawInput = false;
 ### Game.HookReRegisterRawInputKeyboard
 `HookReRegisterRawInputKeyboard: boolean`
 default `true` · Support for multiple mice and keyboards
-**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).**
+**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).**
 Includes the keyboard when the Nucleus hook re-registers the game window's raw input so it keeps receiving input in the background. Only read when `Game.HookReRegisterRawInput` is on and the Nucleus hook DLL is injected (`Game.HookFocus`, `Game.SetWindowHook`, `Game.HideCursor`, `Game.PreventWindowDeactivation` or `Game.SupportsMultipleKeyboardsAndMice`). Default `true`; `false` leaves the game's keyboard registration as it is.
 _✎ AI-written, based on Nucleus DllsInjector.cs (InjectDLLs), GenericGameHandler.cs (InjectDLLs call sites), Nucleus.Inject Program.cs, Nucleus.Hook Hook.cpp, RawInputReRegister.cpp (reRegisterRawInput). Not from the official docs._
 In practice (AI-written): Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
@@ -1201,7 +1201,7 @@ Game.HookReRegisterRawInputKeyboard = true;
 ### Game.HookReRegisterRawInputMouse
 `HookReRegisterRawInputMouse: boolean`
 default `true` · Support for multiple mice and keyboards
-**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).**
+**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).**
 Includes the mouse when the Nucleus hook re-registers the game window's raw input so it keeps receiving input in the background. Only read when `Game.HookReRegisterRawInput` is on and the Nucleus hook DLL is injected (`Game.HookFocus`, `Game.SetWindowHook`, `Game.HideCursor`, `Game.PreventWindowDeactivation` or `Game.SupportsMultipleKeyboardsAndMice`). Default `true`; `false` leaves the game's mouse registration as it is.
 _✎ AI-written, based on Nucleus DllsInjector.cs (InjectDLLs), GenericGameHandler.cs (InjectDLLs call sites), Nucleus.Inject Program.cs, Nucleus.Hook Hook.cpp, RawInputReRegister.cpp (reRegisterRawInput). Not from the official docs._
 In practice (AI-written): Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
@@ -1214,7 +1214,7 @@ Game.HookReRegisterRawInputMouse = true;
 ### Game.HookSetCursorPos
 `HookSetCursorPos: boolean`
 default `true` · Support for multiple mice and keyboards
-**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).**
+**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).**
 This will hook the SetCursorPos Windows function which the game may use to set the mouse position. 
  This is useful to have on to prevent the game from moving the 'real' Windows mouse cursor around the screen.
 In practice (AI-written): Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs, only with `Game.SupportsMultipleKeyboardsAndMice`), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
@@ -1227,7 +1227,7 @@ Game.HookSetCursorPos = true;
 ### Game.HookUseLegacyInput
 `HookUseLegacyInput: boolean`
 Support for multiple mice and keyboards
-**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).**
+**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).**
 This is the main switch for legacy input.
 In practice (AI-written): Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs, only with `Game.SupportsMultipleKeyboardsAndMice`), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Almost no handler sets it true.
 _✎ AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17._
@@ -1840,7 +1840,7 @@ Game.PromptProcessChangesAtEnd = false;
 ### Game.ProtoInput
 `(read-only) ProtoInput: GameProtoInput`
 read-only · default `new ProtoInputOptions()`
-Proto Input options (multiple mice/keyboards, focus hooks, input redirection). See https://www.splitscreen.me/docs/protoinput
+Proto Input options (multiple mice/keyboards, focus hooks, input redirection). See https://www.splitscreen.me/docs/proto
 _✎ AI-written, based on Nucleus GenericGameInfo.cs, GenericGameHandler.cs. Not from the official docs._
 
 ### Game.RefreshWindowAfterStart
@@ -1971,7 +1971,7 @@ Game.SendFakeFocusMsg = true;
 ### Game.SendNormalKeyboardInput
 `SendNormalKeyboardInput: boolean`
 default `true` · Support for multiple mice and keyboards
-**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).**
+**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).**
 This sends keyboard input via Windows messages. This is usually all that's needed to get keyboard input working.
 In practice (AI-written): Read by Nucleus' own raw input forwarding (RawInputProcessor.cs), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
 _✎ AI-written, based on Nucleus RawInputProcessor.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17._
@@ -1983,7 +1983,7 @@ Game.SendNormalKeyboardInput = true;
 ### Game.SendNormalMouseInput
 `SendNormalMouseInput: boolean`
 default `true` · Support for multiple mice and keyboards
-**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).**
+**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).**
 This will send the game mouse input via Windows messages.
 In practice (AI-written): Read by Nucleus' own raw input forwarding (RawInputProcessor.cs), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
 _✎ AI-written, based on Nucleus RawInputProcessor.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17._
@@ -1995,7 +1995,7 @@ Game.SendNormalMouseInput = true;
 ### Game.SendScrollWheel
 `SendScrollWheel: boolean`
 default `false` · Support for multiple mice and keyboards
-**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).**
+**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).**
 Use this to send scroll wheel events to the game. 
  Some games don't need this, if for example they receive scroll wheel data from raw input.
 In practice (AI-written): Read by Nucleus' own raw input forwarding (RawInputProcessor.cs), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
@@ -2249,7 +2249,7 @@ Game.TransferNucleusUserAccountProfiles = false;
 ### Game.UpdateFakeMouseWithInternalInput
 `UpdateFakeMouseWithInternalInput: boolean`
 default `false` · Support for multiple mice and keyboards
-**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).**
+**Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).**
 Example:
 ```js
 Game.UpdateFakeMouseWithInternalInput = false;

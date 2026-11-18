@@ -132,7 +132,7 @@ Game.GoldbergLobbyConnect = false;
 
 ## Proto Input (multiple keyboards and mice)
 
-Generate the full block with `nucleus new --features protoinput` (or the `nc-protoinput` snippet). It includes `Game.ProtoInput.OnInputLocked` / `OnInputUnlocked` callbacks that loop over `PlayerList` and use `player.ProtoInputInstanceHandle`. Reference: https://www.splitscreen.me/docs/protoinput
+Generate the full block with `nucleus new --features protoinput` (or the `nc-protoinput` snippet). It includes `Game.ProtoInput.OnInputLocked` / `OnInputUnlocked` callbacks that loop over `PlayerList` and use `player.ProtoInputInstanceHandle`. Reference: https://www.splitscreen.me/docs/proto
 
 ## Loop over all players (inside a callback)
 

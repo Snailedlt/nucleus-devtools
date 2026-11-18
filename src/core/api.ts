@@ -123,6 +123,10 @@ export interface ApiModel {
   nucleusClasses: Record<string, NucleusClass>;
   /** The verified Hub handlers `hubUse` counts are from (data/hub-examples.json). */
   hubHandlers?: { count: number; takenAt: string; /** Handlers per engine family (data/hub-engines.json), families with enough of them. */ engines?: Record<string, number> };
+  /** The links of the basis' `hub` and `engines` items (data/sources.json `data`, a repository file made a permalink). */
+  basisLinks?: Partial<Record<'hub' | 'engines', string | null>>;
+  /** The commit every source link points at, per GitHub repository ("owner/name": sha; scripts/sources.mjs). */
+  sourceCommits?: Record<string, string>;
 }
 
 /** The model as objects without a prototype: a name typed in a handler (`toString`, `constructor`, `__proto__`) is
@@ -524,8 +528,9 @@ export function aiBasisOf(m: Member, part: AiPart): AiBasis | undefined {
   const b = part === 'doc' ? m.docBasis : part === 'params' ? m.paramsBasis : m.practiceBasis;
   return b ?? { note: 'the Nucleus source' };
 }
-/** The Hub data's words and links (data/sources.json `data`). */
-const basisData = sources.data as Record<'hub' | 'engines', { text: string; url: string }>;
+/** The Hub data's words (data/sources.json `data`) and links (the model's `basisLinks`, made by npm run generate). */
+const basisData = sources.data as Record<'hub' | 'engines', { text: string; url?: string }>;
+const basisLink = (k: 'hub' | 'engines') => api.basisLinks?.[k] ?? basisData[k].url;
 /** Everything a part is based on, one item per source, in order: the source files (the project named only where it
  *  changes), the note, the verified Hub handlers, the Hub games' engines. Each with its link where it has one. */
 export function aiBasisItems(b: AiBasis): AiBasisItem[] {
@@ -536,8 +541,8 @@ export function aiBasisItems(b: AiBasis): AiBasisItem[] {
     return { project, file: i.file, what: i.what, url: i.url };
   });
   if (b.note) items.push({ text: b.note });
-  if (b.hub) items.push({ text: basisData.hub.text.replace('{counted}', b.hub.counted), url: basisData.hub.url });
-  if (b.engines) items.push({ text: basisData.engines.text.replace('{families}', Array.isArray(b.engines) && b.engines.length ? ` (${b.engines.join(', ')})` : ''), url: basisData.engines.url });
+  if (b.hub) items.push({ text: basisData.hub.text.replace('{counted}', b.hub.counted), url: basisLink('hub') });
+  if (b.engines) items.push({ text: basisData.engines.text.replace('{families}', Array.isArray(b.engines) && b.engines.length ? ` (${b.engines.join(', ')})` : ''), url: basisLink('engines') });
   return items;
 }
 /** One item as text; `code` wraps a file name, `text` escapes the rest, `link` wraps the linked part (the file, else

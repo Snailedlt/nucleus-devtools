@@ -16,6 +16,11 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      # Every link the AI docs' sources lead to works (GitHub permalinks, the docs pages, the Hub).
+      - name: Source links work
+        run: npm run check-links
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       # The skill's bundle (scripts/nucleus.js, 2.6 MB) is committed only with a release, so the history doesn't
       # grow by a bundle per change; the Release workflow checks it then. Its API reference is checked here.
       - name: Generated skill reference is committed

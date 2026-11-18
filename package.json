@@ -1741,6 +1741,7 @@
     ]
   },
   "scripts": {
+    "check-links": "node scripts/check-source-links.mjs",
     "generate": "node scripts/generate-api.mjs && node scripts/generate-wm.mjs && node scripts/generate-jsbuiltins.mjs",
     "build": "node scripts/build.mjs",
     "watch": "node scripts/build.mjs --watch",

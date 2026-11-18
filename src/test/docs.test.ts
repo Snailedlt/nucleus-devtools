@@ -190,7 +190,7 @@ test('AI basis as data: every entry has typed fields, and every renderer builds 
     for (const i of b.source ?? []) assert.ok(i.project && (sources.projects as Record<string, unknown>)[i.project], `${key}: project ${i.project} is in data/sources.json`);
   }
   const kill: AiBasis = { source: [{ project: 'Nucleus', file: 'GenericGameHandler.cs', what: 'the mutex kill before the next instance', url: 'https://x/G.cs' }, { project: 'Nucleus', file: 'ProcessUtil.cs' }], hub: { counted: '2026-11-17' }, engines: ['Source'] };
-  assert.equal(aiBasisMarkdown(kill), 'Based on Nucleus [`GenericGameHandler.cs`](https://x/G.cs) (the mutex kill before the next instance) · `ProcessUtil.cs` · [verified Hub handlers, counted 2026-11-17](https://hub.splitscreen.me/) · [Hub game engines (Source)](https://github.com/Snailedlt/splitscreenme-vscode/blob/main/data/hub-engines.json)');
+  assert.equal(aiBasisMarkdown(kill), 'Based on Nucleus [`GenericGameHandler.cs`](https://x/G.cs) (the mutex kill before the next instance) · `ProcessUtil.cs` · [verified Hub handlers, counted 2026-11-17](https://hub.splitscreen.me/) · [Hub game engines (Source)](' + api.basisLinks?.engines + ')');
   assert.equal(aiBasisWords(kill), 'Nucleus GenericGameHandler.cs (the mutex kill before the next instance), ProcessUtil.cs; verified Hub handlers, counted 2026-11-17; Hub game engines (Source)');
   // One item per source, the project named where it changes, the note after the files; a project-only source links as a whole.
   assert.deepEqual(aiBasisItems({ source: [{ project: 'Nucleus', file: 'ProtoInput.cs' }, { project: 'ProtoInputHooks', file: 'A.cpp' }, { project: 'ProtoInputHooks', file: 'B.cpp' }], note: 'x' }).map((i) => aiBasisItemText(i)), ['Nucleus ProtoInput.cs', 'ProtoInputHooks A.cpp', 'B.cpp', 'x']);
@@ -200,13 +200,28 @@ test('AI basis as data: every entry has typed fields, and every renderer builds 
   const strip = (b?: AiBasis) => JSON.parse(JSON.stringify(b, (k, v) => (k === 'url' ? undefined : v)));
   assert.deepEqual(strip(m.practiceBasis), practice['Game.KillMutex'].basis);
   assert.ok(api.objects.Context.members.GetFolder.paramsBasis?.source?.length, 'the parameter docs\' basis in the model');
+  // GitHub links are permalinks at the commit npm run generate found the file in (the model's sourceCommits): they
+  // never break when a file moves. scripts/check-source-links.mjs (npm run check-links) checks them over the network.
+  const commits = api.sourceCommits ?? {};
+  const permalink = (url: string, where: string) => {
+    const g = url.match(/^https:\/\/github\.com\/([\w.-]+\/[\w.-]+)\/(blob|tree)\/([0-9a-f]{40})(\/\S+)?$/);
+    if (!g) return assert.match(url, /^https:\/\/www\.splitscreen\.me\/docs\/[\w-]+$/, `${where}: a GitHub permalink or a docs page (${url})`);
+    assert.equal(g[3], commits[g[1]], `${where}: the link's commit is the one recorded for ${g[1]}`);
+  };
   for (const [on, o] of Object.entries(api.objects)) for (const [mn, mm] of Object.entries(o.members)) for (const b of [mm.docBasis, mm.practiceBasis, mm.paramsBasis])
-    for (const i of b?.source ?? []) assert.match(i.url ?? '', /^https:\/\/(github\.com\/[\w.-]+\/[\w.-]+(\/(blob|tree)\/[\w.-]+\/\S+)?|www\.splitscreen\.me\/docs\/\S+)$/, `${on}.${mn}: ${i.project} ${i.file ?? ''} has a link`);
+    for (const i of b?.source ?? []) {
+      const proj = (sources.projects as Record<string, { url?: string }>)[i.project ?? ''];
+      assert.ok(i.url, `${on}.${mn}: ${i.project} ${i.file ?? ''} has a link`);
+      if (!proj?.url) permalink(i.url!, `${on}.${mn}`);
+    }
+  assert.ok(Object.keys(commits).length >= 3 && Object.values(commits).every((c) => /^[0-9a-f]{40}$/.test(c)), 'the commits behind the links');
+  permalink(api.basisLinks?.engines ?? '', 'basisLinks.engines');
+  assert.equal(api.basisLinks?.hub, sources.data.hub.url);
   // The tooltip: a heading, "Based on" and one item per source, each linked where it can be; no category labels.
   const tip = aiTip(m, 'practice', 't');
   assert.match(tip, /<span class="ai-tip-h"><span aria-hidden="true">✨ <\/span>AI-written/);
   assert.match(tip, /<span class="ai-tip-k">Based on<span class="sr-only">: <\/span><\/span>/);
-  assert.match(tip, /<a class="ai-src" href="https:\/\/github\.com\/SplitScreen-Me\/splitscreenme-nucleus\/blob\/master\/[^"]*GenericGameHandler\.cs" target="_blank" rel="noopener noreferrer"><code class="ai-file">GenericGameHandler\.cs<\/code>/);
+  assert.match(tip, /<a class="ai-src" href="https:\/\/github\.com\/SplitScreen-Me\/splitscreenme-nucleus\/blob\/[0-9a-f]{40}\/[^"]*GenericGameHandler\.cs" target="_blank" rel="noopener noreferrer"><code class="ai-file">GenericGameHandler\.cs<\/code>/);
   assert.match(tip, /<a class="ai-src" href="https:\/\/hub\.splitscreen\.me\/"[^>]*>Verified Hub handlers, counted/);
   assert.match(tip, /href="[^"]*hub-engines\.json"[^>]*>Hub game engines/);
   assert.doesNotMatch(tip, /role="tooltip"|ai-tip-path|>Source<|>Engines</);

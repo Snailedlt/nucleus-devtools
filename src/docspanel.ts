@@ -18,7 +18,7 @@ export function webLinks(workbenchUrl: string): { label: string; url: string }[]
   return [
     { label: 'Handler API reference', url: 'https://www.splitscreen.me/docs/handler-api' },
     { label: 'Creating handlers (guide)', url: 'https://www.splitscreen.me/docs/create-handlers' },
-    { label: 'Proto Input', url: 'https://www.splitscreen.me/docs/protoinput' },
+    { label: 'Proto Input', url: 'https://www.splitscreen.me/docs/proto' },
     { label: 'FAQ', url: 'https://www.splitscreen.me/docs/faq' },
     { label: 'Nucleus Co-op docs (legacy)', url: 'https://nucleus-coop.github.io/docs/' },
     { label: 'Browser workbench (Nucleus: Open in the Browser Workbench opens this handler there)', url: workbenchUrl },

@@ -1381,7 +1381,7 @@ interface Game {
    * (AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default true
    * @example Game.HookSetCursorPos = true;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   HookSetCursorPos: boolean;
   /**
@@ -1391,7 +1391,7 @@ interface Game {
    * (AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default true
    * @example Game.HookGetCursorPos = true;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   HookGetCursorPos: boolean;
   /**
@@ -1401,7 +1401,7 @@ interface Game {
    * (AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default true
    * @example Game.HookGetKeyState = false;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   HookGetKeyState: boolean;
   /**
@@ -1411,7 +1411,7 @@ interface Game {
    * (AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default true
    * @example Game.HookGetAsyncKeyState = true;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   HookGetAsyncKeyState: boolean;
   /**
@@ -1421,7 +1421,7 @@ interface Game {
    * (AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default true
    * @example Game.HookGetKeyboardState = false;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   HookGetKeyboardState: boolean;
   /**
@@ -1430,7 +1430,7 @@ interface Game {
    * In practice: Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs, only with `Game.SupportsMultipleKeyboardsAndMice`), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
    * (AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @example Game.HookFilterRawInput = false;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   HookFilterRawInput: boolean;
   /**
@@ -1440,7 +1440,7 @@ interface Game {
    * In practice: Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs, only with `Game.SupportsMultipleKeyboardsAndMice`), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
    * (AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @example Game.HookFilterMouseMessages = false;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   HookFilterMouseMessages: boolean;
   /**
@@ -1449,7 +1449,7 @@ interface Game {
    * In practice: Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs, only with `Game.SupportsMultipleKeyboardsAndMice`), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Almost no handler sets it true.
    * (AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @example Game.HookUseLegacyInput = false;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   HookUseLegacyInput: boolean;
   /**
@@ -1458,7 +1458,7 @@ interface Game {
    * In practice: Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. No Hub handler sets it true.
    * (AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @example Game.HookDontUpdateLegacyInMouseMsg = false;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   HookDontUpdateLegacyInMouseMsg: boolean;
   /**
@@ -1470,7 +1470,7 @@ interface Game {
    * (AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default true
    * @example Game.HookMouseVisibility = false;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   HookMouseVisibility: boolean;
   /**
@@ -1480,7 +1480,7 @@ interface Game {
    * (AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default false
    * @example Game.HookReRegisterRawInput = false;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   HookReRegisterRawInput: boolean;
   /**
@@ -1491,7 +1491,7 @@ interface Game {
    * (AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default true
    * @example Game.HookReRegisterRawInputMouse = true;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   HookReRegisterRawInputMouse: boolean;
   /**
@@ -1502,7 +1502,7 @@ interface Game {
    * (AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default true
    * @example Game.HookReRegisterRawInputKeyboard = true;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   HookReRegisterRawInputKeyboard: boolean;
   /**
@@ -1524,7 +1524,7 @@ interface Game {
    * (AI-written, based on Nucleus RawInputProcessor.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default true
    * @example Game.SendNormalMouseInput = true;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   SendNormalMouseInput: boolean;
   /**
@@ -1534,7 +1534,7 @@ interface Game {
    * (AI-written, based on Nucleus RawInputProcessor.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default true
    * @example Game.SendNormalKeyboardInput = true;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   SendNormalKeyboardInput: boolean;
   /**
@@ -1545,7 +1545,7 @@ interface Game {
    * (AI-written, based on Nucleus RawInputProcessor.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default false
    * @example Game.SendScrollWheel = false;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   SendScrollWheel: boolean;
   /**
@@ -1555,7 +1555,7 @@ interface Game {
    * (AI-written, based on Nucleus RawInputProcessor.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default false
    * @example Game.ForwardRawKeyboardInput = false;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   ForwardRawKeyboardInput: boolean;
   /**
@@ -1565,7 +1565,7 @@ interface Game {
    * (AI-written, based on Nucleus RawInputProcessor.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default false
    * @example Game.ForwardRawMouseInput = false;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   ForwardRawMouseInput: boolean;
   /**
@@ -1578,7 +1578,7 @@ interface Game {
    * (AI-written, based on Nucleus GenericGameHandler.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default true
    * @example Game.DrawFakeMouseCursor = true;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   DrawFakeMouseCursor: boolean;
   /**
@@ -1590,7 +1590,7 @@ interface Game {
   /**
    * @default false
    * @example Game.UpdateFakeMouseWithInternalInput = false;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   UpdateFakeMouseWithInternalInput: boolean;
   /**
@@ -1638,7 +1638,7 @@ interface Game {
    */
   UseManualProtoControllersSetup: boolean;
   /**
-   * Proto Input options (multiple mice/keyboards, focus hooks, input redirection). See https://www.splitscreen.me/docs/protoinput
+   * Proto Input options (multiple mice/keyboards, focus hooks, input redirection). See https://www.splitscreen.me/docs/proto
    * (AI-written, based on Nucleus GenericGameInfo.cs, GenericGameHandler.cs. Not from the official docs.)
    * @default new ProtoInputOptions()
    */

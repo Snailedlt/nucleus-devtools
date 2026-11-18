@@ -92,7 +92,7 @@
    }
   },
   "Game.ProtoInput": {
-   "doc": "Proto Input options (multiple mice/keyboards, focus hooks, input redirection). See https://www.splitscreen.me/docs/protoinput",
+   "doc": "Proto Input options (multiple mice/keyboards, focus hooks, input redirection). See https://www.splitscreen.me/docs/proto",
    "basis": {
     "source": [
      { "project": "Nucleus", "file": "GenericGameInfo.cs" },

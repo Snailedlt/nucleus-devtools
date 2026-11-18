@@ -88,13 +88,17 @@ jobs:
           fi
           npm run build
           npm test
+          # The AI docs' source links (permalinks at the clones' commits) work.
+          GITHUB_TOKEN=${{ github.token }} npm run check-links
       - name: Open or update the pull request
         if: steps.check.outputs.changed == 'true' || steps.data.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Only the recorded commit ids changed: nothing to review.
-          if git diff --quiet -- . ':(exclude)data/nucleus-api.json' ':(exclude)types/nucleus.d.ts' && [ "$(git diff --numstat | awk '{s+=$1} END {print s+0}')" -le 2 ]; then echo "Upstream moved, but no option or doc changed."; exit 0; fi
+          # Only the recorded commit ids changed (the model's `source`, `sourceCommits` and the commits in its source
+          # permalinks, the .d.ts header): nothing to review.
+          same_model() { node -e 'const cp=require("child_process"),fs=require("fs");const strip=(t)=>{const j=JSON.parse(t);delete j.source;delete j.sourceCommits;return JSON.stringify(j).replace(/(\/(?:blob|tree)\/)[0-9a-f]{40}/g,"$1")};process.exit(strip(cp.execSync("git show HEAD:data/nucleus-api.json",{encoding:"utf8",maxBuffer:1e9}))===strip(fs.readFileSync("data/nucleus-api.json","utf8"))?0:1)'; }
+          if git diff --quiet -- . ':(exclude)data/nucleus-api.json' ':(exclude)types/nucleus.d.ts' && [ "$(git diff --numstat -- types/nucleus.d.ts | awk '{s+=$1} END {print s+0}')" -le 2 ] && same_model; then echo "Upstream moved, but no option or doc changed."; exit 0; fi
           # The Hub note from the final snapshots (after the recount), not the first pass's flag.
           hubdiff=false; git diff --quiet -- data/hub-examples.json data/hub-engines.json || hubdiff=true
           branch=sync/upstream
