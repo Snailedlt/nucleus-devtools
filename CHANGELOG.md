@@ -27,7 +27,8 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 ### ⚠️ Changed
 
-- **Form and Blocks are hidden for now.** The visual editor is being reworked, so the workbench shows only Code until it's back. A handler you had open in Form or Blocks opens in Code, unchanged; Lines still lists every name a handler can use.
+- **Previews are built by Vercel itself.** Every pushed branch gets one, with the extension's branch of the same name; the next release's site is rebuilt after each test build.
+- **Form and Blocks are hidden for now.** The visual editor is being reworked and may not come back in this form, so the workbench shows only Code. A handler you had open in Form or Blocks opens in Code, unchanged; Lines still lists every name a handler can use.
 
 ---
 

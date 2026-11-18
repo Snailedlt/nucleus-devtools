@@ -18,7 +18,7 @@ function read(): boolean {
 export const VISUAL = typeof location !== 'undefined' && typeof localStorage !== 'undefined' && read();
 
 /** The note for someone whose saved view (or a link) was Form or Blocks. */
-export const VISUAL_HIDDEN_NOTE = 'Form and Blocks are hidden in this version while we rework them, so this opens in Code. Your handler is the same.';
+export const VISUAL_HIDDEN_NOTE = 'Form and Blocks are hidden for now while we rework them (they may not come back in this form), so this opens in Code. Your handler is the same.';
 
 /** Text that's only about Form or Blocks (a tip, a What's new line). */
 export const aboutVisual = (s: string) => /\b(Form|Blocks)\b|visual editor/.test(s);
