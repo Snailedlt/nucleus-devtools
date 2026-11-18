@@ -100,6 +100,7 @@ export function aiTipCss(c: { muted: string; fg?: string; link?: string }): stri
 .ai-tip-i::before { content: ''; position: absolute; left: 3px; top: .62em; width: 4px; height: 4px; border-radius: 50%; background: ${c.muted}; }
 .ai-tip code { font-size: .92em; padding: 0 3px; border-radius: 3px; background: color-mix(in srgb, ${c.fg ?? 'currentColor'} 9%, transparent); }
 .ai-tip a.ai-src { color: ${c.link ?? 'inherit'}; text-decoration: underline; text-underline-offset: 2px; }
+.ai-tip a.ai-src code { color: inherit; }
 .ai-tip a.ai-src:hover { text-decoration-thickness: 2px; }
 .ai-tip a.ai-src:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; border-radius: 2px; }`;
 }
