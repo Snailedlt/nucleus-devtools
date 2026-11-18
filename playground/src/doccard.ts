@@ -1,12 +1,14 @@
 // The docs of an API member as a card: a coloured signature (owner dim, name bold, parameters and types in their own
-// colours), the description, its tags (kind, required, read-only, default, category, AI-written), the engines whose
-// handlers use it notably more or less (no numbers), an example (with "Insert into handler" in Docs), "How handlers use
-// it" (the AI-written "In practice" part, folded) and 👍/👎 for each part. This is the handler author's view: where an
-// AI-written part comes from is in its tag's tooltip, and the votes so far, "Verified by people" and the counted "By
+// colours), the description, its tags (kind, required, read-only, default, category), the engines whose handlers use
+// it notably more or less (no numbers), an example (with "Insert into handler" in Docs), "How handlers use it" (the
+// AI-written "In practice" part, folded) and 👍/👎 for each part. Every AI-written part sits in a lightly tinted frame
+// with the sparkle in its corner (core/aimark.ts, the same as the docs pages and VS Code's Docs panel); where it comes
+// from is the sparkle's tooltip. This is the handler author's view: the votes so far, "Verified by people" and the counted "By
 // engine" line are on the docs pages (docs-pages.mjs). Used by the hover card (compact), Docs (full entries and search
 // results, memberSummary), Form and Blocks.
 import { withContext } from './report';
-import { api, claudeNote, docReviewUrl, exampleSource, ownerLabel, practiceNote, type Member } from '@core/api';
+import { aiBasis, api, docReviewUrl, exampleSource, isAiPart, ownerLabel, type AiPart, type Member } from '@core/api';
+import { aiMeta } from '@core/aimark';
 import type { DocPart } from '@core/docvotes';
 import { myVote, voteButtons } from './feedback';
 import { hlHtml } from './codehl';
@@ -47,7 +49,6 @@ function signatures(owner: string, name: string, m: Member): string[] {
 export function memberCard(owner: string, name: string, m: Member, opts: { head?: boolean; compact?: boolean; /** "Insert into handler" under the example (Docs). */ insert?: boolean } = {}): string {
   const path = `${ownerLabel(owner)}.${name}`;
   const sigs = signatures(owner, name, m);
-  const note = claudeNote(m);
   if (opts.compact) {
     // The hover: short, as VS Code's (help on request): the signature, the doc's first sentence (marked when AI
     // wrote it) and a link to the whole card in Docs, where "In practice", the votes, the engines and the example are.
@@ -55,23 +56,22 @@ export function memberCard(owner: string, name: string, m: Member, opts: { head?
       + (opts.head === false ? '' : `<div class="dc-sig">${sigs.map((s) => `<div>${s}</div>`).join('')}</div>`)
       + `<div class="dc-text">`
       + (m.deprecated ? `<p class="dc-dep">${inline(m.deprecated)}</p>` : '')
-      + (m.doc ? `<p>${inline(firstSentence(m.doc))}${note ? ` <span class="dc-ai-mark" title="${esc(note)}"><span class="ai-spark" aria-hidden="true"></span>${m.docCheckedBy ? `AI-written, checked by ${esc(m.docCheckedBy)}` : 'AI-written'}</span>` : ''}</p>` : '<p class="muted">No description yet.</p>')
+      + (m.doc ? aiFrame(m, 'doc', `<p>${inline(firstSentence(m.doc))}</p>`) : '<p class="muted">No description yet.</p>')
       + `<p class="dc-more"><a href="#docs-${esc(path)}" data-api="${esc(path)}">More in Docs</a></p>`
       + `</div></div>`);
   }
   // Docs, for handler authors: what it is, its tags, the example to insert, then how handlers use it (folded) and a
-  // vote line. Where an AI-written part comes from ("Based on …") is in its tag's tooltip; the votes so far, "Verified
+  // vote line. Where an AI-written part comes from ("Based on …") is its sparkle's tooltip; the votes so far, "Verified
   // by people" and the counted "By engine" numbers are on the docs pages (/docs), for the developers and testers.
-  const pnote = practiceNote(m);
   const engines = engineFamilies(m);
   return hlHtml(`<div class="dc">`
     + (opts.head === false ? '' : `<div class="dc-sig">${sigs.map((s) => `<div>${s}</div>`).join('')}</div>`)
     + (m.deprecated ? `<p class="dc-dep">${inline(m.deprecated)}</p>` : '')
-    + (m.doc ? paras(m.doc) : '<p class="muted">No description yet.</p>')
+    + (m.doc ? aiFrame(m, 'doc', paras(m.doc)) : '<p class="muted">No description yet.</p>')
     + tagRow(owner, m)
     + (engines ? `<p class="dc-engine" title="Compared with all Hub handlers. The numbers are on the docs pages.">${esc(engines)}</p>` : '')
-    + (m.example ? `<div class="dc-example"><div class="dc-ex-head"><span class="dc-ex-t">Example</span>${exampleLabel(m) ? `<span class="dc-ex-src">${esc(exampleLabel(m))}</span>` : ''}${opts.insert ? `<button type="button" class="btn small dc-insert" data-insert="${esc(path)}">Insert into handler</button>` : ''}</div><pre class="doc-code">${esc(prettyCode(m.example))}</pre></div>` : '')
-    + (m.practice ? `<details class="dc-practice"><summary class="dc-pr-h"><span class="dc-pr-t">How handlers use it</span>${aiTag(pnote, m.practiceCheckedBy)}</summary>${paras(m.practice)}${voteLine(path, 'practice')}</details>` : '')
+    + (m.example ? `<div class="dc-example${isAiPart(m, 'example') ? ' ai-box' : ''}">${isAiPart(m, 'example') ? aiMeta(m, 'example', SPARK, uid('example')) : ''}<div class="dc-ex-head"><span class="dc-ex-t">Example</span>${exampleLabel(m) ? `<span class="dc-ex-src">${esc(exampleLabel(m))}</span>` : ''}${opts.insert ? `<button type="button" class="btn small dc-insert" data-insert="${esc(path)}">Insert into handler</button>` : ''}</div><pre class="doc-code">${esc(prettyCode(m.example))}</pre></div>` : '')
+    + (m.practice ? practicePart(m, path) : '')
     // Every doc gets its votes, human-written or not: people say whether it's right either way.
     + (m.doc ? voteLine(path, 'doc') : '')
     + `</div>`);
@@ -82,13 +82,14 @@ export function memberSummary(owner: string, name: string, m: Member): string {
   // The signature's name isn't a link here (nolink): the result has its own "Open full doc".
   return hlHtml(`<div class="dc hit"><div class="dc-sig nolink">${signatures(owner, name, m).map((s) => `<div>${s}</div>`).join('')}</div>`
     + (m.deprecated ? `<p class="dc-dep">${inline(firstSentence(m.deprecated))}</p>` : '')
-    + (m.doc ? `<p>${inline(firstSentence(m.doc))}</p>` : '<p class="muted">No description yet.</p>')
+    // An AI-written description: a small sparkle before it (a search result gets no frame).
+    + (m.doc ? `<p>${isAiPart(m, 'doc') ? `<span class="ai-spark dc-hit-ai" role="img" aria-label="AI-written" title="AI-written. ${esc(aiBasis(m, 'doc'))}"></span> ` : ''}${inline(firstSentence(m.doc))}</p>` : '<p class="muted">No description yet.</p>')
     + tagRow(owner, m)
     + `</div>`);
 }
 
 /** The tags: what kind of name it is (a callback, a method, a true/false option…), required, read-only, deprecated,
- *  written by the Hub, the default and category, and AI-written when the doc is. */
+ *  written by the Hub, the default and category. (AI-written parts are framed instead: aiFrame.) */
 function tagRow(owner: string, m: Member): string {
   const t = m.type ?? '';
   const kind = m.kind === 'method' ? 'Method' : t === 'function' ? 'Callback' : m.kind === 'object' ? 'Object'
@@ -102,13 +103,24 @@ function tagRow(owner: string, m: Member): string {
     owner.startsWith('Hub') ? '<span class="dc-chip">Written by the Hub</span>' : '',
     m.default !== undefined ? `<span class="dc-chip">Default <code>${esc(m.default)}</code></span>` : '',
     m.category ? `<span class="dc-chip">${esc(m.category)}</span>` : '',
-    claudeNote(m) ? aiTag(claudeNote(m), m.docCheckedBy) : '',
   ].filter(Boolean);
   return chips.length ? `<div class="dc-facts">${chips.join('')}</div>` : '';
 }
-/** The AI-written tag; where the part comes from (its basis) is in the tooltip. */
-const aiTag = (note: string, checkedBy?: string) =>
-  `<span class="dc-chip dc-ai-tag" title="${esc(note)}"><span class="ai-spark" aria-hidden="true"></span>${checkedBy ? `AI-written, checked by ${esc(checkedBy)}` : 'AI-written'}</span>`;
+/** The sparkle in an AI-written part's corner (page.html .ai-spark). */
+const SPARK = '<span class="ai-spark" aria-hidden="true"></span>';
+let uids = 0;
+/** An id for a sparkle's tooltip, unique on the page (many cards can be open at once). */
+const uid = (part: string) => `ai-${part}-${++uids}`;
+/** `html` in an AI-written part's frame when that part is AI-written (core/aimark.ts aiMeta: the sparkle, its tooltip
+ *  with the basis, a hidden "AI-written", "Checked by …"); as it is otherwise. */
+const aiFrame = (m: Member, part: AiPart, html: string) => (isAiPart(m, part) ? `<div class="ai-box" data-ai="${part}">${aiMeta(m, part, SPARK, uid(part))}${html}</div>` : html);
+/** "How handlers use it" ("In practice", always AI-written), folded, in its frame. The summary is the toggle, so the
+ *  sparkle in it is no control of its own: hovering it, or focusing the summary, shows where it comes from. */
+function practicePart(m: Member, path: string): string {
+  const id = uid('practice');
+  const checked = m.practiceCheckedBy ? `<span class="ai-checked">✓ Checked by ${esc(m.practiceCheckedBy)}${m.practiceCheckedOn ? ` on ${esc(m.practiceCheckedOn)}` : ''}</span>` : '';
+  return `<details class="dc-practice ai-box" data-ai="practice"><summary class="dc-pr-h" aria-describedby="${id}"><span class="dc-pr-t">How handlers use it</span><span class="ai-meta">${checked}<span class="ai-badge">${SPARK}<span class="sr-only">AI-written</span><span class="ai-tip" role="tooltip" id="${id}">AI-written. ${esc(aiBasis(m, 'practice'))}</span></span></span></summary>${paras(m.practice!)}${voteLine(path, 'practice')}</details>`;
+}
 
 /** "More common in: Source · Less common in: Unity": the engine families whose Hub handlers use it notably more or
  *  less than all handlers (the rule of the core's byEngine line: at least twice or at most half the share, 15 points
@@ -177,11 +189,21 @@ if (typeof document !== 'undefined' && document.addEventListener) {
     const line = (e.target as HTMLElement | null)?.closest?.('.dc-check button[data-vote]')?.closest('.dc-check');
     if (line) setTimeout(() => syncVoteLinks(line), 0);
   });
+  // Escape hides a sparkle's tooltip until the pointer or focus leaves it (WCAG 1.4.13).
+  const tipHosts = '.ai-badge, .dc-pr-h';
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') document.querySelectorAll(`.ai-badge:hover, .ai-badge:focus, .dc-pr-h:focus`).forEach((b) => b.classList.add('tip-off'));
+  });
+  for (const ev of ['mouseout', 'focusout'] as const) document.addEventListener(ev, (e) => {
+    const b = (e.target as HTMLElement | null)?.closest?.(tipHosts);
+    if (b && !(ev === 'mouseout' && b.contains((e as MouseEvent).relatedTarget as Node | null))) b.classList.remove('tip-off');
+  });
 }
 
 /** The example's source, short: "From Hub handlers" for a Hub example (never the counts an older model's note has),
- *  "AI-written", or the generated example's note; nothing for the official docs' own. */
+ *  or the generated example's note; nothing for the official docs' own, nor for an AI-written one (its frame says it). */
 export function exampleLabel(m: Member): string {
   if (m.exampleBy === 'hub') return 'From Hub handlers';
+  if (m.exampleBy === 'claude') return '';
   return exampleSource(m);
 }

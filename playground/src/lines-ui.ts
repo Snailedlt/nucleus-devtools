@@ -91,8 +91,7 @@ export function initLines({ editor, openReference, previewReference }: Deps) {
       info.append(text('div', 'muted', 'Its docs are on the right, in Docs.'));
       return;
     }
-    if (l.doc) info.append(text('div', '', l.doc));
-    if (l.aiDoc) info.append(text('div', 'ai-doc', 'AI-written, not from the official docs.'));
+    if (l.doc) info.append(docDiv(l));
     const facts: string[] = [];
     if (l.default !== undefined) facts.push(`Default: ${l.default}`);
     if (l.used && prefs.usage) facts.push(`Used by ${l.used} of ${l.of} Hub handlers`);
@@ -108,12 +107,22 @@ export function initLines({ editor, openReference, previewReference }: Deps) {
     docs.addEventListener('click', () => openReference(l.path.replace(/^new /, '')));
     info.append(docs);
   }
+  /** A name's doc; an AI-written one in the AI frame with the sparkle (and a hidden "AI-written"), as in Docs. */
+  function docDiv(l: Line): HTMLElement {
+    const d = text('div', l.aiDoc ? 'ai-box ln-ai' : '', l.doc ?? '');
+    if (l.aiDoc) {
+      const s = document.createElement('span');
+      s.className = 'ai-meta';
+      s.innerHTML = '<span class="ai-spark" role="img" aria-label="AI-written" title="AI-written, from the Nucleus source"></span>';
+      d.prepend(s);
+    }
+    return d;
+  }
   /** The docs of one name, shown under its row by the (i) button. */
   function details(l: Line): HTMLElement {
     const d = text('div', 'ln-doc', '');
     d.append(text('code', '', l.sig));
-    if (l.doc) d.append(text('div', '', l.doc));
-    if (l.aiDoc) d.append(text('div', 'ai-doc', 'AI-written, not from the official docs.'));
+    if (l.doc) d.append(docDiv(l));
     const facts: string[] = [];
     if (l.default !== undefined) facts.push(`Default: ${l.default}`);
     if (l.used && prefs.usage) facts.push(`Used by ${l.used} of ${l.of} Hub handlers`);

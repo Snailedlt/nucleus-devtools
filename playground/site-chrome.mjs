@@ -86,7 +86,7 @@ export const DOC_FEEDBACK_CSS = `
 /* Inside the part it rates (the doc, "In practice"), as the workbench's Docs: a quiet line, not a box. */
 .doc-fb.inline { margin: 10px 0 18px; padding: 0; border: 0; background: none; font-size: 13px; color: var(--muted); }
 .doc-fb.inline .vote-btn { padding: 3px 7px; }
-.ai-part .doc-fb.inline { margin: 10px 0 0; }
+.ai-box .doc-fb.inline { margin: 10px 0 0; }
 `;
 /** The script for the votes; `site` is the GoatCounter site code, or null (then votes stay in the browser). */
 export function docFeedbackScript(site) {
