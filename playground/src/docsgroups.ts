@@ -16,7 +16,7 @@ export const unchecked = () => (uncheckedCache ??= new Set(allEntries(true).filt
 // Docs with nothing typed: what's in it, so it's clear what can be found there.
 export const API_GROUPS: ApiGroup[] = [
   // The docs Claude wrote that no person has checked yet: handler authors can confirm or correct them (👍/👎, an issue).
-  { key: 'AI', title: 'AI-written: please check', doc: 'Docs written by AI from the Nucleus source, which no person has checked yet. If you know how one really works, tell us with 👍 or 👎 (and "Tell us what\'s wrong").', match: (p) => unchecked().has(p) },
+  { key: 'AI', title: 'AI-written: please check', doc: 'Written by AI from the Nucleus and Proto Input source and the Hub\'s handlers; no person has checked these yet. Know how one really works? Vote at the bottom of its page: 👍 if it\'s right, 👎 if not, then tell us what\'s wrong. Hover the ✨ to see what each is based on.', match: (p) => unchecked().has(p) },
   { key: 'Game', title: 'Game', doc: 'The handler\'s options: the game, its executable, players, mutexes, files and callbacks.', match: (p) => /^Game\.[^.]+$/.test(p) },
   { key: 'Game.Hook', title: 'Game.Hook', doc: 'Focus and input hooks injected into each instance.', match: (p) => p.startsWith('Game.Hook.') },
   { key: 'Game.ProtoInput', title: 'Game.ProtoInput', doc: 'Proto Input settings for the whole session.', match: (p) => p.startsWith('Game.ProtoInput.') },
