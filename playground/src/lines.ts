@@ -361,8 +361,16 @@ export function placeExample(text: string, path: string, example: string, where 
     const decl = r.type === 'Identifier' ? top.filter((s) => s.type === 'FunctionDeclaration' && s.id?.name === r.name).pop() : undefined;
     if (!decl) return undefined;
     // Rebound somewhere (`play = other;`, `var play = ...`): Nucleus may run another function, so leave it alone.
-    const name = r.name.replace(/\$/g, '\\$');
-    if (new RegExp(`(^|[^.\\w$])${name}\\s*=(?!=)`).test(text)) return undefined;
+    // From the parsed code, so a comment (`// play = other;`) doesn't count.
+    const rebinds = (n: any): boolean => {
+      if (!n || typeof n !== 'object') return false;
+      if (Array.isArray(n)) return n.some(rebinds);
+      if (n.type === 'AssignmentExpression' && n.left?.type === 'Identifier' && n.left.name === r.name) return true;
+      if (n.type === 'UpdateExpression' && n.argument?.type === 'Identifier' && n.argument.name === r.name) return true;
+      if (n.type === 'VariableDeclarator' && n.id?.type === 'Identifier' && n.id.name === r.name) return true;
+      return Object.keys(n).some((k) => k !== 'type' && k !== 'start' && k !== 'end' && k !== 'loc' && typeof n[k] === 'object' && rebinds(n[k]));
+    };
+    if (rebinds(top)) return undefined;
     fnStmt = decl;
     fn = decl;
   }
@@ -385,7 +393,7 @@ export function placeExample(text: string, path: string, example: string, where 
     // Only a loop over the whole list: `for (var i = 0; i < PlayerList.Count; i++)` with `PlayerList[i]`.
     const isId = (n: any, name?: string) => n?.type === 'Identifier' && (!name || n.name === name);
     const whole = (s: any) => {
-      const t = s.test, init = s.init?.type === 'VariableDeclaration' ? s.init.declarations[0] : s.init?.type === 'AssignmentExpression' ? { id: s.init.left, init: s.init.right } : undefined;
+      const t = s.test, init = s.init?.type === 'VariableDeclaration' ? s.init.declarations[0] : s.init?.type === 'AssignmentExpression' && s.init.operator === '=' ? { id: s.init.left, init: s.init.right } : undefined;
       const idx = isId(t?.left) ? t.left.name : undefined;
       // One player at a time: `i++`, `++i`, `i += 1` or `i = i + 1`.
       const u = s.update;

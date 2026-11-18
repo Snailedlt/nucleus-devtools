@@ -590,6 +590,11 @@ test('docs: "Insert into handler" puts an example where it belongs (lines.ts pla
   assert.equal(L.placeExample('Game.Play = other.fn;\n', 'Context.Wait', 'Context.Wait(1);', 'Game.Play'), undefined);
   // Rebound (`play = other;`): Nucleus runs another function, so nothing is edited.
   assert.equal(L.placeExample('function play() {\n}\nfunction other() {\n}\nplay = other;\nGame.Play = play;\n', 'Context.Wait', 'Context.Wait(1);', 'Game.Play'), undefined);
+  // Only real code counts: a comment that looks like a reassignment doesn't.
+  assert.match(L.placeExample('function play() {\n  a();\n}\n// play = other;\nGame.Play = play;\n', 'Context.Wait', 'Context.Wait(1);', 'Game.Play').text, /a\(\);\n  Context\.Wait\(1\);/);
+  // `j += 0` doesn't start at 0: not reused.
+  r = L.placeExample('var j = 1;\nGame.ProtoInput.OnInputLocked = function () {\n  for (j += 0; j < PlayerList.Count; j++) {\n    var p = PlayerList[j];\n  }\n};\n', 'X', 'X(player.H);', 'Game.ProtoInput.OnInputLocked');
+  assert.doesNotMatch(r.text, /var p = PlayerList\[j\];\n\s*X\(p\.H\)/);
   // A loop that skips players (`j += 2`) isn't reused: a new loop over every player.
   r = L.placeExample('Game.ProtoInput.OnInputLocked = function () {\n  for (var j = 0; j < PlayerList.Count; j += 2) {\n    var p = PlayerList[j];\n  }\n};\n', 'X', 'X(player.H);', 'Game.ProtoInput.OnInputLocked');
   assert.match(r.text, /i < PlayerList\.Count; i\+\+/);

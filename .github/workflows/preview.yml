@@ -74,14 +74,17 @@ jobs:
             # The exact branch: ls-remote also matches refs that only end in refs/heads/<name>, so compare the ref
             # field. main when there is none; a failed lookup fails the run.
             refs=$(git ls-remote --heads https://github.com/Snailedlt/splitscreenme-vscode.git) || { echo "::error::Couldn't look up $BRANCH."; exit 1; }
+            # checkout gets the full ref (a branch named refs/heads/x stays itself); the comment the short name.
             if printf '%s\n' "$refs" | awk -v r="refs/heads/$BRANCH" '$2 == r { f = 1 } END { exit !f }'; then want="$BRANCH"; else want=main; fi
+            checkout="refs/heads/$want"
           fi
           echo "Building with splitscreenme-vscode@$want"
           echo "ref=$want" >> "$GITHUB_OUTPUT"
+          echo "checkout=${checkout:-$want}" >> "$GITHUB_OUTPUT"
       - uses: actions/checkout@v4
         with:
           repository: Snailedlt/splitscreenme-vscode
-          ref: ${{ steps.core.outputs.ref }}
+          ref: ${{ steps.core.outputs.checkout }}
           path: core
       - uses: actions/setup-node@v4
         with:

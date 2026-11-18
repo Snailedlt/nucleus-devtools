@@ -2525,7 +2525,10 @@ function cyclePane(dir: 1 | -1) {
   const inner = holding.find((p) => !holding.some((q) => q !== p && p.contains(q)));
   const at = inner ? panes.indexOf(inner) : -1;
   const next = panes[at < 0 ? 0 : (at + dir + panes.length) % panes.length];
-  if (next.matches('.pane:not(.side)') && viewMode === 'code') editor.focus();
+  // The code: handler.js's editor, or the package file open in its place (its own editor or its card).
+  const shown = (el: HTMLElement) => el.offsetParent !== null && el.getClientRects().length > 0;
+  if (next.matches('.pane:not(.side)') && viewMode === 'code' && shown(editor.getWrapperElement())) editor.focus();
+  else if (next.matches('.pane:not(.side)') && viewMode === 'code') [...next.querySelectorAll<HTMLElement>(`.CodeMirror textarea, ${FOCUSABLE}`)].find(shown)?.focus();
   else if (next.matches('.pane.side')) (next.querySelector<HTMLElement>('[role=tab][aria-selected=true]') ?? next.querySelector<HTMLElement>(FOCUSABLE))?.focus();
   else next.querySelector<HTMLElement>(FOCUSABLE)?.focus();
   announce(next.getAttribute('aria-label') ?? (next.tagName === 'HEADER' ? 'Header' : 'Panel'));
