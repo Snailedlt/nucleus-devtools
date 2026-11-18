@@ -758,6 +758,18 @@ editor.getWrapperElement().addEventListener('mousemove', (e: MouseEvent) => {
     showHoverCard(text, at, list, doc, from);
   }, hoverDelay(280));
 });
+/** The hover card for a place in the handler, as hovering it would show (Check's "Show me" opens it at the problem). */
+function showTipAt(at: number) {
+  const text = editor.getValue();
+  const list = problemsAt(at);
+  const msg = blockedItemAt(text, at);
+  const r = msg ? undefined : resolveAt(text, at);
+  let doc = msg ? md(messageMarkdown(msg.id)) : r ? describeResolved(r.resolved, text.slice(r.start, r.end)) : '';
+  const own = !doc && !msg ? hoverAt(text, at, { own: true }) : undefined;
+  if (own) doc = md(own.markdown);
+  if (!list.length && !doc) return;
+  showHoverCard(text, at, list, doc, list.length ? Math.min(...list.map((d) => d.start)) : at);
+}
 document.addEventListener('pointerdown', (e) => { if (!tip.hidden && tip.classList.contains('explain') && !tip.contains(e.target as Node)) tip.hidden = true; }, true);
 const hideTipSoon = () => { if (tip.classList.contains('explain')) return; clearTimeout(tipHideTimer); tipHideTimer = window.setTimeout(() => (tip.hidden = true), 250); };
 editor.getWrapperElement().addEventListener('mouseleave', (e: MouseEvent) => {
@@ -1051,7 +1063,7 @@ function renderProblems(text: string) {
           <span class="row-fix">${ordered[0] ? fixBtn(ordered[0], true) : ''}</span>
           <button class="ptoggle" type="button" aria-expanded="${open}" aria-controls="${bodyId}" aria-label="More about line ${line}: ${esc(plain.title)}"></button></div>
         <div class="body" id="${bodyId}"${open ? '' : ' hidden'}><p class="plain-why">${esc(plain.why)}</p>
-        <div class="meta">${ordered.slice(1).map((o) => fixBtn(o, false)).join('')}<button class="link" type="button" data-jump="${d.start}">Show me</button>${RULE_DOCS[d.rule] ? `<a class="link" href="${esc(ruleHref(d.rule))}" target="_blank" rel="noopener">About this check</a>` : ''}${extra}${reportButton('flag', { text: true, className: 'pwrong', attrs: `data-wrong="${i}"` })}</div>
+        <div class="meta">${ordered.slice(1).map((o) => fixBtn(o, false)).join('')}<button class="link" type="button" data-jump="${d.start}" data-jump-end="${d.end}" data-tip="1">Show me</button>${RULE_DOCS[d.rule] ? `<a class="link" href="${esc(ruleHref(d.rule))}" target="_blank" rel="noopener">About this check</a>` : ''}${extra}${reportButton('flag', { text: true, className: 'pwrong', attrs: `data-wrong="${i}"` })}</div>
         <details class="tech"${density === 'detailed' ? ' open' : ''}><summary>Technical details</summary>${md(d.message).replace(/^<p>|<\/p>$/g, '')}</details></div></div></li>`;
     })
     .join('');
@@ -1098,7 +1110,15 @@ function renderProblems(text: string) {
       }, 60);
     }),
   );
-  el.querySelectorAll<HTMLButtonElement>('[data-jump]').forEach((b) => b.addEventListener('click', () => jumpTo(Number(b.dataset.jump))));
+  el.querySelectorAll<HTMLButtonElement>('[data-jump]').forEach((b) => b.addEventListener('click', () => {
+    const at = Number(b.dataset.jump);
+    jumpTo(at);
+    if (!b.dataset.tip) return;
+    // Show me: the problem's code selected and its hover card open, after the scroll (which closes cards) settles.
+    const end = Number(b.dataset.jumpEnd);
+    if (end > at) editor.setSelection(editor.posFromIndex(at), editor.posFromIndex(end));
+    setTimeout(() => showTipAt(at), 160);
+  }));
   el.querySelectorAll<HTMLButtonElement>('[data-wrong]').forEach((b) => b.addEventListener('click', () => reportWrongCheck(groups[Number(b.dataset.wrong)])));
 }
 const openProblems = new Set<string>();
