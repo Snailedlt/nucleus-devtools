@@ -218,6 +218,9 @@ test('importhooks: file names become string literals; an explicit path wins; com
   // SDL2.dll at the install root, the .exe in bin with Game.BinariesFolder = "bin": the instance root itself.
   const top = importProblems(t, [exe2, { ...sdl2, fileName: 'SDL2.dll' }]).find((p) => /SDL2/.test(p.title))!.fix!;
   assert.match(top.text, /Game\.SDLPaths = \["\."\];/);
+  // The same one folder down (game/bin/Game.exe, game/SDL2.dll): the root is game, so "." again.
+  const nested = importProblems(t, [{ ...exe2, fileName: 'game/bin/Game.exe' }, { ...sdl2, fileName: 'game/SDL2.dll' }]).find((p) => /SDL2/.test(p.title))!.fix!;
+  assert.match(nested.text, /Game\.SDLPaths = \["\."\];/);
 });
 
 test('importhooks: the last assignment of a runtime method counts; unclear ones withhold the fix', () => {
