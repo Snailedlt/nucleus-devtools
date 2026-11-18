@@ -22,9 +22,12 @@ jobs:
         run: git diff --exit-code -- plugin/ ':!plugin/skills/nucleus-handler/scripts/nucleus.js'
       - run: npx vsce package --no-dependencies -o splitscreenme-vscode.vsix
       - uses: actions/upload-artifact@v4
+        id: vsix
         with:
           name: vsix
           path: splitscreenme-vscode.vsix
+    outputs:
+      vsix: ${{ steps.vsix.outputs.artifact-url }}
 
   standalone:
     # ncdev (#18) with the Notepad++ plugin inside (#19): the plugin compiles, and the Linux build passes the smoke test.
@@ -40,9 +43,52 @@ jobs:
         with:
           path: .sea-cache
           key: sea-${{ hashFiles('scripts/sea.mjs') }}
-      - run: npm run build && sh scripts/build-native.sh linux-x64
+      # A pull request also builds ncdev.exe, so it can be tried on Windows before it's merged.
+      - run: npm run build && sh scripts/build-native.sh ${{ github.event_name == 'pull_request' && 'win-x64,linux-x64' || 'linux-x64' }}
       - name: The plugin is ready for Notepad++'s Plugins Admin (DLL versions, zips)
         run: |
           (cd dist-sea && zip -q -X ../NcDev.zip NcDev.dll && mkdir -p x86 && cp NcDev-x86.dll x86/NcDev.dll && cd x86 && zip -q -X ../../NcDev-x86.zip NcDev.dll)
           node scripts/npp-plugin-list.mjs
       - run: node scripts/smoke-standalone.mjs dist-sea/ncdev-linux-x64
+      - uses: actions/upload-artifact@v4
+        id: ncdev
+        if: github.event_name == 'pull_request'
+        with:
+          name: ncdev-and-notepadpp
+          path: |
+            dist-sea/ncdev.exe
+            dist-sea/ncdev-linux-x64
+            NcDev.zip
+            NcDev-x86.zip
+    outputs:
+      ncdev: ${{ steps.ncdev.outputs.artifact-url }}
+
+  links:
+    # One comment per pull request, updated on every push: where to download this PR's builds to try them.
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    needs: [build, standalone]
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          VSIX: ${{ needs.build.outputs.vsix }}
+          NCDEV: ${{ needs.standalone.outputs.ncdev }}
+        with:
+          script: |
+            const marker = '<!-- pr-builds -->';
+            const sha = context.payload.pull_request.head.sha.slice(0, 7);
+            const body = [
+              marker,
+              `**Try this pull request** (builds of ${sha}; you need to be signed in to GitHub to download, and they're kept 90 days)`,
+              '',
+              `- VS Code: [the .vsix](${process.env.VSIX}): unzip it, then *Extensions › ⋯ › Install from VSIX…*`,
+              `- ncdev and Notepad++: [ncdev.exe, ncdev-linux-x64 and the plugin zips](${process.env.NCDEV})`,
+            ].join('\n');
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number, per_page: 100 });
+            const mine = comments.find((c) => c.body?.includes(marker));
+            if (mine) await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body });
+            else await github.rest.issues.createComment({ owner, repo, issue_number, body });
