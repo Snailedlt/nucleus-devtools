@@ -58,6 +58,8 @@ How to write it (people and AI agents read this; the release workflow publishes 
 
 ### 🐛 Fixed
 
+- **Docs examples keep their nesting.** Examples such as `Game.ProtoInput.OnInputLocked` showed a loop's body and a call's arguments flat, and *Insert into handler* pasted them that way.
+- **Game-file hints: launchers and wording.** A handler with `Game.LauncherExe` and `Game.ProtoInput.InjectStartup` gets a warning: startup injection goes into the launcher, so the hooks never reach the game; the fix switches it to runtime injection. A hint no longer shows empty brackets when nothing in the files triggered it.
 - **Try it lists the Proto Input and Hook options you set.** *Options set* left out every `Game.ProtoInput.*` and `Game.Hook.*` value; VS Code, Notepad++ and `ncdev simulate` now show them.
 - **Game Folder: Link…, Install and Test in Nucleus Co-op in browser-based VS Code.** code-server and Codespaces hid them from the command palette, though they work there.
 - **"Move the code into Game.Play" keeps your indentation.** It used two spaces even in a handler indented with four or with tabs.

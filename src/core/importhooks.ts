@@ -209,6 +209,17 @@ export function importHints(text: string, a: Analysis): ImportHint[] {
   const have = handlerHooks(text);
   const kbm = isOn(text, 'SupportsMultipleKeyboardsAndMice');
   const used = (f: Finding) => f.hits.slice(0, 3).map((h) => (h.how === 'loads' ? `loads ${h.dll}` : h.how === 'imports' ? h.fn : h.fn)).join(', ');
+  // Startup injection with a launcher goes into the launcher, so none of the hooks reach the game.
+  const runtimeInject = ['InjectRuntime_RemoteLoadMethod', 'InjectRuntime_EasyHookMethod', 'InjectRuntime_EasyHookStealthMethod'].some((k) => isOn(text, 'ProtoInput.' + k));
+  if (/\bGame\.LauncherExe\s*=\s*["']/.test(text.replace(/\/\/.*$/gm, '')) && isOn(text, 'ProtoInput.InjectStartup') && !runtimeInject)
+    out.push({
+      rule: 'launcher-startup',
+      title: 'Game.ProtoInput.InjectStartup injects Proto Input into the launcher, not the game',
+      why: 'With Game.LauncherExe, the program Nucleus starts is the launcher (GenericGameHandler), so its hooks never reach the game. Inject at runtime instead (it only runs with InjectStartup off): Nucleus then injects into the game process it finds.',
+      lines: ['Game.ProtoInput.InjectRuntime_EasyHookMethod = true;'],
+      severity: 'warning',
+      fact: true,
+    });
   for (const f of a.found) {
     const r = f.rule;
     if (r.id === 'launcher') {
@@ -231,7 +242,7 @@ export function importHints(text: string, a: Analysis): ImportHint[] {
     if (r.id === 'focus' && (isOn(text, 'Hook.ForceFocus') || isOn(text, 'HookFocus'))) continue;
     out.push({
       rule: r.id,
-      title: `${r.title} (${used(f)}): ${missing.map((o) => 'Game.ProtoInput.' + o).join(', ')}${r.ctl ? ' (if players use controllers)' : ''}`,
+      title: `${r.title}${used(f) ? ` (${used(f)})` : ''}: ${missing.map((o) => 'Game.ProtoInput.' + o).join(', ')}${r.ctl ? ' (if players use controllers)' : ''}`,
       why: r.why + (missing.length === 1 && hubShare(missing[0]!) != null ? ` On in ${hubShare(missing[0]!)}% of the Hub handlers that use Proto Input.` : ''),
       lines: missing.map((o) => `Game.ProtoInput.${o} = true;`),
       severity: 'info',
@@ -285,7 +296,16 @@ export function importProblems(text: string, files: PeFile[]): FolderProblem[] {
   const pis = [...text.matchAll(/^Game\.ProtoInput\.\w+\s*=.*$/gm)];
   const insertAt = pis.length ? lineEnd(pis[pis.length - 1]!.index!) : exe ? lineEnd(exe.index!) : 0;
   const nl = insertAt > 0 && text[insertAt - 1] !== '\n' ? '\n' : '';
-  return hints.map((h) => ({
+  // Startup injection into a launcher: the fix swaps the InjectStartup line for runtime injection.
+  const startup = text.match(/^[ \t]*Game\.ProtoInput\.InjectStartup\s*=\s*true\s*;?[ \t]*$/m);
+  return hints.map((h) => h.rule === 'launcher-startup' && startup ? {
+    ...anchor,
+    severity: h.severity,
+    title: h.title,
+    why: h.why + ' (From the game’s program files.)',
+    fact: true as const,
+    fix: { title: 'Inject at runtime instead', text: h.lines[0]!, start: startup.index! + startup[0].indexOf('Game.'), end: startup.index! + startup[0].length },
+  } : ({
     ...anchor,
     severity: h.severity,
     title: h.title,

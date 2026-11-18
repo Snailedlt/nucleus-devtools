@@ -67,7 +67,10 @@ function printNode(n: any, src: string): Doc {
         body = n.body.body.map((st: any) => printStatement(st, src));
       } catch (e) {
         if (!(e instanceof Unsupported)) throw e;
-        body = src.slice(n.body.start + 1, n.body.end - 1).trim().split('\n').map((l) => l.trim());
+        // Kept as written: the common indent goes, the nesting inside (a loop's body, a call's arguments) stays.
+        const raw = src.slice(n.body.start + 1, n.body.end - 1).replace(/\t/g, '    ').replace(/^\s*\n/, '').trimEnd().split('\n').map((l) => l.trimEnd());
+        const common = Math.min(...raw.filter((l) => l.trim()).map((l) => l.match(/^ */)![0].length));
+        body = raw.map((l) => l.slice(common));
       }
       return [...head, '{', indent(...body.flatMap((d) => [hardline, d])), hardline, '}'];
     }

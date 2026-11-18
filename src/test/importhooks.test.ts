@@ -110,3 +110,19 @@ test('importhooks: hints as game-folder problems, with a fix that adds the lines
   // Nothing without program files.
   assert.deepEqual(importProblems(text, []), []);
 });
+
+test('importhooks: a launcher with startup injection gets a warning whose fix injects at runtime; no empty brackets', async () => {
+  const { importProblems } = await import('../core/importhooks');
+  const files = read('launcher');
+  const text = 'Game.ExecutableName = "war3.exe";\nGame.LauncherExe = "Frozen Throne.exe";\nGame.SupportsMultipleKeyboardsAndMice = true;\nGame.ProtoInput.InjectStartup = true;\n';
+  const ps = importProblems(text, files);
+  const w = ps.find((p) => p.title.startsWith('Game.ProtoInput.InjectStartup injects'));
+  assert.ok(w, ps.map((p) => p.title).join('\n'));
+  assert.equal(w!.severity, 'warning');
+  const fixed = text.slice(0, w!.fix!.start) + w!.fix!.text + text.slice(w!.fix!.end);
+  assert.match(fixed, /^Game\.ProtoInput\.InjectRuntime_EasyHookMethod = true;$/m);
+  assert.doesNotMatch(fixed, /InjectStartup/);
+  assert.ok(!ps.some((p) => /\(\)/.test(p.title)), 'no empty brackets');
+  // Runtime injection already: no warning.
+  assert.ok(!importProblems(fixed, files).some((p) => /InjectStartup injects/.test(p.title)));
+});
