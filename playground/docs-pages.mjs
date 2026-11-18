@@ -178,8 +178,8 @@ ${docsDrawer(up, here0, o.groups.map((g) => `<li><a href="${up}docs/${g.key}/">$
   const members = new Map(o.allEntries(true).map((e) => [e.path, e.member]));
   // A Hub example's source is "From Hub handlers", never the counts an older model's note has (they go stale).
   for (const m of members.values()) if (m.exampleBy === 'hub') m.exampleNote = 'From Hub handlers';
-  // Each 👍/👎 inside the part it rates, as in the workbench's Docs (doccard.ts): the doc's right under the description
-  // (after its AI-written note and the votes so far), "In practice"'s inside its box. The follow-up link shows only
+  // Each 👍/👎 where the workbench's Docs (doccard.ts) has it: the doc's at the bottom of the doc content, after the
+  // example and before "Handler API docs"; "In practice"'s inside its box. The follow-up link shows only
   // after a vote (site-chrome.mjs docFeedback); the core's own "Is it wrong? Tell us" links are left out for it.
   const feedbackUrl = (p) => o.docReviewUrl(p).replace(encodeURIComponent('Doc review: '), encodeURIComponent('Doc feedback: '));
   const withVotes = (page, m, href) => {
@@ -193,9 +193,13 @@ ${docsDrawer(up, here0, o.groups.map((g) => `<li><a href="${up}docs/${g.key}/">$
     if (m && o.placeAiFrames) html = o.placeAiFrames(html, m, { icon: SPARK, level: 2 });
     const line = (part, q) => docFeedback(page.path, o.docReviewUrl(page.path), esc, part, q, { inline: true, feedbackUrl: feedbackUrl(page.path), counts: o.partVotes ? o.partVotes(page.path, part) : undefined });
     if (votes) {
-      html = html.replace('<p>@@slot:doc@@</p>', () => line('doc', 'Is the doc right?')).replace('<p>@@slot:practice@@</p>', () => line('practice', 'Is "In practice" right?'));
+      html = html.replace('<p>@@slot:practice@@</p>', () => line('practice', 'Is "In practice" right?'));
       if (m.practice && !html.includes('data-kind="practice"')) html += line('practice', 'Is "In practice" right?');
-      if (m.doc && !html.includes('data-kind="doc"')) html += line('doc', 'Is the doc right?');
+      // The doc's own at the bottom of the doc content (after the example), before "Handler API docs", as in #docs.
+      if (m.doc) {
+        const api = /<p><a [^>]*>(?:Handler API docs|MDN: [^<]*)<\/a><\/p>/.exec(html);
+        html = api ? html.slice(0, api.index) + line('doc', 'Is the doc right?') + html.slice(api.index) : html + line('doc', 'Is the doc right?');
+      }
     }
     html = html.replace(/<p>@@slot:[\w-]+@@<\/p>\n?/g, '');
     return votes ? html + docFeedbackScript(o.feedbackSite ?? null, o.countsSite ?? o.feedbackSite ?? null) + (o.aiTipScript ? `<script>${o.aiTipScript}</script>` : '') : html;

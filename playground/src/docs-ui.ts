@@ -59,8 +59,9 @@ export interface DocsDeps {
    *  option is set: its value changes), 'callback' (added with its callback), 'same' (it's there), or undefined when the
    *  handler doesn't parse. */
   exampleAction?: (path: string, m: Member) => string | undefined;
-  /** Puts a member's example into the open handler (app.ts, lines.ts placeExample). */
-  insertExample?: (path: string, m: Member) => void;
+  /** Puts a member's example into the open handler (app.ts, lines.ts placeExample). When the handler sets the option
+   *  already, `replace` false only shows that line; true replaces its value with the example's. */
+  insertExample?: (path: string, m: Member, replace?: boolean) => void;
 }
 
 export interface DocsUI {
@@ -115,14 +116,16 @@ export function initDocs(deps: DocsDeps): DocsUI {
     wireApiLinks(el);
     el.scrollTop = 0;
   }
-  /** "Insert into handler" says what it will do: "Update in handler" when the handler sets the option already, "In the
-   *  handler" (go there) when it has exactly this. */
+  /** "Insert into handler" says what it will do. When the handler sets the option already it becomes "Show in handler"
+   *  (goes to that line, changes nothing), with a quieter "Replace with the example's value" next to it: people usually
+   *  want to keep their own value. "Show in handler" too when it has exactly this. */
   const insertLabel: Record<string, [string, string]> = {
     insert: ['Insert into handler', 'Adds this example where it belongs in the open handler. Ctrl+Z undoes it.'],
     callback: ['Insert into handler', 'Adds this example to the open handler, with the callback it goes in. Ctrl+Z undoes it.'],
-    update: ['Update in handler', 'The handler sets this already: changes its value to the example\'s. Ctrl+Z undoes it.'],
+    update: ['Show in handler', 'The handler sets this already: shows where, and keeps your value.'],
     same: ['Show in handler', 'The handler has exactly this already: shows where.'],
   };
+  const REPLACE = ['Replace with the example\'s value', 'Changes the value the handler sets to the example\'s. Ctrl+Z undoes it.'];
   const memberOf = (p: string) => { const r = lookup(p); return r.kind === 'entries' && r.entries.length === 1 ? r.entries[0].member : undefined; };
   function labelInserts(el: HTMLElement) {
     el.querySelectorAll<HTMLButtonElement>('[data-insert]').forEach((b) => {
@@ -132,14 +135,25 @@ export function initDocs(deps: DocsDeps): DocsUI {
       b.textContent = text;
       b.title = title;
       b.setAttribute('aria-disabled', String(!action));
+      // The secondary "Replace" only while the handler sets the option to another value.
+      let r = b.nextElementSibling?.matches('[data-replace]') ? b.nextElementSibling as HTMLButtonElement : null;
+      if (action === 'update' && !r) {
+        r = document.createElement('button');
+        r.type = 'button';
+        r.className = 'link dc-replace';
+        r.dataset.replace = b.dataset.insert!;
+        [r.textContent, r.title] = REPLACE;
+        b.after(r);
+      } else if (action !== 'update') r?.remove();
     });
   }
   // One listener: the buttons are drawn again with each view.
   $('#api-results').addEventListener('click', (e) => {
-    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-insert]');
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-insert], [data-replace]');
     if (!b) return;
-    const m = memberOf(b.dataset.insert!);
-    if (m) deps.insertExample?.(b.dataset.insert!, m);
+    const p = b.dataset.insert ?? b.dataset.replace!;
+    const m = memberOf(p);
+    if (m) deps.insertExample?.(p, m, 'replace' in b.dataset);
     labelInserts($('#api-results'));
   });
   // The handler may change while Docs is open: the labels catch up when you come back to them.

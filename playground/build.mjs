@@ -5,7 +5,7 @@
 //
 // The core is imported from a checkout of splitscreenme-vscode (src/core), so the
 // page always runs the same linter as the extension.
-import { siteHeader, SITE_HEADER_CSS, siteVisitScript, COPY_CSS, COPY_SCRIPT, COMMUNITY, COMMUNITY_CSS, withCommunity } from './site-chrome.mjs';
+import { siteHeader, SITE_HEADER_CSS, siteVisitScript, COPY_CSS, COPY_SCRIPT, COMMUNITY, COMMUNITY_CSS, withCommunity, setReportFlag } from './site-chrome.mjs';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import path from 'node:path';
@@ -730,6 +730,13 @@ fs.copyFileSync(path.join(here, '..', 'docs', 'images', 'og.png'), path.join(sta
 // One page per check (rules/<id>/) and the list of them (rules/), from the core's core/ruledocs.ts (rules-pages.mjs).
 // The checks for the docs list's Checks section (rules-pages.mjs), handed to the docs pages below.
 let checksNav = [];
+// The report flag (core/reporticons.ts) for the site pages' "Tell us what's wrong" links (site-chrome.mjs), the same as
+// the workbench's: the flag means "report" everywhere.
+{
+  const ri = await esbuild.build({ entryPoints: [path.join(coreRepo, 'src', 'core', 'reporticons.ts')], bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'warning' });
+  const { reportIcon } = await import('data:text/javascript;base64,' + Buffer.from(ri.outputFiles[0].text).toString('base64'));
+  setReportFlag(reportIcon('flag', 14));
+}
 {
   const mod = await esbuild.build({ entryPoints: [path.join(coreRepo, 'src', 'core', 'ruledocs.ts')], bundle: true, format: 'esm', platform: 'node', write: false, nodePaths: [path.join(coreRepo, 'node_modules')], logLevel: 'warning', banner: { js: `import { createRequire as __cr } from 'node:module'; const require = __cr(${JSON.stringify(import.meta.url)});` } });
   const { RULE_DOCS } = await import('data:text/javascript;base64,' + Buffer.from(mod.outputFiles[0].text).toString('base64'));

@@ -7,6 +7,7 @@
 // engine" line are on the docs pages (docs-pages.mjs). Used by the hover card (compact), Docs (full entries and search
 // results, memberSummary), Form and Blocks.
 import { withContext } from './report';
+import { reportIcon } from '@core/reporticons';
 import { aiBasis, api, docReviewUrl, exampleSource, isAiPart, ownerLabel, type AiPart, type Member } from '@core/api';
 import { aiMeta } from '@core/aimark';
 import type { DocPart } from '@core/docvotes';
@@ -179,7 +180,7 @@ function voteLine(path: string, part: DocPart): string {
   setTimeout(() => fillLive(id, path, part), 0);
   return `<div class="dc-check" data-up="${c.up}" data-down="${c.down}" data-aiup="${c.aiUp}" data-aidown="${c.aiDown}" data-base="${mine ?? ''}"><span>${q}</span>`
     + `<span class="vote-ctl" role="group" aria-label="${q}">${b('up', '👍', labels.up)}<span class="vote-score" aria-hidden="true"></span>${b('down', '👎', labels.down)}<span class="vote-tip" id="${id}" role="tooltip"></span></span>`
-    + `<a class="dc-wrong" href="${esc(withContext(docReviewUrl(path), { Doc: path }))}" target="_blank" rel="noopener"${mine === 'down' ? '' : ' hidden'}>Tell us what's wrong</a>`
+    + `<a class="dc-wrong" href="${esc(withContext(docReviewUrl(path), { Doc: path }))}" target="_blank" rel="noopener"${mine === 'down' ? '' : ' hidden'}>${reportIcon('flag', 14)}Tell us what's wrong</a>`
     + `<a class="dc-good" href="${esc(withContext(feedbackUrl(path), { Doc: path }))}" target="_blank" rel="noopener"${mine === 'up' ? '' : ' hidden'}>Give feedback</a></div>`;
 }
 /** The score and the tooltip from the line's counts and the vote pressed now. Live counts already hold the vote this

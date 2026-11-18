@@ -59,7 +59,7 @@ export function initTryIt(deps: TryItDeps): { run: () => void; options: () => Si
     const out: string[] = [];
     const simple = deps.simple();
     // "Nucleus did something different": an icon on the result's banner (its words in the tooltip), on request only.
-    const differs = reportButton('report', { label: 'Nucleus did something different', tip: 'Nucleus did something different: report what Try it showed, next to what really happened', className: 'sim-differs', attrs: 'id="sim-differs"' });
+    const differs = reportButton('flag', { label: 'Nucleus did something different', tip: 'Nucleus did something different: report what Try it showed, next to what really happened', className: 'sim-differs', attrs: 'id="sim-differs"' });
     // Test all needs a handler that loads: until then the banner below says what to fix.
     const all = $('#sim-all') as HTMLButtonElement;
     all.disabled = !r.loaded;

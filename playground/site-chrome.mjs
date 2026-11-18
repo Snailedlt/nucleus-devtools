@@ -42,6 +42,11 @@ export const SITE_HEADER_CSS = `
  * browser's own vote. Without counts (the rule pages, which have none) there is no number. On hover and on focus a
  * tooltip tells people's and AIs' votes apart; it is also each button's description, for keyboard and screen readers.
  */
+/** The report flag (core/reporticons.ts reportIcon('flag')), set by build.mjs: before every report link on the pages. */
+let FLAG = '';
+export const setReportFlag = (svg) => { FLAG = svg; };
+export const reportFlag = () => FLAG;
+
 export function docFeedback(name, reportUrl, esc, kind = 'doc', question = 'Is this right?', o = {}) {
   // A docs page can have two vote lines (the doc and "In practice"): each button's name says which part it rates.
   // (The same names as the workbench's, doccard.ts VOTE_LABELS.) The follow-up link shows only after a vote: after a
@@ -55,7 +60,7 @@ export function docFeedback(name, reportUrl, esc, kind = 'doc', question = 'Is t
   const tip = c ? `<span class="vote-tip" id="${tipId}" role="tooltip">${esc(voteTipText(c.up | 0, c.down | 0, c.aiUp | 0, c.aiDown | 0))}</span>` : '';
   return `<div class="doc-fb${o.inline ? ' inline' : ''}" data-kind="${kind}" data-doc="${esc(name)}"${counts}><span>${esc(question)}</span>
 <span class="vote-ctl" role="group" aria-label="${esc(question)}">${btn('up', '👍', up)}${c ? `<span class="vote-score" aria-hidden="true">${scoreText(c.up - c.down)}</span>` : ''}${btn('down', '👎', down)}${tip}</span>
-<a class="fb-down" href="${esc(reportUrl)}" target="_blank" rel="noopener" hidden>Tell us what's wrong</a>${o.feedbackUrl ? `<a class="fb-up" href="${esc(o.feedbackUrl)}" target="_blank" rel="noopener" hidden>Give feedback</a>` : ''}<span class="doc-fb-thanks" role="status"></span></div>`;
+<a class="fb-down" href="${esc(reportUrl)}" target="_blank" rel="noopener" hidden>${FLAG}Tell us what's wrong</a>${o.feedbackUrl ? `<a class="fb-up" href="${esc(o.feedbackUrl)}" target="_blank" rel="noopener" hidden>Give feedback</a>` : ''}<span class="doc-fb-thanks" role="status"></span></div>`;
 }
 // The score as Reddit shows it: a real minus sign for a negative one.
 const scoreText = (n) => (n < 0 ? `−${-n}` : String(n));
@@ -68,24 +73,26 @@ export function voteTipText(up, down, aiUp, aiDown) {
 export const DOC_FEEDBACK_CSS = `
 .doc-fb { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 28px 0 0; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--r-pane); background: var(--surface); font-size: 14px; }
 /* One compact control, as Reddit's: [👍] score [👎] in a pill. */
-.vote-ctl { position: relative; display: inline-flex; align-items: center; gap: 2px; padding: 1px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); }
-.vote-btn { font: inherit; line-height: 1; padding: 4px 8px; border: 1px solid transparent; border-radius: 999px; background: none; cursor: pointer; }
+/* Quiet until used: small grey emoji in a light pill, close together; in colour on hover, focus or once pressed. */
+.vote-ctl { position: relative; display: inline-flex; align-items: center; gap: 0; padding: 0; border: 1px solid color-mix(in srgb, var(--line) 75%, transparent); border-radius: 999px; background: none; }
+.vote-btn { font: inherit; font-size: 12px; line-height: 1; padding: 3px 5px; border: 0; border-radius: 999px; background: none; cursor: pointer; filter: grayscale(1); opacity: .8; }
+.vote-btn:hover, .vote-btn:focus-visible, .vote-btn[aria-pressed="true"] { filter: none; opacity: 1; }
 .vote-btn:hover { background: var(--surface); }
 .vote-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.vote-btn[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
-.vote-score { min-width: 1.6em; text-align: center; font-weight: 700; color: var(--fg); font-variant-numeric: tabular-nums; }
-.doc-fb[data-mine="up"] .vote-score, .doc-fb[data-mine="down"] .vote-score { color: var(--accent); }
+.vote-btn[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.vote-score { min-width: 1.2em; text-align: center; font-size: 12px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.doc-fb[data-mine="up"] .vote-score, .doc-fb[data-mine="down"] .vote-score { color: var(--fg); font-weight: 700; }
 /* The tooltip: on hover and on focus (Escape closes it), hoverable itself, never covering the buttons. */
 .vote-tip { position: absolute; z-index: 5; left: 0; top: 100%; margin-top: 4px; width: max-content; max-width: min(340px, 80vw); padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--surface); color: var(--fg); font-size: 13px; line-height: 1.45; white-space: pre-line; box-shadow: 0 4px 14px rgb(0 0 0 / .18); visibility: hidden; opacity: 0; transition: opacity .12s; }
 .vote-tip::before { content: ''; position: absolute; left: 0; right: 0; top: -6px; height: 6px; }
 .vote-ctl:hover .vote-tip, .vote-ctl:focus-within .vote-tip { visibility: visible; opacity: 1; }
 .vote-ctl.tip-off .vote-tip { visibility: hidden; opacity: 0; }
 @media (prefers-reduced-motion: reduce) { .vote-tip { transition: none; } }
+.fb-down .rep-ico { vertical-align: -2px; margin-right: 4px; }
 .doc-fb-thanks:empty { display: none; }
 .doc-fb [hidden] { display: none; }
 /* Inside the part it rates (the doc, "In practice"), as the workbench's Docs: a quiet line, not a box. */
 .doc-fb.inline { margin: 10px 0 18px; padding: 0; border: 0; background: none; font-size: 13px; color: var(--muted); }
-.doc-fb.inline .vote-btn { padding: 3px 7px; }
 .ai-box .doc-fb.inline { margin: 10px 0 0; }
 `;
 /** The script for the votes; `site` is the GoatCounter site code, or null (then votes stay in the browser).

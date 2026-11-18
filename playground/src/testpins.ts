@@ -65,7 +65,7 @@ export function initTestPins(openGuide: () => void) {
           <button type="button" class="tf-name" data-toggle="${t.id}" aria-expanded="${open.has(t.id)}">${esc(t.title)}</button>
           <button type="button" class="btn icon tf-unpin" data-unpin="${t.id}" aria-label="Unpin ${esc(t.title)}" title="Unpin">×</button></div>
         <div class="tf-body"${open.has(t.id) ? '' : ' hidden'}><p><span class="muted">Try:</span> ${esc(t.steps)}</p><p><span class="muted">Look for:</span> ${esc(t.look)}</p>
-          <a class="small" data-report="${t.id}" href="${esc(report(t))}" target="_blank" rel="noopener">${reportIcon('report', 14)} Report what you found</a></div></li>`).join('')}</ol>`;
+          <a class="small" data-report="${t.id}" href="${esc(report(t))}" target="_blank" rel="noopener">${reportIcon('flag', 14)} Report what you found</a></div></li>`).join('')}</ol>`;
     place();
   };
 

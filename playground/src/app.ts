@@ -1414,14 +1414,16 @@ const docs = initDocs({ selectTab, handlerHash: () => doc.hash, used: use, pageU
 function placeDocExample(path: string, m: Member) {
   return m.example ? placeExample(editor.getValue(), path, prettyCode(m.example), m.exampleIn ?? 'top') : undefined;
 }
-function insertExample(path: string, m: Member) {
+function insertExample(path: string, m: Member, replace = false) {
   const r = placeDocExample(path, m);
   if (!r) return toast("There's no telling where the example goes: the handler doesn't parse (Check lists what's wrong), or its callback is set to a function made elsewhere. Add it by hand.");
-  if (r.action === 'same') {
+  // Set already: "Show in handler" goes to that line and keeps the value; only "Replace with the example's value" changes it.
+  if (r.action === 'same' || (r.action === 'update' && !replace)) {
     // Shown in the Code view (Form or Blocks would leave it hidden), as Check's "Show me" does.
     if (viewMode !== 'code') setViewMode('code');
     jumpTo(editor.indexFromPos({ line: r.line, ch: 0 }));
-    codeNote(editor, r.line, `The handler has this already (line ${r.line + 1}).`, { mood: 'info' });
+    editor.setSelection({ line: r.line, ch: 0 }, { line: r.line, ch: editor.getLine(r.line).length }); // the line, highlighted
+    codeNote(editor, r.line, r.action === 'same' ? `The handler has this already (line ${r.line + 1}).` : `The handler sets ${path} here (line ${r.line + 1}). Your value stays.`, { mood: 'info' });
     return;
   }
   const before: string = editor.getValue();

@@ -67,7 +67,20 @@ button.link { background: none; border: 0; padding: 0; font: inherit; color: var
 @media (prefers-reduced-motion: reduce) { #drawer { transition: none; } }
 #drawer-list { list-style: none; margin: 0; padding: 12px 8px 24px; font-size: 14px; }
 #drawer-list ul, #drawer-list ol { list-style: none; margin: 0; padding: 0; }
-.d-chapter-title { display: block; padding: 4px 8px 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+/* Each chapter its own group: a header (number, title, lessons done) that opens and closes it, a divider between them,
+   its sections indented under it. */
+.d-chapter + .d-chapter { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.d-chapter-head { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px; border: 0; border-radius: var(--r-sm); background: none; color: var(--fg); font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
+.d-chapter-head:hover { background: color-mix(in srgb, var(--fg) 6%, transparent); }
+.d-chapter-head:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.d-ch-no { flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--muted); color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.d-chapter.current .d-ch-no { border-color: var(--accent); background: var(--accent); color: var(--accent-fg, #fff); }
+.d-ch-title { flex: 1; min-width: 0; font-size: 15px; line-height: 1.3; }
+.d-ch-prog { flex: none; font-size: 12px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.d-chapter-head::after { content: ""; flex: none; width: 6px; height: 6px; border: solid var(--muted); border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); transition: transform .15s; margin: 0 2px 3px 0; }
+.d-chapter-head[aria-expanded="false"]::after { transform: rotate(-45deg); margin: 0 3px 0 0; }
+@media (prefers-reduced-motion: reduce) { .d-chapter-head::after { transition: none; } }
+#drawer-list .d-ch-body { margin: 4px 0 2px 19px; padding-left: 6px; border-left: 1px solid var(--line); }
 .d-section > summary { cursor: pointer; padding: 5px 8px; border-radius: var(--r-sm); font-weight: 600; color: var(--fg); list-style: none; display: flex; align-items: center; gap: 6px; }
 .d-section > summary::-webkit-details-marker { display: none; }
 .d-section > summary::before { content: ""; width: 6px; height: 6px; border: solid var(--muted); border-width: 0 1.5px 1.5px 0; transform: rotate(-45deg); transition: transform .15s; flex: none; }

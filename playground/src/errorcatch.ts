@@ -30,10 +30,10 @@ function note(id: string) {
     bar = document.createElement('div');
     bar.id = 'error-note';
     bar.setAttribute('role', 'status');
-    bar.innerHTML = `<span class="en-ico">${reportIcon('report', 18)}</span><span class="en-text"></span><button type="button" class="btn small" id="en-report">Report it</button><button type="button" class="btn small icon" id="en-close" aria-label="Dismiss" title="Dismiss">×</button>`;
+    bar.innerHTML = `<span class="en-ico">${reportIcon('report', 18)}</span><span class="en-text"></span><button type="button" class="btn small" id="en-report">${reportIcon('flag', 14)}Report it</button><button type="button" class="btn small icon" id="en-close" aria-label="Dismiss" title="Dismiss">×</button>`;
     const st = document.createElement('style');
     st.textContent = `#error-note{position:fixed;left:12px;bottom:12px;z-index:2000;display:flex;align-items:center;gap:8px;max-width:min(520px,calc(100vw - 24px));padding:8px 10px;border:1px solid var(--line,#8886);border-left:4px solid var(--err,#c33);border-radius:var(--r-ctl,8px);background:var(--surface,#fff);color:var(--fg,#111);box-shadow:var(--sh-2,0 4px 16px #0003);font-size:14px}
-#error-note .en-text{flex:1;min-width:0}#error-note .en-ico{color:var(--err,#c33);display:inline-flex}#error-note button{min-height:28px}`;
+#error-note .en-text{flex:1;min-width:0}#error-note .en-ico{color:var(--err,#c33);display:inline-flex}#error-note button{min-height:28px}#error-note #en-report{display:inline-flex;align-items:center;gap:5px}`;
     bar.append(st);
     document.body.append(bar);
     bar.querySelector('#en-close')!.addEventListener('click', () => bar!.remove());

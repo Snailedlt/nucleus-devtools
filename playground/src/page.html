@@ -728,6 +728,7 @@ li.CodeMirror-hint-active .hint-type { color: var(--muted); opacity: 1; }
 .api-ai.slim .d { font-size: 12px; }
 .dc-check { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 10px; font-size: 12px; color: var(--muted); }
 .dc-check a { font-size: 12px; }
+.dc-check .dc-wrong .rep-ico { vertical-align: -2px; margin-right: 4px; }
 /* AI-written parts: a frame with a light violet tint and the sparkle in its corner; where the part comes from is the
    sparkle's tooltip (core/aimark.ts aiMeta; the same as aiFrameCss there, which the docs pages and VS Code use). */
 .ai-box { display: flow-root; margin: 8px 0 10px; padding: 8px 12px; border: 1px solid color-mix(in srgb, #a855f7 45%, var(--line)); border-radius: 8px; background: color-mix(in srgb, #a855f7 7%, transparent); }
@@ -766,6 +767,7 @@ li.CodeMirror-hint-active .hint-type { color: var(--muted); opacity: 1; }
 .dc-ex-t { font-weight: 600; }
 .dc-ex-src { color: var(--muted); }
 .dc-insert { margin-left: auto; }
+.dc-replace { font-size: 12px; }
 .gh-app-note { flex-basis: 100%; font-size: 12px; color: var(--muted); }
 .votes { display: inline-flex; gap: 2px; }
 .vote-btn { font: 13px/1 var(--font-body); background: none; border: 1px solid transparent; border-radius: 6px; padding: 3px 5px; cursor: pointer; filter: grayscale(1); opacity: .7; }
@@ -773,12 +775,15 @@ li.CodeMirror-hint-active .hint-type { color: var(--muted); opacity: 1; }
 .vote-btn[aria-pressed="true"] { opacity: 1; filter: none; background: color-mix(in srgb, var(--accent) 16%, transparent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
 #tip-votes .votes { margin-right: 2px; }
 /* The doc votes: one compact control, as the docs pages' [👍] score [👎] (site-chrome.mjs DOC_FEEDBACK_CSS). */
-.dc-check .vote-ctl { position: relative; display: inline-flex; align-items: center; gap: 2px; padding: 1px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); }
-.dc-check .vote-btn { filter: none; opacity: 1; border-radius: 999px; padding: 3px 7px; }
+/* Quiet until used: small grey emoji in a light pill, close together; in colour on hover, focus or once pressed. */
+.dc-check .vote-ctl { position: relative; display: inline-flex; align-items: center; gap: 0; padding: 0; border: 1px solid color-mix(in srgb, var(--line) 75%, transparent); border-radius: 999px; background: none; }
+.dc-check .vote-btn { font-size: 11px; filter: grayscale(1); opacity: .8; border: 0; border-radius: 999px; padding: 2px 4px; }
+.dc-check .vote-btn:hover, .dc-check .vote-btn:focus-visible, .dc-check .vote-btn[aria-pressed="true"] { filter: none; opacity: 1; }
 .dc-check .vote-btn:hover { background: var(--surface); }
+.dc-check .vote-btn[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 14%, transparent); }
 .dc-check .vote-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.dc-check .vote-score { min-width: 1.6em; text-align: center; font-weight: 700; color: var(--fg); font-variant-numeric: tabular-nums; }
-.dc-check:has(.vote-btn[aria-pressed="true"]) .vote-score { color: var(--accent); }
+.dc-check .vote-score { min-width: 1.2em; text-align: center; font-size: 11px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dc-check:has(.vote-btn[aria-pressed="true"]) .vote-score { color: var(--fg); font-weight: 700; }
 .dc-check .vote-tip { position: absolute; left: 0; top: calc(100% + 6px); z-index: 30; width: max-content; max-width: min(340px, 80vw); padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--fg); box-shadow: 0 4px 14px rgba(0,0,0,.25); font-size: 12px; line-height: 1.5; white-space: pre-line; visibility: hidden; opacity: 0; transition: opacity .12s; pointer-events: none; }
 .dc-check .vote-ctl:hover .vote-tip, .dc-check .vote-ctl:focus-within .vote-tip { visibility: visible; opacity: 1; }
 .dc-check .vote-ctl.tip-off .vote-tip { visibility: hidden; opacity: 0; }

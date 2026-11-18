@@ -36,11 +36,11 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 interface KindText { icon: ReportIconKind; heading: string; intro: string; ask?: { label: string; required?: boolean; rows?: number }; part?: string }
 const TEXT: Record<ReportKind, KindText> = {
   check: { icon: 'flag', heading: 'This check is wrong', intro: 'Checks should only warn about what really breaks or does nothing in Nucleus Co-op. Tell us what it does instead.', ask: { label: 'What does Nucleus really do? (optional: you can also write it on the form)' }, part: 'Include the flagged code' },
-  tryit: { icon: 'report', heading: 'Nucleus did something different', intro: 'What Try it showed goes with the report, next to what really happened.', ask: { label: 'What really happened in Nucleus Co-op?', rows: 3 }, part: 'Include what Try it showed' },
-  error: { icon: 'report', heading: 'Something went wrong', intro: "The workbench hit an error. Nothing was sent: if you report it, the error is filled in for you.", ask: { label: 'What were you doing? (optional)' }, part: "Include the error's stack (where in the workbench it happened)" },
+  tryit: { icon: 'flag', heading: 'Nucleus did something different', intro: 'What Try it showed goes with the report, next to what really happened.', ask: { label: 'What really happened in Nucleus Co-op?', rows: 3 }, part: 'Include what Try it showed' },
+  error: { icon: 'flag', heading: 'Something went wrong', intro: "The workbench hit an error. Nothing was sent: if you report it, the error is filled in for you.", ask: { label: 'What were you doing? (optional)' }, part: "Include the error's stack (where in the workbench it happened)" },
   docs: { icon: 'idea', heading: 'Ask for this to be documented', intro: 'The Docs have nothing for this yet. Tell us what you were looking for.', ask: { label: 'What did you want to find out? (optional)' } },
   stuck: { icon: 'idea', heading: "I'm stuck here", intro: "Tell us where this lesson loses you, so we can make it clearer. The lesson is filled in for you.", ask: { label: "What's in the way? (optional)", rows: 3 }, part: 'Include your code in this lesson' },
-  problem: { icon: 'report', heading: 'Report a problem', intro: 'Something wrong, confusing or missing? The details below are filled in for you.', ask: { label: 'What happened, and what did you expect? (optional: you can also write it on the form)', rows: 3 } },
+  problem: { icon: 'flag', heading: 'Report a problem', intro: 'Something wrong, confusing or missing? The details below are filled in for you.', ask: { label: 'What happened, and what did you expect? (optional: you can also write it on the form)', rows: 3 } },
   feature: { icon: 'idea', heading: 'Request a feature', intro: "Start from the problem: what you're trying to do, and what's in the way. We'll work out the best way to help.", ask: { label: 'What are you trying to do?', rows: 3 } },
 };
 

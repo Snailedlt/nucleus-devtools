@@ -75,7 +75,7 @@ function noteHtml(x: Note, i: number): string {
 }
 /** A tip nobody has checked on a real PC yet: a small "Different for you? Tell us" after it (a report, on request).
  *  `where` finds the tip again (step:<i>:<j> or note:<i>). */
-const differentFor = (where: string) => ' ' + reportButton('report', { text: 'Different for you? Tell us', tip: "We haven't checked this on every PC yet. Different for you? Tell us: the lesson and this tip are filled in.", className: 'unverified', attrs: `data-unverified="${where}"` });
+const differentFor = (where: string) => ' ' + reportButton('flag', { text: 'Different for you? Tell us', tip: "We haven't checked this on every PC yet. Different for you? Tell us: the lesson and this tip are filled in.", className: 'unverified', attrs: `data-unverified="${where}"` });
 const tipHtml = (t: Tip, where: string) => `<li>${inline(tipText(t))}${isUnverified(t) ? differentFor(where) : ''}</li>`;
 /** A step on the learner's PC: what to do, what they should see, and fixes (folded) if they don't. */
 function stepHtml(st: Step, i: number): string {
@@ -582,16 +582,34 @@ function go(i: number, focus = true) {
 
 // ------------------------------------------------------------------------------------------------------------
 // The lesson list: a drawer on the left, chapter › section › lesson, indented by level (like Svelte's tutorial and
-// most component libraries' docs). Open on wide screens unless closed; over the page on narrow ones.
+// most component libraries' docs). Open on wide screens unless closed; over the page on narrow ones. Each chapter is
+// its own group (number, title, lessons done); only the current one is open unless someone opens another.
+const openChapters = new Set<string>();
+let drawerChapter: Chapter | undefined;
 function renderDrawer() {
+  if (drawerChapter !== chapter) { openChapters.add(chapter.id); drawerChapter = chapter; }
   const sections = (c: Chapter) => [...new Set(c.lessons.map((l) => l.section))];
-  $('#drawer-list').innerHTML = CHAPTERS.map((c) => `<li class="d-chapter"><span class="d-chapter-title">${esc(c.title)}</span><ul>${sections(c).map((s) => {
-    const ls = c.lessons.map((l, i) => ({ l, i })).filter((x) => x.l.section === s);
-    const here = c === chapter && lesson().section === s;
-    const key = `${c.id}/${s}`;
-    const open = here || (saved.open ?? []).includes(key);
-    return `<li><details class="d-section" data-key="${esc(key)}"${open ? ' open' : ''}><summary>${esc(s)}</summary><ol>${ls.map(({ l, i }) => `<li><a href="#${c.id}/${l.id}"${c === chapter && i === index ? ' aria-current="page"' : ''}><span class="d-no">${i + 1}</span><span class="d-title">${esc(l.title)}</span>${l.optional ? optTag : ''}${saved.done.includes(`${c.id}/${l.id}`) ? '<span class="tick" aria-label="done">✓</span>' : ''}</a></li>`).join('')}</ol></details></li>`;
-  }).join('')}</ul></li>`).join('');
+  $('#drawer-list').innerHTML = CHAPTERS.map((c, ci) => {
+    const done = c.lessons.filter((l) => saved.done.includes(`${c.id}/${l.id}`)).length;
+    const open = openChapters.has(c.id);
+    const body = sections(c).map((s) => {
+      const ls = c.lessons.map((l, i) => ({ l, i })).filter((x) => x.l.section === s);
+      const here = c === chapter && lesson().section === s;
+      const key = `${c.id}/${s}`;
+      const sOpen = here || (saved.open ?? []).includes(key);
+      return `<li><details class="d-section" data-key="${esc(key)}"${sOpen ? ' open' : ''}><summary>${esc(s)}</summary><ol>${ls.map(({ l, i }) => `<li><a href="#${c.id}/${l.id}"${c === chapter && i === index ? ' aria-current="page"' : ''}><span class="d-no">${i + 1}</span><span class="d-title">${esc(l.title)}</span>${l.optional ? optTag : ''}${saved.done.includes(`${c.id}/${l.id}`) ? '<span class="tick" aria-label="done">✓</span>' : ''}</a></li>`).join('')}</ol></details></li>`;
+    }).join('');
+    return `<li class="d-chapter${c === chapter ? ' current' : ''}"><button type="button" class="d-chapter-head" aria-expanded="${open}" aria-controls="d-ch-${esc(c.id)}" data-ch="${esc(c.id)}"${c === chapter ? ' aria-current="true"' : ''}>`
+      + `<span class="d-ch-no" aria-hidden="true">${ci + 1}</span><span class="d-ch-title"><span class="sr-only">Chapter ${ci + 1}: </span>${esc(c.title)}</span>`
+      + `<span class="d-ch-prog" title="${done} of ${c.lessons.length} lessons done"><span aria-hidden="true">${done}/${c.lessons.length}</span><span class="sr-only">, ${done} of ${c.lessons.length} lessons done</span></span></button>`
+      + `<ul class="d-ch-body" id="d-ch-${esc(c.id)}"${open ? '' : ' hidden'}>${body}</ul></li>`;
+  }).join('');
+  $('#drawer-list').querySelectorAll<HTMLButtonElement>('.d-chapter-head').forEach((b) => b.addEventListener('click', () => {
+    const open = b.getAttribute('aria-expanded') !== 'true';
+    b.setAttribute('aria-expanded', String(open));
+    document.getElementById(b.getAttribute('aria-controls')!)?.toggleAttribute('hidden', !open);
+    if (open) openChapters.add(b.dataset.ch!); else openChapters.delete(b.dataset.ch!);
+  }));
   $('#drawer-list').querySelectorAll<HTMLDetailsElement>('details').forEach((d) => d.addEventListener('toggle', () => {
     const k = d.dataset.key!;
     saved.open = (saved.open ?? []).filter((x) => x !== k).concat(d.open ? [k] : []);
@@ -706,7 +724,7 @@ const stuck = () => {
   openReportFlow({ kind: 'stuck', tool: 'learn', lesson: { id: keyOf(l), title: l.title.replace(/`/g, '') }, code: l.kind === 'code' ? editor.getValue() : undefined });
 };
 document.addEventListener('click', (e) => { if ((e.target as HTMLElement).closest?.('[data-stuck]')) stuck(); });
-$('#drawer-report').innerHTML = reportButton('idea', { text: "I'm stuck in this lesson", attrs: 'data-stuck' }) + reportButton('report', { text: 'Report a problem with Learn', attrs: 'id="learn-problem"' });
+$('#drawer-report').innerHTML = reportButton('idea', { text: "I'm stuck in this lesson", attrs: 'data-stuck' }) + reportButton('flag', { text: 'Report a problem with Learn', attrs: 'id="learn-problem"' });
 $('#learn-problem').addEventListener('click', () => openReportFlow({ kind: 'problem', tool: 'learn', extra: { Lesson: keyOf(lesson()) } }));
 // "Different for you? Tell us", next to a tip nobody has checked on a real PC yet (Tip.unverified, Note.unverified).
 $('#lesson-body').addEventListener('click', (e) => {
