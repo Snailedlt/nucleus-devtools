@@ -8,7 +8,7 @@ import USAGE from './usage.json';
 import { $, esc, md } from './dom';
 import { API_GROUPS, API_GROUP_KEYS, groupOf, unchecked } from './docsgroups';
 import { docsHashOf, docsView } from './links';
-import { memberCard } from './doccard';
+import { memberCard, memberSummary } from './doccard';
 import { mascot } from './mascots';
 
 // API names in hovers, parameter hints and suggestion docs are links: a click (or Enter) opens that name in the
@@ -21,7 +21,7 @@ export function linkApiNames(root: HTMLElement) {
     if (path) markApiLink(c, path);
   });
   // The signature on top of a doc card: the name is the link.
-  root.querySelectorAll<HTMLElement>('.dc-sig .sg-n').forEach((n) => {
+  root.querySelectorAll<HTMLElement>('.dc-sig:not(.nolink) .sg-n').forEach((n) => {
     const owner = n.previousElementSibling?.classList.contains('sg-o') ? n.previousElementSibling.textContent ?? '' : '';
     markApiLink(n, owner + (n.textContent ?? ''));
   });
@@ -149,6 +149,12 @@ export function initDocs(deps: DocsDeps): DocsUI {
   function wireApiLinks(el: HTMLElement) {
     labelInserts(el);
     el.querySelectorAll<HTMLButtonElement>('[data-q]').forEach((b) => b.addEventListener('click', () => refGo(`q:${b.dataset.q}`)));
+    // A search result's "Open full doc ›": a real #docs-<name> link (to copy or open in a new tab), opened in place.
+    el.querySelectorAll<HTMLAnchorElement>('a[data-open]').forEach((a) => a.addEventListener('click', (e) => {
+      if (e.ctrlKey || e.metaKey || e.shiftKey || e.button) return;
+      e.preventDefault();
+      refGo(`q:${a.dataset.open}`);
+    }));
     el.querySelectorAll<HTMLButtonElement>('[data-group]').forEach((b) => b.addEventListener('click', () => refGo(`group:${b.dataset.group}`)));
     el.querySelectorAll<HTMLButtonElement>('[data-home]').forEach((b) => b.addEventListener('click', () => refGo('home')));
     el.querySelectorAll<HTMLButtonElement>('[data-back]').forEach((b) => b.addEventListener('click', () => refBack()));
@@ -216,7 +222,11 @@ export function initDocs(deps: DocsDeps): DocsUI {
     const el = $('#api-results');
     if (!q.trim()) return renderApiHome(el);
     const exact = lookup(q);
-    const card = (e: Entry) => `<article class="api"><h3>${esc(e.path)}${e.member.deprecated ? ' <span class="chip hint">deprecated</span>' : ''}${e.member.required ? ' <span class="chip error">required</span>' : ''}${e.owner.startsWith('Hub') ? ' <span class="chip info">written by the Hub</span>' : ''}</h3>${memberCard(e.owner, e.name, e.member, { insert: !!deps.insertExample })}</article>`;
+    // One name: the whole entry. A search: short results (the signature, the first sentence, the tags), each with
+    // "Open full doc ›" to its entry (#docs-<name>; Enter opens it).
+    const card = (e: Entry) => `<article class="api"><h3>${esc(e.path)}</h3>${memberCard(e.owner, e.name, e.member, { insert: !!deps.insertExample })}</article>`;
+    const hit = (e: Entry) => `<article class="api api-hit" aria-label="${esc(e.path)}"><h3>${esc(e.path)}</h3>${memberSummary(e.owner, e.name, e.member)}`
+      + `<p class="api-open"><a href="#${esc(docsHashOf(`q:${e.path}`))}" data-open="${esc(e.path)}" aria-label="Open the full doc of ${esc(e.path)}">Open full doc <span aria-hidden="true">›</span></a></p></article>`;
     // One name: its card, and where it sits (Reference / group / name; the group lists the names next to it).
     const one = exact.kind === 'entries' && exact.entries.length === 1 ? exact.entries[0] : undefined;
     if (one) {
@@ -242,7 +252,7 @@ export function initDocs(deps: DocsDeps): DocsUI {
     if (exact.kind === 'none' && exact.didYouMean) head = `<p class="muted">"${esc(q)}" isn't part of the handler API. Did you mean <button class="link" data-q="${esc(exact.didYouMean)}">${esc(exact.didYouMean)}</button>?</p>`;
     entries = entries.slice(0, 30);
     el.innerHTML = refBar(crumbs) + head
-      + (entries.length || head ? entries.map(card).join('') : `<p class="empty masc-empty">${mascot('n-calc', { size: 64, zoom: 1.2 })}<span>Nothing matches "${esc(q)}". ${reportButton('idea', { text: 'Ask for this to be documented', tip: 'Ask for this to be documented: opens a request with your search filled in', attrs: `data-report-docs="${esc(q)}"` })}</span></p>`);
+      + (entries.length || head ? entries.map(hit).join('') : `<p class="empty masc-empty">${mascot('n-calc', { size: 64, zoom: 1.2 })}<span>Nothing matches "${esc(q)}". ${reportButton('idea', { text: 'Ask for this to be documented', tip: 'Ask for this to be documented: opens a request with your search filled in', attrs: `data-report-docs="${esc(q)}"` })}</span></p>`);
     wireApiLinks(el);
   }
   $('#api-q').addEventListener('input', (e) => {

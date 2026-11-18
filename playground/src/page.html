@@ -695,8 +695,6 @@ li.CodeMirror-hint-active .hint-type { color: var(--muted); opacity: 1; }
 #tip .dc.compact .dc-text { padding: 4px 8px 2px; }
 #tip .dc.compact .dc-fact { color: var(--muted); font-size: 12px; }
 #tip .dc.compact .dc-fact .req { color: var(--err); }
-#tip .dc.compact .dc-ai { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 4px; padding: 0; border: 0; font-size: 11.5px; }
-#tip .dc.compact .dc-ai a { font-size: 11.5px; }
 #tip pre { margin: 0 0 6px; }
 #tip p, .api p { margin: 0 0 6px; }
 /* API docs card (doccard.ts): signature, description, facts, and who wrote it. */
@@ -709,11 +707,9 @@ li.CodeMirror-hint-active .hint-type { color: var(--muted); opacity: 1; }
 .dc p { margin: 0 0 6px; line-height: 1.5; }
 .dc-dep { color: var(--warn); font-weight: 600; }
 .dc-facts { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 2px; }
-.dc-chip { font-size: 11.5px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; }
+.dc-chip { font-size: 11.5px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; max-width: 100%; box-sizing: border-box; overflow-wrap: anywhere; }
 .dc-chip.req { color: var(--err); border-color: currentColor; }
 .dc-chip code { font-size: 11px; padding: 0 3px; }
-.dc-ai { display: flex; gap: 6px; align-items: flex-start; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; line-height: 1.45; color: var(--muted); }
-.dc-ai .ai-spark { margin-top: 1px; }
 /* The AI mark: two four-point sparkles with a purple-to-cyan gradient, wherever something was written by AI. */
 .ai-spark, .ai-doc::before { content: ''; display: inline-block; flex: none; width: 1.1em; height: 1.1em; vertical-align: -0.18em; background: linear-gradient(135deg, #a855f7 10%, #22d3ee 90%);
   -webkit-mask: var(--spark) center / contain no-repeat; mask: var(--spark) center / contain no-repeat;
@@ -730,18 +726,27 @@ li.CodeMirror-hint-active .hint-type { color: var(--muted); opacity: 1; }
 .api-ai.slim { align-items: center; gap: 8px; padding: 6px 12px; width: fit-content; max-width: 100%; flex-wrap: wrap; }
 .api-ai.slim .ai-spark { width: 16px; height: 16px; margin: 0; }
 .api-ai.slim .d { font-size: 12px; }
-.dc-check { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 6px; font-size: 12px; color: var(--muted); }
+.dc-check { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 10px; font-size: 12px; color: var(--muted); }
 .dc-check a { font-size: 12px; }
-.dc-counts { font-variant-numeric: tabular-nums; }
-.dc-verified { color: var(--ok); font-weight: 600; }
-/* "In practice": the AI-written part, set apart from the doc (its own label, votes and source). */
-.dc-practice { margin-top: 12px; padding: 8px 10px; border-left: 3px solid color-mix(in srgb, #a855f7 55%, var(--line)); background: color-mix(in srgb, #a855f7 5%, transparent); border-radius: 0 6px 6px 0; }
-.dc-pr-h { display: flex; align-items: center; gap: 6px; margin: 0 0 6px; font-size: 13px; font-weight: 600; }
-.dc-tag { font-size: 11px; font-weight: 500; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 0 7px; }
-.dc .dc-pr-basis { font-size: 11.5px; color: var(--muted); margin: 4px 0 0; }
-/* "By engine": counted from Hub handlers, not AI-written; alone, its box is plain. */
+/* The AI-written tag (where it comes from is its tooltip). */
+.dc-ai-tag { display: inline-flex; align-items: center; gap: 4px; border-color: color-mix(in srgb, #a855f7 45%, var(--line)); cursor: help; }
+.dc-ai-tag .ai-spark { width: 1em; height: 1em; }
+.dc-chip.kind { color: var(--fg); }
+/* "How handlers use it": the AI-written "In practice" part, folded, set apart from the doc. */
+.dc-practice { margin-top: 12px; padding: 0 10px; border-left: 3px solid color-mix(in srgb, #a855f7 55%, var(--line)); background: color-mix(in srgb, #a855f7 5%, transparent); border-radius: 0 6px 6px 0; }
+.dc-practice[open] { padding-bottom: 8px; }
+.dc-practice > summary.dc-pr-h { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin: 0; padding: 8px 0; min-height: 24px; font-size: 13px; font-weight: 600; color: var(--fg); list-style: none; }
+.dc-practice > summary.dc-pr-h::-webkit-details-marker { display: none; }
+.dc-practice > summary.dc-pr-h::before { content: '›'; display: inline-block; width: 1ch; font-size: 15px; line-height: 1; transition: transform .15s; }
+.dc-practice[open] > summary.dc-pr-h::before { transform: rotate(90deg); }
+.dc-practice > summary.dc-pr-h:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.dc-practice .dc-check { margin-top: 4px; }
+/* The engines whose handlers use it notably more or less: one quiet line, no numbers. */
 .dc .dc-engine { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
-.dc-practice.counted { border-left-color: var(--line); background: none; }
+/* A search result: short, with "Open full doc ›". */
+.dc.hit p { margin: 0 0 4px; }
+.api-open { margin: 6px 0 0; font-size: 13px; }
+.api-open a { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; font-weight: 600; }
 #tip .dc.compact .dc-pr-h { margin: 6px 0 2px; font-size: 12px; }
 .dc-example { margin-top: 10px; }
 .dc-ex-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 0 0 4px; font-size: 12px; }

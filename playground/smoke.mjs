@@ -618,13 +618,21 @@ for (const theme of ['light', 'dark']) {
     await p.waitForTimeout(400);
     check((await p.$$('#api-results pre.doc-code.hl .cm-number')).length > 0, `${theme}: Docs shows its example coloured like the code`);
     check(/docs\/Game\.PlayersPerInstance\/$/.test((await p.getAttribute('#api-results .api-page a', 'href')) ?? ''), `${theme}: Docs' Open as a page leads to that name's docs page`);
-    // "By engine": counted, under "In practice" (after the AI-written text, or alone in a plain box).
+    // The full entry, for handler authors: "How handlers use it" folded, the engines as one line with no numbers, votes
+    // without counts (the counts, the basis and the counted "By engine" line are on the docs pages).
     await p.fill('#api-q', 'Context.EditRegKey');
     await p.waitForTimeout(400);
-    check(/By engine: Unity games/.test((await p.textContent('#api-results .dc-practice .dc-engine').catch(() => '')) ?? ''), `${theme}: Docs shows "By engine" with "In practice"`);
-    await p.fill('#api-q', 'Game.ProtoInput.DontShowCursorWhenImageUpdated');
+    const entry = (await p.textContent('#api-results .dc').catch(() => '')) ?? '';
+    check(/More common in: Unity/.test((await p.textContent('#api-results .dc-engine').catch(() => '')) ?? '') && !/By engine:|Counted from/.test(entry), `${theme}: Docs shows the engines as one line, with no numbers or basis`);
+    check((await p.$$('#api-results details.dc-practice:not([open]) > summary')).length === 1 && /How handlers use it/.test(entry), `${theme}: Docs folds "How handlers use it"`);
+    // A search: short results, each with Open full doc, which opens the entry (Enter works).
+    await p.fill('#api-q', 'keyboard');
     await p.waitForTimeout(400);
-    check(await p.isVisible('#api-results .dc-practice.counted .dc-engine'), `${theme}: Docs shows "By engine" alone, marked counted, where there's no AI-written "In practice"`);
+    check((await p.$$('#api-results .api-hit .api-open a[data-open]')).length > 3 && (await p.$$('#api-results .api-hit .doc-code, #api-results .api-hit details')).length === 0, `${theme}: Docs search shows short results with Open full doc`);
+    await p.focus('#api-results .api-hit .api-open a');
+    await p.keyboard.press('Enter');
+    await p.waitForTimeout(400);
+    check(await p.isVisible('#api-results .dc:not(.hit) .dc-check'), `${theme}: Enter on Open full doc opens the whole entry`);
     // Insert into handler, twice: the second press shows it instead of adding a second copy (an example of two statements).
     {
       const cmText = () => p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue());
