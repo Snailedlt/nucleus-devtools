@@ -1429,9 +1429,10 @@ function insertExample(path: string, m: Member) {
   while (a < before.length && a < r.text.length && before[a] === r.text[a]) a++;
   let b = 0;
   while (b < before.length - a && b < r.text.length - a && before[before.length - 1 - b] === r.text[r.text.length - 1 - b]) b++;
-  fixWithNucli(editor, r.text, () => editor.replaceRange(r.text.slice(a, r.text.length - b), editor.posFromIndex(a), editor.posFromIndex(before.length - b), 'docs-example'));
+  // The green bar on the new lines stays as long as the Undo note does: until the code is edited or the note is closed.
+  const unmark = fixWithNucli(editor, r.text, () => editor.replaceRange(r.text.slice(a, r.text.length - b), editor.posFromIndex(a), editor.posFromIndex(before.length - b), 'docs-example'), { keep: true });
   use('docs-insert-example');
-  codeNote(editor, r.line, r.action === 'update' ? `Updated ${path} to the example's value.` : r.action === 'callback' ? `Added ${r.where} with the example in it.` : `Added the example to ${r.where}.`, { action: undoAction });
+  codeNote(editor, r.line, r.action === 'update' ? `Updated ${path} to the example's value.` : r.action === 'callback' ? `Added ${r.where} with the example in it.` : `Added the example to ${r.where}.`, { action: undoAction, sticky: true, onClear: unmark });
 }
 
 // ---------------------------------------------------------------------------
