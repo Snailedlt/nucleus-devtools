@@ -24,7 +24,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 ### 🛠️ Improved
 
-- **The tour lets you try things.** A few steps ask for one small action (press Ctrl+Space in the code, click Check, click Try it); doing it ticks the step and goes on by itself, and Next and Skip still work. The keys work from the tour's card too.
+- **The tour is done by doing.** Nearly every step asks you to click or press the part it points at (+, Ctrl+Space, Check, Try it, Docs, Lines, Files, the Save arrow, the menu) and shows what opens before going on; it puts back what it opened, never saves a file or changes a setting, and Next, Back and Skip always work. A last step shows how to help test the beta, and *Help test this beta* has a new task, *Take the tour*, ticked when you finish it.
 - **Icons in the Menu.** Every Menu entry has a small icon in one column, so the labels line up: the tour 🧭, What's new ✨, the report flag, the feature bulb, Settings, Keyboard shortcuts and more. *Take the tour* has its 🧭 in the footer, Settings and the ? dialog too.
 - **Hint only where there is something to work out.** Lessons that show the lines to add, with a Copy button, no longer have a Hint button: the lesson is the hint. Fix-it lessons keep it, and Show me stays everywhere.
 - **Show me selects the problem and opens its card.** In Check, Show me moves to the exact code, selects it and opens the same card hovering it shows.

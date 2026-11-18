@@ -9,12 +9,23 @@
 // The card is a modal <dialog> in the top layer that covers the page, so the rest of the page is inert (the focus stays
 // in the card) and Esc is the dialog's own cancel. ←/→ step, Enter goes on; the focus returns where it was at the end.
 //
-// A few steps invite a tiny action (`act`): click the part in the cut-out, or press a key. Doing it shows "✓ Done" and
-// goes on by itself; Next and Skip still work, so nothing blocks. For those steps the card is a non-modal dialog, so the
-// cut-out (and only it: `.tour-block` covers the rest) can be clicked; Tab goes round the card's buttons and the part,
-// Esc still skips, and the step's key works from the card too (`run` does it for the person).
+// Nearly every step is a do-it step (`act`): click the part in the cut-out (Lines opens Lines), or press its key. Doing it
+// shows "✓ Done", moves the cut-out to what opened (`show`) for a short beat, then goes on by itself; leaving the step
+// puts back what it opened (`undo`: a panel closes again, a menu closes). Next, Back and Skip always work, so nothing
+// blocks. For those steps the card is a non-modal dialog, so the cut-out (and only it: `.tour-block` covers the rest)
+// can be clicked; Tab goes round the card's buttons and the part (Enter or Space on it does the action), Esc still
+// skips, and the step's key works from the card too (`run` does it for the person). A step whose part to click isn't
+// shown in this layout (and has no key) is a plain "look" step there.
+//
+// Text is plain words with keys in backticks (`Ctrl+B`): they're drawn as keys (kbd.ts), never as code.
+
+import { kbdify } from './kbd';
 
 const KEY = 'nucleus-workbench-tour';
+const escHtml = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+/** Tour text as HTML: escaped, with `keys` drawn as keys. */
+export const tourHtml = (t: string) => kbdify(escHtml(t).replace(/`([^`]+)`/g, '<kbd>$1</kbd>'));
+const plain = (t: string) => t.replace(/`/g, '');
 
 export interface TourStep {
   title: string;
@@ -26,7 +37,24 @@ export interface TourStep {
   /** The results tab to open for it (Check, Try it, Docs). Not opened for a step with `act`: that's the action. */
   tab?: string;
   /** A tiny action that goes on by itself: a click on (or in) `click`, or a key `key` matches. */
-  act?: { text: string; click?: string; key?: (e: KeyboardEvent) => boolean; run?: () => void };
+  act?: {
+    text: string;
+    click?: string;
+    key?: (e: KeyboardEvent) => boolean;
+    run?: () => void;
+    /** What the action opens: the cut-out moves to it for the beat before the next step. */
+    show?: string;
+    /** How long "✓ Done" (and what opened) stays before the next step, in ms. Default 900. */
+    beat?: number;
+    /** Called when the step starts (e.g. to note whether a panel was open). */
+    start?: () => void;
+    /** Leaving a step whose action was done: put back what it opened. */
+    undo?: () => void;
+    /** The action ends the tour (as Finish) instead of going on: it opens something of its own. */
+    end?: boolean;
+  };
+  /** An extra button on the card: ends the tour (as Finish), then runs. */
+  button?: { label: string; run: () => void };
 }
 export interface TourDeps {
   steps: TourStep[];
@@ -35,6 +63,8 @@ export interface TourDeps {
   setView: (v: 'code' | 'results') => void;
   getTab: () => string;
   selectTab: (id: string) => void;
+  /** The tour was finished (not skipped). */
+  finished?: () => void;
 }
 interface Saved { state: 'done' | 'skipped'; step?: number }
 
@@ -63,6 +93,7 @@ export function initTour(d: TourDeps) {
   <p class="tour-act" id="tour-act" hidden></p>
   <div class="tour-acts">
     <button type="button" class="btn tour-skip" data-tour="skip">Skip tour</button>
+    <button type="button" class="btn" data-tour="extra" hidden></button>
     <span class="tour-sp"></span>
     <button type="button" class="btn" data-tour="back">Back</button>
     <button type="button" class="btn primary" data-tour="next">Next</button>
@@ -81,8 +112,14 @@ export function initTour(d: TourDeps) {
   let mode: 'steps' | 'ask' = 'steps';
   let back: { focus: Element | null; view: 'code' | 'results'; tab: string } | null = null;
   let doneTimer = 0;
-  const act = () => (mode === 'steps' && dlg.open ? list[at]?.act : undefined);
-  const actTarget = () => { const c = act()?.click; return c ? document.querySelector<HTMLElement>(c) : null; };
+  /** The step whose action was done (its `undo` runs when it's left), and what it opened (the cut-out shows it). */
+  let didAct: TourStep | null = null;
+  let showing: HTMLElement | null = null;
+  const firstShown = (sel: string) => [...document.querySelectorAll(sel)].find(shown) ?? null;
+  /** The step's action here: none when its part to click isn't shown in this layout and it has no key. */
+  const actOf = (s: TourStep | undefined) => (s?.act && (s.act.key || (s.act.click && firstShown(s.act.click))) ? s.act : undefined);
+  const act = () => (mode === 'steps' && dlg.open ? actOf(list[at]) : undefined);
+  const actTarget = () => { const c = act()?.click; return c ? firstShown(c) : null; };
   /** Modal for a plain step; non-modal (the cut-out can be used) for a step with an action. */
   function setModal(modal: boolean) {
     if (dlg.open && dlg.classList.contains('free') === !modal) return;
@@ -114,7 +151,7 @@ export function initTour(d: TourDeps) {
       return;
     }
     card.classList.remove('center');
-    const el = targetOf(list[at]);
+    const el = showing && shown(showing) ? showing : targetOf(list[at]);
     if (!el) { hole.classList.add('none'); card.style.cssText = ''; card.classList.add('center'); return; }
     hole.classList.remove('none');
     el.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -147,26 +184,39 @@ export function initTour(d: TourDeps) {
     card.style.top = `${top}px`;
   }
 
-  function render(focusNext = false) {
-    const s = list[at];
+  /** Leaving a step: put back what its action opened. */
+  function leave() {
     clearTimeout(doneTimer);
     doneTimer = 0;
+    showing = null;
+    const s = didAct;
+    didAct = null;
+    try { s?.act?.undo?.(); } catch { /* the tour goes on */ }
+  }
+  function render(focusNext = false) {
+    leave();
+    const s = list[at];
     applyView(s);
-    if (s.tab && !s.act && d.getTab() !== s.tab) d.selectTab(s.tab);
-    setModal(!s.act);
+    const sa = actOf(s);
+    if (s.tab && !sa && d.getTab() !== s.tab) d.selectTab(s.tab);
+    setModal(!sa);
+    sa?.start?.();
     q('#tour-count').textContent = `${at + 1} of ${list.length}`;
     q('#tour-title').textContent = s.title;
-    q('#tour-text').textContent = s.text;
+    q('#tour-text').innerHTML = tourHtml(s.text);
     const a = q('#tour-act');
-    a.hidden = !s.act;
+    a.hidden = !sa;
     a.classList.remove('done');
-    a.textContent = s.act ? `👉 ${s.act.text}` : '';
+    a.innerHTML = sa ? `👉 ${tourHtml(sa.text)}` : '';
+    btn('extra').hidden = !s.button;
+    btn('extra').textContent = s.button?.label ?? '';
     btn('back').hidden = at === 0;
     btn('back').textContent = 'Back';
-    btn('skip').hidden = false;
+    // The last step has Finish: Skip there would only be a second way out (Esc still skips).
+    btn('skip').hidden = at === list.length - 1;
     btn('skip').textContent = 'Skip tour';
     btn('next').textContent = at === list.length - 1 ? 'Finish' : 'Next';
-    q('#tour-live').textContent = `Step ${at + 1} of ${list.length}: ${s.title}. ${s.text}${s.act ? ` ${s.act.text}` : ''}`;
+    q('#tour-live').textContent = `Step ${at + 1} of ${list.length}: ${s.title}. ${plain(s.text)}${sa ? ` ${plain(sa.text)}` : ''}`;
     if (focusNext || (document.activeElement as HTMLElement | null)?.hidden || !dlg.contains(document.activeElement)) btn('next').focus();
     requestAnimationFrame(place);
   }
@@ -180,19 +230,24 @@ export function initTour(d: TourDeps) {
       document.addEventListener('keydown', onPageKey, true);
     }
   }
-  /** The step's action was done: "✓ Done", then on by itself. */
-  function done(delay: number) {
-    if (doneTimer) return;
+  /** The step's action was done: "✓ Done", the cut-out on what opened for a beat, then on by itself. */
+  function done() {
+    const s = list[at], sa = act();
+    if (doneTimer || !sa) return;
+    if (sa.end) { end('done'); return; } // what it opens takes over (the page's own handler runs after this)
+    didAct = s;
     const a = q('#tour-act');
     a.classList.add('done');
     a.textContent = '✓ Done';
     q('#tour-live').textContent = 'Done.';
     const step = at;
-    doneTimer = window.setTimeout(() => { doneTimer = 0; if (dlg.open && mode === 'steps' && at === step) next(); }, delay);
+    // What opened is there once the page has handled the click or key (this runs first).
+    if (sa.show) setTimeout(() => { if (at === step && doneTimer) { showing = firstShown(sa.show!); requestAnimationFrame(place); } }, 60);
+    doneTimer = window.setTimeout(() => { doneTimer = 0; if (dlg.open && mode === 'steps' && at === step) next(); }, sa.beat ?? 900);
   }
   const onPageClick = (e: MouseEvent) => {
     const c = act()?.click;
-    if (c && (e.target as Element | null)?.closest?.(c)) done(700);
+    if (c && (e.target as Element | null)?.closest?.(c)) done();
   };
   const onPageKey = (e: KeyboardEvent) => {
     const s = act();
@@ -201,7 +256,7 @@ export function initTour(d: TourDeps) {
     if (s.key?.(e)) {
       // From the card: do it for them (the code gets the focus); in the page, the page does it.
       if (inCard) { e.preventDefault(); e.stopPropagation(); s.run?.(); }
-      done(1500);
+      done();
       return;
     }
     // The part being pointed at, from the keyboard: Tab back to the card, Esc skips.
@@ -227,10 +282,10 @@ export function initTour(d: TourDeps) {
   function end(state: 'done' | 'skipped') {
     write(state === 'done' ? { state } : { state, step: at });
     close();
+    if (state === 'done') d.finished?.();
   }
   function close() {
-    clearTimeout(doneTimer);
-    doneTimer = 0;
+    leave();
     if (dlg.open) dlg.close();
     dlg.classList.remove('free');
     removeEventListener('resize', onResize);
@@ -259,6 +314,7 @@ export function initTour(d: TourDeps) {
     at = n;
     q('#tour-count').textContent = '';
     q('#tour-act').hidden = true;
+    btn('extra').hidden = true;
     q('#tour-title').textContent = 'Take the tour';
     q('#tour-text').textContent = `You stopped at step ${n + 1} of ${list.length} (${list[n].title}).`;
     btn('skip').hidden = false;
@@ -282,6 +338,7 @@ export function initTour(d: TourDeps) {
   dlg.addEventListener('click', (e) => {
     const k = (e.target as HTMLElement).closest<HTMLElement>('[data-tour]')?.dataset.tour;
     if (k === 'next') next();
+    else if (k === 'extra') { const b = list[at]?.button; end('done'); b?.run(); }
     else if (k === 'back') prev();
     else if (k === 'skip') skip();
   });

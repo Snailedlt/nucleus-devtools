@@ -2256,6 +2256,9 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
 .tour-card .tour-act { margin-top: 8px; font-weight: 600; }
 .tour-card .tour-act.done { color: var(--ok); }
 .tour-card .tour-ico { font-size: 1.05em; }
+.tour-card kbd.keys { border: 0; background: none; padding: 0; font: inherit; color: inherit; }
+.tour-card kbd.keys .kplus { color: var(--muted); padding: 0 1px; }
+.tour-card kbd { color: var(--fg); }
 .tour-card { position: fixed; box-sizing: border-box; width: min(340px, calc(100vw - 24px)); padding: 14px 16px 12px; background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--sh-2); }
 .tour-card.center { left: 50% !important; top: 50% !important; transform: translate(-50%, -50%); width: min(400px, calc(100vw - 24px)); }
 .tour-card[data-sheet] { left: 8px !important; right: 8px; width: auto; transform: none; }

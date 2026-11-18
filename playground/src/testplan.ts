@@ -51,14 +51,18 @@ const PRIORITY: Record<string, { need: 1 | 2 | 3; effort: 1 | 2 | 3 }> = {
   'other-editor': { need: 2, effort: 2 }, 'try-it': { need: 3, effort: 3 }, debugger: { need: 3, effort: 1 }, 'docs-links': { need: 3, effort: 1 },
   'claude-docs': { need: 3, effort: 1 }, 'in-practice': { need: 3, effort: 1 }, autocomplete: { need: 3, effort: 2 }, keyboard: { need: 2, effort: 1 }, 'window-messages': { need: 2, effort: 2 },
   'game-folder': { need: 2, effort: 2 }, packages: { need: 3, effort: 3 }, 'hub-files': { need: 2, effort: 1 }, reference: { need: 2, effort: 1 },
-  'first-run': { need: 3, effort: 1 }, tutorial: { need: 3, effort: 2 }, 'first-handler': { need: 3, effort: 3 }, messages: { need: 3, effort: 1 }, form: { need: 2, effort: 1 },
+  'first-run': { need: 3, effort: 1 }, tour: { need: 3, effort: 1 }, tutorial: { need: 3, effort: 2 }, 'first-handler': { need: 3, effort: 3 }, messages: { need: 3, effort: 1 }, form: { need: 2, effort: 1 },
   blocks: { need: 2, effort: 2 }, 'value-picker': { need: 2, effort: 1 }, 'hover-check': { need: 2, effort: 1 }, 'save-copy': { need: 2, effort: 2 },
   compare: { need: 2, effort: 1 }, layout: { need: 1, effort: 1 }, lines: { need: 1, effort: 1 }, tabs: { need: 1, effort: 1 }, tips: { need: 1, effort: 1 },
   'settings-backup': { need: 1, effort: 1 }, a11y: { need: 1, effort: 1 }, reader: { need: 1, effort: 2 },
 };
 export const priority = (t: { id: string }) => PRIORITY[t.id] ?? { need: 2 as const, effort: 2 as const };
 
-export interface TestItem { id: string; areas: Area[]; kinds: Kind[]; title: string; steps: string; look: string }
+export interface TestItem {
+  id: string; areas: Area[]; kinds: Kind[]; title: string; steps: string; look: string;
+  /** A link that starts the task (a workbench #link), shown beside Report. */
+  link?: { href: string; label: string };
+}
 
 const ALL_ITEMS: TestItem[] = [
   // --- Developers and handler authors first: precision, speed, the keyboard and their own editor
@@ -83,6 +87,7 @@ const ALL_ITEMS: TestItem[] = [
 
   // --- Newcomers: can you get a working handler without help?
   { id: 'first-run', areas: ['uiux', 'devx'], kinds: ['explore'], title: 'The first-visit choice', steps: 'In a private window, open the workbench twice: once answer "I write code", once "Guide me". Work for a few minutes each way.', look: '"I write code" should start compact (no tips, no banner), "Guide me" should help. Anything on screen you didn\'t ask for, or help you couldn\'t find.' },
+  { id: 'tour', areas: ['uiux'], kinds: ['task'], title: 'Take the tour', steps: 'Take the tour (the link here, or Menu › Take the tour) and do each step: click or press what it points at. Skip it halfway once, then Take the tour again to carry on. It ticks itself here when you finish.', look: 'A step that didn\'t react when you did it, moved on too soon or too late, or pointed at the wrong place. Optional: tell us what you thought of the tour with Report what you found.', link: { href: '#tour', label: '🧭 Take the tour' } },
   { id: 'tutorial', areas: ['uiux'], kinds: ['task'], title: 'Learn: making your first handler', steps: 'Menu › Learn: do every lesson without Solve, as if you had never seen a handler, then test the handler in Nucleus Co-op with Sonic Robo Blast 2 (free).', look: 'A lesson you couldn\'t finish, a tick that came too early or never came, a word you didn\'t know, or a step in Nucleus Co-op that didn\'t go as the lesson said.' },
   { id: 'first-handler', areas: ['uiux'], kinds: ['task', 'nucleus'], title: 'Make your first handler', steps: 'New handler… → fill in a game you own → fix what Check finds → Try it → Save (Ctrl+S) → install it in Nucleus Co-op.', look: 'Could you finish without asking anyone? Which step was unclear? Did the game start in Nucleus?' },
   { id: 'messages', areas: ['uiux'], kinds: ['explore'], title: 'Do the messages make sense?', steps: 'Open "Handler with common mistakes" (Ctrl+P). Read each problem in Check and on hover, without opening Technical details.', look: 'Any word or sentence you didn\'t understand, or a fix you were afraid to press.' },
