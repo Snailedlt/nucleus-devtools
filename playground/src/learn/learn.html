@@ -213,6 +213,8 @@ details.note.long > p { margin: 6px 0 0; }
 .swin .wb { flex: 1; display: flex; flex-wrap: wrap; gap: 0 6px; align-items: center; justify-content: center; align-content: center; text-align: center; font-size: 13px; padding: 2px 4px; }
 .swin .wb small { flex-basis: 100%; font: 11px var(--mono); background: rgba(0, 0, 0, .5); border-radius: 3px; } /* backed, so the size reads on every window colour (WCAG AA) */
 .player .args code, .player .file-name code { overflow-wrap: anywhere; }
+/* A long name in a sentence (Context.GetFolder(Nucleus.Folder.InstancedGameFolder)) wraps on a phone. */
+#lesson-body :not(pre) > code { overflow-wrap: anywhere; }
 .player .args, .player .file-name { margin: 0 0 4px; }
 .file-lines { margin: 0 0 6px; padding: 4px 8px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-sm); font: 12.5px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
 .bad-line { color: #d32f2f; font-weight: 600; }
