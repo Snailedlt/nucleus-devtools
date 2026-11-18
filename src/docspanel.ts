@@ -7,7 +7,8 @@ import { docsPageUrl, docsPage, docsValue, docsView, DocsPage } from './core/doc
 import { linkApiNames } from './core/features';
 import { allEntries, lookup } from './core/lookup';
 import { FEEDBACK_SITE, voteEventPath, type DocPart } from './core/docvotes';
-import { api, docFeedbackUrl, docReviewUrl, docSlot } from './core/api';
+import { api, docFeedbackUrl, docReviewUrl, docSlot, type Member } from './core/api';
+import { aiFrameCss, placeAiFrames } from './core/aimark';
 import { WORKBENCH_URL } from './core/sharelink';
 
 export const OPEN_DOCS = 'splitscreenme.showDocs'; // not openDocs: that is the old "Docs: Web Links…" (still works)
@@ -57,11 +58,16 @@ export function voteLine(path: string, part: DocPart, label: string, mine: Recor
   return `<div class="votes" role="group" aria-label="${esc(`${label}: is it right?`)}"><span title="Anonymous counts, no account: they show in the docs after their next build. People's votes decide &quot;Verified by people&quot;.">${ask}</span> ${btn('up', '👍', 'Right')} ${btn('down', '👎', 'Wrong or unclear')}${follow ? ` ${follow}` : ''}${note ? ` ${note}` : ''}</div>`;
 }
 
-/** Puts each part's votes where docsPage(…, slots) marked it in the rendered page, and "In practice" in its box.
- *  `parts`: the parts that get votes, with their names for screen readers. Exported for tests. */
-export function placeVotes(html: string, path: string, parts: { part: DocPart; label: string }[], mine: Record<string, Vote | undefined>, canSend: boolean): string {
+/** The sparkle in the corner of an AI-written part's frame (inline SVG: the panel's CSP allows no images), in the
+ *  workbench's purple-to-cyan (the gradient is defined once, in renderDocsPanel). */
+export const AI_SPARK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path fill="url(#ai-grad)" d="M14 1.5Q15 9.5 23 10.5Q15 11.5 14 19.5Q13 11.5 5 10.5Q13 9.5 14 1.5Z M5.5 13.5Q6 17.5 10 18Q6 18.5 5.5 22.5Q5 18.5 1 18Q5 17.5 5.5 13.5Z"/></svg>';
+
+/** Puts each part's votes where docsPage(…, slots) marked it in the rendered page, and frames the AI-written parts
+ *  ("In practice" included: core/aimark.ts placeAiFrames). `parts`: the parts that get votes, with their names for
+ *  screen readers. Exported for tests. */
+export function placeVotes(html: string, path: string, parts: { part: DocPart; label: string }[], mine: Record<string, Vote | undefined>, canSend: boolean, m?: Member): string {
   const slot = (name: Parameters<typeof docSlot>[0]) => `<p>${esc(docSlot(name))}</p>`;
-  let out = html.replace(slot('practice-open'), '<section class="practice" aria-label="In practice">').replace(slot('practice-close'), '</section>');
+  let out = m ? placeAiFrames(html, m, { icon: AI_SPARK_SVG, level: 3 }) : html.replace(slot('practice-open'), '<section class="practice" aria-label="In practice">').replace(slot('practice-close'), '</section>');
   for (const p of parts) out = out.replace(slot(p.part), voteLine(path, p.part, p.label, mine, canSend));
   return out.replace(/<p>@@slot:[\w-]+@@<\/p>/g, '');
 }
@@ -167,10 +173,15 @@ ul { padding-left: 20px; } li { margin: 3px 0; }
 .votes { display: flex; flex-wrap: wrap; gap: 6px 8px; align-items: center; margin: 4px 0 10px; font-size: .92em; color: var(--vscode-descriptionForeground); }
 .votes .follow { margin-left: 4px; }
 .practice { border: 1px solid var(--vscode-panel-border, #8884); border-radius: 6px; padding: 2px 12px; margin: 12px 0; }
+/* AI-written parts: a frame with a light violet tint and the sparkle in its corner (core/aimark.ts). */
+${aiFrameCss({ fg: 'var(--vscode-editorHoverWidget-foreground, var(--vscode-foreground))', muted: 'var(--vscode-descriptionForeground)', line: 'var(--vscode-panel-border, rgba(128,128,128,.35))', surface: 'var(--vscode-editorHoverWidget-background, var(--vscode-editor-background))' })}
+.ai-box.practice { padding: 8px 12px; } .ai-box .votes { margin-bottom: 0; }
+body.vscode-high-contrast .ai-box, body.vscode-high-contrast-light .ai-box { background: none; border-color: var(--vscode-contrastBorder, currentColor); }
 .vote { display: inline-block; padding: 2px 8px; border: 1px solid var(--vscode-button-border, #8886); border-radius: 4px; text-decoration: none; }
 .vote.on { background: var(--vscode-button-background); color: var(--vscode-button-foreground); } .votes .note { opacity: .85; }
 </style></head><body>
 <nav aria-label="Where you are in the docs">${canGoBack ? `<a class="back" href="command:${BACK}" title="Back" aria-label="Back">←</a>` : ''}${parts.join('<span class="sep" aria-hidden="true">/</span>')}<span class="end"><a href="command:${SEARCH}" title="Search the docs (names and words)">Search…</a><a href="${esc(web)}" title="The same page on the site, to share or read in the browser">Open on the web</a></span></nav>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs><linearGradient id="ai-grad" x1="0" y1="0" x2="1" y2="1"><stop offset="10%" stop-color="#a855f7"/><stop offset="90%" stop-color="#22d3ee"/></linearGradient></defs></svg>
 <main>${body}</main>
 </body></html>`;
 }
@@ -189,7 +200,7 @@ export function registerDocsPanel(context: vscode.ExtensionContext) {
     const parts: { part: DocPart; label: string }[] = [];
     if (m?.doc) parts.push({ part: 'doc', label: m.docBy === 'claude' ? 'The doc (AI-written)' : 'The doc' });
     if (m?.practice) parts.push({ part: 'practice', label: '"In practice" (AI-written)' });
-    return placeVotes(html, path, parts, mine(), vscode.env.isTelemetryEnabled !== false);
+    return placeVotes(html, path, parts, mine(), vscode.env.isTelemetryEnabled !== false, m);
   };
   /** Sends one people's-vote event to the same anonymous counter as the workbench (GoatCounter); true when it was
    *  accepted, false offline or on an HTTP error (never fails loudly). */

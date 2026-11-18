@@ -468,7 +468,7 @@ export function firstSentence(md: string, max = 200): string {
 }
 
 /**
- * A member's hover: the signature, the doc's first sentence (with its AI-written mark) and nothing else. The full doc,
+ * A member's hover: the signature, the doc's first sentence (a ✨ before it when AI wrote it) and nothing else. The full doc,
  * "In practice", votes, the engine line and examples stay in the Docs view and the completion docs (memberMarkdown):
  * help on request, not on screen. The caller adds the links to the full docs.
  */
@@ -476,48 +476,96 @@ export function memberHoverMarkdown(owner: string, name: string, m: Member): str
   const parts: string[] = ['```ts\n' + memberSignature(owner, name, m).map((x) => prettySignature(x)).join('\n') + '\n```'];
   if (m.deprecated) parts.push(`**${m.deprecated}**`);
   const first = m.doc ? firstSentence(m.doc) : '';
-  if (first) parts.push(first);
-  if (first && claudeNote(m)) parts.push(`_✎ ${claudeNote(m)}_`);
+  // An AI-written doc: a ✨ before it, where it comes from on its own small line.
+  if (first) parts.push(isAiPart(m, 'doc') ? `${AI_MARK} ${first}` : first);
+  if (first && isAiPart(m, 'doc')) parts.push(aiBasisLine(m, 'doc'));
   if (m.required) parts.push('**Required**');
   if (isJsBuiltin(owner)) parts.push(`[MDN: ${owner ? `${owner}.` : ''}${name}](${mdnUrl(owner, name)})`);
   return parts.join('\n\n');
 }
 
-/** A place in memberMarkdown's text for a control the caller puts there itself (VS Code's Docs panel: each part's
- *  👍/👎 inside it; 'practice-open'/'practice-close' around "In practice"). A paragraph of its own. */
-export const docSlot = (name: 'doc' | 'practice' | 'practice-open' | 'practice-close') => `@@slot:${name}@@`;
+/** A place in memberMarkdown's text for a control the caller puts there itself (VS Code's Docs panel and the docs
+ *  pages: each part's 👍/👎 inside it; 'practice-open'/'practice-close' around "In practice"; 'ai-doc', 'ai-params'
+ *  and 'ai-example' open the frame of an AI-written part, 'ai-close' ends it: core/aimark.ts placeAiFrames). A
+ *  paragraph of its own. */
+export const docSlot = (name: 'doc' | 'practice' | 'practice-open' | 'practice-close' | 'ai-doc' | 'ai-params' | 'ai-example' | 'ai-close') => `@@slot:${name}@@`;
 
-/** `slots`: put docSlot markers in, and leave out the "Is it wrong? Tell us" links (the caller's votes lead there). */
+/** The mark before AI-written text where there is no frame (Markdown: hovers, suggestion docs, parameter hints). */
+export const AI_MARK = '✨';
+/** The parts of a doc AI can have written. */
+export type AiPart = 'doc' | 'practice' | 'params' | 'example';
+/** Whether that part of the member is AI-written. */
+export function isAiPart(m: Member, part: AiPart): boolean {
+  if (part === 'doc') return m.docBy === 'claude' && Boolean(m.doc);
+  if (part === 'practice') return Boolean(m.practice);
+  if (part === 'example') return m.exampleBy === 'claude' && Boolean(m.example);
+  return (m.overloads ?? []).some((o) => o.params.some((p) => p.doc && p.docBy === 'claude'));
+}
+/** Where an AI-written part comes from: "Based on GenericGameHandler.cs …." ('' when the part isn't AI-written). Shown
+ *  on its own small line in Markdown, in the ✨'s tooltip where HTML frames the part. */
+export function aiBasis(m: Member, part: AiPart): string {
+  if (!isAiPart(m, part)) return '';
+  const basis = part === 'doc' ? m.docBasis : part === 'params' ? 'the Nucleus source' : m.practiceBasis;
+  return `Based on ${(basis ?? 'the Nucleus source').replace(/\.$/, '')}.`;
+}
+/** "Checked by Ann on 2026-11-01" for an AI-written part a person checked ('' otherwise): stays visible, small. */
+export function aiChecked(m: Member, part: AiPart): string {
+  const [by, on] = part === 'doc' ? [m.docCheckedBy, m.docCheckedOn] : part === 'practice' ? [m.practiceCheckedBy, m.practiceCheckedOn] : [];
+  return by && isAiPart(m, part) ? `Checked by ${by}${on ? ` on ${on}` : ''}` : '';
+}
+/** The small line under an AI-written part in Markdown: where it comes from, and who checked it. */
+const aiBasisLine = (m: Member, part: AiPart) => `_${aiBasis(m, part)}${aiChecked(m, part) ? ` ${aiChecked(m, part)}.` : ''}_`;
+/** Text with the ✨ before its first paragraph (on its own when the text starts with a code block or a list). */
+const withMark = (md: string) => (/^(```|- |\d+\. |#)/.test(md.trimStart()) ? `${AI_MARK}\n\n${md}` : `${AI_MARK} ${md}`);
+
+/**
+ * `slots`: put docSlot markers in, and leave out the "Is it wrong? Tell us" links (the caller's votes lead there).
+ * AI-written parts (the doc, the parameters, "In practice", the example): in Markdown a ✨ before the text and the
+ * basis on its own small line; with `slots` the caller frames them (core/aimark.ts), so neither is in the text.
+ */
 export function memberMarkdown(owner: string, name: string, m: Member, slots = false): string {
   const parts: string[] = [];
   const tellUs = (checked: unknown, path: string) => (checked || slots ? '' : ` [Is it wrong? Tell us](${docReviewUrl(path)})`);
   // Each overload laid out as prettier would (one parameter per line when it's long), the example too.
   parts.push('```ts\n' + memberSignature(owner, name, m).map((x) => prettySignature(x)).join('\n') + '\n```');
   if (m.deprecated) parts.push(`**${m.deprecated}**`);
-  if (m.doc) parts.push(m.doc);
   const path = `${ownerLabel(owner)}${ownerLabel(owner) ? '.' : ''}${name}`;
-  if (claudeNote(m)) parts.push(`_✎ ${claudeNote(m)}_${tellUs(m.docCheckedBy, path)}`);
-  const docVotes = m.doc ? votesMarkdown(path, 'doc', m.docBy === 'claude') : '';
+  const aiDoc = isAiPart(m, 'doc');
+  if (aiDoc && slots) parts.push(docSlot('ai-doc'));
+  if (m.doc) parts.push(aiDoc && !slots ? withMark(m.doc) : m.doc);
+  if (aiDoc && !slots) parts.push(`${aiBasisLine(m, 'doc')}${tellUs(m.docCheckedBy, path)}`);
+  const docVotes = m.doc ? votesMarkdown(path, 'doc', aiDoc) : '';
   if (docVotes) parts.push(docVotes);
   if (slots && m.doc) parts.push(docSlot('doc'));
-  // What to pass for each parameter (every name once, from whichever overload has it).
+  if (aiDoc && slots) parts.push(docSlot('ai-close'));
+  // What to pass for each parameter (every name once, from whichever overload has it). The AI-written ones: a ✨ each
+  // in Markdown; with slots, after the others in their own frame.
   const params = new Map<string, Param>();
   for (const o of m.overloads ?? []) for (const p of o.params) if (p.doc && !params.has(p.name)) params.set(p.name, p);
-  if (params.size) parts.push([...params.values()].map((p) => `- \`${p.name}\`: ${p.doc}`).join('\n') + ([...params.values()].some((p) => p.docBy === 'claude') ? '\n\n_✎ Parameters: AI-written from the Nucleus source._' : ''));
+  const item = (p: Param) => `- \`${p.name}\`: ${p.docBy === 'claude' && !slots ? `${AI_MARK} ` : ''}${p.doc}`;
+  const human = [...params.values()].filter((p) => p.docBy !== 'claude'), ai = [...params.values()].filter((p) => p.docBy === 'claude');
+  if (slots) {
+    if (human.length) parts.push(human.map(item).join('\n'));
+    if (ai.length) parts.push(docSlot('ai-params'), ai.map(item).join('\n'), docSlot('ai-close'));
+  } else if (params.size) parts.push([...params.values()].map(item).join('\n') + (ai.length ? `\n\n${aiBasisLine(m, 'params')}` : ''));
   const meta: string[] = [];
   if (m.default !== undefined) meta.push(`Default: \`${m.default}\``);
   if (m.category) meta.push(`Category: ${m.category}`);
   if (m.required) meta.push('**Required**');
   if (meta.length) parts.push(meta.join(' · '));
-  // "In practice": AI-written, its own label and votes, apart from the doc above.
+  // "In practice": AI-written, its own basis and votes, apart from the doc above.
   if (m.practice) {
     const pv = votesMarkdown(path, 'practice', true);
-    const body = `**In practice** _(AI-written)_\n\n${m.practice}\n\n_✎ ${practiceNote(m)}_${tellUs(m.practiceCheckedBy, path)}${pv ? `\n\n${pv}` : ''}`;
-    parts.push(slots ? [docSlot('practice-open'), body, docSlot('practice'), docSlot('practice-close')].join('\n\n') : body);
+    if (slots) parts.push([docSlot('practice-open'), '**In practice**', m.practice, ...(pv ? [pv] : []), docSlot('practice'), docSlot('practice-close')].join('\n\n'));
+    else parts.push(`**${AI_MARK} In practice**\n\n${m.practice}\n\n${aiBasisLine(m, 'practice')}${tellUs(m.practiceCheckedBy, path)}${pv ? `\n\n${pv}` : ''}`);
   }
   // Where one engine's handlers use it notably more or less: mechanical, not AI-written, under "In practice" or alone.
   if (m.byEngine) parts.push(`${m.practice ? '' : '**In practice**\n\n'}_${m.byEngine}_`);
-  if (m.example) parts.push((exampleSource(m) ? `_Example: ${exampleSource(m)}_\n\n` : '') + '```js\n' + prettyCode(m.example) + '\n```');
+  if (m.example) {
+    const code = '```js\n' + prettyCode(m.example) + '\n```';
+    if (isAiPart(m, 'example')) parts.push(...(slots ? [docSlot('ai-example'), `_Example_\n\n${code}`, docSlot('ai-close')] : [`_${AI_MARK} Example_\n\n${code}`]));
+    else parts.push((exampleSource(m) ? `_Example: ${exampleSource(m)}_\n\n` : '') + code);
+  }
   parts.push(isJsBuiltin(owner) ? `[MDN: ${owner ? `${owner}.` : ''}${name}](${mdnUrl(owner, name)})` : `[Handler API docs](${DOCS_URL})`);
   return parts.join('\n\n');
 }

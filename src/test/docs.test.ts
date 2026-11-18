@@ -22,7 +22,14 @@ test('Claude-written docs: each says what it is based on, and the tools label it
   }
   const [owner, name] = ['Game', 'Play'];
   const md = memberMarkdown(owner, name, api.objects.Game.members.Play);
-  assert.match(md, /AI-written, based on Nucleus/);
+  // Markdown has no frames: a ✨ before the AI-written text, where it comes from on its own small line.
+  assert.match(md, /^✨ /m);
+  assert.match(md, /^_Based on Nucleus/m);
+  assert.doesNotMatch(md, /AI-written/, 'the ✨ says it');
+  // With slots (the Docs panel, the docs pages) the caller frames it: no ✨ or basis line in the text.
+  const framed = memberMarkdown(owner, name, api.objects.Game.members.Play, true);
+  assert.match(framed, /@@slot:ai-doc@@[\s\S]*@@slot:ai-close@@/);
+  assert.doesNotMatch(framed, /✨|_Based on/);
   assert.match(markdownReference(), /_✎ AI-written/);
   // Human docs carry no label.
   const human = Object.values(api.objects.Game.members).find((m) => m.doc && !m.docBy)!;
@@ -76,7 +83,7 @@ test('"In practice" parts: real members, labelled, with what they are based on; 
     const m = api.objects[OBJ[key.slice(0, i)]]?.members[key.slice(i + 1)];
     assert.ok(m, `${key}: a real member`);
     assert.equal(m.practice, p.text, `${key}: in the model (npm run generate)`);
-    assert.match(memberMarkdown(key.slice(0, i) === 'Player' ? 'PlayerInfo' : OBJ[key.slice(0, i)], key.slice(i + 1), m), /\*\*In practice\*\* _\(AI-written\)_[\s\S]*AI-written, based on/);
+    assert.match(memberMarkdown(key.slice(0, i) === 'Player' ? 'PlayerInfo' : OBJ[key.slice(0, i)], key.slice(i + 1), m), /\*\*✨ In practice\*\*[\s\S]*_Based on /);
   }
   // Every example in the model: ES5 that parses, and no errors from the checks once it sits where it belongs.
   for (const [o, obj] of Object.entries(api.objects)) for (const [k, m] of Object.entries(obj.members)) {

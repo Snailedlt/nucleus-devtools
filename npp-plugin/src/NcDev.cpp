@@ -1192,6 +1192,8 @@ static std::string plain(const std::string& md, size_t maxLines) {
     // The ⓘ and ✎ marks: not in every editor font (a box in Notepad++'s default call-tip font).
     for (const char* mark : {"\xE2\x93\x98", "\xE2\x9C\x8E"})
       for (size_t k; (k = t.find(mark)) != std::string::npos;) t.erase(k, 3 + (k + 3 < t.size() && t[k + 3] == ' '));
+    // The AI-written mark (✨): an emoji, a box in the call-tip font, so "[AI]" instead.
+    for (size_t k; (k = t.find("\xE2\x9C\xA8")) != std::string::npos;) t.replace(k, 3, "[AI]");
     while (!t.empty() && t[0] == ' ' && t.find_first_not_of(' ') != std::string::npos && out.empty()) t.erase(0, 1);
     if (t.empty() || t.find_first_not_of(" ") == std::string::npos) {
       if (++blank > 1 || out.empty()) continue;

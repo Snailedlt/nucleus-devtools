@@ -446,11 +446,19 @@ test('Docs panel: 👍/👎 inside each part as command links; the follow-up lin
   assert.match(voteLine('Game.KillMutex', 'doc', 'The doc', {}, false), /telemetry is off/);
   // Placed inside its part: the doc's under the description, "In practice"'s inside its box.
   const page = docsPage('q:Game.KillMutex', (v) => v, true);
-  const html = placeVotes(fallbackMarkdown(page.markdown), 'Game.KillMutex', [{ part: 'doc', label: 'The doc' }, { part: 'practice', label: '"In practice" (AI-written)' }], {}, true);
+  const { api } = await import('../core/api');
+  const html = placeVotes(fallbackMarkdown(page.markdown), 'Game.KillMutex', [{ part: 'doc', label: 'The doc' }, { part: 'practice', label: '"In practice" (AI-written)' }], {}, true, api.objects.Game.members.KillMutex);
   assert.doesNotMatch(html, /@@slot/);
-  const box = /<section class="practice"[^>]*>([\s\S]*?)<\/section>/.exec(html);
+  const box = /<section class="ai-box practice"[^>]*>([\s\S]*?)<\/section>/.exec(html);
   assert.ok(box && /In practice/.test(box[1]) && /Is this right\?/.test(box[1]), 'the practice vote in its box');
-  assert.ok(html.indexOf('Is this doc right?') < html.indexOf('<section class="practice"'), 'the doc vote before "In practice"');
+  assert.ok(html.indexOf('Is this doc right?') < html.indexOf('<section class="ai-box practice"'), 'the doc vote before "In practice"');
+  // AI-written parts framed, with the sparkle's tooltip (the basis) and a hidden "AI-written"; the human doc plain.
+  assert.match(box[1], /class="ai-badge" tabindex="0" aria-describedby="ai-practice"[\s\S]*<span class="sr-only">AI-written<\/span><span class="ai-tip" role="tooltip" id="ai-practice">AI-written\. Based on /);
+  assert.match(html, /<div class="ai-box" data-ai="example">/, 'the AI-written example framed');
+  assert.doesNotMatch(html, /data-ai="doc"/, 'the human doc stays plain');
+  assert.doesNotMatch(html.replace(/<span class="(sr-only|ai-tip)"[^>]*>[^<]*<\/span>/g, ''), />[^<]*AI-written/, 'no visible "AI-written" words');
+  const play = placeVotes(fallbackMarkdown(docsPage('q:Game.Play', (v) => v, true).markdown), 'Game.Play', [{ part: 'doc', label: 'The doc' }], {}, true, api.objects.Game.members.Play);
+  assert.match(play, /<div class="ai-box" data-ai="doc">[\s\S]*Is this doc right\?[\s\S]*?<\/div>/, 'an AI-written doc framed, its vote inside');
   assert.doesNotMatch(html, /Is it wrong\? Tell us/, 'the vote leads there instead');
   // Markdown (Search text is in it) never renders the vote command; docs links still work.
   assert.doesNotMatch(fallbackMarkdown('[x](command:splitscreenme.docsVote?%5B%22a%22%5D)'), /href/);
