@@ -13,18 +13,25 @@ How to write it (people and AI agents read this; the release workflow publishes 
 - A bug fixed or a request done from an issue in this repository: end that change's own line with "(#12)" (several: "(#12, #14)"), or say "Fixes #12" in the commit. On release the issue gets a short comment, "Fixed in vX.Y.Z" (under 🐛 Fixed) or "Added in vX.Y.Z" (elsewhere), with a link to the release notes and a thanks to whoever reported or asked (scripts/issue-bots.mjs in splitscreenme-vscode). Only "(#12)" counts: a number mentioned in passing ("see #12") or on a Thanks line doesn't.
 -->
 
-## Unreleased
+## 0.9.0 · 2026-11-18
 
 ### ✨ New
 
+- **Which hooks does my game need? Ask its files.** Link the handler to the game's folder (*Nucleus: Game Folder: Link…*, or `gameFolders` in other editors) and the tools read the game's `.exe` and DLLs in the background: what it uses for controllers, the cursor, keys, focus and windows. Quiet hints then suggest the Proto Input hooks and Nucleus options that match and the handler doesn't have yet, each with a fix that adds the line. `ncdev imports <game folder>` (and the MCP tool `nucleus_game_imports`) print the whole picture. It follows a launcher to the game it starts (Warcraft III's), spots SDL built into a game, and was checked against 35 games' Hub handlers and Proto Input's and Nucleus' source. Idea from messenils (#39).
+
+  <details><summary>Screenshot</summary>
+
+  ![VS Code with a game folder linked: on Game.ExecutableName, quick fixes offer Game.ProtoInput.XinputHook, ClipCursorHook and MessageFilterHook](https://raw.githubusercontent.com/Snailedlt/splitscreenme-vscode/main/docs/images/changelog/0.9.0-game-files.png)
+
+  </details>
+
 - **Vote on docs in VS Code too.** The Docs panel has 👍/👎 for each part of a doc (the doc, and the AI-written "In practice"), counted with the workbench's, anonymously and only while VS Code telemetry is on. Click again to take a vote back.
-- **Report from where you are.** *Nucleus: Report a Problem…* and *Request a Feature…* (Command Palette, the language status's *Feedback*, Notepad++'s plugin menu, `ncdev report`) open the right GitHub form, filled in with the versions and where the handler came from, never its code. You never pick a repository, and you see everything before it's sent.
+- **Report from where you are.** *Nucleus: Report a Problem…* and *Request a Feature…* (Command Palette, the language status's *Feedback*, Notepad++'s plugin menu, `ncdev report`) open the right GitHub form, filled in with the versions and where the handler came from, never its code. You never pick a repository, and you see everything before it's sent. (#14)
 - **"This check is wrong" on every problem.** Ctrl+. in VS Code, Alt+Enter in Notepad++, the code actions of other editors and `ncdev report --check <rule>` open a report with the check, the message and the line; the flagged lines' code only if you choose to include it.
 - **"Nucleus did something different" in Try it.** The Try it panel's report button sends what Try it showed (each player's window, arguments, file changes) next to what really happened.
 - **Possible duplicates first, and no account needed.** Before a new report, the tools show open reports that may be the same, to 👍 instead. No GitHub account? *Copy the report* and paste it in the testers' Discord thread. A problem with one Hub handler goes to its Hub page, Discord or Reddit instead of our forms.
 - **Releases tell the issues they fix.** A release comments "This is in vX.Y.Z" on each issue it fixes and thanks whoever reported it.
 - **"In practice" in the docs.** For the 86 most used options and calls, the docs now have a second part, written by AI from Nucleus Co-op's source and the Hub handlers: what the option really does (`Game.Hook.ForceFocus` only matters with the custom XInput DLL; Nucleus replaces `Game.LockInputToggleKey` with your own lock key) and how Hub handlers use it. It's labelled AI-written in hovers, suggestions, the Docs panel, `ncdev api` and the `.d.ts`, apart from the doc above it.
-- **Which hooks does my game need? Ask its files.** Link the handler to the game's folder (*Nucleus: Game Folder: Link…*, or `gameFolders` in other editors) and the tools read the game's `.exe` and DLLs in the background: what it uses for controllers, the cursor, keys, focus and windows. Quiet hints then suggest the Proto Input hooks and Nucleus options that match and the handler doesn't have yet, each with a fix that adds the line. `ncdev imports <game folder>` (and the MCP tool `nucleus_game_imports`) print the whole picture. It follows a launcher to the game it starts (Warcraft III's), spots SDL built into a game, and was checked against 35 games' Hub handlers and Proto Input's and Nucleus' source. Idea from messenils (#39).
 - **A hint when keyboard and mouse players would get nothing.** In a handler for several keyboards and mice, Proto Input's cursor and key hooks (`GetCursorPosHook`, `GetKeyStateHook`, …) without `Game.ProtoInput.RegisterRawInputHook` now get a quiet hint: those hooks answer from keyboards and mice that only the raw input hook reads, so players would see no key presses and a frozen cursor. The fix adds the hook. "In practice" for these hooks and for `Game.Hook.SDL2Enabled` (which only works for games with a separate `SDL2.dll`) explains it, from Proto Input's and Nucleus' source.
 - **"In practice" says where game engines differ.** For 59 options and calls, the docs add a counted line where handlers for Unreal Engine, Unity or Source games use them notably more or less than all Hub handlers ("By engine: Unity games 74% of 203 handlers (all Hub handlers 20%)"), and "In practice" names a few engine habits (Unity's `Screenmanager` registry values, Source's `hl2_singleton_mutex`). Engines come from Wikidata (by the game's Steam ID or IGDB page) and the handlers' own code.
 - **An example for most options.** Docs show an example for 611 of the 750 options and calls: the official docs' own, else the value most Hub handlers use, an AI-written one, or one made from the type, each saying where it comes from.
@@ -70,6 +77,10 @@ How to write it (people and AI agents read this; the release workflow publishes 
 - **Docs attached to the wrong option.** Some Proto Input docs came from the line next to them in the official docs (`InjectRuntime_EasyHookStealthMethod` said "Automatically locks input once the instances are set up", `BlockedMessages` had Block Raw Input's text), and a few options had the next option's line of code as their doc (`IgnoreDeleteFilesPrompt`, `DeleteFiles`, `CopyFoldersTo`, `CMDStartArgsInside`). Each doc now belongs to its own option, and `HexEditFileAddress`, `RenameAndOrMoveFiles`, `CopyEnvFoldersToNucleusAccounts` and `CMDBatchClose` got theirs.
 - **Linking a game's folder no longer writes your PC's path into the project.** *Game Folder: Link…* (was *Link the Game's Folder…*) keeps the link in VS Code's own storage on this PC instead of `.vscode/settings.json`, so it can't end up in a shared repository; links made before still work. *Unlink* now says what it did, and with nothing linked it no longer creates an empty settings file.
 - **No wrong "quote the case" fix for option lists changed later.** `option-compare` no longer offers `case "2":` when the option's list is changed by a method call, also one written with brackets (`answers["push"]`), since a fresh pick could then be a number. Found by CodeRabbit.
+
+### 🙏 Thanks
+
+- **messenils** for the idea of reading the game's own program files to suggest hooks (#39 started from it).
 
 ---
 
