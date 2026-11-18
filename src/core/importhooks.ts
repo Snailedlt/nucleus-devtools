@@ -285,6 +285,9 @@ const isOn = (text: string, opt: string) => new RegExp(`\\bGame\\.${opt.replace(
  *  (one inside a block or a one-line `if`, or a value that isn't true/false). */
 export function lastSwitch(text: string, opt: string): boolean | undefined | 'unclear' {
   const { code, depth } = codeOf(text);
+  // Set by a bracket key (`Game.ProtoInput["InjectStartup"] = …`) anywhere on its parent: can't tell.
+  const parent = ['Game', ...opt.split('.').slice(0, -1)].join('\\s*\\.\\s*');
+  if (new RegExp(`\\b${parent}\\s*\\[`).test(code)) return 'unclear';
   let v: boolean | undefined;
   for (const m of code.matchAll(new RegExp(`\\bGame\\.${opt.replace(/\./g, '\\.')}\\s*=(?!=)\\s*([^;\\n]*)`, 'g'))) {
     const lineStart = code.lastIndexOf('\n', m.index! - 1) + 1;

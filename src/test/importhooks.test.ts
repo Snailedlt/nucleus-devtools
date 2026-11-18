@@ -224,6 +224,9 @@ test('importhooks: the last assignment of a runtime method counts; unclear ones 
   // On, then off: no runtime method, so the fix adds one instead of turning startup off.
   const w = warn(head + 'Game.ProtoInput.InjectRuntime_RemoteLoadMethod = true;\nGame.ProtoInput.InjectRuntime_RemoteLoadMethod = false;\n')!;
   assert.equal(w.fix!.title, 'Inject at runtime instead');
+  // Set with a bracket key: can't tell, no fix.
+  const br = warn(head + 'Game.ProtoInput["InjectRuntime_EasyHookMethod"] = false;\n')!;
+  assert.ok(br && !br.fix);
   // EasyHook itself set false later: swapping InjectStartup for EasyHook = true would be undone, so no fix.
   const e = warn(head + 'Game.ProtoInput.InjectRuntime_EasyHookMethod = false;\n')!;
   assert.ok(e && !e.fix);
