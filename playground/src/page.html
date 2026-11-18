@@ -3,12 +3,8 @@
 <script>/* the dev bar's theme choice, applied before first paint (see src/devbar.ts) */
 try { if (localStorage.getItem('nucleus-workbench-dev-site') === 'v3') document.documentElement.dataset.site = 'v3';
   var m = localStorage.getItem('nucleus-workbench-dev-mode'); if (m === 'light' || m === 'dark') document.documentElement.dataset.theme = m; } catch (e) {}</script>
-<script>/* Before first paint, the same screen the app will show (app.ts: firstVisit, NONE_KEY, MODE_KEY): the home page when
-   nothing is open, so a first visit never flashes the editor before the questions and the home page. */
-try { var d = document.documentElement, ls = localStorage;
-  if (ls.getItem('nucleus-workbench-advanced') === '1') d.dataset.mode = 'dev';
-  if (!location.hash && ((!ls.getItem('nucleus-workbench-draft') && !ls.getItem('nucleus-workbench-tabs')) || ls.getItem('nucleus-workbench-none-open'))) d.classList.add('no-handler');
-} catch (e) {}</script>
+<script>/* Before first paint, Advanced mode as the app will set it (app.ts MODE_KEY). */
+try { if (localStorage.getItem('nucleus-workbench-advanced') === '1') document.documentElement.dataset.mode = 'dev'; } catch (e) {}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>/*CODEMIRROR_CSS*/
@@ -97,20 +93,6 @@ a.btn { text-decoration: none; color: var(--fg); display: inline-block; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 :root { accent-color: var(--accent); }
 
-html.no-handler #main { display: none; }
-div.no-handler { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 24px 16px; text-align: center; }
-div.no-handler[hidden] { display: none; }
-html.no-handler #no-handler[hidden] { display: flex !important; } /* set before first paint (see <head>) */
-div.no-handler h2 { margin: 0; font-size: 20px; }
-div.no-handler .nh-drop { margin: 10px 0 0; font-size: var(--fs-sm); }
-div.no-handler .nh-acts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px; }
-div.no-handler .nh-intro { max-width: 920px; }
-div.no-handler .nh-intro p { max-width: 640px; margin-left: auto; margin-right: auto; }
-div.no-handler .nh-intro p { margin: 8px 0 0; }
-.nh-steps { list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 18px; margin: 12px 0 0; padding: 0; font-size: 14px; }
-.nh-steps b { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--surface-2); color: var(--muted); font-size: 12px; margin-right: 4px; }
-/* Advanced mode starts compact: just the ways on. */
-:root[data-mode="dev"] div.no-handler .nh-intro { display: none; }
 .main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.15fr) 12px minmax(0, 1fr); gap: 0; }
 @media (min-width: 861px) { .main:has(#lines:not([hidden])) { grid-template-columns: minmax(0, 1.5fr) 12px minmax(0, 1fr); } }
 /* Resizable panes: a size set by dragging wins over the defaults above (double-click resets) */
@@ -1103,8 +1085,6 @@ kbd { font: 11px var(--font-mono); border: 1px solid var(--line); border-bottom-
 .problem.current { outline: 2px solid var(--accent); outline-offset: 1px; }
 .fixable { font-size: 11px; color: var(--ok); font-weight: 600; }
 /* Getting started on the home page: its intro unfolds where it lives. */
-@keyframes welcome-in { from { opacity: 0; transform: scaleY(.6); } }
-:root:not([data-motion-ui="off"]) div.no-handler.welcome-in .nh-intro { animation: welcome-in .35s cubic-bezier(.2, .8, .2, 1); transform-origin: top; }
 .banner-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 /* A notice at the top of the code pane (src/toast.ts notice()): problems that need reading stay there until dismissed. */
 #notice { display: flex; align-items: flex-start; gap: 10px; margin: 8px 10px 0; padding: 8px 8px 8px 12px; border: 1px solid var(--line); border-left: 3px solid var(--tk); border-radius: var(--r-pane); background: var(--surface-2); font-size: 13.5px; line-height: 1.4; }
@@ -1463,7 +1443,6 @@ footer .foot-dup { display: none !important; }
 /* Skip links: shown only when focused (the first Tab on the page) */
 .skip-links a { position: absolute; left: 8px; top: 8px; z-index: 100; padding: 8px 12px; background: var(--surface); color: var(--fg); border: 2px solid var(--accent); border-radius: var(--r-ctl); transform: translateY(-200%); }
 .skip-links a:focus { transform: none; }
-:is(#share-open, .split-save .btn):disabled { opacity: .5; cursor: not-allowed; }
 .how-works { margin: 0 0 10px; font-size: var(--fs-sm); }
 .how-works > summary { cursor: pointer; color: var(--muted); width: fit-content; border-radius: var(--r-ctl); }
 .how-works > summary:hover { color: var(--fg); }
@@ -2261,6 +2240,29 @@ html:not(.visual) .visual-only { display: none !important; }
 footer { color: var(--muted); font-size: 11.5px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
 footer .made-by { margin-left: auto; }
 
+/* The guided tour (tour.ts): a full-page modal dialog that dims everything but a cut-out, with a card beside it. */
+dialog.tour { position: fixed; inset: 0; width: 100vw; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; overflow: hidden; }
+dialog.tour::backdrop { background: transparent; backdrop-filter: none; }
+.tour-hole { position: fixed; border-radius: var(--r-ctl); box-shadow: 0 0 0 200vmax rgba(10, 15, 22, .55); outline: 2px solid var(--accent); outline-offset: 0; pointer-events: none; }
+.tour-hole.none { left: 50% !important; top: 50% !important; width: 0 !important; height: 0 !important; outline: 0; }
+.tour-card { position: fixed; box-sizing: border-box; width: min(340px, calc(100vw - 24px)); padding: 14px 16px 12px; background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--sh-2); }
+.tour-card.center { left: 50% !important; top: 50% !important; transform: translate(-50%, -50%); width: min(400px, calc(100vw - 24px)); }
+.tour-card[data-sheet] { left: 8px !important; right: 8px; width: auto; transform: none; }
+.tour-card[data-sheet=bottom] { top: auto !important; bottom: max(8px, env(safe-area-inset-bottom)); }
+.tour-card[data-sheet=top] { top: max(8px, env(safe-area-inset-top)) !important; }
+.tour-card h2 { font: 600 var(--fs-lg) var(--font-display); margin: 0 0 6px; }
+.tour-card h2:focus { outline: none; }
+.tour-card p { margin: 0; font-size: var(--fs-md); line-height: 1.45; }
+.tour-card .tour-count { font-size: var(--fs-sm); color: var(--muted); margin-bottom: 2px; }
+.tour-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.tour-acts .tour-sp { flex: 1; }
+.tour-acts .tour-skip { background: transparent; border-color: transparent; color: var(--muted); padding-left: 4px; padding-right: 4px; }
+.tour-acts .tour-skip:hover { color: var(--fg); }
+:root:not([data-motion-ui="off"]) .tour-hole { transition: left .25s var(--ease, ease), top .25s var(--ease, ease), width .25s var(--ease, ease), height .25s var(--ease, ease); }
+:root:not([data-motion-ui="off"]) .tour-card:not([data-sheet]):not(.center) { transition: left .25s var(--ease, ease), top .25s var(--ease, ease); }
+@media (prefers-reduced-motion: reduce) { .tour-hole, .tour-card { transition: none !important; } }
+@media (forced-colors: active) { .tour-hole { outline: 3px solid Highlight; } .tour-card { border: 2px solid CanvasText; } }
+
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
 </style>
 
@@ -2305,15 +2307,6 @@ footer .made-by { margin-left: auto; }
   </header>
 
   <div id="updated" role="status" hidden><span id="updated-text"></span> <button class="link" type="button" id="updated-open">What's new</button><button class="btn icon" type="button" id="updated-close" aria-label="Dismiss">×</button></div>
-  <section id="no-handler" class="no-handler" role="main" aria-labelledby="nh-title" hidden>
-    <h2 id="nh-title">Welcome to the workbench</h2>
-    <div class="nh-intro">
-      <p class="muted">A handler is the file that tells Nucleus Co-op how to run a game split-screen (it goes in Nucleus' <code>handlers</code> folder). Here you write one, check it and try it, then save it for Nucleus.</p>
-      <ol class="nh-steps"><li><b>1</b> Start one, or open yours</li><li><b>2</b> Fix what Nucleus would reject</li><li><b>3</b> Try it per player</li><li><b>4</b> Save it for Nucleus</li></ol>
-    </div>
-    <div class="nh-acts"><button type="button" class="btn primary" data-nh="new">New handler…</button><button type="button" class="btn" data-nh="open" title="Your own handler (.js, .zip, .nc), an example, or one from the Hub">Open a handler or example… <kbd>Ctrl+P</kbd></button><button type="button" class="btn" data-nh="learn">Learn: make your first one</button><button type="button" class="btn" data-nh="undo" hidden>Reopen</button><button type="button" class="btn" data-nh="back" hidden>Back to the code <kbd>Esc</kbd></button></div>
-    <p class="muted nh-drop">Or drop a .js, .zip or .nc file anywhere on this page.</p>
-  </section>
   <main class="main" id="main" data-view="results">
     <section class="pane" aria-label="Handler source">
       <div class="pane-head doc-head">
@@ -2417,7 +2410,7 @@ footer .made-by { margin-left: auto; }
       <div role="tabpanel" id="panel-probes" hidden><div id="probes"></div></div>
     </section>
   </main>
-  <footer><span id="build-info" class="dev-only"></span><span>Your draft is kept in this browser only.</span><button class="link foot-dup" id="welcome-open" type="button">Getting started</button><button class="link tg-open" id="test-open" type="button">🧪 Help test this beta</button><button class="link foot-dup" id="help-open-2" type="button">Keyboard shortcuts</button><button class="link foot-dup" type="button" data-tips-toggle aria-pressed="true">Tips: on</button><button class="link foot-dup" type="button" id="news-open-2">What's new</button><a class="link start-link foot-dup" href="https://snailedlt.github.io/nucleuscoop-handler-testbench/start/" title="What the workbench and the VS Code extension do, and how to install them">About these tools</a><span class="comm-foot">Questions? <a class="link" href="__DISCORD_INVITE__" target="_blank" rel="noopener">Discord</a> · <a class="link" href="__REDDIT__" target="_blank" rel="noopener">r/nucleuscoop</a></span><span class="made-by">Made by <a class="link" href="https://github.com/Snailedlt" rel="author" target="_blank">Snailedlt</a> (Jørgen KH)</span></footer>
+  <footer><span id="build-info" class="dev-only"></span><span>Your draft is kept in this browser only.</span><button class="link foot-dup" id="tour-open" type="button">Take the tour</button><button class="link tg-open" id="test-open" type="button">🧪 Help test this beta</button><button class="link foot-dup" id="help-open-2" type="button">Keyboard shortcuts</button><button class="link foot-dup" type="button" data-tips-toggle aria-pressed="true">Tips: on</button><button class="link foot-dup" type="button" id="news-open-2">What's new</button><a class="link start-link foot-dup" href="https://snailedlt.github.io/nucleuscoop-handler-testbench/start/" title="What the workbench and the VS Code extension do, and how to install them">About these tools</a><span class="comm-foot">Questions? <a class="link" href="__DISCORD_INVITE__" target="_blank" rel="noopener">Discord</a> · <a class="link" href="__REDDIT__" target="_blank" rel="noopener">r/nucleuscoop</a></span><span class="made-by">Made by <a class="link" href="https://github.com/Snailedlt" rel="author" target="_blank">Snailedlt</a> (Jørgen KH)</span></footer>
 </div>
 
 <div id="tip" hidden></div>
@@ -2543,6 +2536,7 @@ footer .made-by { margin-left: auto; }
   <div class="set-panel" role="tabpanel" id="sp-help" aria-labelledby="st-help" data-label="Tips and help" hidden>
 
     <div class="set-sec"><h3>Start-up questions</h3><p class="muted small" style="margin:0 0 6px">Nucli's two questions from your first visit: how much guidance, and where the tools go.</p><button class="btn" type="button" id="fr-again">Ask me again</button></div>
+    <div class="set-sec"><h3>Guided tour</h3><p class="muted small" style="margin:0 0 6px">A short walk past the parts of the workbench: tabs, code, Check, Try it, Docs and the rest.</p><button class="btn" type="button" id="set-tour">Take the tour</button></div>
     <div class="set-sec">
       <label class="set-check"><input type="checkbox" id="set-tips"> <span>Tips under the code<small>General tips, and a heads-up when the code makes one relevant</small></span></label>
       <button class="link" type="button" id="set-heads">Show heads-ups again</button></div>
@@ -2684,7 +2678,7 @@ footer .made-by { margin-left: auto; }
 
 <dialog id="help-dialog" aria-label="Keyboard shortcuts">
   <h2 tabindex="-1" autofocus>Keyboard shortcuts</h2>
-  <p class="muted" style="margin:0 0 8px">The editor uses VS Code's keys. On a Mac, ⌘ instead of Ctrl. Keys with <kbd>[</kbd> <kbd>]</kbd> <kbd>/</kbd> <kbd>\</kbd> <kbd>;</kbd> go by position, as in VS Code: on a German, Spanish or Nordic keyboard, press the key where a US keyboard has that one (e.g. <kbd>Ü</kbd> for <kbd>[</kbd>). <button class="link" type="button" id="help-rebind">Change shortcuts</button></p>
+  <p class="muted" style="margin:0 0 8px">The editor uses VS Code's keys. On a Mac, ⌘ instead of Ctrl. Keys with <kbd>[</kbd> <kbd>]</kbd> <kbd>/</kbd> <kbd>\</kbd> <kbd>;</kbd> go by position, as in VS Code: on a German, Spanish or Nordic keyboard, press the key where a US keyboard has that one (e.g. <kbd>Ü</kbd> for <kbd>[</kbd>). <button class="link" type="button" id="help-rebind">Change shortcuts</button> · <button class="link" type="button" id="help-tour">Take the tour</button></p>
   <table class="keys"><tbody>
     <tr class="kh"><th colspan="2">Workbench</th></tr>
     <tr><td><kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>P</kbd> · <kbd>F1</kbd></td><td>Command palette: every command (format, fix, try it, theme…)</td></tr>

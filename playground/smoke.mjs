@@ -415,19 +415,20 @@ for (const theme of ['light', 'dark']) {
     await q.waitForTimeout(300);
     check((await q.$$('#test-body .tg-list > .tg-item')).length >= 3 && await q.isVisible('#tg-change'), `${theme}: the answers show the recommendations, with Change`);
     await axe(q, `${theme}, tester recommendations`);
-    // Behind the questions: the home page, not a handler (what a handler is, the steps, New / Open / Learn).
+    // Behind the questions: the editor with the template (there's no home page), and no tour for a program's browser.
     await q.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
-    check(await q.isVisible('#no-handler .nh-intro') && (await q.textContent('#nh-title')) === 'Welcome to the workbench' && await q.isHidden('#main'), `${theme}: a first visit starts on the home page`);
-    await axe(q, `${theme}, home page`);
-    // Dragging a file: the same hint over the whole window, wherever the pointer is (home page, header, footer).
+    await q.waitForTimeout(200);
+    check(!(await q.$('#no-handler')) && await q.isVisible('#main') && /Game\.GameName/.test(await q.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue())), `${theme}: a first visit opens the template in the editor`);
+    check(!(await q.$eval('#tour', (d) => d.open)), `${theme}: the tour never starts by itself in an automated browser`);
+    // Dragging a file: the same hint over the whole window, wherever the pointer is (code, header, footer).
     const dragOver = (sel) => q.evaluate((sel) => {
       const dt = new DataTransfer();
       dt.items.add(new File(['Game.GameName = "Dropped";\n'], 'dropped.js', { type: 'text/javascript' }));
       document.querySelector(sel).dispatchEvent(new DragEvent('dragover', { dataTransfer: dt, bubbles: true, cancelable: true }));
       return !document.getElementById('drop-hint').hidden && getComputedStyle(document.getElementById('drop-hint')).position === 'fixed';
     }, sel);
-    const overHome = await dragOver('#no-handler'), overHeader = await dragOver('header'), overFooter = await dragOver('footer');
-    check(overHome && overHeader && overFooter, `${theme}: dragging a file shows the drop hint over the whole page (home ${overHome}, header ${overHeader}, footer ${overFooter})`);
+    const overMain = await dragOver('#main'), overHeader = await dragOver('header'), overFooter = await dragOver('footer');
+    check(overMain && overHeader && overFooter, `${theme}: dragging a file shows the drop hint over the whole page (main ${overMain}, header ${overHeader}, footer ${overFooter})`);
     // Held still: browsers repeat dragover only every ~350 ms, so the hint must outlast a pause like that.
     await q.waitForTimeout(700);
     check(await q.isVisible('#drop-hint'), `${theme}: the drop hint stays while the file is held still`);
@@ -437,16 +438,37 @@ for (const theme of ['light', 'dark']) {
       document.querySelector('header').dispatchEvent(new DragEvent('dragleave', { dataTransfer: dt, bubbles: true, relatedTarget: null, clientX: -1, clientY: 10 }));
     });
     check(await q.isHidden('#drop-hint'), `${theme}: the drop hint goes away when the drag leaves the window`);
-    await q.click('[data-nh=new]');
-    await q.fill('#new-name', 'Smoke Game');
-    await q.fill('#new-exe', 'Smoke.exe');
-    await q.click('#new-dialog button[type=submit]');
-    await q.waitForTimeout(600);
-    check(await q.isHidden('#no-handler') && await q.isVisible('#main') && !(await q.$('#welcome')), `${theme}: New handler… leaves the home page for the code, with no welcome box above it`);
-    await q.evaluate(() => document.querySelector('#welcome-open').click());
-    check(await q.isVisible('#no-handler') && (await q.textContent('#nh-title')) === 'Getting started' && await q.isVisible('[data-nh=back]'), `${theme}: Getting started shows the home page over the open handler`);
+    // The tour (tour.ts): from the menu, keyboard-driven, Esc skips and remembers the step, Take the tour offers to continue.
+    const takeTour = async () => {
+      await q.click('#app-menu-open');
+      await q.click('[role=menuitem]:has-text("Take the tour")');
+      await q.waitForTimeout(400);
+    };
+    await takeTour();
+    const tourState = () => q.evaluate(() => ({ open: document.getElementById('tour').open, count: document.getElementById('tour-count').textContent, title: document.getElementById('tour-title').textContent, inCard: !!document.activeElement?.closest('.tour-card') }));
+    let ts = await tourState();
+    check(ts.open && /^1 of \d+$/.test(ts.count) && ts.inCard, `${theme}: Take the tour opens step 1 with the focus in the card (${ts.count}, ${ts.title})`);
+    await axe(q, `${theme}, tour`);
+    await q.keyboard.press('ArrowRight');
+    await q.keyboard.press('ArrowRight');
+    await q.waitForTimeout(400);
+    ts = await tourState();
+    check(ts.title === 'Check' && /^3 of/.test(ts.count) && await q.$eval('.pane-head [data-tab=problems]', (b) => b.getAttribute('aria-selected') === 'true'), `${theme}: → steps on, to Check (${ts.count}, ${ts.title})`);
+    await q.keyboard.press('ArrowRight');
+    await q.waitForTimeout(300);
+    check(await q.$eval('.pane-head [data-tab=simulate]', (b) => b.getAttribute('aria-selected') === 'true'), `${theme}: the tour opens Try it as it gets there`);
     await q.keyboard.press('Escape');
-    check(await q.isHidden('#no-handler') && await q.isVisible('#main'), `${theme}: Esc goes back to the code`);
+    await q.waitForTimeout(300);
+    const saved = await q.evaluate(() => JSON.parse(localStorage.getItem('nucleus-workbench-tour')));
+    check(!(await q.$eval('#tour', (d) => d.open)) && saved?.state === 'skipped' && saved.step === 3 && await q.evaluate(() => document.activeElement?.id === 'app-menu-open'), `${theme}: Esc skips, remembers the step and gives the focus back (${JSON.stringify(saved)})`);
+    check(await q.$eval('.pane-head [data-tab=problems]', (b) => b.getAttribute('aria-selected') === 'true'), `${theme}: the tour puts back the tab that was open`);
+    await takeTour();
+    check(/Continue where you left off/.test(await q.textContent('[data-tour=next]')) && /Start over/.test(await q.textContent('[data-tour=back]')), `${theme}: Take the tour after a skip offers to continue or start over`);
+    await q.click('[data-tour=next]');
+    await q.waitForTimeout(300);
+    check(/^4 of/.test(await q.textContent('#tour-count')), `${theme}: Continue picks up at the skipped step`);
+    for (let i = 0; i < 12 && await q.$eval('#tour', (d) => d.open); i++) await q.click('[data-tour=next]');
+    check((await q.evaluate(() => JSON.parse(localStorage.getItem('nucleus-workbench-tour'))))?.state === 'done', `${theme}: Finish ends the tour and remembers it`);
     await fresh.close();
   }
   // One handler per tab: another handler opens a new tab; one that's already open switches to its tab.
@@ -1018,24 +1040,21 @@ await m.ctx.close();
   await s.ctx.close();
 }
 {
-  // Every handler can be closed, the last one too: the work area says nothing is open, with ways on; Reopen brings
-  // it back, and opening anything fills the empty place (no extra blank tab).
+  // Every handler can be closed, the last one too: a new one from the template takes its place (no empty page); Undo
+  // brings the closed one back and the untouched template goes.
   const s = await page('light');
   await s.p.goto(BASE + '#example-mistakes');
   await s.p.waitForTimeout(900);
   await s.p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
   const tabsNow = () => s.p.$$eval('#htabs [role=tab]', (l) => l.length);
-  for (let n = await tabsNow(); n > 0; n--) { await s.p.click('#htabs [aria-selected=true] .ht-x'); await s.p.waitForTimeout(250); }
-  check((await tabsNow()) === 0 && (await s.p.isVisible('#no-handler')) && !(await s.p.isVisible('#main')), 'tabs: the last handler closes too, and the page says nothing is open');
-  await axe(s.p, 'light, no handler open');
-  await s.p.click('[data-nh=undo]');
-  await s.p.waitForTimeout(400);
-  check((await tabsNow()) === 1 && !(await s.p.isVisible('#no-handler')), 'tabs: Reopen brings the last one back, with no blank tab left over');
+  for (let n = await tabsNow(); n > 1; n--) { await s.p.click('#htabs [aria-selected=true] .ht-x'); await s.p.waitForTimeout(250); }
+  const lastName = await s.p.textContent('#doc-name');
   await s.p.click('#htabs [aria-selected=true] .ht-x');
-  await s.p.waitForTimeout(250);
-  await s.p.goto(BASE + '#example-mistakes');
-  await s.p.waitForTimeout(900);
-  check((await tabsNow()) === 1 && (await s.p.isVisible('#main')), 'tabs: opening a handler from nothing open fills the place');
+  await s.p.waitForTimeout(300);
+  check((await tabsNow()) === 1 && (await s.p.isVisible('#main')) && (await s.p.textContent('#doc-name')) === 'My Game.js', 'tabs: closing the last handler opens a new one from the template');
+  await s.p.click('#notice .notice-action');
+  await s.p.waitForTimeout(400);
+  check((await tabsNow()) === 1 && (await s.p.textContent('#doc-name')) === lastName, `tabs: Undo brings the last one back, with the untouched template gone (${lastName})`);
   check(!s.errors.length, `tabs: no page errors ${s.errors.join(' ')}`);
   await s.ctx.close();
 }

@@ -14,6 +14,14 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 ## Unreleased
 
+### ✨ New
+
+- **A short tour of the workbench.** It points out the parts one at a time (the handler tabs, the code, Check, Try it, Docs, Lines, Files, Save and Settings) with a sentence on each, and switches to Check or Try it as it gets there. It starts once on your first visit; Skip remembers where you stopped, and *Take the tour* (Menu, the ? dialog, Settings, the footer or the command palette) continues there or starts over. Arrow keys step, Esc skips.
+
+### ⚠️ Changed
+
+- **The welcome page is gone.** With nothing open, the workbench now opens a new handler from the template, so the code is always there; closing the last handler does the same (Undo brings it back). *Getting started* is now *Take the tour*.
+
 ### 🛠️ Improved
 
 - **Start over a finished lesson in one click.** Once a lesson is done, by hand or with Show me, Start over sits where Hint and Show me were.

@@ -98,7 +98,7 @@ Handlers get .NET access through Jint (`System.IO`, `System.Diagnostics`, …), 
 
 `playground/` builds a single self-contained page for testing by hand. It's published at **https://snailedlt.github.io/nucleuscoop-handler-testbench/?ref=workbench-readme-md** (`.github/workflows/pages.yml`: on every push and daily, against splitscreenme-vscode's `main`; one-time setup: Settings > Pages > Source: GitHub Actions). It has:
 
-- a home page for first visits (what a handler is, the four steps, New handler, Open, Learn), and **Learn** (`learn/`): lessons that walk you through a first handler, with Check beside the code;
+- a short guided tour of the workbench on a first visit (skip it, take it again from the menu), and **Learn** (`learn/`): lessons that walk you through a first handler, with Check beside the code;
 - a code editor with the same features as the VS Code extension: live squiggles and quick fixes, suggestions (API members, option values, your own functions and variables, `Context.Options` keys, snippets, the template in an empty file), hovers and parameter hints styled like VS Code's, F12, rename (F2), find and replace, folding, Format Document, and VS Code's shortcuts (all rebindable); its code colours, *Nucleus (follows the look)*, give `Game`/`Context`/`Nucleus`, option groups (`Game.Hook`), fixed choices (`Nucleus.Folder.InstancedGameFolder`) and callbacks (`Game.Play`) colours of their own, or pick VS Code's, Notepad++'s and other editors' colours in Settings;
 - **Lines** (every option Nucleus has, grouped, insertable). The visual editor (**Form** and **Blocks**) is hidden for now while it's reworked, and may not come back in this form;
 - a **debugger**: breakpoints, stepping, variables and watches, per player;

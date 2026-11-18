@@ -59,6 +59,9 @@ test('every kind of #link opens what it names', () => {
   assert.deepEqual(t('share-0aZ'), { kind: 'share', hash: 'share-0aZ' });
   assert.deepEqual(t('whats-new'), { kind: 'whats-new' });
   assert.deepEqual(t('dev'), { kind: 'dev' });
+  assert.deepEqual(t('tour'), { kind: 'tour' });
+  // The old welcome page's names open the workbench as usual (links live for ever).
+  for (const h of ['welcome', 'getting-started', 'home', 'start']) assert.deepEqual(t(h), { kind: 'home' });
   assert.deepEqual(t('docs'), { kind: 'docs', hash: 'docs' });
   assert.deepEqual(t('example-mistakes'), { kind: 'example-mistakes' });
   assert.deepEqual(t('hub-def456'), { kind: 'hub', index: 1 });

@@ -50,6 +50,8 @@ export type LinkTarget =
   | { kind: 'whats-new' }
   | { kind: 'docs'; hash: string }
   | { kind: 'dev' }
+  | { kind: 'tour' }
+  | { kind: 'home' }
   | { kind: 'learn'; lesson?: string }
   | { kind: 'hub'; index: number }
   | { kind: 'probe'; index: number }
@@ -73,6 +75,9 @@ export function routeLink(h: string, cat: LinkCatalog): LinkTarget {
   if (h === 'whats-new') return { kind: 'whats-new' };
   if (h === 'docs' || h.startsWith('docs-')) return { kind: 'docs', hash: h };
   if (h === 'dev') return { kind: 'dev' };
+  if (h === 'tour') return { kind: 'tour' };
+  // The welcome page (Getting started) is gone (2026-11): the workbench opens as usual, with the tour in the menu.
+  if (/^(?:welcome|getting-started|home|start)$/i.test(h)) return { kind: 'home' };
   // #learn: the lessons (learn/ now); #learn-<chapter>/<lesson> keeps its place.
   if (h === 'learn' || h.startsWith('learn-')) return { kind: 'learn', lesson: h.slice(6) || undefined };
   if (h === 'example-mistakes') return { kind: 'example-mistakes' };

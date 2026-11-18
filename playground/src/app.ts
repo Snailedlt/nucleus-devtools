@@ -72,6 +72,7 @@ import { mountDebugger } from './debugui';
 import { hlCode, hlHtml, modeFor } from './codehl';
 import { setCodeFieldSupport } from './codefield';
 import { $, esc, md, narrow, onNarrowChange } from './dom';
+import { initTour } from './tour';
 import { initDocs, linkApiNames, wireApiLinkClicks } from './docs-ui';
 import { initTryIt } from './tryit-ui';
 import { initFixes } from './aifix-ui';
@@ -207,12 +208,9 @@ const simPlugins = () => {
   const t = pluginsText();
   return t ? parsePluginsInfo(t) : undefined;
 };
-// A first visit (nothing kept in this browser, no link to a handler) starts on the home page: what a handler is, and
-// the ways on (New, Open, Learn). The template is one click away (New handler…).
-let firstVisit = false;
+// The draft kept in this browser, else the template (what New handler… makes): the editor is always there.
 try {
-  firstVisit = !localStorage.getItem(STORE_KEY) && !localStorage.getItem('nucleus-workbench-tabs') && !location.hash;
-  initial = firstVisit ? '' : localStorage.getItem(STORE_KEY) || STARTER;
+  initial = localStorage.getItem(STORE_KEY) || STARTER;
 } catch {
   /* storage unavailable */
 }
@@ -1624,7 +1622,6 @@ function loadSource(src: string, meta: DocMeta, opts: { fresh?: boolean } = {}) 
   }
   clearNotice(); // it was about the handler before
   document.documentElement.classList.remove('busy'); // a Test all of the last handler no longer runs
-  setNoneOpen(false);
   packageFiles = [];
   storeFiles([]);
   pkgUI?.reset();
@@ -1660,49 +1657,8 @@ let tabs: Tab[] = [];
 let activeTab = '';
 let tabsReady = false;
 let lastClosed: { tab: Tab; index: number } | null = null;
-// Every handler closed: the tab strip is empty and the work area says so, with ways on (New, Open, Learn, Undo).
-// Underneath there is still one blank tab, which the next handler opened fills (loadSource reuses an empty tab).
-const NONE_KEY = 'nucleus-workbench-none-open';
-let noneOpen = false;
-// Getting started shows the home page over open handlers too (they stay in their tabs): Esc, a tab or any of its
-// buttons goes back.
-let homeOver = false;
-function showHome(v: boolean) {
-  if (homeOver === v || (v && noneOpen)) return;
-  homeOver = v;
-  document.documentElement.classList.toggle('no-handler', v || noneOpen);
-  const box = document.getElementById('no-handler')!;
-  box.hidden = !(v || noneOpen);
-  box.querySelector<HTMLElement>('[data-nh=back]')!.hidden = !v;
-  $('#nh-title').textContent = v ? 'Getting started' : 'No handler open';
-  if (v) box.querySelector<HTMLElement>('[data-nh=new]')?.focus();
-  else editor.refresh();
-}
-function setNoneOpen(v: boolean) {
-  if (noneOpen === v) return;
-  if (homeOver) showHome(false);
-  noneOpen = v;
-  document.documentElement.classList.toggle('no-handler', v);
-  // Nothing to share or save: those buttons say so instead of looking ready.
-  document.querySelectorAll<HTMLButtonElement>('#share-open, .split-save .btn, .rail [data-rail=save], .rail [data-rail=share]').forEach((b) => {
-    b.disabled = v;
-    if (v) b.dataset.titleWas = b.title ?? '';
-    b.title = v ? 'Open or start a handler first' : b.dataset.titleWas ?? b.title;
-  });
-  $('#nh-title').textContent = firstVisit ? 'Welcome to the workbench' : 'No handler open';
-  try { if (v) localStorage.setItem(NONE_KEY, '1'); else localStorage.removeItem(NONE_KEY); } catch { /* ignore */ }
-  const box = document.getElementById('no-handler');
-  if (box) {
-    box.hidden = !v;
-    const undo = box.querySelector<HTMLElement>('[data-nh=undo]');
-    if (undo) { undo.hidden = !lastClosed; undo.textContent = lastClosed ? `Reopen ${lastClosed.tab.meta.name}` : 'Reopen'; }
-    // The Open key as it is now (Settings › Keyboard can change it).
-    const kbd = box.querySelector<HTMLElement>('[data-nh=open] kbd');
-    if (kbd) kbd.textContent = labelOf('open');
-  }
-  if (tabsReady) renderTabs();
-  if (v) box?.querySelector<HTMLElement>('[data-nh=new]')?.focus();
-}
+// Closing the last handler opens a new one from the template in its place: the editor is always there.
+let starterTab: string | null = null;
 const newTabId = () => Math.random().toString(36).slice(2, 9);
 const activeT = () => tabs.find((x) => x.id === activeTab)!;
 const countsOf = (list: Diagnostic[]) => ({ e: list.filter((d) => d.severity === 'error').length, w: list.filter((d) => d.severity === 'warning').length });
@@ -1752,17 +1708,18 @@ function switchTab(id: string) {
 }
 /** A new, empty tab (the caller fills it, e.g. loadSource). */
 function openTab() {
-  if (noneOpen) { setNoneOpen(false); return; }
   stashTab();
   const x: Tab = { id: newTabId(), meta: { name: 'Untitled handler', kind: 'new' }, base: '', text: '', files: [] };
   tabs.splice(tabs.findIndex((y) => y.id === activeTab) + 1, 0, x);
   switchTab(x.id);
 }
 function closeTab(id: string) {
-  if (noneOpen) return;
-  // The last handler: a blank tab takes its place underneath, and the work area shows that nothing is open.
-  const last = tabs.length < 2;
-  if (last) openTab();
+  // The last handler: a new one from the template takes its place (Undo brings the closed one back).
+  if (tabs.length < 2) {
+    openTab();
+    loadSource(STARTER, { name: 'My Game.js', kind: 'new' });
+    starterTab = activeTab;
+  }
   const i = tabs.findIndex((x) => x.id === id);
   if (id === activeTab) {
     stashTab();
@@ -1773,16 +1730,16 @@ function closeTab(id: string) {
   try { localStorage.removeItem(textKey(gone.id)); localStorage.removeItem(filesKey(gone.id)); } catch { /* ignore */ }
   saveTabs();
   renderTabs();
-  if (last) { setNoneOpen(true); return; }
   notice(`Closed ${gone.meta.name}.`, { kind: 'info', action: { label: 'Undo', run: reopenClosed } });
 }
 function reopenClosed() {
   if (!lastClosed) return;
   const { tab, index } = lastClosed;
   lastClosed = null;
-  // From "nothing open": the blank tab underneath goes.
-  const blank = noneOpen ? activeTab : null;
-  if (blank) setNoneOpen(false);
+  // The template that took the last one's place goes again, if it's untouched.
+  const st = tabs.find((x) => x.id === starterTab);
+  const blank = st && tabs.length === 1 && (st.id === activeTab ? editor.getValue() : st.text) === STARTER ? st.id : null;
+  starterTab = null;
   tabs.splice(Math.min(index, tabs.length), 0, tab);
   try { localStorage.setItem(textKey(tab.id), tab.text); } catch { /* ignore */ }
   storeFiles(tab.files, filesKey(tab.id));
@@ -1802,7 +1759,7 @@ function renderTabs() {
   requestAnimationFrame(() => document.querySelector(`#tab-${activeTab}`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
   const dot = (c?: { e: number; w: number }) => (!c ? '' : c.e ? ' e' : c.w ? ' w' : ' ok');
   const state = (c?: { e: number; w: number }) => (!c ? '' : c.e ? `, ${c.e} error${c.e === 1 ? '' : 's'}` : c.w ? `, ${c.w} warning${c.w === 1 ? '' : 's'}` : ', ready for Nucleus');
-  $('#htabs').innerHTML = noneOpen ? '' : tabs.map((x) => {
+  $('#htabs').innerHTML = tabs.map((x) => {
     const on = x.id === activeTab, c = on ? live : x.counts, name = on ? doc.name : x.meta.name, files = on ? packageFiles.length : x.files.length;
     // Changed since it was opened (as VS Code shows it: a dot where the close button is, the × on hover).
     const meta = on ? doc : x.meta;
@@ -1825,23 +1782,9 @@ function initTabs() {
   Object.assign(activeT(), { meta: doc, base: loadedText, files: packageFiles, cm: editor.getDoc() });
   tabsReady = true;
   saveTabs();
-  // Nothing was open last time (and nothing is asked for now): keep it that way.
-  try { if ((firstVisit || localStorage.getItem(NONE_KEY)) && tabs.length === 1 && !editor.getValue().trim() && !INITIAL_HASH) setNoneOpen(true); else localStorage.removeItem(NONE_KEY); } catch { /* ignore */ }
-  // The page guessed before first paint (<head>); when something is open after all, show it.
-  if (!noneOpen) document.documentElement.classList.remove('no-handler');
-  document.getElementById('no-handler')?.addEventListener('click', (e) => {
-    const b = (e.target as HTMLElement).closest<HTMLElement>('[data-nh]');
-    if (!b) return;
-    const what = b.dataset.nh;
-    showHome(false);
-    if (what === 'new') ($('#new-open') as HTMLButtonElement).click();
-    else if (what === 'open') showOpen();
-    else if (what === 'learn') openLearn();
-    else if (what === 'undo') reopenClosed();
-  });
+  // Left from the old "nothing open" page (removed): never read now.
+  try { localStorage.removeItem('nucleus-workbench-none-open'); } catch { /* ignore */ }
   const strip = $('#htabs');
-  strip.addEventListener('click', () => showHome(false), true);
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && homeOver && !document.querySelector('dialog[open]')) { e.preventDefault(); showHome(false); editor.focus(); } });
   const all = document.createElement('button');
   all.type = 'button';
   all.id = 'tab-all';
@@ -2084,7 +2027,7 @@ function commandList(): OpenEntry[] {
     c('Reset panel sizes', '', 'layout resize panels reset width', () => panels.reset()),
     c("What's new", '', 'changelog changes news updates release notes', () => news.open()),
     c('Keyboard shortcuts', '?', 'help keys shortcuts keybindings', () => helpDialog.showModal()),
-    c('Getting started', '', 'new help start intro welcome first', () => ($('#welcome-open') as HTMLButtonElement).click()),
+    c('Take the tour', '', 'tour guided getting started intro welcome first walkthrough help show around', () => tour.take()),
     c('Learn: making your first handler', '', 'tutorial learn lesson course beginner how to start guide teach', () => openLearn()),
     c('Start-up questions: guided or developer, and the layout', '', 'first run beginner developer advanced guided layout rail bar nucli', () => document.dispatchEvent(new CustomEvent('open-firstrun'))),
     c('Help test this beta', '', 'test testing beta feedback checklist tester', () => testGuide.open()),
@@ -2826,7 +2769,7 @@ const appItems = (): MenuItem[] => [
   { label: 'Settings…', hint: 'Ctrl ,', run: () => settings.open() },
   { label: 'Keyboard shortcuts', hint: '?', run: () => helpDialog.showModal() },
   { label: "What's new", run: () => ($('#news-open-2') as HTMLButtonElement).click() },
-  { label: 'Getting started', run: () => ($('#welcome-open') as HTMLButtonElement).click() },
+  { label: 'Take the tour', run: () => tour.take() },
   { label: 'Report a problem…', run: () => openReportFlow({ kind: 'problem', handlerCode: editor.getValue() }) },
   { label: 'Request a feature…', run: () => openReportFlow({ kind: 'feature' }) },
   { kind: 'separator', label: '' },
@@ -2840,7 +2783,7 @@ $('#code-menu-phone').addEventListener('click', () => openMenu($('#code-menu-pho
 $('#doc-switch').addEventListener('click', () => openMenu($('#doc-switch'), 'Open handlers', [
   { kind: 'heading', label: 'Open handlers' },
   ...tabs.map((x) => ({ label: x.id === activeTab ? doc.name : x.meta.name, checked: x.id === activeTab, run: () => switchTab(x.id) })),
-  ...(!noneOpen ? [{ label: `Close ${doc.name}`, run: () => closeTab(activeTab) }] : []),
+  { label: `Close ${doc.name}`, run: () => closeTab(activeTab) },
   { kind: 'separator', label: '' },
   ...addItems(),
 ]));
@@ -2889,7 +2832,7 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     const i = tabs.findIndex((x) => x.id === activeTab);
     switchTab(tabs[(i + (e.code === 'BracketRight' ? 1 : -1) + tabs.length) % tabs.length].id);
-  } else if (e.altKey && !e.ctrlKey && e.code === 'KeyW' && !noneOpen) {
+  } else if (e.altKey && !e.ctrlKey && e.code === 'KeyW') {
     e.preventDefault();
     closeTab(activeTab);
   }
@@ -3050,7 +2993,7 @@ const handlerFileName = () => saveFileName(editor.getValue(), doc.name);
 $('#save').addEventListener('click', () => void saveAs());
 
 // ---------------------------------------------------------------------------
-// Start-up: #links, first-visit welcome, last tab
+// Start-up: #links, the first-visit questions and tour, last tab
 
 // What a #link opens is links.ts (pure, tested in tools/links.test.mjs); here it's done. A moved link opens the new
 // place, puts the new address in the address bar and says so once.
@@ -3104,6 +3047,15 @@ function openFromHash(): boolean {
       // #learn: the lessons moved to their own page (learn/); old links lead there.
       location.replace(learnUrl(t.lesson));
       return true;
+    case 'tour':
+      // #tour: the workbench with the tour started (as Take the tour).
+      dropHash();
+      setTimeout(() => tour.take(), 300);
+      return false;
+    case 'home':
+      // #welcome, #getting-started: the old home page is gone; the workbench opens as usual.
+      dropHash();
+      return false;
     case 'dev':
       // #dev shows the dev bar for this page load (like ?env=dev in lonnsinnplassering) and opens nothing.
       devBar.show();
@@ -3132,6 +3084,7 @@ window.addEventListener('hashchange', () => {
   if (location.hash.slice(1) !== doc.hash && openFromHash() && narrow()) setView('code');
 });
 
+// Set by the old welcome page: someone who has used the workbench before (no first-visit questions or tour).
 const WELCOME_KEY = 'nucleus-workbench-welcomed';
 let welcomed = false;
 try {
@@ -3152,6 +3105,27 @@ setReportState(() => ({
   },
   view: viewMode,
 }));
+// The guided tour of the workbench (tour.ts). Each step points at the first of its parts that's shown in this layout
+// (bar or rail, wide or phone); a step with none shown is left out.
+const visibleTab = () => document.querySelector<HTMLElement>('.pane-head [role=tab][aria-selected=true]')?.dataset.tab ?? 'problems';
+const tour = initTour({
+  narrow,
+  getView: () => ($('#main').dataset.view === 'code' ? 'code' : 'results'),
+  setView,
+  getTab: visibleTab,
+  selectTab,
+  steps: [
+    { title: 'Your handlers', text: 'Each open handler has a tab. The + starts a new one or opens yours: a file, an example or a Hub handler.', targets: ['.htabs-wrap', '.rail [data-rail=add]', '#doc-switch'], view: 'code' },
+    { title: 'The code', text: 'Write the handler here. Squiggles mark problems; hover a name for its docs. Ctrl+Space suggests, Alt+Enter fixes.', targets: ['#editor', '#formview', '#blocksview'], view: 'code' },
+    { title: 'Check', text: 'What Nucleus would reject or get wrong, each with why and a fix. F8 jumps to the next problem.', targets: ['.pane.side', '.pane-head [data-tab=problems]'], view: 'results', tab: 'problems' },
+    { title: 'Try it', text: 'Runs the handler once per player, as Nucleus would, and shows what each one gets.', targets: ['.pane-head [data-tab=simulate]'], view: 'results', tab: 'simulate' },
+    { title: 'Docs', text: 'Every option and function a handler can use, searchable. Insert into handler puts an example in your code.', targets: ['.pane-head [data-tab=api]'], view: 'results', tab: 'api' },
+    { title: 'Lines', text: 'Every name a handler can use, in a list beside the code. Click one to insert it (Ctrl+B).', targets: ['#lines-toggle', '.rail [data-rail=lines]'], view: 'code' },
+    { title: 'Files', text: "The files that go with the handler. Your game on this PC links the game's folder, so Check compares paths with the real files.", targets: ['#files-toggle'], view: 'code' },
+    { title: 'Save', text: "Saves the handler for Nucleus: as a .zip, .js or .nc file, or straight into Nucleus Co-op's handlers folder.", targets: ['.split-save', '.rail [data-rail=save]', '#code-menu-phone'], view: 'code' },
+    { title: 'Settings and help', text: 'Settings, Advanced mode, keyboard shortcuts and What\'s new. Take the tour is here too, to see this again.', targets: ['#app-menu-open', '.rail [data-rail=menu]'] },
+  ],
+});
 // The very first visit (not someone who has used the workbench before): Nucli's two questions.
 const firstRun = initFirstRun($('#firstrun-dialog') as HTMLDialogElement, {
   mode: () => mode,
@@ -3165,33 +3139,28 @@ const firstRun = initFirstRun($('#firstrun-dialog') as HTMLDialogElement, {
       use(`firstrun/${exp ?? 'skipped'}`);
       if (exp && lay) use(`firstrun/layout-${lay}`);
     }
-    if (exp === 'developer') {
-      // "I write code" starts compact: a home page without the intro. Tips stay on, but only the ones for
-      // experienced authors show in Advanced mode (tips.ts: Tip.for).
-      try {
-        localStorage.setItem(WELCOME_KEY, '1');
-      } catch {
-        /* ignore */
-      }
-      editor.refresh();
-    }
-    if (exp) announce(exp === 'developer' ? 'Advanced mode is on: tips are the ones for people who write code (Settings › Tips and help turns them off).' : 'Guided: tips and plain words. Getting started, at the bottom, shows the way round.');
+    // "I write code": tips stay on, but only the ones for experienced authors show in Advanced mode (tips.ts: Tip.for).
+    if (exp === 'developer') editor.refresh();
+    if (exp) announce(exp === 'developer' ? 'Advanced mode is on: tips are the ones for people who write code (Settings › Tips and help turns them off).' : 'Guided: tips and plain words. Take the tour, at the bottom, shows the way round.');
     editor.focus();
+    // The first visit's questions answered (or skipped): the tour, once.
+    if (first) tour.auto();
   },
 });
-// A new visitor: during the beta, the tester questions first (they also pick guided or Advanced); else Nucli's.
+// A new visitor: during the beta, the tester questions first (they also pick guided or Advanced); else Nucli's. Then
+// the tour, once (tour.ts: never for an automated browser, never after Skip or Finish). A link to something specific
+// (a shared handler, Docs, an example) opens that instead: no questions, no tour.
 if (!welcomed && !firstRunDone() && !INITIAL_HASH) {
-  if (testGuide.needed()) testGuide.open(); else firstRun.open();
+  if (testGuide.needed()) {
+    testGuide.open();
+    $('#test-dialog').addEventListener('close', () => setTimeout(() => tour.auto(), 0), { once: true });
+  } else firstRun.open();
 }
 $('#fr-again').addEventListener('click', () => { ($('#settings-dialog') as HTMLDialogElement).close(); firstRun.open(); });
-// Getting started: the home page (what a handler is, the four steps, New / Open / Learn), over the open handlers.
-$('#welcome-open').addEventListener('click', () => {
-  if (noneOpen) {
-    const box = $('#no-handler');
-    box.classList.remove('welcome-in'); void box.offsetWidth; box.classList.add('welcome-in');
-    box.querySelector<HTMLElement>('[data-nh=new]')?.focus();
-  } else showHome(true);
-});
+// Take the tour: the footer, the ? dialog, Settings (and Menu and the command palette above).
+$('#tour-open').addEventListener('click', () => tour.take());
+$('#help-tour').addEventListener('click', () => { helpDialog.close(); tour.take(); });
+$('#set-tour').addEventListener('click', () => { ($('#settings-dialog') as HTMLDialogElement).close(); tour.take(); });
 
 let startTab = 'problems';
 try {
