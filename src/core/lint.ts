@@ -2054,7 +2054,10 @@ class Analyzer {
   // RawInput::RegisterProtoForRawInput). Info only: controller-only handlers may want a frozen cursor on purpose.
   private checkNeedsRawInput() {
     // The value a setting ends up with: its last top-level assignment.
-    const last = (k: string) => (this.topAssignments.get(`Game.ProtoInput.${k}`) ?? []).at(-1);
+    const last = (k: string) => {
+      const list = this.topAssignments.get(`Game.ProtoInput.${k}`) ?? [];
+      return list[list.length - 1];
+    };
     const isTrue = (k: string) => {
       const n = last(k);
       return !!n && n.right.type === 'Literal' && n.right.value === true;
