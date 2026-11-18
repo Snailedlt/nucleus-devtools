@@ -595,6 +595,11 @@ test('docs: "Insert into handler" puts an example where it belongs (lines.ts pla
   // `j += 0` doesn't start at 0: not reused.
   r = L.placeExample('var j = 1;\nGame.ProtoInput.OnInputLocked = function () {\n  for (j += 0; j < PlayerList.Count; j++) {\n    var p = PlayerList[j];\n  }\n};\n', 'X', 'X(player.H);', 'Game.ProtoInput.OnInputLocked');
   assert.doesNotMatch(r.text, /var p = PlayerList\[j\];\n\s*X\(p\.H\)/);
+  // A one-line example loop: its body only, in one loop (it used to keep the header and lose the brace).
+  r = L.placeExample('Game.ProtoInput.OnInputLocked = function () {\n};\n', 'X', 'for (var i = 0; i < PlayerList.Count; i++) { var player = PlayerList[i]; X(player.H); }', 'Game.ProtoInput.OnInputLocked');
+  assert.equal(r.text.split('PlayerList.Count').length, 2);
+  assert.equal(r.text.split('X(').length, 2);
+  assert.doesNotThrow(() => new Function(r.text.replace(/Game\.ProtoInput\.OnInputLocked = /, 'var f = ')));
   // A loop that skips players (`j += 2`) isn't reused: a new loop over every player.
   r = L.placeExample('Game.ProtoInput.OnInputLocked = function () {\n  for (var j = 0; j < PlayerList.Count; j += 2) {\n    var p = PlayerList[j];\n  }\n};\n', 'X', 'X(player.H);', 'Game.ProtoInput.OnInputLocked');
   assert.match(r.text, /i < PlayerList\.Count; i\+\+/);

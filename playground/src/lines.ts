@@ -384,7 +384,10 @@ export function placeExample(text: string, path: string, example: string, where 
       const ids = pv ? countIds(rest, pv) : undefined;
       if (where !== 'Game.Play' && pv && rest.length && !countIds(rest, idx).all && ids!.all === ids!.obj) {
         // The body without its `var player = PlayerList[i];`, back to the left margin, the player as `player.`.
-        const body = example.slice(lineStart(example, rest[0].start), rest[rest.length - 1].end);
+        // From its line's start when it begins a line (keeps the indentation), else from the statement itself
+        // (a one-line loop: `for (...) { var player = PlayerList[i]; X(player.H); }`).
+        const ls0 = lineStart(example, rest[0].start);
+        const body = example.slice(/^[ \t]*$/.test(example.slice(ls0, rest[0].start)) ? ls0 : rest[0].start, rest[rest.length - 1].end);
         const lines = body.split('\n');
         const cut = Math.min(...lines.filter((l) => l.trim()).map((l) => /^[ \t]*/.exec(l)![0].length));
         example = lines.map((l) => l.slice(Math.min(cut, /^[ \t]*/.exec(l)![0].length))).join('\n');
