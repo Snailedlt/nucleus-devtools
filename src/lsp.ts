@@ -19,7 +19,8 @@ import { checkPackage } from './core/pkgcheck';
 import { forgetPackageFiles, packageFilePath, packageFilesFor } from './pkgfiles';
 import fs from 'node:fs';
 import { checkAgainstFolder, folderLists, pickerOptions } from './core/gamefolder';
-import { folderAt } from './gamefolder-node';
+import { folderAt, gameBinariesNow } from './gamefolder-node';
+import { importProblems } from './core/importhooks';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { publishedNow } from './published';
@@ -224,7 +225,10 @@ export class Server {
     }
     // The game folder linked to this handler (settings.gameFolders), if any: problems with their fix as data.
     const folder = this.gameFolderOf(uri);
-    for (const p of folder ? checkAgainstFolder(d.text, folder) : []) {
+    // The game's program files are read in the background; their hints are published once read.
+    const gdir = this.gameFolderDir(uri);
+    const binaries = gdir && folder ? gameBinariesNow(gdir, () => this.schedule(uri, 0)) : undefined;
+    for (const p of folder ? [...checkAgainstFolder(d.text, folder), ...(binaries ? importProblems(d.text, binaries) : [])] : []) {
       (diagnostics as unknown[]).push({ range: lines.range({ start: p.start, end: Math.max(p.end, p.start) }), severity: p.fact ? 4 : SEVERITY[p.severity], code: 'game-folder', source: 'nucleus', message: `${p.title}. ${p.why}`, ...(p.fix ? { data: { fix: p.fix } } : {}) });
     }
     this.notify('textDocument/publishDiagnostics', { uri, ...(closed ? {} : { version: d.version }), diagnostics });
@@ -637,9 +641,12 @@ export class Server {
     }
   }
 
-  private gameFolderOf(uri: string) {
+  private gameFolderDir(uri: string) {
     const file = pathOf(uri);
-    const dir = file ? this.settings.gameFolders[path.basename(file)] : undefined;
+    return file ? this.settings.gameFolders[path.basename(file)] : undefined;
+  }
+  private gameFolderOf(uri: string) {
+    const dir = this.gameFolderDir(uri);
     return dir ? folderAt(dir) : undefined;
   }
 

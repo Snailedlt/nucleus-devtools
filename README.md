@@ -134,6 +134,7 @@ The repo also ships an agent kit, so coding agents (Claude Code, Copilot, Codex,
   | `ncdev api Game.KillMutex` / `ncdev api --search mutex` | The "hover": type, default and docs |
   | `ncdev hub search <game>` / `ncdev hub fetch <id>` | Study how existing handlers solved the same problem |
   | `ncdev new …` / `ncdev install …` / `ncdev package …` | Scaffold a handler / copy it into Nucleus' `handlers` folder / build the `.nc` package |
+  | `ncdev imports <game folder>` | What the game's `.exe` and DLLs use (controllers, cursor, keys, focus, windows) and the Proto Input hooks and Nucleus options that match, with the lines to add; follows a launcher to the game it starts (`--list` prints every import and export) |
 
 ### Claude Code
 

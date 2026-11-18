@@ -5,3 +5,6 @@ plugin/skills/nucleus-handler/scripts/nucleus.js linguist-generated=true
 plugin/skills/nucleus-handler/reference/api.md linguist-generated=true
 data/nucleus-api.json linguist-generated=true
 types/nucleus.d.ts linguist-generated=true
+src/test/fixtures/pe/**/*.exe binary
+src/test/fixtures/pe/**/*.dll binary
+src/test/fixtures/pe/*.exe binary

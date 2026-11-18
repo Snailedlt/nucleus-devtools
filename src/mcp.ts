@@ -6,6 +6,8 @@ import { sendAiVote } from './aivote';
 import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
+import { readGameBinaries } from './gamefolder-node';
+import { analyse, importsReport } from './core/importhooks';
 import { lint, lineOf, lineStart, RULES } from './core/lint';
 import { fixAll } from './core/fix';
 import { formatHandler } from './core/format';
@@ -305,6 +307,22 @@ export const TOOLS: Tool[] = [
       if (!entry?.data) return { text: `${h.title}: the package has no handler.js.`, isError: true };
       const src = Buffer.from(entry.data).toString('utf8').replace(/^﻿/, '');
       return { text: `// ${h.title} v${h.currentVersion} by ${h.ownerName} (${handlerPageUrl(h._id)})\n${src}`, data: { id: h._id, title: h.title, version: h.currentVersion, source: src } };
+    },
+  },
+  {
+    name: 'nucleus_game_imports',
+    title: 'What a game\'s files use',
+    description: 'Reads a game\'s .exe and DLLs on this computer (only their import/export tables and names written in them; nothing runs) and says what the game uses for controllers, cursor, keys, focus and windows, with the Proto Input hooks and Nucleus options that match (checked against Proto Input\'s and Nucleus\' source and the Hub handlers) and the lines to add. Follows a launcher to the game it starts. Use it when writing a handler for a game you have installed.',
+    inputSchema: { type: 'object', properties: { path: { type: 'string', description: 'The game\'s install folder, or one .exe/.dll.' }, exe: { type: 'string', description: 'The game\'s .exe name, if the folder has several.' }, controllers: { type: 'boolean', description: 'Include controller suggestions (default true).' }, kbm: { type: 'boolean', description: 'Include several-keyboards-and-mice suggestions (default true).' } }, required: ['path'] },
+    annotations: { readOnlyHint: true },
+    run: (a) => {
+      const files = readGameBinaries([String(a.path)]);
+      if (!files.length) return { text: `No .exe or .dll files at ${a.path}.`, isError: true };
+      const r = analyse(files, a.exe ? String(a.exe) : undefined);
+      return {
+        text: importsReport(r, { controllers: a.controllers !== false, kbm: a.kbm !== false }),
+        data: { game: r.main?.fileName, launchers: r.launchers.map((f) => f.fileName), findings: r.found.map((f) => ({ id: f.rule.id, area: f.rule.area, title: f.rule.title, lines: f.lines, maybe: !!f.rule.maybe, controllers: !!f.rule.ctl, kbm: !!f.rule.kbm })) },
+      };
     },
   },
   {

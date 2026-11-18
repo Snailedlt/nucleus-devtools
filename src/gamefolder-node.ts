@@ -60,3 +60,80 @@ export function folderAt(dir: string): GameFolder | undefined {
 
 /** Read the folder again next time (it was just linked, or changed). */
 export const forgetFolder = (dir: string) => cache.delete(dir);
+
+// ---------------------------------------------------------------------------------------------------------------
+// The game's program files (.exe, .dll, .asi), read for the import hints (core/pe.ts, core/importhooks.ts). Only
+// the files' tables and names written in them are used; nothing is run or sent anywhere.
+import { parsePE, type PeFile } from './core/pe';
+
+const PE_EXT = /\.(exe|dll|asi)$/i;
+/** A file over this size is skipped; files are read until this total. */
+export const PE_FILE_LIMIT = 400e6, PE_TOTAL_LIMIT = 1.5e9;
+
+/** Program files under these paths (folders are walked like the game-folder checks do), with paths relative to
+ *  the folder given (or the file's own name). */
+export function readGameBinaries(paths: string[]): PeFile[] {
+  const out: PeFile[] = [];
+  let total = 0;
+  const add = (abs: string, rel: string, size: number) => {
+    if (size > PE_FILE_LIMIT || total + size > PE_TOTAL_LIMIT) return;
+    try {
+      out.push(parsePE(fs.readFileSync(abs), rel));
+      total += size;
+    } catch {
+      /* not a program, or unreadable */
+    }
+  };
+  for (const p of paths) {
+    let st: fs.Stats;
+    try {
+      st = fs.statSync(p);
+    } catch {
+      continue;
+    }
+    if (st.isDirectory()) {
+      for (const f of readGameFolder(p).files) if (PE_EXT.test(f.path)) add(path.join(p, f.path), f.path, f.size);
+    } else if (PE_EXT.test(p)) add(p, path.basename(p), st.size);
+  }
+  return out;
+}
+
+/** The same for an editor: read in the background, cached per folder until it changes (or for 10 minutes). */
+const peCache = new Map<string, { at: number; files: Promise<PeFile[]> }>();
+export function gameBinaries(dir: string): Promise<PeFile[]> {
+  const hit = peCache.get(dir);
+  if (hit && Date.now() - hit.at < 600_000) return hit.files;
+  const files = (async () => {
+    const folder = readGameFolder(dir);
+    const out: PeFile[] = [];
+    let total = 0;
+    for (const f of folder.files) {
+      if (!PE_EXT.test(f.path) || f.size > PE_FILE_LIMIT || total + f.size > PE_TOTAL_LIMIT) continue;
+      try {
+        out.push(parsePE(await fs.promises.readFile(path.join(dir, f.path)), f.path));
+        total += f.size;
+      } catch {
+        /* not a program, or unreadable */
+      }
+      await new Promise((r) => setImmediate(r)); // let the editor breathe between files
+    }
+    return out;
+  })();
+  peCache.set(dir, { at: Date.now(), files });
+  return files;
+}
+/** Settled results only (undefined while still reading): for synchronous diagnostics. */
+const peDone = new Map<string, PeFile[]>();
+export function gameBinariesNow(dir: string, ready?: () => void): PeFile[] | undefined {
+  if (peDone.has(dir) && Date.now() - (peCache.get(dir)?.at ?? 0) < 600_000) return peDone.get(dir);
+  void gameBinaries(dir).then((files) => {
+    const fresh = !peDone.has(dir);
+    peDone.set(dir, files);
+    if (fresh) ready?.();
+  });
+  return peDone.get(dir);
+}
+export const forgetBinaries = (dir: string) => {
+  peCache.delete(dir);
+  peDone.delete(dir);
+};

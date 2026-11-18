@@ -31,6 +31,9 @@ import os from 'node:os';
 import { EVERY_KEYBOARD } from './core/sim';
 import { formatSimulation } from './simformat';
 import { serve } from './mcp';
+import { readGameBinaries } from './gamefolder-node';
+import { analyse, importsReport } from './core/importhooks';
+import type { PeFile } from './core/pe';
 import { serve as serveLsp } from './lsp';
 import { buildReport, DISCORD_THREAD, findDuplicates, handlerHelp, handlerOrigin, simSummary, type ReportInput } from './core/report';
 import { spawn } from 'node:child_process';
@@ -83,6 +86,11 @@ Commands:
                               Build a Hub package (handler.js + the <Name>/ asset folder)
   init-agent [dir]            Install AI agent instructions and this tool into a handler folder
                               (AGENTS.md, CLAUDE.md, .claude/skills/nucleus-handler/)
+  imports <game folder|file>... [--exe <name.exe>] [--no-controllers] [--no-kbm] [--list]
+                              What the game's .exe and DLLs use (controllers, cursor, keys, focus,
+                              windows) and the Proto Input hooks and Nucleus options that match,
+                              with the lines to add. Follows a launcher to the game it starts.
+                              --list prints every import and export too. Reads only the files' tables
   rules [<id>]                List lint rules; with an id, that check explained (why, fix, examples)
   explain <handler.js> --line N
                               What line N does, in plain words: its names' docs and its problems
@@ -141,7 +149,7 @@ interface Args {
   positional: string[];
   flags: Map<string, string[]>;
 }
-const BOOL_FLAGS = new Set(['--open', '--no-code', '--text', '--elevated', '--version', '-v', '--from-notepad++', '--step', '--json', '--stdio', '--all', '--quiet', '--verbose', '--force', '--search', '--markdown', '--fix', '--fix-dry-run', '--hub', '--write', '--check', '--remove', '--list-features', '--popular', '--restart', '--status', '-h', '--help']);
+const BOOL_FLAGS = new Set(['--no-controllers', '--no-kbm', '--list', '--open', '--no-code', '--text', '--elevated', '--version', '-v', '--from-notepad++', '--step', '--json', '--stdio', '--all', '--quiet', '--verbose', '--force', '--search', '--markdown', '--fix', '--fix-dry-run', '--hub', '--write', '--check', '--remove', '--list-features', '--popular', '--restart', '--status', '-h', '--help']);
 function parseArgs(argv: string[]): Args {
   const a: Args = { positional: [], flags: new Map() };
   for (let i = 0; i < argv.length; i++) {
@@ -174,7 +182,7 @@ async function main(argv: string[]): Promise<number> {
       rl.close();
     }
   }
-  const commands = ['report', 'lint', 'format', 'simulate', 'api', 'docs', 'hub', 'new', 'install', 'test', 'package', 'init-agent', 'rules', 'mcp', 'lsp', 'dap', 'setup', 'workbench', 'debug', 'explain', 'update', 'version'];
+  const commands = ['report', 'lint', 'format', 'simulate', 'api', 'docs', 'hub', 'new', 'install', 'test', 'package', 'imports', 'init-agent', 'rules', 'mcp', 'lsp', 'dap', 'setup', 'workbench', 'debug', 'explain', 'update', 'version'];
   let cmd = argv[0] && commands.includes(argv[0]) ? argv.shift()! : undefined;
   if (!cmd && (argv[0] === '--version' || argv[0] === '-v')) cmd = 'version';
   if (path.basename(process.argv[1] ?? '').startsWith('nucleus-lint')) cmd ??= 'lint';
@@ -227,6 +235,8 @@ async function main(argv: string[]): Promise<number> {
       return cmdTest(args, json);
     case 'package':
       return cmdPackage(args, json);
+    case 'imports':
+      return cmdImports(args, json);
     case 'init-agent':
       return cmdInitAgent(args, json);
     case 'mcp':
@@ -560,6 +570,26 @@ async function cmdTest(args: Args, json: boolean): Promise<number> {
   if (log === 'on' || log === 'off') setDebugLog(nucleus, log === 'on');
   const r = testInNucleus(file, nucleus);
   print(json, { started: true, file: r.dest, guid: r.guid, debugLog: debugLogOn(nucleus), log: debugLogPath(nucleus) }, () => `${AFTER_START}\nDebug log: ${debugLogOn(nucleus) ? debugLogPath(nucleus) : 'off (--debug-log on turns it on)'}`);
+  return 0;
+}
+
+// ncdev imports: a game's program files read for the hooks a handler likely needs (core/pe.ts, core/importhooks.ts).
+function cmdImports(args: Args, json: boolean): number {
+  if (!args.positional.length) throw new Usage('imports: give the game folder (or its .exe and DLLs)');
+  const files = readGameBinaries(args.positional);
+  if (!files.length) throw new Usage('imports: no .exe or .dll files there');
+  const a = analyse(files, flag(args, '--exe'));
+  const opts = { controllers: !has(args, '--no-controllers'), kbm: !has(args, '--no-kbm') };
+  const listing = (f: PeFile) => [
+    `${f.fileName} (${f.is64 ? '64' : '32'}-bit ${f.dll ? 'DLL' : 'program'}, ${a.roles.get(f)})`,
+    ...f.imports.map((im) => `  ${im.dll}${im.delay ? ' (delay-loaded)' : ''}: ${im.fns.map((x) => x.name || '#' + x.ord).join(', ')}`),
+    ...(f.exports.length ? [`  exports: ${f.exports.map((e) => e.name || '#' + e.ord).join(', ')}`] : []),
+  ].join('\n');
+  print(json, {
+    game: a.main?.fileName, launchers: a.launchers.map((f) => f.fileName),
+    files: files.map((f) => ({ file: f.fileName, role: a.roles.get(f), is64: f.is64, dll: f.dll, imports: has(args, '--list') ? f.imports : f.imports.length, exports: has(args, '--list') ? f.exports : f.exports.length, loads: f.rt.filter((x) => /\.dll$/i.test(x)) })),
+    findings: a.found.map((f) => ({ id: f.rule.id, area: f.rule.area, title: f.rule.title, why: f.rule.why, group: f.rule.ctl ? 'controllers' : f.rule.kbm ? (f.rule.detail ? 'kbm-detail' : 'kbm') : f.rule.maybe ? 'only-if' : 'game', lines: f.lines, found: f.hits })),
+  }, () => importsReport(a, opts) + (has(args, '--list') ? '\n\n' + files.map(listing).join('\n\n') : ''));
   return 0;
 }
 

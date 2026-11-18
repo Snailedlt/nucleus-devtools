@@ -1,0 +1,167 @@
+// Reads a Windows program or DLL (PE32 and PE32+): its imports (normal and delay-loaded), its exports, whether it can
+// start other programs, and names written in it as text. Pure (no Node, no DOM APIs beyond TextDecoder): shared by
+// ncdev, VS Code, `ncdev lsp` and the workbench. Bounds-checked: a damaged file gives fewer results, never a crash.
+// Tests: src/test/pe.test.ts (MinGW-built fixtures in src/test/fixtures/pe/).
+
+export interface PeImport {
+  dll: string;
+  fns: { name?: string; ord?: number }[];
+  delay: boolean;
+}
+export interface PeExport {
+  ord: number;
+  name: string;
+  /** "OTHERDLL.Function" when the export forwards to another DLL. */
+  fwd: string;
+}
+export interface PeFile {
+  /** Path relative to the folder read, with "/". */
+  fileName: string;
+  size: number;
+  is64: boolean;
+  machine: number;
+  dll: boolean;
+  imports: PeImport[];
+  exports: PeExport[];
+  exportName: string;
+  /** Imports a way to start programs (CreateProcess, ShellExecute, WinExec): a launcher candidate. */
+  starts: boolean;
+  /** Program names (something.exe) written in the file, lower case: what a launcher starts. Only for programs that start others. */
+  mentions: string[];
+  /** Names of DLLs it loads while running (found as text) and a few markers such as SDL's controller settings name. */
+  rt: string[];
+}
+
+export const XINPUT_DLLS = ['xinput1_4.dll', 'xinput1_3.dll', 'xinput1_2.dll', 'xinput1_1.dll', 'xinput9_1_0.dll'];
+/** Text looked for in each file: DLLs loaded while running, and SDL's controller-settings variable (SDL built in). */
+export const RT_NAMES = [...XINPUT_DLLS, 'dinput8.dll', 'hid.dll', 'SDL_GAMECONTROLLERCONFIG'];
+/** Files larger than this are only read for their tables, not searched as text. */
+export const TEXT_SCAN_LIMIT = 80e6;
+
+export class NotAProgram extends Error {}
+
+/** The file as text: Latin-1 and UTF-16 (both byte alignments), cached per buffer. */
+const TEXT = new WeakMap<Uint8Array, string[]>();
+function textViews(bytes: Uint8Array): string[] {
+  const hit = TEXT.get(bytes);
+  if (hit) return hit;
+  const even = bytes.subarray(0, bytes.length - (bytes.length % 2));
+  const odd = bytes.subarray(1, 1 + (bytes.length - 1 - ((bytes.length - 1) % 2)));
+  const v = [new TextDecoder('latin1').decode(bytes), new TextDecoder('utf-16le').decode(even), new TextDecoder('utf-16le').decode(odd)];
+  TEXT.set(bytes, v);
+  return v;
+}
+export function runtimeNames(bytes: Uint8Array): string[] {
+  const views = textViews(bytes).map((t) => t.toLowerCase());
+  return RT_NAMES.filter((name) => views.some((t) => t.includes(name.toLowerCase())));
+}
+export function exeMentions(bytes: Uint8Array): string[] {
+  const found = new Set<string>();
+  const re = /([A-Za-z0-9_.()\-][A-Za-z0-9_ .()\-]{0,59})\.exe(?![A-Za-z0-9])/gi;
+  for (const t of textViews(bytes)) {
+    for (const m of t.matchAll(re)) {
+      found.add(m[1].trim().toLowerCase() + '.exe');
+      if (found.size > 300) break;
+    }
+  }
+  return [...found];
+}
+
+/** Reads a PE file. Throws NotAProgram when it isn't one. */
+export function parsePE(input: Uint8Array | ArrayBuffer, fileName: string): PeFile {
+  const bytes = input instanceof Uint8Array ? input : new Uint8Array(input);
+  const dv = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+  const n = bytes.byteLength;
+  const u16 = (o: number) => (o >= 0 && o + 2 <= n ? dv.getUint16(o, true) : 0);
+  const u32 = (o: number) => (o >= 0 && o + 4 <= n ? dv.getUint32(o, true) : 0);
+  const u64 = (o: number) => (o >= 0 && o + 8 <= n ? dv.getBigUint64(o, true) : 0n);
+  if (n < 64 || u16(0) !== 0x5a4d) throw new NotAProgram('not a Windows program or DLL');
+  const pe = u32(0x3c);
+  if (pe + 24 > n || u32(pe) !== 0x4550) throw new NotAProgram('not a Windows program or DLL');
+  const machine = u16(pe + 4), nsec = u16(pe + 6), optSize = u16(pe + 20), chars = u16(pe + 22), opt = pe + 24;
+  const is64 = u16(opt) === 0x20b;
+  const imageBase = is64 ? Number(u64(opt + 24)) : u32(opt + 28);
+  const nDD = u32(opt + (is64 ? 108 : 92)), ddOff = opt + (is64 ? 112 : 96);
+  const dd = (i: number) => (i < nDD ? { rva: u32(ddOff + i * 8), size: u32(ddOff + i * 8 + 4) } : { rva: 0, size: 0 });
+  const secs: { va: number; vs: number; raw: number; rs: number }[] = [];
+  for (let i = 0, s = opt + optSize; i < Math.min(nsec, 96); i++, s += 40) secs.push({ va: u32(s + 12), vs: u32(s + 8), raw: u32(s + 20), rs: u32(s + 16) });
+  const off = (rva: number) => {
+    for (const s of secs) {
+      if (rva >= s.va && rva < s.va + Math.max(s.vs, s.rs)) {
+        const o = rva - s.va + s.raw;
+        return o < n ? o : -1;
+      }
+    }
+    return rva < n ? rva : -1;
+  };
+  const str = (rva: number) => {
+    let o = off(rva), out = '';
+    if (o < 0) return '';
+    while (o < n && out.length < 300) {
+      const c = bytes[o++];
+      if (!c) break;
+      out += String.fromCharCode(c);
+    }
+    return out;
+  };
+  const step = is64 ? 8 : 4;
+  const ordFlag = is64 ? 1n << 63n : 1n << 31n;
+  const thunks = (rva: number) => {
+    const out: PeImport['fns'] = [];
+    let o = off(rva);
+    if (o < 0) return out;
+    for (let k = 0; k < 20000 && o + step <= n; k++, o += step) {
+      const v = is64 ? u64(o) : BigInt(u32(o));
+      if (v === 0n) break;
+      out.push(v & ordFlag ? { ord: Number(v & 0xffffn) } : { name: str(Number(v & 0x7fffffffn) + 2) });
+    }
+    return out;
+  };
+  const imports: PeImport[] = [];
+  const id = dd(1);
+  if (id.rva) {
+    let o = off(id.rva);
+    for (let k = 0; o >= 0 && k < 2000 && o + 20 <= n; k++, o += 20) {
+      const oft = u32(o), nameRva = u32(o + 12), ft = u32(o + 16);
+      if (!oft && !nameRva && !ft) break;
+      imports.push({ dll: str(nameRva), fns: thunks(oft || ft), delay: false });
+    }
+  }
+  const dl = dd(13);
+  if (dl.rva) {
+    let o = off(dl.rva);
+    for (let k = 0; o >= 0 && k < 2000 && o + 32 <= n; k++, o += 32) {
+      const attr = u32(o), nameP = u32(o + 4), intP = u32(o + 16);
+      if (!nameP && !intP) break;
+      const fix = (p: number) => (attr & 1 ? p : p - imageBase); // old-style delay descriptors hold VAs
+      imports.push({ dll: str(fix(nameP)), fns: thunks(fix(intP)), delay: true });
+    }
+  }
+  const exports: PeExport[] = [];
+  let exportName = '';
+  const ed = dd(0);
+  if (ed.rva) {
+    const o = off(ed.rva);
+    if (o >= 0) {
+      exportName = str(u32(o + 12));
+      const base = u32(o + 16), nf = u32(o + 20), nn = u32(o + 24), af = u32(o + 28), an = u32(o + 32), ao = u32(o + 36);
+      const named = new Map<number, string>();
+      for (let i = 0; i < Math.min(nn, 50000); i++) {
+        const nmo = off(an + i * 4), oro = off(ao + i * 2);
+        if (nmo < 0 || oro < 0) break;
+        named.set(u16(oro), str(u32(nmo)));
+      }
+      for (let i = 0; i < Math.min(nf, 50000); i++) {
+        const fo = off(af + i * 4);
+        if (fo < 0) break;
+        const r = u32(fo);
+        if (!r) continue;
+        exports.push({ ord: base + i, name: named.get(i) || '', fwd: r >= ed.rva && r < ed.rva + ed.size ? str(r) : '' });
+      }
+    }
+  }
+  const dll = !!(chars & 0x2000);
+  const starts = imports.some((im) => im.fns.some((x) => /^(CreateProcess(As\w+)?[AW]?|ShellExecute(Ex)?[AW]|WinExec)$/.test(x.name || '')));
+  const scan = n < TEXT_SCAN_LIMIT;
+  return { fileName, size: n, is64, machine, dll, imports, exports, exportName, starts, mentions: !dll && starts && scan ? exeMentions(bytes) : [], rt: scan ? runtimeNames(bytes) : [] };
+}

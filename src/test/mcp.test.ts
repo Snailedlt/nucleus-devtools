@@ -115,3 +115,12 @@ test('mcp: bad input gets a plain answer, never a crash or a silent fix', async 
   const ok = await call('nucleus_new_handler', { gameName: 'X', executableName: 'x.exe', maxPlayers: 4, steamId: 123 });
   assert.match(ok.content[0].text, /Game\.MaxPlayers = 4;/);
 });
+
+test('mcp: nucleus_game_imports reads a game folder', async () => {
+  const p = require('node:path').join(__dirname, '..', 'src', 'test', 'fixtures', 'pe', 'launcher');
+  const r = (await handle({ jsonrpc: '2.0', id: 9, method: 'tools/call', params: { name: 'nucleus_game_imports', arguments: { path: p } } })) as any;
+  assert.ok(!r.result.isError);
+  assert.match(r.result.content[0].text, /war3\.exe.*started by Frozen Throne\.exe/);
+  const bad = (await handle({ jsonrpc: '2.0', id: 10, method: 'tools/call', params: { name: 'nucleus_game_imports', arguments: { path: '/nonexistent' } } })) as any;
+  assert.ok(bad.result.isError);
+});

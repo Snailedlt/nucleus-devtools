@@ -1,11 +1,12 @@
 // "Your game on this PC" in VS Code (splitscreenme-vscode#13): link a handler to the game's install folder, then the
 // checks in core/gamefolder.ts (shared with the workbench) compare ExecutableName, BinariesFolder, the symlink lists
 // and the like with the real files, with fixes; inside those lists, completion offers the game's own files.
-// Only names and sizes are read; nothing leaves the PC.
+// Only names and sizes are read, plus the import tables of the game's .exe and DLLs for the hints (core/importhooks.ts); nothing leaves the PC.
 import * as vscode from 'vscode';
 import path from 'node:path';
 import { checkAgainstFolder, folderLists, folderSummary, pickerOptions, type FolderFix } from './core/gamefolder';
-import { folderAt, forgetFolder, readGameFolder } from './gamefolder-node';
+import { folderAt, forgetFolder, readGameFolder, gameBinariesNow, forgetBinaries } from './gamefolder-node';
+import { importProblems } from './core/importhooks';
 import { RULES_URL } from './core/features';
 import { log, status } from './log';
 export { readGameFolder };
@@ -32,7 +33,12 @@ export function gameFolderDiagnostics(doc: vscode.TextDocument, source: string, 
   const dir = linkedFolder(doc);
   const folder = dir ? folderAt(dir) : undefined;
   if (!folder) return [];
-  return checkAgainstFolder(doc.getText(), folder).map((p) => {
+  // The game's program files are read in the background; their hints appear once read (then the handler is rechecked).
+  const binaries = gameBinariesNow(dir!, () => {
+    for (const d of vscode.workspace.textDocuments) if (linkedFolder(d) === dir) recheckLater?.(d);
+  });
+  const problems = [...checkAgainstFolder(doc.getText(), folder), ...(binaries ? importProblems(doc.getText(), binaries) : [])];
+  return problems.map((p) => {
     // A fact about the game (its engine, Steam, …) is a hint: no squiggle, shown on hover and in the language status.
     const d = new vscode.Diagnostic(new vscode.Range(doc.positionAt(p.start), doc.positionAt(Math.max(p.end, p.start))), `${p.title}. ${p.why}`, p.fact ? vscode.DiagnosticSeverity.Hint : severity[p.severity]);
     d.source = source;
@@ -42,8 +48,10 @@ export function gameFolderDiagnostics(doc: vscode.TextDocument, source: string, 
   });
 }
 
+let recheckLater: ((d: vscode.TextDocument) => void) | undefined;
 export function registerGameFolders(context: vscode.ExtensionContext, isHandler: (d: vscode.TextDocument) => boolean, selector: vscode.DocumentSelector, recheck: (d: vscode.TextDocument) => void) {
   store = context.globalState;
+  recheckLater = recheck;
   // Unlink shows in the palette only when the open handler has a folder linked.
   const markLinked = () => {
     const doc = vscode.window.activeTextEditor?.document;
@@ -97,6 +105,7 @@ export function registerGameFolders(context: vscode.ExtensionContext, isHandler:
       const dir = picked?.[0]?.fsPath;
       if (!dir) return;
       forgetFolder(dir);
+      forgetBinaries(dir);
       const folder = folderAt(dir)!;
       await save(doc, dir);
       markLinked();
@@ -107,7 +116,7 @@ export function registerGameFolders(context: vscode.ExtensionContext, isHandler:
       vscode.window.showInformationMessage(
         `Linked ${keyOf(doc)} to ${folder.name} (${folder.files.length.toLocaleString('en')} files${folder.truncated ? ', only partly listed' : ''}). ` +
           (sum.exe ? `Executable: ${sum.exe}.` : sum.exeName ? `${sum.exeName} isn't in it.` : 'Game.ExecutableName isn\'t set.') +
-          (facts ? ` ${facts}.` : '') + ' Only names and sizes are read.',
+          (facts ? ` ${facts}.` : '') + ' Only names and sizes are read, and the program files\' import tables for hints.',
       );
     }),
     vscode.commands.registerCommand('splitscreenme.unlinkGameFolder', async () => {
