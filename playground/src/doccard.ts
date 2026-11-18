@@ -9,7 +9,7 @@
 import { withContext } from './report';
 import { reportIcon } from '@core/reporticons';
 import { aiBasis, api, docReviewUrl, exampleSource, isAiPart, ownerLabel, type AiPart, type Member } from '@core/api';
-import { aiMeta } from '@core/aimark';
+import { aiMeta, aiTip, aiTipCss } from '@core/aimark';
 import type { DocPart } from '@core/docvotes';
 import { myVote, feedbackOn } from './feedback';
 import { snapshotVotes, liveVotes, scoreText, voteTipText } from './votecounts';
@@ -58,7 +58,7 @@ export function memberCard(owner: string, name: string, m: Member, opts: { head?
       + (opts.head === false ? '' : `<div class="dc-sig">${sigs.map((s) => `<div>${s}</div>`).join('')}</div>`)
       + `<div class="dc-text">`
       + (m.deprecated ? `<p class="dc-dep">${inline(m.deprecated)}</p>` : '')
-      + (m.doc ? aiFrame(m, 'doc', `<p>${inline(firstSentence(m.doc))}</p>`) : '<p class="muted">No description yet.</p>')
+      + (m.doc ? aiFrame(m, 'doc', `<p>${inline(firstSentence(m.doc))}</p>`, path) : '<p class="muted">No description yet.</p>')
       + `<p class="dc-more"><a href="#docs-${esc(path)}" data-api="${esc(path)}">More in Docs</a></p>`
       + `</div></div>`);
   }
@@ -69,10 +69,10 @@ export function memberCard(owner: string, name: string, m: Member, opts: { head?
   return hlHtml(`<div class="dc">`
     + (opts.head === false ? '' : `<div class="dc-sig">${sigs.map((s) => `<div>${s}</div>`).join('')}</div>`)
     + (m.deprecated ? `<p class="dc-dep">${inline(m.deprecated)}</p>` : '')
-    + (m.doc ? aiFrame(m, 'doc', paras(m.doc)) : '<p class="muted">No description yet.</p>')
+    + (m.doc ? aiFrame(m, 'doc', paras(m.doc), path) : '<p class="muted">No description yet.</p>')
     + tagRow(owner, m)
     + (engines ? `<p class="dc-engine" title="Compared with all Hub handlers. The numbers are on the docs pages.">${esc(engines)}</p>` : '')
-    + (m.example ? `<div class="dc-example${isAiPart(m, 'example') ? ' ai-box' : ''}">${isAiPart(m, 'example') ? aiMeta(m, 'example', SPARK, uid('example')) : ''}<div class="dc-ex-head"><span class="dc-ex-t">Example</span>${exampleLabel(m) ? `<span class="dc-ex-src">${esc(exampleLabel(m))}</span>` : ''}${opts.insert ? `<button type="button" class="btn small dc-insert" data-insert="${esc(path)}">Insert into handler</button>` : ''}</div><pre class="doc-code">${esc(prettyCode(m.example))}</pre></div>` : '')
+    + (m.example ? `<div class="dc-example${isAiPart(m, 'example') ? ' ai-box' : ''}">${isAiPart(m, 'example') ? aiMeta(m, 'example', SPARK, uid('example'), { path }) : ''}<div class="dc-ex-head"><span class="dc-ex-t">Example</span>${exampleLabel(m) ? `<span class="dc-ex-src">${esc(exampleLabel(m))}</span>` : ''}${opts.insert ? `<button type="button" class="btn small dc-insert" data-insert="${esc(path)}">Insert into handler</button>` : ''}</div><pre class="doc-code">${esc(prettyCode(m.example))}</pre></div>` : '')
     + (m.practice ? practicePart(m, path) : '')
     // Every doc gets its votes, human-written or not: people say whether it's right either way.
     + (m.doc ? voteLine(path, 'doc') : '')
@@ -85,7 +85,7 @@ export function memberSummary(owner: string, name: string, m: Member): string {
   return hlHtml(`<div class="dc hit"><div class="dc-sig nolink">${signatures(owner, name, m).map((s) => `<div>${s}</div>`).join('')}</div>`
     + (m.deprecated ? `<p class="dc-dep">${inline(firstSentence(m.deprecated))}</p>` : '')
     // An AI-written description: a small sparkle before it (a search result gets no frame).
-    + (m.doc ? `<p>${isAiPart(m, 'doc') ? `<span class="ai-spark dc-hit-ai" role="img" aria-label="AI-written" title="AI-written. ${esc(aiBasis(m, 'doc'))}"></span> ` : ''}${inline(firstSentence(m.doc))}</p>` : '<p class="muted">No description yet.</p>')
+    + (m.doc ? `<p>${isAiPart(m, 'doc') ? `<span class="ai-spark dc-hit-ai" role="img" aria-label="AI-written" title="AI-written · ${esc(aiBasis(m, 'doc'))}"></span> ` : ''}${inline(firstSentence(m.doc))}</p>` : '<p class="muted">No description yet.</p>')
     + tagRow(owner, m)
     + `</div>`);
 }
@@ -108,6 +108,14 @@ function tagRow(owner: string, m: Member): string {
   ].filter(Boolean);
   return chips.length ? `<div class="dc-facts">${chips.join('')}</div>` : '';
 }
+/** The layout inside a sparkle's tooltip (heading, labelled list: core/aimark.ts aiTip), from the core, in the page's
+ *  colours; the frame and tooltip box are page.html's .ai-box/.ai-tip. Added once, when the cards first load. */
+if (typeof document !== 'undefined' && !document.getElementById('ai-tip-css')) {
+  const st = document.createElement('style');
+  st.id = 'ai-tip-css';
+  st.textContent = aiTipCss({ muted: 'var(--muted)', fg: 'var(--fg)' });
+  document.head.append(st);
+}
 /** The sparkle in an AI-written part's corner (page.html .ai-spark). */
 const SPARK = '<span class="ai-spark" aria-hidden="true"></span>';
 let uids = 0;
@@ -115,13 +123,13 @@ let uids = 0;
 const uid = (part: string) => `ai-${part}-${++uids}`;
 /** `html` in an AI-written part's frame when that part is AI-written (core/aimark.ts aiMeta: the sparkle, its tooltip
  *  with the basis, a hidden "AI-written", "Checked by …"); as it is otherwise. */
-const aiFrame = (m: Member, part: AiPart, html: string) => (isAiPart(m, part) ? `<div class="ai-box" data-ai="${part}">${aiMeta(m, part, SPARK, uid(part))}${html}</div>` : html);
+const aiFrame = (m: Member, part: AiPart, html: string, path?: string) => (isAiPart(m, part) ? `<div class="ai-box" data-ai="${part}">${aiMeta(m, part, SPARK, uid(part), { path })}${html}</div>` : html);
 /** "How handlers use it" ("In practice", always AI-written), folded, in its frame. The summary is the toggle, so the
  *  sparkle in it is no control of its own: hovering it, or focusing the summary, shows where it comes from. */
 function practicePart(m: Member, path: string): string {
   const id = uid('practice');
   const checked = m.practiceCheckedBy ? `<span class="ai-checked">✓ Checked by ${esc(m.practiceCheckedBy)}${m.practiceCheckedOn ? ` on ${esc(m.practiceCheckedOn)}` : ''}</span>` : '';
-  return `<details class="dc-practice ai-box" data-ai="practice"><summary class="dc-pr-h" aria-describedby="${id}"><span class="dc-pr-t">How handlers use it</span><span class="ai-meta">${checked}<span class="ai-badge">${SPARK}<span class="sr-only">AI-written</span><span class="ai-tip" role="tooltip" id="${id}">AI-written. ${esc(aiBasis(m, 'practice'))}</span></span></span></summary>${paras(m.practice!)}${voteLine(path, 'practice')}</details>`;
+  return `<details class="dc-practice ai-box" data-ai="practice"><summary class="dc-pr-h" aria-describedby="${id}"><span class="dc-pr-t">How handlers use it</span><span class="ai-meta">${checked}<span class="ai-badge">${SPARK}<span class="sr-only">AI-written</span>${aiTip(m, 'practice', id, { path })}</span></span></summary>${paras(m.practice!)}${voteLine(path, 'practice')}</details>`;
 }
 
 /** "More common in: Source · Less common in: Unity": the engine families whose Hub handlers use it notably more or

@@ -190,7 +190,7 @@ ${docsDrawer(up, here0, o.groups.map((g) => `<li><a href="${up}docs/${g.key}/">$
     if (votes) md = md.replace(/(^|\n\n)((?:\*\*✓ [^\n]*?\*\*)?)((?: · )?(?:People|AIs): \d+ 👍 \d+ 👎)+(?=\n\n|$)/g, (_, pre, ver) => (ver ? `${pre}${ver}` : pre ? '' : '')).replace(/\n{3,}/g, '\n\n');
     let html = mdToHtml(md, href);
     // The page was made with slots (memberMarkdown): frame the AI-written parts, then each part's 👍/👎 where its slot is.
-    if (m && o.placeAiFrames) html = o.placeAiFrames(html, m, { icon: SPARK, level: 2 });
+    if (m && o.placeAiFrames) html = o.placeAiFrames(html, m, { icon: SPARK, level: 2, path: page.path, paths: true });
     const line = (part, q) => docFeedback(page.path, o.docReviewUrl(page.path), esc, part, q, { inline: true, feedbackUrl: feedbackUrl(page.path), counts: o.partVotes ? o.partVotes(page.path, part) : undefined });
     if (votes) {
       html = html.replace('<p>@@slot:practice@@</p>', () => line('practice', 'Is "In practice" right?'));

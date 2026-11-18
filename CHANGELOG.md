@@ -16,7 +16,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 ### ✨ New
 
-- **A short tour of the workbench.** It points out the parts one at a time (the handler tabs, the code, Check, Try it, Docs, Lines, Files, Save and Settings) with a sentence on each, and switches to Check or Try it as it gets there. It starts once on your first visit; Skip remembers where you stopped, and *Take the tour* (Menu, the ? dialog, Settings, the footer or the command palette) continues there or starts over. Arrow keys step, Esc skips.
+- **A short tour of the workbench.** It points out the parts one at a time (the handler tabs, the code, Check, Try it, Docs, Lines, Files, Save and Settings) with a sentence on each. It starts once on your first visit; Skip remembers where you stopped, and *Take the tour* (Menu, the ? dialog, Settings, the footer or the command palette) continues there or starts over. Arrow keys step, Esc skips.
 
 ### ⚠️ Changed
 
@@ -24,10 +24,14 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 ### 🛠️ Improved
 
+- **The tour lets you try things.** A few steps ask for one small action (press Ctrl+Space in the code, click Check, click Try it); doing it ticks the step and goes on by itself, and Next and Skip still work. The keys work from the tour's card too.
+- **Icons in the Menu.** Every Menu entry has a small icon in one column, so the labels line up: the tour 🧭, What's new ✨, the report flag, the feature bulb, Settings, Keyboard shortcuts and more. *Take the tour* has its 🧭 in the footer, Settings and the ? dialog too.
+- **Hint only where there is something to work out.** Lessons that show the lines to add, with a Copy button, no longer have a Hint button: the lesson is the hint. Fix-it lessons keep it, and Show me stays everywhere.
 - **Show me selects the problem and opens its card.** In Check, Show me moves to the exact code, selects it and opens the same card hovering it shows.
 - **Start over a finished lesson in one click.** Once a lesson is done, by hand or with Show me, Start over sits where Hint and Show me were.
-- **Learn's hints point to the next step.** Every code lesson's Hint now says where in the code to look and what to add there, then names the option or call and the kind of value it takes, in the lesson's own game, instead of repeating what Check says is missing.
+- **Learn's hints point to the next step.** A lesson's Hint now says where in the code to look and what to add there, then names the option or call and the kind of value it takes, in the lesson's own game, instead of repeating what Check says is missing.
 - **AI-written docs are easy to tell apart, without a label.** In Docs and on the docs pages each AI-written part (a doc, "How handlers use it", an example) sits in a lightly tinted frame with a sparkle in its corner, whose tooltip says what it is based on; a search result gets a small sparkle. Human-written docs stay plain, and "Checked by …" and "Verified by people" still show.
+- **Where AI-written docs come from, at a glance.** The sparkle's tooltip in Docs and on the docs pages is now a short list instead of one long sentence: "✨ AI-written" (with *Checked by …* or *Verified by people* when they apply), then **Source** (one Nucleus or Proto Input file per line, with what in it), **Hub handlers** (when they were counted) and **Engines** (from the Hub games' engines). The docs pages add the data files behind them in a small line.
 - **Docs shows what you need to write a handler.** A search lists short results (the signature, the first sentence and its tags) with *Open full doc ›*; a full entry goes from the doc and its tags to the example and *Insert into handler*, then "How handlers use it" folded, and 👍/👎 at the bottom. Where an AI-written part comes from is in its tag's tooltip, and the vote counts and the counted engine numbers are on the docs pages (`/docs/`); Docs says only which engines use it more or less.
 - **Doc votes sit where you've read the part they rate, and their link shows after you vote.** On the docs pages (`/docs/`) the doc's 👍/👎 is at the bottom of the doc, after the example, and "In practice"'s is inside its box, as in the workbench's Docs. In both, *Tell us what's wrong* shows after a 👎 and *Give feedback* after a 👍.
 - **Doc votes are one compact control, as on Reddit.** Each part has [👍] score [👎]: on the docs pages the score is people's 👍 minus 👎 (AI votes never count), and hovering or focusing it shows people's and AIs' votes apart; your own vote highlights its button and moves the score by one. Workbench Docs uses the same control without a number.
