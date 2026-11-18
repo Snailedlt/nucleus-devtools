@@ -67,7 +67,7 @@ export const AI_SPARK_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true" focusab
  *  screen readers. Exported for tests. */
 export function placeVotes(html: string, path: string, parts: { part: DocPart; label: string }[], mine: Record<string, Vote | undefined>, canSend: boolean, m?: Member): string {
   const slot = (name: Parameters<typeof docSlot>[0]) => `<p>${esc(docSlot(name))}</p>`;
-  let out = m ? placeAiFrames(html, m, { icon: AI_SPARK_SVG, level: 3 }) : html.replace(slot('practice-open'), '<section class="practice" aria-label="In practice">').replace(slot('practice-close'), '</section>');
+  let out = m ? placeAiFrames(html, m, { icon: AI_SPARK_SVG, level: 3, path }) : html.replace(slot('practice-open'), '<section class="practice" aria-label="In practice">').replace(slot('practice-close'), '</section>');
   for (const p of parts) out = out.replace(slot(p.part), voteLine(path, p.part, p.label, mine, canSend));
   return out.replace(/<p>@@slot:[\w-]+@@<\/p>/g, '');
 }

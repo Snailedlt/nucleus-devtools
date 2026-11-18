@@ -46,9 +46,9 @@ test('hover is short: signature, first sentence, AI mark, links; no "In practice
     assert.doesNotMatch(md, /In practice|```js|👍|votes|Is it wrong/, md);
     assert.ok(!md.includes(m.byEngine!), md);
     assert.match(md, new RegExp(`\\[Full docs\\]\\(L\\(${owner}\\.${name}\\)\\)$`));
-    const prose = md.replace(/```[\s\S]*?```/g, '').replace(/_Based on[^\n]*_/g, '').replace(/\[Full docs\][^\n]*/, '').trim();
+    const prose = md.replace(/```[\s\S]*?```/g, '').replace(/_(?:Source|Hub handlers):[^\n]*_/g, '').replace(/\[Full docs\][^\n]*/, '').trim();
     assert.ok(prose.length <= 260, `${owner}.${name}: ${prose.length} characters\n${prose}`);
-    if (m.docBy === 'claude') assert.match(md, /✨ [\s\S]*\n\n_Based on /, 'the AI-written mark stays: a ✨ and the basis');
+    if (m.docBy === 'claude') assert.match(md, /✨ [\s\S]*\n\n_Source: /, 'the AI-written mark stays: a ✨ and the basis');
     // The completion docs keep everything.
     assert.match(memberMarkdown(owner, name, m), /In practice/);
   }

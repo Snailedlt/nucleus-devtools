@@ -506,7 +506,7 @@ function signatureHelpAtRaw(text: string, offset: number, opts: FeatureOptions =
       const params = o.params.map((p) => `${p.rest ? '...' : ''}${p.name}: ${paramType(p)}`);
       // AI-written text: a ✨ before it, where the doc comes from on its own small line.
       const docs = o.params.map((p) => (p.doc ? (p.docBy === 'claude' ? `${AI_MARK} ` : '') + p.doc : undefined));
-      signatures.push({ label: `${ownerLabel(owner) ? `${ownerLabel(owner)}.` : ''}${name}(${params.join(', ')}): ${o.returns}`, documentation: isAiPart(member, 'doc') ? `${AI_MARK} ${member.doc}\n\n_${aiBasis(member, 'doc')}${aiChecked(member, 'doc') ? ` ${aiChecked(member, 'doc')}.` : ''}_` : member.doc, parameters: params, ...(docs.some(Boolean) ? { parameterDocs: docs } : {}) });
+      signatures.push({ label: `${ownerLabel(owner) ? `${ownerLabel(owner)}.` : ''}${name}(${params.join(', ')}): ${o.returns}`, documentation: isAiPart(member, 'doc') ? `${AI_MARK} ${member.doc}\n\n_${aiBasis(member, 'doc')}${aiChecked(member, 'doc') ? ` · ✓ ${aiChecked(member, 'doc')}` : ''}_` : member.doc, parameters: params, ...(docs.some(Boolean) ? { parameterDocs: docs } : {}) });
     }
     // Prefer the first overload that has enough parameters for the cursor position.
     const idx = (member.overloads ?? []).findIndex((o) => o.params.length > c.activeParameter || o.params.some((p) => p.rest));

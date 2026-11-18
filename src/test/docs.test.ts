@@ -1,7 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import raw from '../../data/claude-docs.json';
-import { api, claudeNote, memberMarkdown } from '../core/api';
+import { aiBasisParts, aiBasisSummary, api, claudeNote, memberMarkdown } from '../core/api';
+import { aiTip } from '../core/aimark';
+import practiceRaw from '../../data/claude-practice.json';
 import { markdownReference } from '../core/lookup';
 import { codeOf } from '../core/importhooks';
 
@@ -24,12 +26,12 @@ test('Claude-written docs: each says what it is based on, and the tools label it
   const md = memberMarkdown(owner, name, api.objects.Game.members.Play);
   // Markdown has no frames: a ✨ before the AI-written text, where it comes from on its own small line.
   assert.match(md, /^✨ /m);
-  assert.match(md, /^_Based on Nucleus/m);
+  assert.match(md, /^_Source: Nucleus/m);
   assert.doesNotMatch(md, /AI-written/, 'the ✨ says it');
   // With slots (the Docs panel, the docs pages) the caller frames it: no ✨ or basis line in the text.
   const framed = memberMarkdown(owner, name, api.objects.Game.members.Play, true);
   assert.match(framed, /@@slot:ai-doc@@[\s\S]*@@slot:ai-close@@/);
-  assert.doesNotMatch(framed, /✨|_Based on/);
+  assert.doesNotMatch(framed, /✨|_Source: /);
   assert.match(markdownReference(), /_✎ AI-written/);
   // Human docs carry no label.
   const human = Object.values(api.objects.Game.members).find((m) => m.doc && !m.docBy)!;
@@ -83,7 +85,7 @@ test('"In practice" parts: real members, labelled, with what they are based on; 
     const m = api.objects[OBJ[key.slice(0, i)]]?.members[key.slice(i + 1)];
     assert.ok(m, `${key}: a real member`);
     assert.equal(m.practice, p.text, `${key}: in the model (npm run generate)`);
-    assert.match(memberMarkdown(key.slice(0, i) === 'Player' ? 'PlayerInfo' : OBJ[key.slice(0, i)], key.slice(i + 1), m), /\*\*✨ In practice\*\*[\s\S]*_Based on /);
+    assert.match(memberMarkdown(key.slice(0, i) === 'Player' ? 'PlayerInfo' : OBJ[key.slice(0, i)], key.slice(i + 1), m), /\*\*✨ In practice\*\*[\s\S]*_(Source|Hub handlers): /);
   }
   // Every example in the model: ES5 that parses, and no errors from the checks once it sits where it belongs.
   for (const [o, obj] of Object.entries(api.objects)) for (const [k, m] of Object.entries(obj.members)) {
@@ -161,4 +163,42 @@ test('AI votes: checked, sent as aivote/<part>/<name>, never as a person\'s vote
   process.env.NCDEV_NO_FEEDBACK = '1';
   assert.equal((await sendAiVote('Game.Play', 'doc', 'up', 't', fake)).ok, false, 'off when asked');
   delete process.env.NCDEV_NO_FEEDBACK;
+});
+
+test('aiBasisParts: a basis in labelled groups (Source, Hub handlers, Engines), on real basis strings', () => {
+  const kill = aiBasisParts('Nucleus GenericGameHandler.cs (the mutex kill before the next instance), ProcessUtil.cs; verified Hub handlers, counted 2026-11-17; Source games from data/hub-engines.json');
+  assert.deepEqual(kill.source, [
+    { origin: 'Nucleus', file: 'GenericGameHandler.cs', detail: 'the mutex kill before the next instance' },
+    { origin: '', file: 'ProcessUtil.cs', detail: '' },
+  ]);
+  assert.deepEqual(kill.hub, ['verified handlers, counted 2026-11-17']);
+  assert.deepEqual(kill.engines, ['Source games, from Hub game engines (Wikidata/IGDB)']);
+  assert.deepEqual(kill.paths, ['data/hub-engines.json']);
+  assert.equal(aiBasisSummary(kill), 'Source: Nucleus GenericGameHandler.cs (the mutex kill before the next instance), ProcessUtil.cs · Hub handlers: verified handlers, counted 2026-11-17 · Engines: Source games, from Hub game engines (Wikidata/IGDB)');
+  assert.deepEqual(aiBasisParts('engines from data/hub-engines.json').engines, ['from Hub game engines (Wikidata/IGDB)']);
+  // A `;` inside parentheses stays in its item; several origins in one part split per file.
+  const root = aiBasisParts('Nucleus GenericGameHandler.cs (rootFolder from exeFolder.ToLower() and BinariesFolder; context.OrigRootFolder = rootFolder)');
+  assert.equal(root.source.length, 1);
+  assert.match(root.source[0].detail, /BinariesFolder; context\.OrigRootFolder/);
+  const pi = aiBasisParts('Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks GetCursorPosHook.cpp (Hook_GetCursorPos)');
+  assert.deepEqual(pi.source.map((i) => [i.origin, i.file]), [['Nucleus', 'ProtoInput.cs'], ['ProtoInputHooks', 'GetCursorPosHook.cpp']]);
+  // Not a file list: kept whole, under Source.
+  assert.deepEqual(aiBasisParts('the Proto Input guide (protoinput.md, Handler development with Nucleus Co-op)').source, [{ origin: '', file: '', detail: 'the Proto Input guide (protoinput.md, Handler development with Nucleus Co-op)' }]);
+  // Every real basis: something in a group, no raw repo path left in the words, no empty item.
+  const practice = (practiceRaw as unknown as { practice: Record<string, { basis: string }> }).practice;
+  for (const [key, b] of [...Object.entries(docs), ...Object.entries(practice)].map(([k, v]) => [k, v.basis] as const)) {
+    const p = aiBasisParts(b);
+    assert.ok(p.source.length + p.hub.length + p.engines.length, key);
+    assert.doesNotMatch(aiBasisSummary(p), /data\/hub-|;\s*$/, key);
+    for (const i of p.source) assert.ok(i.file || i.detail, key);
+  }
+  // The tooltip: a heading, the labelled list with files as code, the path only when asked.
+  const m = api.objects.Game.members.KillMutex;
+  const tip = aiTip(m, 'practice', 't');
+  assert.match(tip, /<span class="ai-tip-h"><span aria-hidden="true">✨ <\/span>AI-written/);
+  assert.match(tip, /<span class="ai-tip-k">Source<span class="sr-only">: <\/span><\/span>[\s\S]*<code class="ai-file">GenericGameHandler\.cs<\/code>/);
+  assert.match(tip, /Hub handlers[\s\S]*verified handlers, counted/);
+  assert.match(tip, /Engines[\s\S]*from Hub game engines \(Wikidata\/IGDB\)/);
+  assert.doesNotMatch(tip, /hub-engines\.json/);
+  assert.match(aiTip(m, 'practice', 't', { paths: true }), /class="ai-tip-path">[\s\S]*data\/hub-engines\.json/);
 });

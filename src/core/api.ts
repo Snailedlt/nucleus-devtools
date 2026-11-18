@@ -501,12 +501,83 @@ export function isAiPart(m: Member, part: AiPart): boolean {
   if (part === 'example') return m.exampleBy === 'claude' && Boolean(m.example);
   return (m.overloads ?? []).some((o) => o.params.some((p) => p.doc && p.docBy === 'claude'));
 }
-/** Where an AI-written part comes from: "Based on GenericGameHandler.cs …." ('' when the part isn't AI-written). Shown
- *  on its own small line in Markdown, in the ✨'s tooltip where HTML frames the part. */
-export function aiBasis(m: Member, part: AiPart): string {
+/** Where an AI-written part comes from, raw as data/claude-*.json says it ('' when the part isn't AI-written). */
+export function aiBasisRaw(m: Member, part: AiPart): string {
   if (!isAiPart(m, part)) return '';
   const basis = part === 'doc' ? m.docBasis : part === 'params' ? 'the Nucleus source' : m.practiceBasis;
-  return `Based on ${(basis ?? 'the Nucleus source').replace(/\.$/, '')}.`;
+  return (basis ?? 'the Nucleus source').replace(/\.$/, '').trim();
+}
+
+/** One source of an AI-written part: `origin` ("Nucleus", "ProtoInputHooks", … as written; '' when the item before
+ *  names it), `file` (a file or a Class.Method, shown as code; '' when the item isn't one) and `detail` (what in it, or
+ *  the whole text of an item that isn't a file). */
+export interface AiSourceItem { origin: string; file: string; detail: string }
+/** A basis in labelled groups (aiBasisParts): Source, Hub handlers, Engines, and the repo paths behind the last two
+ *  (shown only where developers look: the docs pages). */
+export interface AiBasisParts { source: AiSourceItem[]; hub: string[]; engines: string[]; paths: string[] }
+
+/** `s` split at `sep` outside parentheses. */
+function splitTop(s: string, sep: string): string[] {
+  const out: string[] = [];
+  let depth = 0, cur = '';
+  for (const c of s) {
+    if (c === '(') depth++;
+    else if (c === ')') depth = Math.max(0, depth - 1);
+    if (c === sep && !depth) { out.push(cur); cur = ''; } else cur += c;
+  }
+  out.push(cur);
+  return out.map((x) => x.trim()).filter(Boolean);
+}
+const BASIS_ORIGIN = /^(Nucleus(?:\.\w+)?|Proto Input|ProtoInput\w*)\s+(?=[\w./\\-]*\w\.\w)/;
+const BASIS_FILE = /^([\w./\\-]*\w\.\w+(?:\s+(?:\+|and)\s+[\w./\\-]*\w\.\w+)*)(?:\s+\((.*)\))?$/s;
+const ENGINES_FROM = 'from Hub game engines (Wikidata/IGDB)';
+
+/**
+ * A basis ("Nucleus GenericGameHandler.cs (…), ProcessUtil.cs; verified Hub handlers, counted 2026-11-17; Source games
+ * from data/hub-engines.json") in labelled groups, for the sparkle's tooltip and the Markdown line: its `;` parts
+ * (outside parentheses) are the Hub handlers count, the engines (data/hub-engines.json, named for what it is) or the
+ * source; a source part is split at its commas into one item per file when every piece is a file, else kept whole.
+ */
+export function aiBasisParts(basis: string): AiBasisParts {
+  const r: AiBasisParts = { source: [], hub: [], engines: [], paths: [] };
+  const add = (list: string[], x: string) => { if (x && !list.includes(x)) list.push(x); };
+  for (const part of splitTop(basis.replace(/\.$/, ''), ';')) {
+    if (/hub-engines\.json/.test(part)) {
+      const what = part.replace(/\s*(?:,\s*)?(?:from\s+)?data\/hub-engines\.json.*$/, '').replace(/^engines$/i, '').trim();
+      add(r.engines, what ? `${what}, ${ENGINES_FROM}` : ENGINES_FROM);
+      add(r.paths, 'data/hub-engines.json');
+    } else if (/\bHub handlers\b|hub-examples\.json/i.test(part)) {
+      const m = /hub-examples\.json/.exec(part);
+      if (m) add(r.paths, 'data/hub-examples.json');
+      add(r.hub, part.replace(/\s*(?:,\s*)?(?:from\s+)?data\/hub-examples\.json/, '').replace(/\bverified Hub handlers\b/i, 'verified handlers').trim() || 'verified handlers');
+    } else {
+      const items = splitTop(part, ',').map((x) => {
+        const origin = BASIS_ORIGIN.exec(x)?.[1] ?? '';
+        const f = BASIS_FILE.exec(x.slice(origin ? origin.length : 0).trim());
+        return f ? { origin, file: f[1], detail: f[2] ?? '' } : null;
+      });
+      if (items.every(Boolean)) r.source.push(...(items as AiSourceItem[]));
+      else r.source.push({ origin: '', file: '', detail: part });
+    }
+  }
+  return r;
+}
+/** A source item as plain text: "Nucleus GenericGameHandler.cs (StartGame)". */
+export const aiSourceText = (i: AiSourceItem) => (i.file ? `${i.origin ? `${i.origin} ` : ''}${i.file}${i.detail ? ` (${i.detail})` : ''}` : i.detail);
+/** The labelled groups of a basis on one line: "Source: … · Hub handlers: … · Engines: …". */
+export function aiBasisSummary(p: AiBasisParts): string {
+  return [
+    p.source.length ? `Source: ${p.source.map(aiSourceText).join(', ')}` : '',
+    p.hub.length ? `Hub handlers: ${p.hub.join(', ')}` : '',
+    p.engines.length ? `Engines: ${p.engines.join(', ')}` : '',
+  ].filter(Boolean).join(' · ');
+}
+/** Where an AI-written part comes from, on one labelled line: "Source: GenericGameHandler.cs … · Hub handlers: verified
+ *  handlers, counted 2026-11-17" ('' when the part isn't AI-written). Shown on its own small line in Markdown; where HTML
+ *  frames the part, the ✨'s tooltip lays the same groups out as a list (core/aimark.ts aiTip). */
+export function aiBasis(m: Member, part: AiPart): string {
+  const raw = aiBasisRaw(m, part);
+  return raw ? aiBasisSummary(aiBasisParts(raw)) : '';
 }
 /** "Checked by Ann on 2026-11-01" for an AI-written part a person checked ('' otherwise): stays visible, small. */
 export function aiChecked(m: Member, part: AiPart): string {
@@ -514,7 +585,7 @@ export function aiChecked(m: Member, part: AiPart): string {
   return by && isAiPart(m, part) ? `Checked by ${by}${on ? ` on ${on}` : ''}` : '';
 }
 /** The small line under an AI-written part in Markdown: where it comes from, and who checked it. */
-const aiBasisLine = (m: Member, part: AiPart) => `_${aiBasis(m, part)}${aiChecked(m, part) ? ` ${aiChecked(m, part)}.` : ''}_`;
+const aiBasisLine = (m: Member, part: AiPart) => `_${aiBasis(m, part)}${aiChecked(m, part) ? ` · ✓ ${aiChecked(m, part)}` : ''}_`;
 /** Text with the ✨ before its first paragraph (on its own when the text starts with a code block or a list). */
 const withMark = (md: string) => (/^(```|- |\d+\. |#)/.test(md.trimStart()) ? `${AI_MARK}\n\n${md}` : `${AI_MARK} ${md}`);
 
