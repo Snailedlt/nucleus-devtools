@@ -759,6 +759,11 @@ li.CodeMirror-hint-active .hint-type { color: var(--muted); opacity: 1; }
 .vote-btn:hover, .vote-btn:focus-visible { opacity: 1; filter: none; border-color: var(--line); }
 .vote-btn[aria-pressed="true"] { opacity: 1; filter: none; background: color-mix(in srgb, var(--accent) 16%, transparent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
 #tip-votes .votes { margin-right: 2px; }
+/* The doc votes: one compact control, as the docs pages' [👍] score [👎] (no score here: #docs shows no counts). */
+.dc-check .votes { align-items: center; padding: 1px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); }
+.dc-check .vote-btn { filter: none; opacity: 1; border-radius: 999px; padding: 3px 7px; }
+.dc-check .vote-btn:hover { background: var(--surface); }
+.dc-check .vote-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .ai-doc { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
 
 /* Shortcut hints (keyhints.ts). */

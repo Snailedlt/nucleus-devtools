@@ -196,6 +196,9 @@ ${docsDrawer(up, here0, o.groups.map((g) => `<li><a href="${up}docs/${g.key}/">$
     let md = page.markdown.replace(/^## [^\n]*\n+/, '');
     const votes = Boolean(page.path && o.docReviewUrl && m);
     if (votes) md = md.replace(/ \[Is it wrong\? Tell us\]\([^)]*\)/g, '');
+    // The counts are in each part's vote control (its score and tooltip), so the core's "People: … · AIs: …" text goes;
+    // "Verified by people (N votes)" stays where it is.
+    if (votes) md = md.replace(/(^|\n\n)((?:\*\*✓ [^\n]*?\*\*)?)((?: · )?(?:People|AIs): \d+ 👍 \d+ 👎)+(?=\n\n|$)/g, (_, pre, ver) => (ver ? `${pre}${ver}` : pre ? '' : '')).replace(/\n{3,}/g, '\n\n');
     if (votes && m.doc) {
       const at = md.indexOf(m.doc);
       if (at >= 0) {
@@ -208,7 +211,7 @@ ${docsDrawer(up, here0, o.groups.map((g) => `<li><a href="${up}docs/${g.key}/">$
     if (votes && m.practice) md = md.replace(/(\*\*In practice\*\* _\(AI-written\)_\n\n[\s\S]*?\n\n_✎ [^\n]*(?:\n\n(?:\*\*✓ |People: |AIs: )[^\n]*)?)/, '$1\n\n@@PRVOTE@@');
     let html = markAiWritten(mdToHtml(md, href));
     if (!votes) return html;
-    const line = (part, q) => docFeedback(page.path, o.docReviewUrl(page.path), esc, part, q, { inline: true, feedbackUrl: feedbackUrl(page.path) });
+    const line = (part, q) => docFeedback(page.path, o.docReviewUrl(page.path), esc, part, q, { inline: true, feedbackUrl: feedbackUrl(page.path), counts: o.partVotes ? o.partVotes(page.path, part) : undefined });
     html = html.replace('<p>@@DOCVOTE@@</p>', () => line('doc', 'Is the doc right?'));
     // "In practice"'s votes so far and its 👍/👎 go inside its box (markAiWritten closes it after the note).
     html = html.replace(/<\/section>\n((?:<p>(?:<strong>✓ |People: |AIs: )[\s\S]*?<\/p>\n)?)<p>@@PRVOTE@@<\/p>/, (_, pv) => `${pv}${line('practice', 'Is "In practice" right?')}</section>`);

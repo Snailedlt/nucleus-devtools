@@ -18,6 +18,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 - **Docs shows what you need to write a handler.** A search lists short results (the signature, the first sentence and its tags) with *Open full doc ›*; a full entry goes from the doc and its tags to the example and *Insert into handler*, then "How handlers use it" folded, and 👍/👎 at the bottom. Where an AI-written part comes from is in its tag's tooltip, and the vote counts and the counted engine numbers are on the docs pages (`/docs/`); Docs says only which engines use it more or less.
 - **Each doc vote sits in the part it rates, and its link shows after you vote.** On the docs pages (`/docs/`) the doc's 👍/👎 is right under the description and "In practice"'s is inside its box, as in the workbench's Docs. In both, *Tell us what's wrong* shows after a 👎 and *Give feedback* after a 👍.
+- **Doc votes are one compact control, as on Reddit.** Each part has [👍] score [👎]: on the docs pages the score is people's 👍 minus 👎 (AI votes never count), and hovering or focusing it shows people's and AIs' votes apart; your own vote highlights its button and moves the score by one. Workbench Docs uses the same control without a number.
 - **Hub examples say "From Hub handlers".** An example's source is a short label in Docs and on the docs pages, without counts that go stale.
 
 ### 🐛 Fixed

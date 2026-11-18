@@ -153,7 +153,7 @@ const VOTE_LABELS: Record<DocPart, { up: string; down: string }> = {
   doc: { up: 'The doc is correct', down: 'The doc is wrong or unclear' },
   practice: { up: '“How handlers use it” is correct', down: '“How handlers use it” is wrong or unclear' },
 };
-/** Is this right? 👍 👎 (no counts here: they're on the docs pages). The follow-up link shows only after a vote: after
+/** Is this right? [👍 👎], the docs pages' compact control without its score (no counts here: they're on the docs pages). The follow-up link shows only after a vote: after
  *  a 👎 "Tell us what's wrong", after a 👍 "Give feedback" (the same form, titled as feedback); taking the vote back
  *  hides it again. */
 function voteLine(path: string, part: DocPart): string {

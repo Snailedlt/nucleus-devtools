@@ -36,6 +36,11 @@ export const SITE_HEADER_CSS = `
  * voted on apart) or a check's page (kind 'rule'). A page can have several; one script serves them all. Votes go where the
  * workbench's go: a GoatCounter event "vote/doc/<name>/up" ("vote/rule/<id>/up") (only when the build names a site, never with Do Not Track or after Settings › Feedback is
  * switched off), and each browser's own vote is kept in the same storage, so the buttons agree with the workbench.
+ *
+ * One compact control per part, as Reddit's: [👍] score [👎]. o.counts ({ up, down, aiUp, aiDown }, core/docvotes.ts
+ * partVotes) gives the score, people's 👍 minus 👎 (AI votes never count towards it), which moves by ±1 with this
+ * browser's own vote. Without counts (the rule pages, which have none) there is no number. On hover and on focus a
+ * tooltip tells people's and AIs' votes apart; it is also each button's description, for keyboard and screen readers.
  */
 export function docFeedback(name, reportUrl, esc, kind = 'doc', question = 'Is this right?', o = {}) {
   // A docs page can have two vote lines (the doc and "In practice"): each button's name says which part it rates.
@@ -43,19 +48,44 @@ export function docFeedback(name, reportUrl, esc, kind = 'doc', question = 'Is t
   // 👎 "Tell us what's wrong", after a 👍 "Give feedback" (o.feedbackUrl: the same form, titled as feedback; without
   // one, nothing). Taking the vote back hides it again. o.inline: a line inside the part it rates, not a box.
   const [up, down] = kind === 'practice' ? ['“In practice” is correct', '“In practice” is wrong or unclear'] : kind === 'doc' ? ['The doc is correct', 'The doc is wrong or unclear'] : ['Correct', 'Wrong or unclear'];
-  return `<div class="doc-fb${o.inline ? ' inline' : ''}" data-kind="${kind}" data-doc="${esc(name)}"><span>${esc(question)}</span>
-<button type="button" class="vote-btn" data-vote="up" aria-pressed="false" aria-label="${up}" title="Correct">👍</button><button type="button" class="vote-btn" data-vote="down" aria-pressed="false" aria-label="${down}" title="Wrong or unclear">👎</button>
+  const c = o.counts;
+  const tipId = `vt-${kind}-${String(name).replace(/[^\w-]/g, '_')}`;
+  const counts = c ? ` data-up="${c.up | 0}" data-down="${c.down | 0}" data-aiup="${c.aiUp | 0}" data-aidown="${c.aiDown | 0}"` : '';
+  const btn = (v, icon, label) => `<button type="button" class="vote-btn" data-vote="${v}" aria-pressed="false" aria-label="${label}"${c ? ` aria-describedby="${tipId}"` : ` title="${label}"`}>${icon}</button>`;
+  const tip = c ? `<span class="vote-tip" id="${tipId}" role="tooltip">${esc(voteTipText(c.up | 0, c.down | 0, c.aiUp | 0, c.aiDown | 0))}</span>` : '';
+  return `<div class="doc-fb${o.inline ? ' inline' : ''}" data-kind="${kind}" data-doc="${esc(name)}"${counts}><span>${esc(question)}</span>
+<span class="vote-ctl" role="group" aria-label="${esc(question)}">${btn('up', '👍', up)}${c ? `<span class="vote-score" aria-hidden="true">${scoreText(c.up - c.down)}</span>` : ''}${btn('down', '👎', down)}${tip}</span>
 <a class="fb-down" href="${esc(reportUrl)}" target="_blank" rel="noopener" hidden>Tell us what's wrong</a>${o.feedbackUrl ? `<a class="fb-up" href="${esc(o.feedbackUrl)}" target="_blank" rel="noopener" hidden>Give feedback</a>` : ''}<span class="doc-fb-thanks" role="status"></span></div>`;
+}
+// The score as Reddit shows it: a real minus sign for a negative one.
+const scoreText = (n) => (n < 0 ? `−${-n}` : String(n));
+/** The tooltip (and the buttons' description): people's and AIs' votes, apart. The page's script has the same. */
+export function voteTipText(up, down, aiUp, aiDown) {
+  const ppl = up + down ? `👤 People: ${up} 👍 · ${down} 👎 (${Math.round((100 * up) / (up + down))}% 👍)` : '👤 People: no votes yet';
+  const ai = aiUp + aiDown ? `🤖 AIs: ${aiUp} 👍 · ${aiDown} 👎` : '🤖 AIs: no votes yet';
+  return `${ppl}\n${ai}\nScore ${scoreText(up - down)}: people’s 👍 minus 👎 (AIs never count).`;
 }
 export const DOC_FEEDBACK_CSS = `
 .doc-fb { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 28px 0 0; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--r-pane); background: var(--surface); font-size: 14px; }
-.vote-btn { font: inherit; padding: 4px 10px; border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--bg); cursor: pointer; }
+/* One compact control, as Reddit's: [👍] score [👎] in a pill. */
+.vote-ctl { position: relative; display: inline-flex; align-items: center; gap: 2px; padding: 1px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); }
+.vote-btn { font: inherit; line-height: 1; padding: 4px 8px; border: 1px solid transparent; border-radius: 999px; background: none; cursor: pointer; }
+.vote-btn:hover { background: var(--surface); }
+.vote-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .vote-btn[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
+.vote-score { min-width: 1.6em; text-align: center; font-weight: 700; color: var(--fg); font-variant-numeric: tabular-nums; }
+.doc-fb[data-mine="up"] .vote-score, .doc-fb[data-mine="down"] .vote-score { color: var(--accent); }
+/* The tooltip: on hover and on focus (Escape closes it), hoverable itself, never covering the buttons. */
+.vote-tip { position: absolute; z-index: 5; left: 0; top: 100%; margin-top: 4px; width: max-content; max-width: min(340px, 80vw); padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--surface); color: var(--fg); font-size: 13px; line-height: 1.45; white-space: pre-line; box-shadow: 0 4px 14px rgb(0 0 0 / .18); visibility: hidden; opacity: 0; transition: opacity .12s; }
+.vote-tip::before { content: ''; position: absolute; left: 0; right: 0; top: -6px; height: 6px; }
+.vote-ctl:hover .vote-tip, .vote-ctl:focus-within .vote-tip { visibility: visible; opacity: 1; }
+.vote-ctl.tip-off .vote-tip { visibility: hidden; opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .vote-tip { transition: none; } }
 .doc-fb-thanks:empty { display: none; }
 .doc-fb [hidden] { display: none; }
 /* Inside the part it rates (the doc, "In practice"), as the workbench's Docs: a quiet line, not a box. */
 .doc-fb.inline { margin: 10px 0 18px; padding: 0; border: 0; background: none; font-size: 13px; color: var(--muted); }
-.doc-fb.inline .vote-btn { padding: 2px 8px; }
+.doc-fb.inline .vote-btn { padding: 3px 7px; }
 .ai-part .doc-fb.inline { margin: 10px 0 0; }
 `;
 /** The script for the votes; `site` is the GoatCounter site code, or null (then votes stay in the browser). */
@@ -64,16 +94,25 @@ export function docFeedbackScript(site) {
 (function () {
   var KEY = 'nucleus-workbench-votes';
   function get(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+  function score(n) { return n < 0 ? '\\u2212' + (-n) : String(n); }
+  ${voteTipText.toString().replace('scoreText(', 'score(')}
   document.querySelectorAll('.doc-fb').forEach(function (box) {
   var id = (box.dataset.kind || 'doc') + '/' + box.dataset.doc;
   function votes() { try { return JSON.parse(get(KEY) || '{}'); } catch (e) { return {}; } }
-  // The buttons show the vote kept in this browser; the link that fits it shows, none without a vote.
+  // The buttons show the vote kept in this browser; the link that fits it shows, none without a vote. The score and
+  // the tooltip count it too (Reddit's ±1): the published counts plus this browser's vote.
   function show() {
     var v = votes()[id];
     box.querySelectorAll('[data-vote]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.vote === v)); });
+    if (v) box.dataset.mine = v; else delete box.dataset.mine;
     var dn = box.querySelector('.fb-down'), upl = box.querySelector('.fb-up');
     if (dn) dn.hidden = v !== 'down';
     if (upl) upl.hidden = v !== 'up';
+    if (box.dataset.up == null) return;
+    var up = +box.dataset.up + (v === 'up' ? 1 : 0), down = +box.dataset.down + (v === 'down' ? 1 : 0);
+    var s = box.querySelector('.vote-score'), t = box.querySelector('.vote-tip');
+    if (s) s.textContent = score(up - down);
+    if (t) t.textContent = voteTipText(up, down, +box.dataset.aiup, +box.dataset.aidown);
   }
   var site = ${JSON.stringify(site)};
   // navigator.webdriver: a browser driven by a program (tests, an AI agent's browser) never counts as a person.
@@ -92,6 +131,13 @@ export function docFeedbackScript(site) {
     box.querySelector('.doc-fb-thanks').textContent = now ? 'Thanks!' : '';
     show();
   });
+  // Escape closes the tooltip (WCAG 1.4.13) until the pointer or focus comes back.
+  var ctl = box.querySelector('.vote-ctl');
+  if (ctl) {
+    ctl.addEventListener('keydown', function (e) { if (e.key === 'Escape') ctl.classList.add('tip-off'); });
+    ctl.addEventListener('mouseleave', function () { ctl.classList.remove('tip-off'); });
+    ctl.addEventListener('focusout', function () { ctl.classList.remove('tip-off'); });
+  }
   show();
   });
 })();
