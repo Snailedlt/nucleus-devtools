@@ -44,7 +44,12 @@ export function voteSection(path: string, parts: { part: DocPart; label: string 
   const link = (part: DocPart, v: Vote) => `command:${VOTE}?${encodeURIComponent(JSON.stringify([path, part, v]))}`;
   const rows = parts.map(({ part, label }) => {
     const cur = mine[`${part}/${path}`];
-    const btn = (v: Vote, icon: string, name: string) => `<a class="vote${cur === v ? ' on' : ''}" href="${esc(link(part, v))}" role="button" aria-pressed="${cur === v}" title="${esc(cur === v ? `You said: ${name}. Click again to take it back.` : name)}">${icon}</a>`;
+    // Links (the panel runs no scripts, so no Space-to-press button): the accessible name says the part, the vote and
+    // whether it is the current one.
+    const btn = (v: Vote, icon: string, name: string) => {
+      const what = cur === v ? `${label}: you said ${name}. Activate to take it back` : `${label}: vote ${name}`;
+      return `<a class="vote${cur === v ? ' on' : ''}" href="${esc(link(part, v))}" aria-label="${esc(what)}" title="${esc(cur === v ? `You said: ${name}. Click again to take it back.` : name)}">${icon}</a>`;
+    };
     return `<li><span>${esc(label)}</span> ${btn('up', '👍', 'Right')} ${btn('down', '👎', 'Wrong or unclear')}</li>`;
   }).join('');
   return `<section class="votes" aria-labelledby="votes-h"><h2 id="votes-h">Is this right?</h2><ul>${rows}</ul><p class="note">${canSend ? 'Anonymous counts, no account: they show in the docs after their next build. People\'s votes decide "Verified by people".' : 'Votes are off because VS Code telemetry is off (Settings › Telemetry).'}</p></section>`;
@@ -97,7 +102,9 @@ function looksLikeCode(s: string): boolean {
 export function fallbackMarkdown(md: string): string {
   const inline = (t: string) =>
     esc(t)
-      .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_m, text, href) => `<a href="${href}">${text}</a>`)
+      // Of the panel's commands, only opening a docs page may come from Markdown (text from Search is in it too): the
+      // vote command comes only from the vote controls.
+      .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_m, text, href: string) => (/^command:/i.test(href) && !href.startsWith(`command:${OPEN_DOCS}?`) ? text : `<a href="${href}">${text}</a>`))
       // A bare address in the docs ("on https://steamdb.info/"), as a hover shows it: a link (not one already in <a>).
       .replace(/(^|[\s(])(https?:\/\/[^\s<)"]+[^\s<)".,;:])/g, (_m, pre, url) => `${pre}<a href="${url}">${url}</a>`)
       .replace(/`([^`]+)`/g, (_m, c: string) => `<code>${looksLikeCode(unesc(c)) ? highlightCode(unesc(c)) : c}</code>`)
@@ -173,10 +180,18 @@ export function registerDocsPanel(context: vscode.ExtensionContext) {
     if (m.practice) parts.push({ part: 'practice', label: '"In practice" (AI-written)' });
     return voteSection(path, parts, mine(), vscode.env.isTelemetryEnabled !== false);
   };
-  /** Sends one people's-vote event to the same anonymous counter as the workbench (GoatCounter); never fails loudly. */
-  const send = async (event: string) => {
-    try { await fetch(`https://${FEEDBACK_SITE}.goatcounter.com/count?p=${encodeURIComponent('/' + event)}&e=true&rnd=${Math.random().toString(36).slice(2)}`, { signal: AbortSignal.timeout(3000) }); } catch { /* offline: not counted */ }
+  /** Sends one people's-vote event to the same anonymous counter as the workbench (GoatCounter); true when it was
+   *  accepted, false offline or on an HTTP error (never fails loudly). */
+  const send = async (event: string): Promise<boolean> => {
+    try {
+      const res = await fetch(`https://${FEEDBACK_SITE}.goatcounter.com/count?p=${encodeURIComponent('/' + event)}&e=true&rnd=${Math.random().toString(36).slice(2)}`, { signal: AbortSignal.timeout(3000) });
+      return res.ok;
+    } catch {
+      return false; // offline: not counted
+    }
   };
+  /** One vote at a time: each reads the saved votes the one before it wrote. */
+  let voting: Promise<unknown> = Promise.resolve();
   const show = async (next: string, push: boolean) => {
     if (push && panel && next !== view) history.push(view);
     if (history.length > 50) history.shift();
@@ -203,18 +218,39 @@ export function registerDocsPanel(context: vscode.ExtensionContext) {
     // From a hover link (a name), Search, or the command palette (the main page).
     vscode.commands.registerCommand(OPEN_DOCS, (value?: string) => show(docsView(typeof value === 'string' ? value : ''), true)),
     // 👍/👎 on a part: a new vote, a change (the old one taken back), or a second click that takes it back, as in the workbench.
-    vscode.commands.registerCommand(VOTE, async (path: string, part: DocPart, v: Vote) => {
+    vscode.commands.registerCommand(VOTE, (path: string, part: DocPart, v: Vote) => {
       if (typeof path !== 'string' || (part !== 'doc' && part !== 'practice') || (v !== 'up' && v !== 'down')) return;
+      // Only a member's own name (as the docs write it) and a part it has.
+      const r = lookup(path);
+      const m = r.kind === 'entries' && r.entries.length === 1 && r.entries[0].path === path ? r.entries[0].member : undefined;
+      if (!m || !(part === 'doc' ? m.doc : m.practice)) return;
       if (vscode.env.isTelemetryEnabled === false) return void vscode.window.setStatusBarMessage('Nucleus: votes are off while VS Code telemetry is off', 4000);
-      const all = { ...mine() };
-      const key = `${part}/${path}`;
-      const was = all[key];
-      if (was) await send(voteEventPath('people', part, path, was === 'up' ? 'undo-up' : 'undo-down'));
-      if (was !== v) await send(voteEventPath('people', part, path, v));
-      all[key] = was === v ? undefined : v;
-      await context.globalState?.update(VOTES_KEY, all);
-      vscode.window.setStatusBarMessage(was === v ? 'Nucleus: vote taken back' : 'Nucleus: thanks, your vote is counted', 3000);
-      void show(view, false);
+      const from = panel;
+      const run = async () => {
+        const all = { ...mine() };
+        const key = `${part}/${path}`;
+        const was = all[key];
+        // Saved only as far as it was sent: a failed undo changes nothing; an undo that went but a new vote that
+        // didn't leaves no vote (the next click sends the new one, not another undo).
+        if (was && !(await send(voteEventPath('people', part, path, was === 'up' ? 'undo-up' : 'undo-down')))) {
+          vscode.window.setStatusBarMessage('Nucleus: the vote could not be sent (offline?). Try again later.', 4000);
+          return;
+        }
+        let now: Vote | undefined = undefined;
+        if (was !== v) {
+          if (await send(voteEventPath('people', part, path, v))) now = v;
+          else vscode.window.setStatusBarMessage('Nucleus: the vote could not be sent (offline?). Try again later.', 4000);
+        }
+        all[key] = now;
+        await context.globalState?.update(VOTES_KEY, all);
+        if (was === v) vscode.window.setStatusBarMessage('Nucleus: vote taken back', 3000);
+        else if (now) vscode.window.setStatusBarMessage('Nucleus: thanks, your vote is counted', 3000);
+        // Refresh the panel the vote came from, if it is still open: never open it again.
+        if (panel && panel === from) void show(view, false);
+      };
+      const done = voting.then(run, run);
+      voting = done.catch(() => undefined);
+      return done;
     }),
     vscode.commands.registerCommand(BACK, () => {
       const v = history.pop();

@@ -2,8 +2,8 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
-import { parsePE, NotAProgram } from '../core/pe';
-import { analyse, importHints, importsReport, handlerHooks, RULES, HUB_SHARES } from '../core/importhooks';
+import { parsePE, NotAProgram, PE_WORK_LIMIT, type PeFile } from '../core/pe';
+import { analyse, importHints, importsReport, handlerHooks, importProblems, jsString, findExe, RULES, HUB_SHARES } from '../core/importhooks';
 import { api } from '../core/api';
 
 const FIX = path.join(__dirname, '..', 'src', 'test', 'fixtures', 'pe');
@@ -125,4 +125,70 @@ test('importhooks: a launcher with startup injection gets a warning whose fix in
   assert.ok(!ps.some((p) => /\(\)/.test(p.title)), 'no empty brackets');
   // Runtime injection already: no warning.
   assert.ok(!importProblems(fixed, files).some((p) => /InjectStartup injects/.test(p.title)));
+});
+
+test('pe: one work budget across a file whose tables point at the same data again and again; bad magic is no program', () => {
+  // A PE32 whose 2000 import descriptors all share one 20000-entry thunk table: 40 million records without a budget.
+  const SEC = 0x200, VA = 0x1000, NDESC = 2000, NTH = 20000;
+  const thunkAt = NDESC * 20 + 20, nameAt = thunkAt + NTH * 4 + 4;
+  const size = SEC + nameAt + 16;
+  const b = new Uint8Array(size), dv = new DataView(b.buffer);
+  b[0] = 0x4d; b[1] = 0x5a; dv.setUint32(0x3c, 0x40, true);
+  dv.setUint32(0x40, 0x4550, true); dv.setUint16(0x44, 0x14c, true); dv.setUint16(0x46, 1, true); dv.setUint16(0x54, 224, true); dv.setUint16(0x56, 0x102, true);
+  const opt = 0x58;
+  dv.setUint16(opt, 0x10b, true); dv.setUint32(opt + 60, SEC, true); dv.setUint32(opt + 92, 16, true);
+  dv.setUint32(opt + 96 + 8, VA, true); dv.setUint32(opt + 96 + 12, NDESC * 20, true);
+  const sh = opt + 224;
+  dv.setUint32(sh + 8, size - SEC, true); dv.setUint32(sh + 12, VA, true); dv.setUint32(sh + 16, size - SEC, true); dv.setUint32(sh + 20, SEC, true);
+  for (let i = 0; i < NDESC; i++) { dv.setUint32(SEC + i * 20, VA + thunkAt, true); dv.setUint32(SEC + i * 20 + 12, VA + nameAt + 2, true); }
+  for (let i = 0; i < NTH; i++) dv.setUint32(SEC + thunkAt + i * 4, VA + nameAt, true);
+  b.set(new TextEncoder().encode('\0\0x.dll\0'), SEC + nameAt);
+  const t = Date.now();
+  const f = parsePE(b, 'loop.exe');
+  const records = f.imports.length + f.imports.reduce((n, im) => n + im.fns.length, 0);
+  assert.ok(records <= PE_WORK_LIMIT && records > 0, String(records));
+  assert.ok(Date.now() - t < 5000);
+  // Only MZ and PE signatures, no PE32/PE32+ optional header: not a program.
+  const bad = new Uint8Array(512), bv = new DataView(bad.buffer);
+  bad[0] = 0x4d; bad[1] = 0x5a; bv.setUint32(0x3c, 0x40, true); bv.setUint32(0x40, 0x4550, true);
+  assert.throws(() => parsePE(bad, 'bad.exe'), NotAProgram);
+});
+
+test('importhooks: file names become string literals; an explicit path wins; comments and multi-line settings', () => {
+  assert.equal(jsString('a"b\\c\nd '), '"a\\"b\\\\c\\u000ad\\u2028"');
+  assert.equal(eval(jsString('x"); evil(); ("')), 'x"); evil(); ("');
+  const pe = (fileName: string, size = 1): PeFile => ({ fileName, size, is64: true, machine: 0x8664, dll: false, imports: [], exports: [], exportName: '', starts: false, mentions: [], rt: [] });
+  const old = pe('old/Game.exe'), now = pe('new/Game.exe');
+  assert.equal(findExe([old, now], 'new/Game.exe'), now);
+  assert.equal(findExe([old, now], 'new\\Game.exe'), now);
+  assert.equal(findExe([old, now], 'Game.exe'), old);
+  assert.equal(findExe([old, now], 'Missing.exe'), undefined);
+  // A hook in a block comment is not on.
+  assert.ok(!handlerHooks('/* Game.ProtoInput.XinputHook = true; */').has('XinputHook'));
+  // SDL2.dll in another folder: Game.SDLPaths as a proper string literal, whatever the folder's name.
+  const exe: PeFile = { ...pe('MyGame.exe', 100), imports: [{ dll: 'SDL2.dll', fns: [{ name: 'SDL_Init' }], delay: false }] };
+  const sdl: PeFile = { ...pe('bin"\n);x/SDL2.dll', 50), dll: true };
+  const lines = analyse([exe, sdl]).found.find((f) => f.rule.id === 'sdl')!.lines;
+  const paths = lines.find((l) => l.startsWith('Game.SDLPaths'))!;
+  assert.equal(paths, 'Game.SDLPaths = ["bin\\"\\u000a);x"];');
+  // The fix goes after the last complete Game.ProtoInput statement, not into a callback.
+  const files = read('game');
+  const text = 'Game.ExecutableName = "MyGame.exe";\nGame.ProtoInput.InjectStartup = true;\nGame.ProtoInput.OnInputLocked = function () {\n  x();\n};\n';
+  const x = importProblems(text, files).find((p) => /XinputHook/.test(p.title))!;
+  const fixed = text.slice(0, x.fix!.start) + x.fix!.text + text.slice(x.fix!.end);
+  assert.match(fixed, /InjectStartup = true;\nGame\.ProtoInput\.XinputHook = true;\nGame\.ProtoInput\.OnInputLocked/);
+});
+
+test('importhooks: launcher startup is a warning (not a quiet note); its fix keeps a trailing comment', () => {
+  const files = read('launcher');
+  const text = 'Game.ExecutableName = "war3.exe";\nGame.LauncherExe = "Frozen Throne.exe";\nGame.ProtoInput.InjectStartup = true; // hooks\n';
+  const w = importProblems(text, files).find((p) => p.title.startsWith('Game.ProtoInput.InjectStartup injects'))!;
+  assert.ok(w && !w.fact);
+  const fixed = text.slice(0, w.fix!.start) + w.fix!.text + text.slice(w.fix!.end);
+  assert.match(fixed, /^Game\.ProtoInput\.InjectRuntime_EasyHookMethod = true; \/\/ hooks$/m);
+  assert.doesNotMatch(fixed, /InjectStartup/);
+  // The launcher is found from the game too (war3.exe picked by name, Frozen Throne.exe starts it).
+  const a = analyse(files, 'war3.exe');
+  assert.equal(a.main?.fileName, 'war3.exe');
+  assert.deepEqual(a.launchers.map((f) => f.fileName), ['Frozen Throne.exe']);
 });

@@ -182,7 +182,13 @@ const fmt = (v: unknown): string => {
   if (typeof v === 'function') return 'function () {…}';
   if (Array.isArray(v)) return '[' + v.map(fmt).join(', ') + ']';
   if (typeof v === 'object' && (v as any).__label) return (v as any).__label;
-  return String(v);
+  // A value the summary can't show (an object without a prototype in a draft handler's array): a placeholder, so
+  // the rest of the run is still reported.
+  try {
+    return String(v);
+  } catch {
+    return '{…}';
+  }
 };
 
 function parseDefault(m: Member): unknown {

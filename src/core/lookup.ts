@@ -220,7 +220,7 @@ export function markdownReference(): string {
       if (claudeNote(m)) out.push(`_✎ ${claudeNote(m)}${verifiedText(e.path, 'doc', m.docBy === 'claude')}_`);
       if (m.practice) out.push(`In practice (AI-written): ${m.practice}`, `_✎ ${practiceNote(m)}${hubUseText(m) ? ` ${hubUseText(m)}.` : ''}${verifiedText(e.path, 'practice', true)}_`);
       if (m.byEngine) out.push(m.byEngine);
-      if (m.example) out.push('Example' + (exampleSource(m) ? ` (${exampleSource(m)})` : '') + ': `' + m.example + '`');
+      if (m.example) out.push('Example' + (exampleSource(m) ? ` (${exampleSource(m)})` : '') + ':', '```js', prettyCode(m.example), '```');
       out.push('');
     }
   }

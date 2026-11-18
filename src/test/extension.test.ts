@@ -204,7 +204,10 @@ test('Try it panel: simulates the active handler; toggle buttons, only our own s
   assert.doesNotThrow(() => new Function(script), 'the panel\'s script parses');
   // A button's message changes the settings like the command does.
   panel.__onMessage!({ type: 'set', change: { players: 3 } });
-  await tick(); await tick();
+  // The render runs in the worker: wait for it (bounded), not for a fixed time.
+  for (let i = 0; i < 250 && !/all 3 players/.test(panel.webview.html); i++) await new Promise((r) => setTimeout(r, 20));
+  assert.match(panel.webview.html, /all 3 players/);
+  await run('splitscreenme.tryItSet', { players: 2.5 }); // not a whole number: ignored
   assert.match(panel.webview.html, /all 3 players/);
   await run('splitscreenme.tryItSet', { players: 4 });
   assert.match(panel.webview.html, /all 4 players/);
@@ -383,6 +386,16 @@ test('New Handler: one guided flow with steps and Back, saving <Name>.js with it
   m.__answers.push('Other', undefined);
   await m.__registered.commands.find((c: any) => c.id === 'splitscreenme.newHandler').fn();
   assert.ok(!fs.existsSync(path.join(dir, 'Other.js')));
+  // A refused executable name (not .exe, or a tab in it) keeps the box open for a corrected one.
+  m.__inputs.length = 0;
+  m.__answers.push('Third', 'bad', 'My\tGame.exe', 'Third.exe', '', [], ['handlers']);
+  await m.__registered.commands.find((c: any) => c.id === 'splitscreenme.newHandler').fn();
+  assert.match(fs.readFileSync(path.join(dir, 'Third.js'), 'utf8'), /Game\.ExecutableName = "Third\.exe";/);
+  // A file where the handler's folder goes: nothing is written.
+  fs.writeFileSync(path.join(dir, 'Fourth'), 'x');
+  m.__answers.push('Fourth', 'Fourth.exe', '', [], ['handlers']);
+  await m.__registered.commands.find((c: any) => c.id === 'splitscreenme.newHandler').fn(); // (the error is shown)
+  assert.ok(!fs.existsSync(path.join(dir, 'Fourth.js')));
   m.workspace.workspaceFolders = undefined;
 });
 
@@ -419,7 +432,12 @@ test('Docs panel: 👍/👎 per part as command links; a second click is shown a
   const { voteSection } = await import('../docspanel');
   const html = voteSection('Game.KillMutex', [{ part: 'doc', label: 'The doc' }, { part: 'practice', label: '"In practice" (AI-written)' }], { 'doc/Game.KillMutex': 'up' }, true);
   assert.equal((html.match(/command:splitscreenme\.docsVote\?/g) ?? []).length, 4);
-  assert.match(html, /class="vote on"[^>]*aria-pressed="true"[^>]*title="You said: Right/);
+  assert.match(html, /class="vote on"[^>]*aria-label="The doc: you said Right\. Activate to take it back"[^>]*title="You said: Right/);
+  assert.doesNotMatch(html, /role="button"/, 'links, as they behave (no script for Space)');
+  // Markdown (Search text is in it) never renders the vote command; docs links still work.
+  const { fallbackMarkdown } = await import('../docspanel');
+  assert.doesNotMatch(fallbackMarkdown('[x](command:splitscreenme.docsVote?%5B%22a%22%5D)'), /href/);
+  assert.match(fallbackMarkdown('[x](command:splitscreenme.showDocs?%5B%22a%22%5D)'), /href="command:splitscreenme\.showDocs\?/);
   assert.match(voteSection('Game.KillMutex', [{ part: 'doc', label: 'The doc' }], {}, false), /telemetry is off/);
   assert.equal(voteSection('Game.KillMutex', [], {}, true), '');
 });

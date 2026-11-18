@@ -1,6 +1,7 @@
 // New Handler as one guided flow: a single quick input that goes step by step (with its step count and a Back
 // button), then saves <Name>.js with its <Name>/ folder (Game.Folder) where you pick. Escape at any step stops.
 import * as vscode from 'vscode';
+import fs from 'node:fs';
 import { FEATURES, renderHandler, toHandlerFileName, validateGameName, type Feature } from './core/templates';
 import { log } from './log';
 
@@ -15,7 +16,7 @@ export interface NewHandlerAnswers {
   features: Feature[];
 }
 
-const validateExe = (v: string) => (/^[^\\/:*?"<>|]+\.exe$/i.test(v.trim()) ? undefined : 'Enter a file name ending in .exe');
+const validateExe = (v: string) => (/^[^\\/:*?"<>|\u0000-\u001f]+\.exe$/i.test(v.trim()) ? undefined : 'Enter a file name ending in .exe (no tabs or other control characters)');
 const validateSteamId = (v: string) => (!v.trim() || /^\d+$/.test(v.trim()) ? undefined : 'Digits only');
 
 function inputStep(o: { step: number; total: number; prompt: string; placeholder?: string; value: string; validate: (v: string) => string | undefined }): Promise<string | Back | undefined> {
@@ -137,14 +138,25 @@ export async function newHandler() {
   }
   const name = toHandlerFileName(r.answers.gameName);
   const file = vscode.Uri.joinPath(r.folder, `${name}.js`);
-  const exists = await vscode.workspace.fs.stat(file).then(() => true, () => false);
-  if (exists) {
-    const ok = await vscode.window.showWarningMessage(`${name}.js is already in ${r.folder.fsPath}. Replace it?`, { modal: true }, 'Replace');
-    if (ok !== 'Replace') return;
-  }
-  await vscode.workspace.fs.writeFile(file, Buffer.from(content, 'utf8'));
-  // Game.Folder: the files the handler brings along (configs, DLLs) go here, and Package puts them in the .nc.
+  const askReplace = async () => (await vscode.window.showWarningMessage(`${name}.js is already in ${r.folder!.fsPath}. Replace it?`, { modal: true }, 'Replace')) === 'Replace';
+  let replace = await vscode.workspace.fs.stat(file).then(() => true, () => false);
+  if (replace && !(await askReplace())) return;
+  // Game.Folder: the files the handler brings along (configs, DLLs) go here, and Package puts them in the .nc. Made
+  // first, so a file of that name stops it before the script is written.
   await vscode.workspace.fs.createDirectory(vscode.Uri.joinPath(r.folder, name));
+  if (file.scheme === 'file') {
+    // Never replace without the OK: a file that appeared since (a sync client) is asked about too.
+    for (;;) {
+      try {
+        await fs.promises.writeFile(file.fsPath, content, { encoding: 'utf8', flag: replace ? 'w' : 'wx' });
+        break;
+      } catch (e: any) {
+        if (e?.code !== 'EEXIST' || replace) throw e;
+        if (!(await askReplace())) return;
+        replace = true;
+      }
+    }
+  } else await vscode.workspace.fs.writeFile(file, Buffer.from(content, 'utf8'));
   log.info(`New handler: ${file.fsPath} and ${name}/`);
   await vscode.window.showTextDocument(file);
 }

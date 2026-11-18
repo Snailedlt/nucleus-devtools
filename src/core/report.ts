@@ -41,7 +41,7 @@ export function handlerOrigin(code: string | undefined, known: Partial<HandlerOr
   const text = code ?? '';
   const id = text.match(/^\s*Hub\.Handler\.Id\s*=\s*["']([^"'\r\n]+)["']/m)?.[1];
   const version = text.match(/^\s*Hub\.Handler\.Version\s*=\s*["']?([\w.-]+)/m)?.[1];
-  const name = text.match(/^\s*Game\.GameName\s*=\s*["']([^"'\r\n]+)["']/m)?.[1];
+  const name = text.match(/^\s*Game\.GameName\s*=\s*(?:"([^"\r\n]+)"|'([^'\r\n]+)')/m)?.slice(1, 3).find((x) => x !== undefined);
   const o: HandlerOrigin = { kind: id ? 'hub' : 'own', ...known };
   if (id && !o.hubId) o.hubId = id;
   if (version && !o.hubVersion) o.hubVersion = version;
@@ -270,6 +270,10 @@ export function buildReport(r: ReportInput): Report {
     }
   };
   fit(7000);
+  // Still too long (a long goal in a script with long encodings): the other fields too, never the details.
+  for (const k of ['goal', 'idea', ...Object.keys(f).filter((k) => k !== 'context')]) { // (the details keep their checksum)
+    for (let i = 0; i < 6 && f[k] && f[k].length > 40 && size() > 7000; i++) f[k] = cut(f[k], Math.max(40, Math.floor(f[k].length * (7000 / size()) * 0.8)));
+  }
   const url = formUrl(form.repo, fileOf(key), title, f);
   return { repo: form.repo, template: fileOf(key), title, fields: f, url, text: reportText(key, title, f), search, details };
 }
@@ -365,7 +369,7 @@ export const HANDLER_OR_TOOLS = {
 export interface SimLike {
   loaded: boolean;
   loadError?: string;
-  sessionEnded?: unknown;
+  sessionEnded?: { player: number; reason: string } | unknown;
   players: { index: number; window: string; startArguments?: string; effects: string[]; error?: string }[];
   ignored?: string[];
 }
@@ -373,7 +377,10 @@ export interface SimLike {
 export function simSummary(r: SimLike, o: { players: number; keyboard?: string; resolution?: string } = { players: r.players.length }): string {
   const head = `Try it: ${o.players} player${o.players === 1 ? '' : 's'}${o.resolution ? `, ${o.resolution}` : ''}${o.keyboard ? `, keyboard: ${o.keyboard}` : ''}`;
   if (!r.loaded) return `${head}\nThe handler doesn't load: ${one(r.loadError ?? '?', 200)}`;
-  const lines = [head, ...(r.sessionEnded ? ['The session ends (an error in Game.Play or a callback).'] : [])];
+  // Which callback failed and why, before the players (a long list must not push it out).
+  const ended = r.sessionEnded as { player?: number; reason?: string } | undefined;
+  const where = ended && typeof ended.player === 'number' ? (ended.player >= 0 ? `Game.Play (player ${ended.player + 1})` : 'Game.OnFinishedSetup') : 'Game.Play or a callback';
+  const lines = [head, ...(ended ? [`The session ends: an error in ${where}${typeof ended.reason === 'string' ? `: ${one(ended.reason, 200)}` : ''}.`] : [])];
   for (const p of r.players) {
     lines.push(`Player ${p.index + 1}: ${one(p.window, 100)}${p.startArguments ? ` · args: ${one(p.startArguments, 160)}` : ''}${p.error ? ` · error: ${one(p.error, 160)}` : ''}`);
     for (const e of p.effects.slice(0, 6)) lines.push(`  - ${one(e, 140)}`);

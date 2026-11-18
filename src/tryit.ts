@@ -45,8 +45,10 @@ const SCRIPT = `(function () {
     how.open = !!st.how;
     how.addEventListener('toggle', function () { st.how = how.open; save(); });
   }
-  // Only right after a click here: a re-render while you type in the editor never takes the focus.
-  if (st.focus && Date.now() - (st.at || 0) < 5000) {
+  // Only after a click here, while the focus stayed in the panel (however long Test all takes): once you move to
+  // the editor, a re-render never takes the focus.
+  window.addEventListener('blur', function () { st.focus = undefined; save(); });
+  if (st.focus) {
     var el = Array.prototype.filter.call(document.querySelectorAll('[data-id]'), function (x) { return x.getAttribute('data-id') === st.focus; })[0];
     if (el) el.focus();
   }
@@ -54,7 +56,7 @@ const SCRIPT = `(function () {
   document.addEventListener('click', function (e) {
     var b = e.target && e.target.closest ? e.target.closest('button[data-msg]') : null;
     if (!b) return;
-    st.focus = b.getAttribute('data-id'); st.at = Date.now(); save();
+    st.focus = b.getAttribute('data-id'); save();
     vscode.postMessage(JSON.parse(b.getAttribute('data-msg')));
   });
 })();`;
@@ -157,13 +159,19 @@ function renderMatrix(m: MatrixResult): string {
 }
 
 /** Registers the Try it command and its panel. */
+/** Whole numbers in range (a stored 2.5 players would break every render). */
+const validState = (s: TryItState) =>
+  Number.isInteger(s.players) && s.players >= 1 && s.players <= 16 && Number.isInteger(s.width) && s.width > 0 && Number.isInteger(s.height) && s.height > 0 &&
+  Number.isInteger(s.keyboardPlayer) && (s.keyboardPlayer >= -1 || s.keyboardPlayer === EVERY_KEYBOARD) && s.keyboardPlayer < s.players;
+
 export function registerTryIt(context: vscode.ExtensionContext, isHandler: (doc: vscode.TextDocument) => boolean) {
   let panel: vscode.WebviewPanel | undefined;
   let doc: vscode.TextDocument | undefined;
   let timer: NodeJS.Timeout | undefined;
-  let state: TryItState = { ...DEFAULT_STATE, ...context.workspaceState?.get<Partial<TryItState>>(STATE_KEY, {}) };
+  const saved: TryItState = { ...DEFAULT_STATE, ...context.workspaceState?.get<Partial<TryItState>>(STATE_KEY, {}) };
+  let state: TryItState = validState(saved) ? saved : { ...DEFAULT_STATE };
   let matrix: MatrixResult | undefined; // the last "Test all combinations", until the handler changes
-  let shown: { r: SimResult; state: TryItState } | undefined; // what the panel shows, for "Nucleus did something different"
+  let shown: { r: SimResult; state: TryItState; uri: string } | undefined; // what the panel shows (and for which handler), for "Nucleus did something different"
   // Shows the Try it button in the editor title bar only for handlers.
   const markHandler = (e: vscode.TextEditor | undefined) => void vscode.commands.executeCommand('setContext', 'splitscreenme.isHandler', !!e && isHandler(e.document));
   markHandler(vscode.window.activeTextEditor);
@@ -194,7 +202,7 @@ export function registerTryIt(context: vscode.ExtensionContext, isHandler: (doc:
     }
     if (mine !== run || !panel || doc !== d) return;
     stuck = isTimeout(r) ? key : undefined;
-    shown = { r, state: { ...state } };
+    shown = { r, state: { ...state }, uri: d.uri.toString() };
     panel.webview.html = renderTryIt(r, state, title, matrix, randomBytes(16).toString('base64'));
   };
   const schedule = (delay = 400) => {
@@ -226,10 +234,11 @@ export function registerTryIt(context: vscode.ExtensionContext, isHandler: (doc:
         panel.webview.onDidReceiveMessage((m: TryItMessage) => {
           if (m?.type === 'set' && m.change && typeof m.change === 'object') void vscode.commands.executeCommand(SET, m.change);
           else if (m?.type === 'testAll') void vscode.commands.executeCommand(TEST_ALL);
-          else if (m?.type === 'report' && shown && doc) {
+          else if (m?.type === 'report' && shown) {
+            // The handler the result on screen came from (the panel may already be on its way to another).
             const st = shown.state;
             const keyboard = st.keyboardPlayer === EVERY_KEYBOARD ? 'each player their own' : st.keyboardPlayer < 0 ? 'nobody' : `player ${st.keyboardPlayer + 1}`;
-            void vscode.commands.executeCommand(REPORT_TRY_IT, { uri: doc.uri.toString(), sim: simSummary(shown.r, { players: st.players, resolution: `${st.width}×${st.height}`, keyboard }) });
+            void vscode.commands.executeCommand(REPORT_TRY_IT, { uri: shown.uri, sim: simSummary(shown.r, { players: st.players, resolution: `${st.width}×${st.height}`, keyboard }) });
           }
         }, null, context.subscriptions);
         panel.onDidDispose(() => ((panel = undefined), run?.abort(), stopMatrix()), null, context.subscriptions);
@@ -243,15 +252,18 @@ export function registerTryIt(context: vscode.ExtensionContext, isHandler: (doc:
       // Only the four numbers, whoever sent them.
       const pick = (k: keyof TryItState) => (typeof change?.[k] === 'number' ? { [k]: change[k] } : {});
       const next: TryItState = { ...state, ...pick('players'), ...pick('keyboardPlayer'), ...pick('width'), ...pick('height') };
+      if (!validState(next)) return;
       if (!(next.players >= 1 && next.players <= 16) || !(next.width > 0 && next.height > 0) || (next.keyboardPlayer < -1 && next.keyboardPlayer !== EVERY_KEYBOARD) || next.keyboardPlayer >= next.players) return;
       state = next;
       void context.workspaceState?.update(STATE_KEY, state);
       return render();
     }),
     vscode.commands.registerCommand(TEST_ALL, async () => {
-      // From the palette with no Try it panel yet: open it on the handler first.
+      // From the palette with no Try it panel yet: open it on the handler first; an open one comes to the front.
       if (!panel || !doc) await open();
-      if (!doc) return;
+      else panel.reveal(undefined, true);
+      // Closed (or moved to another handler) while it opened: don't start.
+      if (!panel || !doc) return;
       const d = doc;
       const code = d.getText();
       const plugins = d.isUntitled ? undefined : pluginsFor(d.fileName);

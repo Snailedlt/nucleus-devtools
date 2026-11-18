@@ -698,9 +698,10 @@ static void start() {
           [](const Value&) {
             ready = true;
             notify("initialized", Value(Object{}));
+            // The current document first: a request queued meanwhile (a report) is about it.
+            openCurrent();
             for (auto& b : queued) write(b);
             queued.clear();
-            openCurrent();
           },
           true);
 }
@@ -1466,23 +1467,34 @@ static void needHandler() { MessageBoxW(npp._nppHandle, L"Open a handler (.js) f
 // Reports (Report a problem, Request a feature, "This check is wrong" in Alt+Enter): the server's nucleus.report fills
 // the form and lists the ways on (possible duplicates, GitHub, copy for Discord, the handler's Hub page); the plugin
 // only shows them as a menu and opens the chosen link.
-static void copyText(const std::string& text) {
+// True only when the clipboard now holds the text. The buffer is ready before the old contents are cleared.
+static bool copyText(const std::string& text) {
   std::wstring w = wide(text);
-  if (!OpenClipboard(npp._nppHandle)) return;
-  EmptyClipboard();
   HGLOBAL g = GlobalAlloc(GMEM_MOVEABLE, (w.size() + 1) * sizeof(wchar_t));
-  if (g) {
-    memcpy(GlobalLock(g), w.c_str(), (w.size() + 1) * sizeof(wchar_t));
-    GlobalUnlock(g);
-    if (!SetClipboardData(CF_UNICODETEXT, g)) GlobalFree(g);
+  if (!g) return false;
+  void* p = GlobalLock(g);
+  if (!p) {
+    GlobalFree(g);
+    return false;
   }
+  memcpy(p, w.c_str(), (w.size() + 1) * sizeof(wchar_t));
+  GlobalUnlock(g);
+  if (!OpenClipboard(npp._nppHandle)) {
+    GlobalFree(g);
+    return false;
+  }
+  EmptyClipboard();
+  bool ok = SetClipboardData(CF_UNICODETEXT, g) != nullptr;
+  if (!ok) GlobalFree(g);
   CloseClipboard();
+  return ok;
 }
 static void runReport(const Value& args) {
   if (!lsp::running) lsp::start();
   if (!lsp::running) {
-    // No ncdev yet: the tools' form, for the plugin.
-    ShellExecuteW(npp._nppHandle, L"open", L"https://github.com/Snailedlt/splitscreenme-vscode/issues/new?template=tester-feedback.yml&area=Notepad%2B%2B+plugin", nullptr, nullptr, SW_SHOWNORMAL);
+    // No ncdev yet: the tools' form, for the plugin (a feature request's own form for a feature).
+    bool feature = args.isObj() && args["kind"].isStr() && args["kind"].str() == "feature";
+    ShellExecuteW(npp._nppHandle, L"open", feature ? L"https://github.com/Snailedlt/splitscreenme-vscode/issues/new?template=feature-request.yml" : L"https://github.com/Snailedlt/splitscreenme-vscode/issues/new?template=tester-feedback.yml&area=Notepad%2B%2B+plugin", nullptr, nullptr, SW_SHOWNORMAL);
     return;
   }
   Object o = args.isObj() ? *args.o : Object{};
@@ -1500,7 +1512,11 @@ static void runReport(const Value& args) {
     int i = pickAtCaret(h, titles);
     if (i < 0) return;
     if (cs[i]["copy"].isStr()) {
-      copyText(cs[i]["copy"].str());
+      // Not copied (another program has the clipboard open): don't send them to paste something else.
+      if (!copyText(cs[i]["copy"].str())) {
+        status(L"Nucleus: couldn't copy the report (the clipboard is busy): try again");
+        return;
+      }
       status(L"Nucleus: report copied, paste it on Discord");
     }
     ShellExecuteW(npp._nppHandle, L"open", wide(cs[i]["url"].str()).c_str(), nullptr, nullptr, SW_SHOWNORMAL);

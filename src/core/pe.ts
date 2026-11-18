@@ -1,7 +1,7 @@
 // Reads a Windows program or DLL (PE32 and PE32+): its imports (normal and delay-loaded), its exports, whether it can
 // start other programs, and names written in it as text. Pure (no Node, no DOM APIs beyond TextDecoder): shared by
 // ncdev, VS Code, `ncdev lsp` and the workbench. Bounds-checked: a damaged file gives fewer results, never a crash.
-// Tests: src/test/pe.test.ts (MinGW-built fixtures in src/test/fixtures/pe/).
+// Tests: src/test/importhooks.test.ts (MinGW-built fixtures in src/test/fixtures/pe/).
 
 export interface PeImport {
   dll: string;
@@ -37,6 +37,10 @@ export const XINPUT_DLLS = ['xinput1_4.dll', 'xinput1_3.dll', 'xinput1_2.dll', '
 export const RT_NAMES = [...XINPUT_DLLS, 'dinput8.dll', 'hid.dll', 'SDL_GAMECONTROLLERCONFIG'];
 /** Files larger than this are only read for their tables, not searched as text. */
 export const TEXT_SCAN_LIMIT = 80e6;
+
+/** Most import, thunk and export records one file may decode in all (normal and delay imports and exports together):
+ *  a damaged or hostile file can point its tables at the same data again and again. Real games stay far below it. */
+export const PE_WORK_LIMIT = 200_000;
 
 export class NotAProgram extends Error {}
 
@@ -79,25 +83,37 @@ export function parsePE(input: Uint8Array | ArrayBuffer, fileName: string): PeFi
   const pe = u32(0x3c);
   if (pe + 24 > n || u32(pe) !== 0x4550) throw new NotAProgram('not a Windows program or DLL');
   const machine = u16(pe + 4), nsec = u16(pe + 6), optSize = u16(pe + 20), chars = u16(pe + 22), opt = pe + 24;
-  const is64 = u16(opt) === 0x20b;
+  const magic = u16(opt);
+  if (magic !== 0x10b && magic !== 0x20b) throw new NotAProgram('not a Windows program or DLL');
+  const is64 = magic === 0x20b;
+  const optEnd = Math.min(opt + optSize, n);
   const imageBase = is64 ? Number(u64(opt + 24)) : u32(opt + 28);
   const nDD = u32(opt + (is64 ? 108 : 92)), ddOff = opt + (is64 ? 112 : 96);
-  const dd = (i: number) => (i < nDD ? { rva: u32(ddOff + i * 8), size: u32(ddOff + i * 8 + 4) } : { rva: 0, size: 0 });
+  // A directory entry counts only inside the declared optional header (and the file).
+  const dd = (i: number) => (i < nDD && ddOff + i * 8 + 8 <= optEnd ? { rva: u32(ddOff + i * 8), size: u32(ddOff + i * 8 + 4) } : { rva: 0, size: 0 });
+  const headers = Math.min(u32(opt + 60), n);
   const secs: { va: number; vs: number; raw: number; rs: number }[] = [];
   for (let i = 0, s = opt + optSize; i < Math.min(nsec, 96); i++, s += 40) secs.push({ va: u32(s + 12), vs: u32(s + 8), raw: u32(s + 20), rs: u32(s + 16) });
-  const off = (rva: number) => {
+  // An RVA to its file offset and the end of the file-backed bytes it is in: only the bytes a section has in the file
+  // (not its zero-filled tail), or the headers. Anything else is -1.
+  const at = (rva: number): [number, number] => {
     for (const s of secs) {
       if (rva >= s.va && rva < s.va + Math.max(s.vs, s.rs)) {
-        const o = rva - s.va + s.raw;
-        return o < n ? o : -1;
+        if (rva - s.va >= s.rs) return [-1, -1];
+        const o = rva - s.va + s.raw, end = Math.min(s.raw + s.rs, n);
+        return o < end ? [o, end] : [-1, -1];
       }
     }
-    return rva < n ? rva : -1;
+    return rva < headers ? [rva, headers] : [-1, -1];
   };
+  const off = (rva: number) => at(rva)[0];
+  // One budget for every record decoded from this file.
+  let work = 0;
+  const spend = () => ++work <= PE_WORK_LIMIT;
   const str = (rva: number) => {
-    let o = off(rva), out = '';
+    let [o, end] = at(rva), out = '';
     if (o < 0) return '';
-    while (o < n && out.length < 300) {
+    while (o < end && out.length < 300) {
       const c = bytes[o++];
       if (!c) break;
       out += String.fromCharCode(c);
@@ -108,9 +124,9 @@ export function parsePE(input: Uint8Array | ArrayBuffer, fileName: string): PeFi
   const ordFlag = is64 ? 1n << 63n : 1n << 31n;
   const thunks = (rva: number) => {
     const out: PeImport['fns'] = [];
-    let o = off(rva);
+    let [o, end] = at(rva);
     if (o < 0) return out;
-    for (let k = 0; k < 20000 && o + step <= n; k++, o += step) {
+    for (let k = 0; k < 20000 && o + step <= end && spend(); k++, o += step) {
       const v = is64 ? u64(o) : BigInt(u32(o));
       if (v === 0n) break;
       out.push(v & ordFlag ? { ord: Number(v & 0xffffn) } : { name: str(Number(v & 0x7fffffffn) + 2) });
@@ -121,7 +137,7 @@ export function parsePE(input: Uint8Array | ArrayBuffer, fileName: string): PeFi
   const id = dd(1);
   if (id.rva) {
     let o = off(id.rva);
-    for (let k = 0; o >= 0 && k < 2000 && o + 20 <= n; k++, o += 20) {
+    for (let k = 0; o >= 0 && k < 2000 && o + 20 <= n && spend(); k++, o += 20) {
       const oft = u32(o), nameRva = u32(o + 12), ft = u32(o + 16);
       if (!oft && !nameRva && !ft) break;
       imports.push({ dll: str(nameRva), fns: thunks(oft || ft), delay: false });
@@ -130,7 +146,7 @@ export function parsePE(input: Uint8Array | ArrayBuffer, fileName: string): PeFi
   const dl = dd(13);
   if (dl.rva) {
     let o = off(dl.rva);
-    for (let k = 0; o >= 0 && k < 2000 && o + 32 <= n; k++, o += 32) {
+    for (let k = 0; o >= 0 && k < 2000 && o + 32 <= n && spend(); k++, o += 32) {
       const attr = u32(o), nameP = u32(o + 4), intP = u32(o + 16);
       if (!nameP && !intP) break;
       const fix = (p: number) => (attr & 1 ? p : p - imageBase); // old-style delay descriptors hold VAs
@@ -145,23 +161,29 @@ export function parsePE(input: Uint8Array | ArrayBuffer, fileName: string): PeFi
     if (o >= 0) {
       exportName = str(u32(o + 12));
       const base = u32(o + 16), nf = u32(o + 20), nn = u32(o + 24), af = u32(o + 28), an = u32(o + 32), ao = u32(o + 36);
-      const named = new Map<number, string>();
-      for (let i = 0; i < Math.min(nn, 50000); i++) {
+      // Several names can share one address-table entry: keep each.
+      const named = new Map<number, string[]>();
+      for (let i = 0; i < Math.min(nn, 50000) && spend(); i++) {
         const nmo = off(an + i * 4), oro = off(ao + i * 2);
         if (nmo < 0 || oro < 0) break;
-        named.set(u16(oro), str(u32(nmo)));
+        const k = u16(oro);
+        named.set(k, [...(named.get(k) ?? []), str(u32(nmo))]);
       }
-      for (let i = 0; i < Math.min(nf, 50000); i++) {
+      for (let i = 0; i < Math.min(nf, 50000) && spend(); i++) {
         const fo = off(af + i * 4);
         if (fo < 0) break;
         const r = u32(fo);
         if (!r) continue;
-        exports.push({ ord: base + i, name: named.get(i) || '', fwd: r >= ed.rva && r < ed.rva + ed.size ? str(r) : '' });
+        const fwd = r >= ed.rva && r < ed.rva + ed.size ? str(r) : '';
+        for (const name of named.get(i) ?? ['']) exports.push({ ord: base + i, name, fwd });
       }
     }
   }
   const dll = !!(chars & 0x2000);
   const starts = imports.some((im) => im.fns.some((x) => /^(CreateProcess(As\w+)?[AW]?|ShellExecute(Ex)?[AW]|WinExec)$/.test(x.name || '')));
   const scan = n < TEXT_SCAN_LIMIT;
-  return { fileName, size: n, is64, machine, dll, imports, exports, exportName, starts, mentions: !dll && starts && scan ? exeMentions(bytes) : [], rt: scan ? runtimeNames(bytes) : [] };
+  // A DLL named in the import table is an import, not a load while running.
+  const imported = new Set(imports.map((im) => im.dll.toLowerCase()));
+  const rt = scan ? runtimeNames(bytes).filter((x) => !imported.has(x.toLowerCase())) : [];
+  return { fileName, size: n, is64, machine, dll, imports, exports, exportName, starts, mentions: !dll && starts && scan ? exeMentions(bytes) : [], rt };
 }

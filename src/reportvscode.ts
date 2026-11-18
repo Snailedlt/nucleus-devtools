@@ -10,10 +10,14 @@ import * as vscode from 'vscode';
 import { buildReport, DISCORD_THREAD, findDuplicates, handlerHelp, handlerOrigin, HANDLER_OR_TOOLS, CHECK_VERDICTS, type ReportInput } from './core/report';
 import { REPORT_TRY_IT } from './tryit';
 
+/** Opens a link as the text it is: Uri.parse would decode the form's query (an "&" in a field would cut it short),
+ *  and VS Code's opener takes the string as is. */
+const openUrl = (url: string) => vscode.env.openExternal(url as unknown as vscode.Uri);
+
 export const REPORT_COMMANDS = { problem: 'splitscreenme.reportProblem', feature: 'splitscreenme.requestFeature', check: 'splitscreenme.reportCheck', tryIt: REPORT_TRY_IT } as const;
 
 /** What a "This check is wrong" code action passes. */
-export interface CheckArgs { uri: string; rule: string; message: string; startLine: number; endLine: number }
+export interface CheckArgs { uri: string; rule: string; message: string; startLine: number; endLine: number; /** The document's version the lines are from. */ version?: number }
 
 let extVersion = '';
 function details(): string[] {
@@ -36,7 +40,7 @@ async function toolsOrHandler(code: string | undefined): Promise<'tools' | 'hand
   if (pick?.value !== 'handler') return pick?.value;
   const help = handlerHelp(o);
   const link = await vscode.window.showQuickPick(help.links.map((l) => ({ label: l.label, detail: l.url, url: l.url })), { title: help.title, placeHolder: help.note });
-  if (link) void vscode.env.openExternal(vscode.Uri.parse(link.url));
+  if (link) void openUrl(link.url);
   return 'handler';
 }
 
@@ -50,7 +54,7 @@ async function send(input: ReportInput) {
       { title: 'Is it one of these?', placeHolder: 'Open reports that may be the same' },
     );
     if (!pick) return;
-    if (pick.url) return void vscode.env.openExternal(vscode.Uri.parse(pick.url));
+    if (pick.url) return void openUrl(pick.url);
   }
   const how = await vscode.window.showQuickPick(
     [
@@ -60,7 +64,7 @@ async function send(input: ReportInput) {
     { title: r.title || (input.kind === 'feature' ? 'Request a feature' : input.kind === 'check' ? 'This check is wrong' : 'Report a problem'), placeHolder: 'You see everything before it is sent' },
   );
   if (!how) return;
-  if (how.value === 'github') return void vscode.env.openExternal(vscode.Uri.parse(r.url));
+  if (how.value === 'github') return void openUrl(r.url);
   await vscode.env.clipboard.writeText(r.text);
   void vscode.env.openExternal(vscode.Uri.parse(DISCORD_THREAD));
   void vscode.window.showInformationMessage("Copied the report. Paste it in the testers' Discord thread.");
@@ -79,6 +83,11 @@ export function registerReports(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand(REPORT_COMMANDS.check, async (a?: CheckArgs) => {
       if (!a?.rule) return vscode.commands.executeCommand(REPORT_COMMANDS.problem);
       const doc = docFor(a.uri);
+      // Lines from another version of the text (edited since the action was made) would be other code: left out.
+      if (doc && a.version !== undefined && a.version !== doc.version) {
+        vscode.window.setStatusBarMessage('Nucleus: the handler changed since: open "This check is wrong…" again on the checked line', 5000);
+        return;
+      }
       const code = doc ? Array.from({ length: Math.min(a.endLine, a.startLine + 19) - a.startLine + 1 }, (_, i) => doc.lineAt(Math.min(doc.lineCount - 1, a.startLine + i)).text).join('\n') : '';
       const verdict = await vscode.window.showQuickPick(CHECK_VERDICTS.map((v) => ({ label: v })), { title: `This check is wrong: ${a.rule}`, placeHolder: a.message.replace(/`/g, '') });
       if (!verdict) return;

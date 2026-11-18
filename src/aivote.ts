@@ -9,7 +9,11 @@ import { DocPart, FEEDBACK_SITE, voteEventPath } from './core/docvotes';
 
 export interface AiVoteResult { ok: boolean; message: string; path?: string; part?: DocPart; vote?: 'up' | 'down' }
 
+/** Parts voted on in this session, and the ones whose vote is on its way (two calls at once never both send). */
 const sent = new Set<string>();
+const sending = new Set<string>();
+/** How long to wait for the counter. */
+const DEADLINE_MS = 8000;
 
 /** Checks the vote (a real member, a part it has) and sends it. `fetchImpl` for tests. */
 export async function sendAiVote(name: string, part: string, vote: string, version: string, fetchImpl: typeof fetch = fetch): Promise<AiVoteResult> {
@@ -22,15 +26,19 @@ export async function sendAiVote(name: string, part: string, vote: string, versi
   if (part === 'practice' && !e.member.practice) return { ok: false, message: `${e.path} has no "In practice" part to vote on.` };
   if (process.env.DO_NOT_TRACK === '1' || process.env.NCDEV_NO_FEEDBACK === '1') return { ok: false, message: 'Not sent: DO_NOT_TRACK or NCDEV_NO_FEEDBACK is set.' };
   const key = `${part}/${e.path}`;
-  if (sent.has(key)) return { ok: true, message: `Already voted on ${key} in this session.`, path: e.path, part, vote };
+  if (sent.has(key) || sending.has(key)) return { ok: true, message: `Already voted on ${key} in this session.`, path: e.path, part, vote };
   const site = (process.env.NCDEV_FEEDBACK_SITE ?? FEEDBACK_SITE).trim();
   if (!/^[a-z0-9-]{2,50}$/.test(site)) return { ok: false, message: `NCDEV_FEEDBACK_SITE ${JSON.stringify(site)} isn't a GoatCounter site code.` };
   const url = `https://${site}.goatcounter.com/count?p=${encodeURIComponent('/' + voteEventPath('ai', part, e.path, vote))}&e=true&rnd=${Math.random().toString(36).slice(2)}`;
+  sending.add(key);
   try {
-    const res = await fetchImpl(url, { headers: { 'User-Agent': `ncdev/${version} (SplitScreen.Me docs AI vote)` } });
+    const res = await fetchImpl(url, { headers: { 'User-Agent': `ncdev/${version} (SplitScreen.Me docs AI vote)` }, signal: AbortSignal.timeout(DEADLINE_MS) });
     if (!res.ok) return { ok: false, message: `The vote counter answered ${res.status}.` };
   } catch (err) {
-    return { ok: false, message: `Could not reach the vote counter: ${(err as Error).message}` };
+    const e = err as Error;
+    return { ok: false, message: e?.name === 'TimeoutError' ? `The vote counter didn't answer within ${DEADLINE_MS / 1000} s; the vote was not sent.` : `Could not reach the vote counter: ${e?.message}` };
+  } finally {
+    sending.delete(key); // a failed vote can be tried again
   }
   sent.add(key);
   return { ok: true, message: `AI vote ${vote === 'up' ? '👍' : '👎'} on ${part === 'doc' ? 'the doc' : 'the "In practice" part'} of ${e.path} sent. It is counted with the AI votes, apart from people's, and shows in the docs after their next build.`, path: e.path, part, vote };

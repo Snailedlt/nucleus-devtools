@@ -18,6 +18,9 @@ export function highlights(changelog: string, version: string): string[] {
     .map((l) => (l.match(/^- \*\*(.+?)\*\*/)?.[1] ?? l.slice(2)).replace(/\.$/, ''));
 }
 
+const REPO_FILES = 'https://github.com/Snailedlt/splitscreenme-vscode/blob/main/';
+const REPO_RAW = 'https://raw.githubusercontent.com/Snailedlt/splitscreenme-vscode/main/';
+
 /** The changelog as What's New shows it: from the installed version down, without "Unreleased" (and anything newer
  *  than this version) or the notes for whoever writes it. Exported for tests. */
 export function whatsNewMarkdown(changelog: string, version: string): string {
@@ -26,8 +29,20 @@ export function whatsNewMarkdown(changelog: string, version: string): string {
   const head = parts[0].trimEnd();
   const sections = parts.slice(1);
   let at = sections.findIndex((p) => p.startsWith(`## ${version} `) || p.startsWith(`## ${version}\n`));
+  // No section of its own: the newest release below this version (never notes for a newer one); for a build
+  // ahead of every release, the newest released.
+  const num = (v: string) => v.split('.').map((x) => parseInt(x, 10) || 0);
+  const below = (a: string, b: string) => {
+    const x = num(a), y = num(b);
+    for (let i = 0; i < 3; i++) if ((x[i] ?? 0) !== (y[i] ?? 0)) return (x[i] ?? 0) < (y[i] ?? 0);
+    return false;
+  };
+  const released = (p: string) => p.match(/^## (\d+\.\d+\.\d+)\b/)?.[1];
+  if (at < 0 && /^\d+\.\d+\.\d+/.test(version)) at = sections.findIndex((p) => !!released(p) && below(released(p)!, version));
   if (at < 0) at = sections.findIndex((p) => !/^## Unreleased/i.test(p)); // a build between releases: the newest released
-  return `${head}\n\n${(at < 0 ? [] : sections.slice(at)).join('').replace(/^---\n+/, '')}`;
+  // The copy is opened from the extension's storage: relative links lead to the repository's files instead.
+  const body = (at < 0 ? [] : sections.slice(at)).join('').replace(/^---\n+/, '').replace(/(!?)\[([^\]]*)\]\((?![a-z][\w+.-]*:|#|\/)([^)\s]+)\)/gi, (_m, img: string, label: string, t: string) => `${img}[${label}](${img ? REPO_RAW : REPO_FILES}${t.replace(/^\.\//, '')})`);
+  return `${head}\n\n${body}`;
 }
 
 export function registerWhatsNew(context: vscode.ExtensionContext) {

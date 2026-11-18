@@ -156,9 +156,24 @@ export class Server {
   private notify(method: string, params: unknown) {
     this.send({ jsonrpc: '2.0', method, params });
   }
-  private request(method: string, params: unknown) {
-    this.send({ jsonrpc: '2.0', id: `nucleus-${this.nextId++}`, method, params });
+  /** A request to the client; the promise gets its result (undefined on an error, or after 60 s without an answer). */
+  private request(method: string, params: unknown): Promise<any> {
+    const id = `nucleus-${this.nextId++}`;
+    const answered = new Promise<any>((resolve) => {
+      const t = setTimeout(() => {
+        this.replies.delete(id);
+        resolve(undefined);
+      }, 60_000);
+      t.unref?.();
+      this.replies.set(id, (r) => {
+        clearTimeout(t);
+        resolve(r);
+      });
+    });
+    this.send({ jsonrpc: '2.0', id, method, params });
+    return answered;
   }
+  private replies = new Map<string, (result: any) => void>();
 
   private applySettings(raw: any) {
     if (!raw || typeof raw !== 'object') return;
@@ -224,11 +239,7 @@ export class Server {
       (diagnostics as unknown[]).push({ range: lines.range({ start: p.start, end: p.end ?? p.start }), severity: SEVERITY[p.severity], code: 'package', codeDescription: { href: RULES_URL }, source: 'nucleus', message: `${p.title}. ${p.why}` });
     }
     // The game folder linked to this handler (settings.gameFolders), if any: problems with their fix as data.
-    const folder = this.gameFolderOf(uri);
-    // The game's program files are read in the background; their hints are published once read.
-    const gdir = this.gameFolderDir(uri);
-    const binaries = gdir && folder ? gameBinariesNow(gdir, () => this.schedule(uri, 0)) : undefined;
-    for (const p of folder ? [...checkAgainstFolder(d.text, folder), ...(binaries ? importProblems(d.text, binaries) : [])] : []) {
+    for (const p of this.folderProblems(d)) {
       (diagnostics as unknown[]).push({ range: lines.range({ start: p.start, end: Math.max(p.end, p.start) }), severity: p.fact ? 4 : SEVERITY[p.severity], code: 'game-folder', source: 'nucleus', message: `${p.title}. ${p.why}`, ...(p.fix ? { data: { fix: p.fix } } : {}) });
     }
     this.notify('textDocument/publishDiagnostics', { uri, ...(closed ? {} : { version: d.version }), diagnostics });
@@ -241,6 +252,17 @@ export class Server {
     }
     for (const old of this.pkgUris.get(uri) ?? []) if (!sent.has(old)) this.notify('textDocument/publishDiagnostics', { uri: old, diagnostics: [] });
     this.pkgUris.set(uri, sent);
+  }
+  /** The linked game folder's problems for this text. The game's program files are read in the background; their
+   *  hints come once read: then the open document is checked again, or a closed workspace handler from disk
+   *  (fromDisk keeps its guards). */
+  private folderProblems(d: Doc) {
+    const uri = d.uri;
+    const folder = this.gameFolderOf(uri);
+    if (!folder) return [];
+    const gdir = this.gameFolderDir(uri);
+    const binaries = gdir ? gameBinariesNow(gdir, () => (this.docs.has(uri) ? this.schedule(uri, 0) : void this.fromDisk(uri))) : undefined;
+    return [...checkAgainstFolder(d.text, folder), ...(binaries ? importProblems(d.text, binaries) : [])];
   }
   private schedule(uri: string, delay = 200) {
     clearTimeout(this.timers.get(uri));
@@ -265,7 +287,15 @@ export class Server {
    *  for the few requests answered off the main thread. */
   handle(msg: any): unknown | Promise<unknown> | undefined {
     const { id, method, params } = msg ?? {};
-    if (method === undefined) return undefined; // a response to one of our requests (applyEdit)
+    if (method === undefined) {
+      // A response to one of our requests (applyEdit, showDocument).
+      const done = typeof id === 'string' ? this.replies.get(id) : undefined;
+      if (done) {
+        this.replies.delete(id);
+        done(msg.error ? undefined : msg.result);
+      }
+      return undefined;
+    }
     const isRequest = id !== undefined && id !== null;
     const failed = (e: any) => {
       if (isCancelled(e)) return isRequest ? { jsonrpc: '2.0', id, error: { code: -32800, message: 'Request cancelled' } } : undefined;
@@ -727,9 +757,13 @@ export class Server {
         if (f) actions.push({ title: f.title, kind: 'quickfix', diagnostics: [cd], isPreferred: true, edit: { changes: { [doc.uri]: f.edits.map((e) => ({ range: l.range(e), newText: e.text })) } } });
       }
     }
-    // Game-folder problems carry their fix (the exe's real name, BinariesFolder…) in `data`.
-    for (const cd of p.context?.diagnostics ?? []) {
-      const f = cd?.code === 'game-folder' ? cd.data?.fix : undefined;
+    // Game-folder problems carry their fix (the exe's real name, BinariesFolder…) in `data`: used only when a fresh
+    // check of the current text still has it, with the fresh offsets (an edit above it moves them).
+    const folderDiags = (p.context?.diagnostics ?? []).filter((cd: any) => cd?.code === 'game-folder' && cd.data?.fix);
+    const freshFolder = folderDiags.length ? this.folderProblems(doc) : [];
+    for (const cd of folderDiags) {
+      const old = cd.data.fix;
+      const f = freshFolder.find((x) => x.fix && `${x.title}. ${x.why}` === cd.message && x.fix.text === old.text && x.fix.title === old.title)?.fix;
       if (f && typeof f.start === 'number') actions.push({ title: f.title, kind: 'quickfix', diagnostics: [cd], isPreferred: true, edit: { changes: { [doc.uri]: [{ range: l.range({ start: f.start, end: f.end }), newText: f.text }] } } } as any);
     }
     // "This check is wrong…": after the fixes, once per check on the line (kind quickfix.report: with the fixes, never
@@ -757,7 +791,14 @@ export class Server {
     const text = doc?.text;
     const lines = text?.split(/\r?\n/) ?? [];
     const from = Number.isInteger(a.line) ? Math.max(0, a.line) : undefined;
-    const code = kind === 'check' && from !== undefined ? lines.slice(from, Math.min(Number.isInteger(a.endLine) ? a.endLine : from, from + 19) + 1).join('\n') : undefined;
+    // The flagged lines only while the check still flags that line of the current text: an action made before an
+    // edit above it would otherwise send other code.
+    const stillFlagged = () => {
+      if (text === undefined || from === undefined || typeof a.rule !== 'string') return false;
+      const lineOf = (o: number) => text.slice(0, o).split('\n').length - 1;
+      return this.lintDoc(doc!).some((x) => x.rule === a.rule && (typeof a.message !== 'string' || x.message === a.message) && lineOf(x.start) === from);
+    };
+    const code = kind === 'check' && from !== undefined && stillFlagged() ? lines.slice(from, Math.min(Number.isInteger(a.endLine) ? a.endLine : from, from + 19) + 1).join('\n') : undefined;
     let sim: string | undefined;
     if (kind === 'tryit' && text !== undefined) {
       const file = pathOf(doc!.uri);
@@ -780,18 +821,25 @@ export class Server {
       handler: text !== undefined ? handlerOrigin(text) : undefined,
     };
     const r = buildReport(input);
+    const withoutCode = code?.trim() ? buildReport({ ...input, code: undefined }).url : r.url;
     const hits = process.env.NCDEV_NO_ISSUE_SEARCH ? [] : await findDuplicates(r, { userAgent: `ncdev/${VERSION}` });
     const help = kind === 'problem' && input.handler?.hubId ? handlerHelp(input.handler) : undefined;
     const choices = [
       ...hits.map((h) => ({ title: `Is it this one? #${h.number} ${h.title} (open it and add a 👍)`, url: h.url })),
       { title: 'Open the report on GitHub (recommended)', url: r.url },
-      ...(code?.trim() ? [{ title: 'Open the report without the flagged code', url: buildReport({ ...input, code: undefined }).url }] : []),
+      ...(code?.trim() ? [{ title: 'Open the report without the flagged code', url: withoutCode }] : []),
       { title: "No GitHub account? Copy the report for the testers' Discord thread", url: DISCORD_THREAD, copy: r.text },
       ...(help ? help.links.map((l) => ({ title: `The problem is in this handler, not the tools: ${l.label}`, url: l.url })) : []),
     ];
     if (!a.choose && this.canShowDocument) {
-      this.request('window/showDocument', { uri: r.url, external: true });
-      this.notify('window/showMessage', { type: 3, message: `Opened the report on GitHub: check it, then submit.${code?.trim() ? ' Remove the flagged code there if you prefer.' : ''}${hits.length ? ` Maybe the same: ${hits.map((h) => h.url).join(' ')}` : ''} No GitHub account? Post it in the testers' Discord thread: ${DISCORD_THREAD}${help ? ` A problem in this handler itself? Ask on its Hub page: ${help.links[0].url}` : ''}` });
+      // Opened without being asked first: never with the flagged code (GitHub would get it before the person chose
+      // to share it). The form says how to add it; the choices (choose) offer the version with the code.
+      const more = `${hits.length ? ` Maybe the same: ${hits.map((h) => h.url).join(' ')}` : ''} No GitHub account? Post it in the testers' Discord thread: ${DISCORD_THREAD}${help ? ` A problem in this handler itself? Ask on its Hub page: ${help.links[0].url}` : ''}`;
+      void this.request('window/showDocument', { uri: withoutCode, external: true }).then((res) =>
+        this.notify('window/showMessage', res?.success
+          ? { type: 3, message: `Opened the report on GitHub: check it, then submit.${code?.trim() ? ' The flagged code was left out: paste it into the form if you want to share it.' : ''}${more}` }
+          : { type: 3, message: `Couldn't open the browser. The report: ${withoutCode}${more}` }),
+      );
     }
     return { title: r.title, url: r.url, text: r.text, choices };
   }

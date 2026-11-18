@@ -13,8 +13,17 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const src = process.argv[2] ?? 'https://raw.githubusercontent.com/Snailedlt/nucleuscoop-handler-testbench/data/votes.json';
-const text = /^https?:/.test(src) ? await (await fetch(src)).text() : fs.readFileSync(src, 'utf8');
+let text;
+if (/^https?:/.test(src)) {
+  const res = await fetch(src);
+  if (!res.ok) throw new Error(`doc-votes: ${src} answered ${res.status}; data/doc-votes.json stays.`);
+  text = await res.text();
+} else text = fs.readFileSync(src, 'utf8');
 const report = JSON.parse(text);
+// Only a real report replaces the snapshot (empty lists are fine: they clear old counts).
+const lists = ['docs', 'practice', 'aiDocs', 'aiPractice'];
+if (!report || typeof report !== 'object' || !lists.some((k) => Array.isArray(report[k])) || lists.some((k) => report[k] !== undefined && !Array.isArray(report[k])))
+  throw new Error('doc-votes: not a votes report (no vote lists); data/doc-votes.json stays.');
 const pairs = (list, part) => (list ?? []).filter((x) => x.up > 0 || x.down > 0).map((x) => [`${part}/${x.id}`, [x.up, x.down]]);
 const sorted = (entries) => Object.fromEntries(entries.sort((a, b) => a[0].localeCompare(b[0])));
 const out = {

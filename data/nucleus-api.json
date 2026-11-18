@@ -536,7 +536,7 @@
       "Unity": 203,
       "Source": 32
      },
-     "practice": "Nucleus sleeps this many seconds after starting an instance, before the next one. A player can override it in the game's profile settings (Pause between instances launch); when that is above 0 it replaces the handler's value. Hub handlers use 30 (237), 25 (145) or 20 (143) most: enough for the game to open its window before the next one starts.",
+     "practice": "Nucleus sleeps this many seconds after starting an instance, before the next one. A player can override it in the game's profile settings (Pause between instances launch); when that is above 0 it replaces the handler's value. Hub handlers use 30 (237), 25 (145) or 20 (136) most: enough for the game to open its window before the next one starts.",
      "practiceBasis": "Nucleus GenericGameHandler.cs (the per-instance start loop: GameProfile.PauseBetweenInstanceLaunch, Thread.Sleep); verified Hub handlers, counted 2026-11-17",
      "exampleIn": "top"
     },
@@ -1475,7 +1475,7 @@
       "Unity": 166,
       "Source": 26
      },
-     "practice": "Nucleus sets up its built-in Goldberg Steam emulator in each instance before `Game.Play` runs, so every instance gets its own Steam id and nickname and the instances can find each other on the local network. Almost every handler that uses it also sets `Game.SteamID` (572 of 575). It's the most used Steam emulation in Hub handlers (575 set it true).",
+     "practice": "Nucleus sets up its built-in Goldberg Steam emulator in each instance before the default `Game.Play` runs (not before it with `Game.GamePlayBeforeGameSetup`, which runs `Game.Play` first), so every instance gets its own Steam id and nickname and the instances can find each other on the local network. Almost every handler that uses it also sets `Game.SteamID` (572 of 575). It's the most used Steam emulation in Hub handlers (575 set it true).",
      "practiceBasis": "Nucleus GenericGameHandler.cs (if gen.UseGoldberg: SteamFunctions.UseGoldberg per instance); verified Hub handlers, counted 2026-11-17",
      "exampleIn": "top"
     },
@@ -5572,7 +5572,7 @@
       "Unity": 158,
       "Source": 17
      },
-     "practice": "Hooks the functions a game uses to ask about focus (GetForegroundWindow, GetActiveWindow, GetFocus, WindowFromPoint, the capture and SetFocus calls), so every instance believes it is the active window. The most used Proto Input hook in Hub handlers: 356 of 537 set it true. Pair it with `Game.ProtoInput.BlockedMessages = [0x0008]` for games that also react to WM_KILLFOCUS.",
+     "practice": "Hooks the functions a game uses to ask about focus (GetForegroundWindow, GetActiveWindow, GetFocus, WindowFromPoint, the capture and SetFocus calls), so every instance believes it is the active window. The most used Proto Input hook in Hub handlers: 357 of 537 set it true. Pair it with `Game.ProtoInput.BlockedMessages = [0x0008]` for games that also react to WM_KILLFOCUS, with `Game.ProtoInput.MessageFilterHook` on (the blocked messages only act inside that hook).",
      "practiceBasis": "ProtoInputHooks FocusHook.cpp (the hooked user32 functions); verified Hub handlers, counted 2026-11-17",
      "exampleIn": "top"
     },
@@ -5931,7 +5931,7 @@
       "Unity": 156,
       "Source": 15
      },
-     "practice": "Window messages the game never sees (Proto Input's message filter hook drops them), so it only works with `Game.ProtoInput.MessageFilterHook` on; 90 Hub handlers list messages without it. The common lists: `[0x0008]` (WM_KILLFOCUS, 309 handlers), so the game doesn't notice losing focus, and `[0x0008, 0x02a3, 0x02a1]` (158), which also blocks WM_MOUSELEAVE and WM_MOUSEHOVER. A number goes through Proto Input's own message table, so only messages in it are blocked.",
+     "practice": "Window messages the game never sees (Proto Input's message filter hook drops them), so it only works with `Game.ProtoInput.MessageFilterHook` on; 90 Hub handlers list messages without it. The common lists: `[0x0008]` (WM_KILLFOCUS, 309 handlers), so the game doesn't notice losing focus, and `[0x0008, 0x02a3, 0x02a1]` (158), which also blocks WM_MOUSELEAVE and WM_MOUSEHOVER. A number goes through Proto Input's own message table: one it doesn't list but within the table's range lands on another message's switch (and blocks that one), and one past its end does nothing, so add only listed messages.",
      "practiceBasis": "ProtoInputHooks MessageFilterHook.cpp, MessageList.cpp (GenerateIndexTable); Nucleus ProtoInputLauncher.cs; verified Hub handlers, counted 2026-11-17",
      "exampleIn": "top"
     },
@@ -6070,7 +6070,7 @@
       "Unity": 160,
       "Source": 14
      },
-     "practice": "Starts Proto Input's focus loop when Nucleus sets the instance up, with the `FocusLoop_…` messages and `FocusLoopIntervalMilliseconds`; those options do nothing without it (18 Hub handlers set them anyway). Many Hub handlers leave it false (311 of 500) and start the loop only while input is locked, with `ProtoInput.StartFocusMessageLoop` in `Game.ProtoInput.OnInputLocked` (283 handlers call it).",
+     "practice": "Starts Proto Input's focus loop when Nucleus sets the instance up, with the `FocusLoop_…` messages and `FocusLoopIntervalMilliseconds`; those options do nothing without it (18 Hub handlers set them anyway). Many Hub handlers leave it false (311 of 500) and start the loop only while input is locked, with `ProtoInput.StartFocusMessageLoop` (247 handlers call it, 206 of them in `Game.ProtoInput.OnInputLocked`).",
      "practiceBasis": "Nucleus ProtoInputLauncher.cs (StartFocusMessageLoop when EnableFocusMessageLoop); verified Hub handlers, counted 2026-11-17",
      "exampleIn": "top"
     },
@@ -6193,7 +6193,6 @@
      "type": "enum:DrawFakeCursor",
      "ts": "Nucleus.DrawFakeCursor | number | boolean",
      "doc": "Enable this for games that don't have an in-game cursor",
-     "example": "Game.ProtoInput.DrawFakeCursor = false;",
      "category": "Proto Input",
      "hubUse": 493,
      "engineUse": {
@@ -6201,6 +6200,9 @@
       "Unity": 148,
       "Source": 16
      },
+     "example": "Game.ProtoInput.DrawFakeCursor = false;",
+     "exampleBy": "hub",
+     "exampleNote": "The most common value in Hub handlers: 341 of the 493 that set it.",
      "exampleIn": "top"
     },
     "AllowFakeCursorOutOfBounds": {
@@ -11603,7 +11605,7 @@
      },
      "practice": "Hub handlers call it in `Game.ProtoInput.OnInputLocked` (352 of them), in a loop over `PlayerList`, so a hook acts only while input is locked, and remove it again with `ProtoInput.UninstallHook` in `Game.ProtoInput.OnInputUnlocked`. The cursor and key state hooks are the usual ones: GetCursorPosHookID, SetCursorPosHookID, GetKeyStateHookID, GetAsyncKeyStateHookID, GetKeyboardStateHookID.",
      "practiceBasis": "Nucleus ProtoInput.cs (InstallHook, ExposedValues); verified Hub handlers, counted 2026-11-17",
-     "example": "ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ProtoInput.Values.GetCursorPosHookID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.InstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.GetCursorPosHookID\n  );\n}",
      "exampleBy": "hub",
      "exampleNote": "The most common call in Hub handlers: 336 of the 352 that use it.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -11640,7 +11642,7 @@
       "Unity": 116,
       "Source": 17
      },
-     "example": "ProtoInput.UninstallHook(player.ProtoInputInstanceHandle, ProtoInput.Values.GetCursorPosHookID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.UninstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.GetCursorPosHookID\n  );\n}",
      "exampleBy": "hub",
      "exampleNote": "The most common call in Hub handlers: 336 of the 352 that use it.",
      "exampleIn": "Game.ProtoInput.OnInputUnlocked"
@@ -11679,7 +11681,7 @@
      },
      "practice": "Turns a message filter on for one instance. It only acts with `Game.ProtoInput.MessageFilterHook` on. Hub handlers call it in `Game.ProtoInput.OnInputLocked` (355) and the matching `ProtoInput.DisableMessageFilter` in `Game.ProtoInput.OnInputUnlocked`; RawInputFilterID and MouseButtonFilterID are the common filters.",
      "practiceBasis": "Nucleus ProtoInput.cs (EnableMessageFilter, ExposedValues); ProtoInputHooks MessageFilterHook.cpp; verified Hub handlers, counted 2026-11-17",
-     "example": "ProtoInput.EnableMessageFilter(player.ProtoInputInstanceHandle, ProtoInput.Values.MouseButtonFilterID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.EnableMessageFilter(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.MouseButtonFilterID\n  );\n}",
      "exampleBy": "hub",
      "exampleNote": "The most common call in Hub handlers: 348 of the 355 that use it.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -11716,7 +11718,7 @@
       "Unity": 116,
       "Source": 17
      },
-     "example": "ProtoInput.DisableMessageFilter(player.ProtoInputInstanceHandle, ProtoInput.Values.MouseButtonFilterID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.DisableMessageFilter(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.MouseButtonFilterID\n  );\n}",
      "exampleBy": "hub",
      "exampleNote": "The most common call in Hub handlers: 349 of the 355 that use it.",
      "exampleIn": "Game.ProtoInput.OnInputUnlocked"
@@ -11749,7 +11751,7 @@
       "Unity": 0,
       "Source": 0
      },
-     "example": "ProtoInput.EnableMessageBlock(player.ProtoInputInstanceHandle, 0x0006);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.EnableMessageBlock(\n    player.ProtoInputInstanceHandle,\n    0x0006\n  );\n}",
      "exampleBy": "hub",
      "exampleNote": "The most common call in Hub handlers: 8 of the 12 that use it.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -11782,7 +11784,7 @@
       "Unity": 0,
       "Source": 0
      },
-     "example": "ProtoInput.DisableMessageBlock(player.ProtoInputInstanceHandle, 0x0006);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.DisableMessageBlock(\n    player.ProtoInputInstanceHandle,\n    0x0006\n  );\n}",
      "exampleBy": "hub",
      "exampleNote": "The most common call in Hub handlers: 8 of the 10 that use it.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -11961,7 +11963,7 @@
       "Unity": 47,
       "Source": 16
      },
-     "practice": "Starts Proto Input's focus loop for one instance from a callback, instead of `Game.ProtoInput.EnableFocusMessageLoop` at setup. The arguments are the instance, the milliseconds between rounds, then whether to send WM_ACTIVATE, WM_NCACTIVATE, WM_ACTIVATEAPP, WM_SETFOCUS and WM_MOUSEACTIVATE. Hub handlers mostly call it in `Game.ProtoInput.OnInputLocked` (206 of 247) and stop it with `ProtoInput.StopFocusMessageLoop` when input unlocks.",
+     "practice": "Starts Proto Input's focus loop for one instance from a callback, instead of `Game.ProtoInput.EnableFocusMessageLoop` at setup. The arguments are the instance, the milliseconds between rounds, then whether to send WM_ACTIVATE, WM_NCACTIVATE, WM_ACTIVATEAPP, WM_SETFOCUS and WM_MOUSEACTIVATE. Hub handlers mostly call it in `Game.ProtoInput.OnInputLocked` (206 of 247; 73 also in `OnInputUnlocked`). 228 call `ProtoInput.StopFocusMessageLoop`, also mostly in `OnInputLocked` (219; 16 in `OnInputUnlocked`).",
      "practiceBasis": "Nucleus ProtoInput.cs (StartFocusMessageLoop); verified Hub handlers, counted 2026-11-17"
     },
     "StopFocusMessageLoop": {
@@ -11989,7 +11991,7 @@
       "Unity": 37,
       "Source": 11
      },
-     "example": "ProtoInput.StopFocusMessageLoop(player.ProtoInputInstanceHandle);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.StopFocusMessageLoop(\n    player.ProtoInputInstanceHandle\n  );\n}",
      "exampleBy": "hub",
      "exampleNote": "The most common call in Hub handlers: 228 of the 228 that use it.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -12028,10 +12030,10 @@
      },
      "practice": "Shows or hides Proto Input's fake cursor in one instance. Hub handlers show it in `Game.ProtoInput.OnInputLocked` (248 call it with true) and hide it in `Game.ProtoInput.OnInputUnlocked` (42 with false), for games that have no cursor of their own.",
      "practiceBasis": "Nucleus ProtoInput.cs (SetDrawFakeCursor); verified Hub handlers, counted 2026-11-17",
-     "example": "ProtoInput.SetDrawFakeCursor(player.ProtoInputInstanceHandle, false);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.SetDrawFakeCursor(\n    player.ProtoInputInstanceHandle,\n    false\n  );\n}",
      "exampleBy": "hub",
      "exampleNote": "The most common call in Hub handlers: 288 of the 290 that use it.",
-     "exampleIn": "Game.ProtoInput.OnInputLocked"
+     "exampleIn": "Game.ProtoInput.OnInputUnlocked"
     },
     "SetDrawFakeCursorFix": {
      "kind": "method",
@@ -12061,7 +12063,7 @@
       "Unity": 0,
       "Source": 0
      },
-     "example": "ProtoInput.SetDrawFakeCursorFix(player.ProtoInputInstanceHandle, false);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.SetDrawFakeCursorFix(\n    player.ProtoInputInstanceHandle,\n    false\n  );\n}",
      "exampleBy": "hub",
      "exampleNote": "The most common call in Hub handlers: 5 of the 5 that use it.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -12686,7 +12688,7 @@
       "Unity": 8,
       "Source": 2
      },
-     "example": "ProtoInput.SetRawInputBypass(player.ProtoInputInstanceHandle, false);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.SetRawInputBypass(\n    player.ProtoInputInstanceHandle,\n    false\n  );\n}",
      "exampleBy": "hub",
      "exampleNote": "The most common call in Hub handlers: 42 of the 42 that use it.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13177,7 +13179,7 @@
       "Unity": 74,
       "Source": 10
      },
-     "example": "ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ProtoInput.Values.RegisterRawInputHookID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.InstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.RegisterRawInputHookID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13197,7 +13199,7 @@
       "Unity": 101,
       "Source": 14
      },
-     "example": "ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ProtoInput.Values.GetRawInputDataHookID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.InstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.GetRawInputDataHookID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13217,7 +13219,7 @@
       "Unity": 39,
       "Source": 1
      },
-     "example": "ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ProtoInput.Values.MessageFilterHookID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.InstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.MessageFilterHookID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13237,7 +13239,7 @@
       "Unity": 116,
       "Source": 16
      },
-     "example": "ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ProtoInput.Values.GetCursorPosHookID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.InstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.GetCursorPosHookID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13257,7 +13259,7 @@
       "Unity": 116,
       "Source": 16
      },
-     "example": "ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ProtoInput.Values.SetCursorPosHookID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.InstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.SetCursorPosHookID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13277,7 +13279,7 @@
       "Unity": 109,
       "Source": 16
      },
-     "example": "ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ProtoInput.Values.GetKeyStateHookID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.InstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.GetKeyStateHookID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13297,7 +13299,7 @@
       "Unity": 109,
       "Source": 16
      },
-     "example": "ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ProtoInput.Values.GetAsyncKeyStateHookID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.InstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.GetAsyncKeyStateHookID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13317,7 +13319,7 @@
       "Unity": 109,
       "Source": 16
      },
-     "example": "ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ProtoInput.Values.GetKeyboardStateHookID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.InstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.GetKeyboardStateHookID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13337,7 +13339,7 @@
       "Unity": 112,
       "Source": 16
      },
-     "example": "ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ProtoInput.Values.CursorVisibilityStateHookID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.InstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.CursorVisibilityStateHookID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13357,7 +13359,7 @@
       "Unity": 0,
       "Source": 0
      },
-     "example": "ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ProtoInput.Values.ClipCursorHookID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.InstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.ClipCursorHookID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13378,7 +13380,7 @@
       "Source": 10
      },
      "byEngine": "By engine: Source games 31% of 32 handlers (all Hub handlers 14%). Counted from Hub handlers; engines from Wikidata and the handlers' code.",
-     "example": "ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ProtoInput.Values.FocusHooksHookID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.InstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.FocusHooksHookID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13392,7 +13394,7 @@
      "doc": "Selects the rename handles hook (ID 11): mutexes, events, semaphores and named pipes whose names match `ProtoInput.AddHandleToRename` or `ProtoInput.AddNamedPipeToRename` get a unique name, so instances don't block each other. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.",
      "docBy": "claude",
      "docBasis": "Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks RenameHandlesHook.cpp (updateName, InstallImpl)",
-     "example": "ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ProtoInput.Values.RenameHandlesHookID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.InstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.RenameHandlesHookID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13406,7 +13408,7 @@
      "doc": "Selects the XInput hook (ID 12): each instance sees only the controllers chosen by `ProtoInput.SetControllerIndex`, in the order given. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.",
      "docBy": "claude",
      "docBasis": "Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks XinputHook.cpp (Hook_XInputGetState, GetTargetControllerIndex, InstallImpl)",
-     "example": "ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ProtoInput.Values.XinputHookID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.InstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.XinputHookID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13420,7 +13422,7 @@
      "doc": "Selects the DirectInput order hook (ID 13): every DirectInput device the game creates opens the controller set by `ProtoInput.SetDinputDeviceGUID`; without one set, DirectInput devices fail to open. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.",
      "docBy": "claude",
      "docBasis": "Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks DinputOrderHook.cpp (Hook_DinputCreateDevice8W, blockDinput)",
-     "example": "ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ProtoInput.Values.DinputOrderHookID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.InstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.DinputOrderHookID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13434,7 +13436,7 @@
      "doc": "Selects the SetWindowPos hook (ID 14): every `SetWindowPos` call uses the position and size from `ProtoInput.SetSetWindowPosSettings`. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.",
      "docBy": "claude",
      "docBasis": "Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks SetWindowPosHook.cpp (Hook_SetWindowPos)",
-     "example": "ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ProtoInput.Values.SetWindowPosHookID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.InstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.SetWindowPosHookID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13448,7 +13450,7 @@
      "doc": "Selects the block raw input hook (ID 15): `GetRawInputDeviceList` and `GetRegisteredRawInputDevices` report no devices to the game. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.",
      "docBy": "claude",
      "docBasis": "Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks BlockRawInputHook.cpp",
-     "example": "ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ProtoInput.Values.BlockRawInputHookID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.InstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.BlockRawInputHookID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13462,7 +13464,7 @@
      "doc": "Selects the FindWindow hook (ID 16): `FindWindow` and `FindWindowEx` find nothing and `EnumWindows` lists no windows, so an instance can't find another instance's window. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.",
      "docBy": "claude",
      "docBasis": "Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks FindWindowHook.cpp",
-     "example": "ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ProtoInput.Values.FindWindowHookID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.InstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.FindWindowHookID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13476,7 +13478,7 @@
      "doc": "Selects the single HID hook (ID 17): once `ProtoInput.SetCreateSingleHIDName` is set, the game can open only that HID device path. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.",
      "docBy": "claude",
      "docBasis": "Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks CreateSingleHIDHook.cpp (Hook_CreateFileW, SetRawHidW)",
-     "example": "ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ProtoInput.Values.CreateSingleHIDHookID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.InstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.CreateSingleHIDHookID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13490,7 +13492,7 @@
      "doc": "Selects the window style hook (ID 18): window styles the game sets with `SetWindowLong`/`SetWindowLongPtr` lose the border, system menu and dialog frame. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.",
      "docBy": "claude",
      "docBasis": "Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks WindowStyleHook.cpp (FilterStyle)",
-     "example": "ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ProtoInput.Values.WindowStyleHookID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.InstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.WindowStyleHookID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13504,7 +13506,7 @@
      "doc": "Selects the MoveWindow hook (ID 19): every `MoveWindow` call uses the position and size from `ProtoInput.SetMoveWindowSettings`. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.",
      "docBy": "claude",
      "docBasis": "Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks MoveWindowHook.cpp (Hook_MoveWindow)",
-     "example": "ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ProtoInput.Values.MoveWindowHookID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.InstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.MoveWindowHookID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13518,7 +13520,7 @@
      "doc": "Selects the AdjustWindowRect hook (ID 20): `AdjustWindowRect` and `AdjustWindowRectEx` compute the window size from the rectangle set by `ProtoInput.SetAdjustWindowRectSettings`. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.",
      "docBy": "claude",
      "docBasis": "Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks AdjustWindowRectHook.cpp",
-     "example": "ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ProtoInput.Values.AdjustWindowRectHookID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.InstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.AdjustWindowRectHookID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13532,7 +13534,7 @@
      "doc": "Selects the remove border hook (ID 21): removes the main window's border and title bar on install (see `ProtoInput.SetDontWaitWindowBorder`), and keeps styles the game sets borderless. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.",
      "docBy": "claude",
      "docBasis": "Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks RemoveBorderHook.cpp (RemoveWindowBorder, WaitForWindowBorder, InstallImpl)",
-     "example": "ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ProtoInput.Values.RemoveBorderHookID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.InstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.RemoveBorderHookID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13545,11 +13547,7 @@
      "default": "(uint)ProtoHookIDs.RemoveBorderHookID",
      "doc": "Meant to select the GetCursorInfo hook, which makes `GetCursorInfo` report the fake cursor position. In Nucleus this value equals `RemoveBorderHookID` (21), so installing it installs the remove border hook instead. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.",
      "docBy": "claude",
-     "docBasis": "Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks GetCursorInfoHook.cpp, HookManager.cpp (GetCursorInfoHookID = 22)",
-     "example": "ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ProtoInput.Values.GetCursorInfoID);",
-     "exampleBy": "generated",
-     "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
-     "exampleIn": "Game.ProtoInput.OnInputLocked"
+     "docBasis": "Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks GetCursorInfoHook.cpp, HookManager.cpp (GetCursorInfoHookID = 22)"
     },
     "SetWindowsHookHookID": {
      "kind": "field",
@@ -13560,7 +13558,7 @@
      "doc": "Selects the SetWindowsHook hook (ID 23): the game's low-level keyboard, low-level mouse and `GetMessage` hooks are not registered with Windows; Proto Input calls them itself with the instance's input and focus messages. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.",
      "docBy": "claude",
      "docBasis": "Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks SetWindowsHookHook.cpp, FakeMouseKeyboard.cpp, FocusMessageLoop.cpp, RawInput.cpp (FireFake...)",
-     "example": "ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ProtoInput.Values.SetWindowsHookHookID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.InstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.SetWindowsHookHookID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13580,7 +13578,7 @@
       "Unity": 115,
       "Source": 17
      },
-     "example": "ProtoInput.EnableMessageFilter(player.ProtoInputInstanceHandle, ProtoInput.Values.RawInputFilterID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.EnableMessageFilter(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.RawInputFilterID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13600,7 +13598,7 @@
       "Unity": 109,
       "Source": 17
      },
-     "example": "ProtoInput.EnableMessageFilter(player.ProtoInputInstanceHandle, ProtoInput.Values.MouseMoveFilterID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.EnableMessageFilter(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.MouseMoveFilterID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13620,7 +13618,7 @@
       "Unity": 105,
       "Source": 17
      },
-     "example": "ProtoInput.EnableMessageFilter(player.ProtoInputInstanceHandle, ProtoInput.Values.MouseActivateFilterID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.EnableMessageFilter(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.MouseActivateFilterID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13640,7 +13638,7 @@
       "Unity": 108,
       "Source": 17
      },
-     "example": "ProtoInput.EnableMessageFilter(player.ProtoInputInstanceHandle, ProtoInput.Values.WindowActivateFilterID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.EnableMessageFilter(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.WindowActivateFilterID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13660,7 +13658,7 @@
       "Unity": 108,
       "Source": 17
      },
-     "example": "ProtoInput.EnableMessageFilter(player.ProtoInputInstanceHandle, ProtoInput.Values.WindowActivateAppFilterID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.EnableMessageFilter(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.WindowActivateAppFilterID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13680,7 +13678,7 @@
       "Unity": 109,
       "Source": 17
      },
-     "example": "ProtoInput.EnableMessageFilter(player.ProtoInputInstanceHandle, ProtoInput.Values.MouseWheelFilterID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.EnableMessageFilter(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.MouseWheelFilterID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13700,7 +13698,7 @@
       "Unity": 116,
       "Source": 17
      },
-     "example": "ProtoInput.EnableMessageFilter(player.ProtoInputInstanceHandle, ProtoInput.Values.MouseButtonFilterID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.EnableMessageFilter(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.MouseButtonFilterID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -13720,7 +13718,7 @@
       "Unity": 45,
       "Source": 17
      },
-     "example": "ProtoInput.EnableMessageFilter(player.ProtoInputInstanceHandle, ProtoInput.Values.KeyboardButtonFilterID);",
+     "example": "for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.EnableMessageFilter(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.KeyboardButtonFilterID\n  );\n}",
      "exampleBy": "generated",
      "exampleNote": "Generated from its type and default, not from the docs or Hub handlers.",
      "exampleIn": "Game.ProtoInput.OnInputLocked"
@@ -14118,7 +14116,7 @@
  },
  "hubHandlers": {
   "count": 899,
-  "takenAt": "2026-11-17",
+  "takenAt": "2026-11-18",
   "engines": {
    "Unreal": 223,
    "Unity": 203,

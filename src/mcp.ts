@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
 import { readGameBinaries } from './gamefolder-node';
-import { analyse, importsReport } from './core/importhooks';
+import { analyse, findExe, importsReport } from './core/importhooks';
 import { lint, lineOf, lineStart, RULES } from './core/lint';
 import { fixAll } from './core/fix';
 import { formatHandler } from './core/format';
@@ -320,10 +320,14 @@ export const TOOLS: Tool[] = [
       if (!fs.existsSync(a.path)) return { text: `${a.path} doesn't exist.`, isError: true };
       const files = readGameBinaries([a.path]);
       if (!files.length) return { text: `No .exe or .dll files at ${a.path}.`, isError: true };
-      const r = analyse(files, a.exe ? String(a.exe) : undefined);
+      const exe = a.exe ? String(a.exe) : undefined;
+      if (exe && !findExe(files.filter((f) => !f.dll), exe)) return { text: `No program called ${exe} at ${a.path} (found: ${files.filter((f) => !f.dll).map((f) => f.fileName).join(', ') || 'none'}).`, isError: true };
+      const r = analyse(files, exe);
+      const controllers = a.controllers !== false, kbm = a.kbm !== false;
       return {
-        text: importsReport(r, { controllers: a.controllers !== false, kbm: a.kbm !== false }),
-        data: { game: r.main?.fileName, launchers: r.launchers.map((f) => f.fileName), findings: r.found.map((f) => ({ id: f.rule.id, area: f.rule.area, title: f.rule.title, lines: f.lines, maybe: !!f.rule.maybe, controllers: !!f.rule.ctl, kbm: !!f.rule.kbm })) },
+        text: importsReport(r, { controllers, kbm }),
+        // The same filters as the text: an excluded suggestion isn't in the data either.
+        data: { game: r.main?.fileName, launchers: r.launchers.map((f) => f.fileName), findings: r.found.filter((f) => (controllers || !f.rule.ctl) && (kbm || !f.rule.kbm)).map((f) => ({ id: f.rule.id, area: f.rule.area, title: f.rule.title, lines: f.lines, maybe: !!f.rule.maybe, controllers: !!f.rule.ctl, kbm: !!f.rule.kbm })) },
       };
     },
   },

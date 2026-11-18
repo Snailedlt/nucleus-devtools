@@ -14,7 +14,7 @@
    "basis": "Nucleus IGameInfo.cs (no other use in the source); verified Hub handlers, counted 2026-11-17"
   },
   "Game.PauseBetweenStarts": {
-   "text": "Nucleus sleeps this many seconds after starting an instance, before the next one. A player can override it in the game's profile settings (Pause between instances launch); when that is above 0 it replaces the handler's value. Hub handlers use 30 (237), 25 (145) or 20 (143) most: enough for the game to open its window before the next one starts.",
+   "text": "Nucleus sleeps this many seconds after starting an instance, before the next one. A player can override it in the game's profile settings (Pause between instances launch); when that is above 0 it replaces the handler's value. Hub handlers use 30 (237), 25 (145) or 20 (136) most: enough for the game to open its window before the next one starts.",
    "basis": "Nucleus GenericGameHandler.cs (the per-instance start loop: GameProfile.PauseBetweenInstanceLaunch, Thread.Sleep); verified Hub handlers, counted 2026-11-17"
   },
   "Game.PauseBetweenProcessGrab": {
@@ -38,7 +38,7 @@
    "basis": "Nucleus GenericGameHandler.cs (CreateSymbolicLink or Directory.CreateDirectory per folder), StartGameUtil.SymlinkGame; verified Hub handlers, counted 2026-11-17"
   },
   "Game.UseGoldberg": {
-   "text": "Nucleus sets up its built-in Goldberg Steam emulator in each instance before `Game.Play` runs, so every instance gets its own Steam id and nickname and the instances can find each other on the local network. Almost every handler that uses it also sets `Game.SteamID` (572 of 575). It's the most used Steam emulation in Hub handlers (575 set it true).",
+   "text": "Nucleus sets up its built-in Goldberg Steam emulator in each instance before the default `Game.Play` runs (not before it with `Game.GamePlayBeforeGameSetup`, which runs `Game.Play` first), so every instance gets its own Steam id and nickname and the instances can find each other on the local network. Almost every handler that uses it also sets `Game.SteamID` (572 of 575). It's the most used Steam emulation in Hub handlers (575 set it true).",
    "basis": "Nucleus GenericGameHandler.cs (if gen.UseGoldberg: SteamFunctions.UseGoldberg per instance); verified Hub handlers, counted 2026-11-17"
   },
   "Game.LockInputAtStart": {
@@ -123,7 +123,7 @@
    "basis": "ProtoInputHooks MessageFilterHook.cpp; Nucleus ProtoInputLauncher.cs; verified Hub handlers, counted 2026-11-17"
   },
   "Game.ProtoInput.BlockedMessages": {
-   "text": "Window messages the game never sees (Proto Input's message filter hook drops them), so it only works with `Game.ProtoInput.MessageFilterHook` on; 90 Hub handlers list messages without it. The common lists: `[0x0008]` (WM_KILLFOCUS, 309 handlers), so the game doesn't notice losing focus, and `[0x0008, 0x02a3, 0x02a1]` (158), which also blocks WM_MOUSELEAVE and WM_MOUSEHOVER. A number goes through Proto Input's own message table, so only messages in it are blocked.",
+   "text": "Window messages the game never sees (Proto Input's message filter hook drops them), so it only works with `Game.ProtoInput.MessageFilterHook` on; 90 Hub handlers list messages without it. The common lists: `[0x0008]` (WM_KILLFOCUS, 309 handlers), so the game doesn't notice losing focus, and `[0x0008, 0x02a3, 0x02a1]` (158), which also blocks WM_MOUSELEAVE and WM_MOUSEHOVER. A number goes through Proto Input's own message table: one it doesn't list but within the table's range lands on another message's switch (and blocks that one), and one past its end does nothing, so add only listed messages.",
    "basis": "ProtoInputHooks MessageFilterHook.cpp, MessageList.cpp (GenerateIndexTable); Nucleus ProtoInputLauncher.cs; verified Hub handlers, counted 2026-11-17"
   },
   "Game.ProtoInput.RawInputFilter": {
@@ -131,7 +131,7 @@
    "basis": "ProtoInputHooks MessageFilterHook.cpp; verified Hub handlers, counted 2026-11-17"
   },
   "Game.ProtoInput.FocusHooks": {
-   "text": "Hooks the functions a game uses to ask about focus (GetForegroundWindow, GetActiveWindow, GetFocus, WindowFromPoint, the capture and SetFocus calls), so every instance believes it is the active window. The most used Proto Input hook in Hub handlers: 356 of 537 set it true. Pair it with `Game.ProtoInput.BlockedMessages = [0x0008]` for games that also react to WM_KILLFOCUS.",
+   "text": "Hooks the functions a game uses to ask about focus (GetForegroundWindow, GetActiveWindow, GetFocus, WindowFromPoint, the capture and SetFocus calls), so every instance believes it is the active window. The most used Proto Input hook in Hub handlers: 357 of 537 set it true. Pair it with `Game.ProtoInput.BlockedMessages = [0x0008]` for games that also react to WM_KILLFOCUS, with `Game.ProtoInput.MessageFilterHook` on (the blocked messages only act inside that hook).",
    "basis": "ProtoInputHooks FocusHook.cpp (the hooked user32 functions); verified Hub handlers, counted 2026-11-17"
   },
   "Game.ProtoInput.SendMouseMovementMessages": {
@@ -139,7 +139,7 @@
    "basis": "Proto Input docs (Send messages), ProtoInputHooks; verified Hub handlers, counted 2026-11-17"
   },
   "Game.ProtoInput.EnableFocusMessageLoop": {
-   "text": "Starts Proto Input's focus loop when Nucleus sets the instance up, with the `FocusLoop_…` messages and `FocusLoopIntervalMilliseconds`; those options do nothing without it (18 Hub handlers set them anyway). Many Hub handlers leave it false (311 of 500) and start the loop only while input is locked, with `ProtoInput.StartFocusMessageLoop` in `Game.ProtoInput.OnInputLocked` (283 handlers call it).",
+   "text": "Starts Proto Input's focus loop when Nucleus sets the instance up, with the `FocusLoop_…` messages and `FocusLoopIntervalMilliseconds`; those options do nothing without it (18 Hub handlers set them anyway). Many Hub handlers leave it false (311 of 500) and start the loop only while input is locked, with `ProtoInput.StartFocusMessageLoop` (247 handlers call it, 206 of them in `Game.ProtoInput.OnInputLocked`).",
    "basis": "Nucleus ProtoInputLauncher.cs (StartFocusMessageLoop when EnableFocusMessageLoop); verified Hub handlers, counted 2026-11-17"
   },
   "Game.ProtoInput.OnInputLocked": {
@@ -165,7 +165,7 @@
    "basis": "Nucleus ProtoInput.cs (SetDrawFakeCursor); verified Hub handlers, counted 2026-11-17"
   },
   "ProtoInput.StartFocusMessageLoop": {
-   "text": "Starts Proto Input's focus loop for one instance from a callback, instead of `Game.ProtoInput.EnableFocusMessageLoop` at setup. The arguments are the instance, the milliseconds between rounds, then whether to send WM_ACTIVATE, WM_NCACTIVATE, WM_ACTIVATEAPP, WM_SETFOCUS and WM_MOUSEACTIVATE. Hub handlers mostly call it in `Game.ProtoInput.OnInputLocked` (206 of 247) and stop it with `ProtoInput.StopFocusMessageLoop` when input unlocks.",
+   "text": "Starts Proto Input's focus loop for one instance from a callback, instead of `Game.ProtoInput.EnableFocusMessageLoop` at setup. The arguments are the instance, the milliseconds between rounds, then whether to send WM_ACTIVATE, WM_NCACTIVATE, WM_ACTIVATEAPP, WM_SETFOCUS and WM_MOUSEACTIVATE. Hub handlers mostly call it in `Game.ProtoInput.OnInputLocked` (206 of 247; 73 also in `OnInputUnlocked`). 228 call `ProtoInput.StopFocusMessageLoop`, also mostly in `OnInputLocked` (219; 16 in `OnInputUnlocked`).",
    "basis": "Nucleus ProtoInput.cs (StartFocusMessageLoop); verified Hub handlers, counted 2026-11-17"
   },
   "Context.GetFolder": {

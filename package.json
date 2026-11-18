@@ -495,7 +495,7 @@
             "additionalProperties": {
               "type": "string"
             },
-            "markdownDescription": "The game's install folder for each Nucleus Co-op handler (file name → folder), set by hand. **Nucleus: Game Folder: Link…** keeps its links on this PC instead (not in a settings file), and they come first. The handler is then checked against the real files (`ExecutableName`, `BinariesFolder`, the symlink and copy lists…), and those lists suggest the game's files. Only names and sizes are read; nothing leaves your PC."
+            "markdownDescription": "The game's install folder for each Nucleus Co-op handler (file name → folder), set by hand. **Nucleus: Game Folder: Link…** keeps its links on this PC instead (not in a settings file), and they come first. The handler is then checked against the real files (`ExecutableName`, `BinariesFolder`, the symlink and copy lists…), and those lists suggest the game's files. File names and sizes are read, and the game's .exe and DLLs are analysed on your PC (their import tables and names in them, never run) for hook hints; nothing leaves your PC."
           },
           "splitscreenme.lint.rules": {
             "type": "object",
@@ -1641,7 +1641,7 @@
           {
             "id": "fixall",
             "title": "Fix everything that can be fixed",
-            "description": "One command applies every safe fix in the handler; what needs your decision stays underlined. It can also run on every save.\n[Fix All Problems That Can Be Fixed](command:splitscreenme.fixAll)",
+            "description": "One command applies every safe fix in the handler; what needs your decision stays underlined. It can also run whenever you save.\n[Fix All Problems That Can Be Fixed](command:splitscreenme.fixAll)",
             "media": {
               "markdown": "media/walkthrough/fixall.md"
             },

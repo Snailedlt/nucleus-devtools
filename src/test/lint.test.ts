@@ -399,6 +399,8 @@ Game.Play = function () {
   }
   const ok = only(mk('var s = answers.join(",");'), 'option-compare');
   assert.equal(ok[0].fixes?.length, 1, 'a read-only method keeps the fix');
+  assert.equal(only(mk('var s = answers["join"](",");'), 'option-compare')[0].fixes?.length, 1, 'also called with a literal key');
+  assert.equal(only(mk('answers[k](2);'), 'option-compare')[0].fixes, undefined, 'an unknown key may change it');
 });
 
 test('unknown-member: a compound write is never the harmless idiom; sequences and for tests pass the value on', () => {
@@ -791,6 +793,11 @@ test('protoinput-needs-raw-input: key and cursor hooks need the raw input hook',
   assert.equal(only(HEADER + KBM + 'Game.ProtoInput.GetKeyStateHook = false;\n', 'protoinput-needs-raw-input').length, 0);
   assert.equal(only(HEADER + 'Game.SupportsMultipleKeyboardsAndMice = true;\nGame.ProtoInput.GetKeyStateHook = true;\n', 'protoinput-needs-raw-input').length, 0);
   assert.equal(only(HEADER + KBM + 'Game.ProtoInput.TranslateXinputtoMKB = true;\nGame.ProtoInput.GetCursorPosHook = true;\n', 'protoinput-needs-raw-input').length, 0);
+  // Comments don't turn it on; the last assignment counts; an explicit false is turned into true.
+  assert.equal(only(HEADER + KBM + '// Game.ProtoInput.RegisterRawInputHook = true;\n/* RegisterRawInputHookID */\nGame.ProtoInput.GetKeyStateHook = true;\n', 'protoinput-needs-raw-input').length, 1);
+  assert.equal(only(HEADER + KBM + 'Game.ProtoInput.GetKeyStateHook = true;\nGame.ProtoInput.GetKeyStateHook = false;\n', 'protoinput-needs-raw-input').length, 0);
+  const f = only(HEADER + KBM + 'Game.ProtoInput.GetKeyStateHook = true;\nGame.ProtoInput.RegisterRawInputHook = false;\n', 'protoinput-needs-raw-input');
+  assert.equal(f[0].fixes![0].edits[0].text, 'true');
 });
 test('blocked-message: unlisted, past the end, and repeated numbers', () => {
   const ok = HEADER + PI + 'Game.ProtoInput.MessageFilterHook = true;\nGame.ProtoInput.BlockedMessages = [0x0008, 0x02a3, 0x02a1, 6];\n';

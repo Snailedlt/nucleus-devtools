@@ -71,7 +71,7 @@ test('bots: a real doc review issue (#7) gets both comments', () => {
   assert.equal(bots.docReviewMember(ISSUE_7), 'Context.Arch');
   const details = bots.detailsComment(ISSUE_7)!;
   assert.ok(details.startsWith(bots.DETAILS_MARKER));
-  assert.match(details, /✅ As the workbench filled it in\./);
+  assert.match(details, /✅ Checksum matches/);
   assert.ok(details.includes('Doc: Context.Arch'));
   const doc = bots.docReviewComment('Context.Arch', { doc: 'Architecture of the game executable.', basis: 'Nucleus GenericContext.cs' }, 'abc1234');
   assert.ok(doc.startsWith(bots.DOC_MARKER));
@@ -177,7 +177,8 @@ test('bots: the release comments only on this repository\'s fixed issues, once',
   assert.deepEqual(bots.fixedIssueNumbers('Fixes #12\ncloses Snailedlt/splitscreenme-vscode#13 and Snailedlt/nucleuscoop-handler-testbench#14', 'Snailedlt/splitscreenme-vscode'), [12, 13]);
   const made: number[] = [];
   const github = {
-    paginate: async (_fn: unknown, o: { issue_number: number }) => (o.issue_number === 9 ? [{ body: bots.FIXED_MARKER }] : []),
+    // #9: the bot's own comment; #3: someone pasted the marker (doesn't count).
+    paginate: async (_fn: unknown, o: { issue_number: number }) => (o.issue_number === 9 ? [{ body: bots.FIXED_MARKER + '\n✅', user: { login: 'github-actions[bot]' } }] : o.issue_number === 3 ? [{ body: 'quote ' + bots.FIXED_MARKER, user: { login: 'someone' } }] : []),
     rest: {
       issues: {
         listComments: {},
@@ -189,8 +190,21 @@ test('bots: the release comments only on this repository\'s fixed issues, once',
       },
     },
   };
-  const done = await bots.runFixedComments({ github, context: { repo: { owner: 'Snailedlt', repo: 'splitscreenme-vscode' } }, tag: 'v1.0.0', url: 'u', notes: 'Fixes #3, fixes #5, fixes #9, fixes #404' });
-  assert.deepEqual(done, [3]); // #5 is a pull request, #9 already has the comment, #404 fails alone
-  assert.deepEqual(made, [3]);
+  const done = await bots.runFixedComments({ github, context: { repo: { owner: 'Snailedlt', repo: 'splitscreenme-vscode' } }, tag: 'v1.0.0', url: 'u', notes: 'Fixes #3, fixes #5, fixes #9, fixes #404, fixes #500' });
+  assert.deepEqual(done, [3, 500]); // #5 is a pull request, #9 already has the comment, #404 fails alone and #500 still gets its
+  assert.deepEqual(made, [3, 500]);
+  // A reference in passing in parentheses isn't a delivery; a commit subject's "(#12)" (a PR number) isn't either.
+  assert.deepEqual(bots.deliveredIssues('### 🛠️ Improved\n- **X.** Better (see #12). (#13, #14)', 'Snailedlt/splitscreenme-vscode').map((x) => x.n), [13, 14]);
+  assert.deepEqual(bots.deliveredIssues('Tidy the docs (#15)\n\nFixes #16', 'Snailedlt/splitscreenme-vscode', { commits: true }).map((x) => x.n), [16]);
   assert.doesNotMatch(bots.fixedComment({ tag: 'v1', url: 'u', reporter: 'Snailedlt', owner: 'Snailedlt' }), /Thanks/);
+});
+
+test('issue forms: no plain YAML value holds ": " (GitHub would refuse to load the whole form)', () => {
+  for (const file of fs.readdirSync(TEMPLATES).filter((f) => f.endsWith('.yml'))) {
+    fs.readFileSync(path.join(TEMPLATES, file), 'utf8').split('\n').forEach((line, i) => {
+      const kv = line.match(/^\s*(?:- )?[\w-]+: (.+)$/);
+      if (!kv || /^["'|>[{]/.test(kv[1])) return;
+      assert.ok(!/: |:$|\s#/.test(kv[1].replace(/https?:\/\//g, '')), `${file}:${i + 1}: quote the value`);
+    });
+  }
 });

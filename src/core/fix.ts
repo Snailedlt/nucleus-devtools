@@ -36,7 +36,8 @@ export function fixAll(text: string, options: LintOptions & { maxPasses?: number
     for (const d of diags) {
       const fix = d.fixes?.find((f) => f.preferred);
       if (!fix) continue;
-      if (options.cleanups === false && isCleanup(d)) continue;
+      // A cleanup is skipped only while it repairs nothing: a deletion that also removes an error is a fix.
+      if (options.cleanups === false && isCleanup(d) && !diags.some((x) => x.severity === 'error' && fix.edits.some((e) => e.start < e.end && x.start >= e.start && x.end <= e.end))) continue;
       const key = JSON.stringify(fix.edits);
       if (seen.has(key)) continue; // the same fix offered by several diagnostics
       if (fix.edits.some(overlaps)) continue;

@@ -21,27 +21,56 @@ export function registerHandlerFiles(context: vscode.ExtensionContext, isHandler
     else paths.delete(fsPath);
     publish();
   };
+  // A generation per path: a read that finishes after a newer event (a deletion, an edit, another read) is dropped.
+  const gen = new Map<string, number>();
+  const bump = (p: string) => {
+    const g = (gen.get(p) ?? 0) + 1;
+    gen.set(p, g);
+    return g;
+  };
   const check = async (uri: vscode.Uri) => {
     if (uri.scheme !== 'file' || !/\.js$/i.test(uri.fsPath)) return;
+    const g = bump(uri.fsPath);
+    let on = false;
     try {
-      set(uri.fsPath, isHandlerText(uri.fsPath, await fs.readFile(uri.fsPath, 'utf8')));
+      on = isHandlerText(uri.fsPath, await fs.readFile(uri.fsPath, 'utf8'));
     } catch {
-      set(uri.fsPath, false);
+      /* gone or unreadable */
     }
+    if (gen.get(uri.fsPath) === g) set(uri.fsPath, on);
   };
-  const doc = (d: vscode.TextDocument) => d.uri.scheme === 'file' && /\.js$/i.test(d.uri.fsPath) && set(d.uri.fsPath, isHandler(d));
+  const doc = (d: vscode.TextDocument) => {
+    if (d.uri.scheme !== 'file' || !/\.js$/i.test(d.uri.fsPath)) return;
+    bump(d.uri.fsPath);
+    set(d.uri.fsPath, isHandler(d));
+  };
+  const removed = (u: vscode.Uri) => {
+    bump(u.fsPath);
+    set(u.fsPath, false);
+  };
+  const scan = () =>
+    void Promise.resolve(vscode.workspace.findFiles('**/*.js', '**/{node_modules,.git,dist,out}/**', MAX))
+      .then(async (uris) => {
+        for (const u of uris ?? []) await check(u);
+      })
+      .catch(() => {});
   vscode.workspace.textDocuments.forEach(doc);
   context.subscriptions.push(
     vscode.workspace.onDidOpenTextDocument(doc),
     vscode.workspace.onDidSaveTextDocument(doc),
   );
   if (vscode.workspace.workspaceFolders?.length) {
-    void Promise.resolve(vscode.workspace.findFiles('**/*.js', '**/{node_modules,.git,dist,out}/**', MAX))
-      .then(async (uris) => {
-        for (const u of uris ?? []) await check(u);
-      })
-      .catch(() => {});
+    scan();
     const w = vscode.workspace.createFileSystemWatcher('**/*.js');
-    context.subscriptions.push(w, w.onDidCreate(check), w.onDidChange(check), w.onDidDelete((u) => set(u.fsPath, false)));
+    context.subscriptions.push(w, w.onDidCreate(check), w.onDidChange(check), w.onDidDelete(removed));
   }
+  // Detection changed (off, always, the globs): what counts as a handler is decided again, everywhere.
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration((e) => {
+      if (!e.affectsConfiguration('splitscreenme.detection') && !e.affectsConfiguration('splitscreenme.handlerGlobs')) return;
+      for (const p of [...paths]) removed(vscode.Uri.file(p));
+      vscode.workspace.textDocuments.forEach(doc);
+      if (vscode.workspace.workspaceFolders?.length) scan();
+    }),
+  );
 }

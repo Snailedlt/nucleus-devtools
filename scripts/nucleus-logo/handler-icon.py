@@ -1,4 +1,6 @@
-# Run: python3 scripts/nucleus-logo/handler-icon.py (needs fontTools; the letters are traced from Liberation Sans Bold).
+# Run: python3 scripts/nucleus-logo/handler-icon.py (needs fontTools and Liberation Sans Bold, traced for the letters).
+# The font is looked for at the fonts-liberation path; elsewhere (Debian's fonts-liberation2 puts it under liberation2) pass it:
+#   JS_FONT=/usr/share/fonts/truetype/liberation2/LiberationSans-Bold.ttf python3 scripts/nucleus-logo/handler-icon.py
 # media/nucleus-handler.svg, the handler file icon (VS Code and the workbench): Nucleus Co-op's logo with a yellow "JS" tag (letters as paths, Liberation Sans Bold).
 import os, re, sys
 ROOT=os.path.join(os.path.dirname(os.path.abspath(__file__)),'..','..')

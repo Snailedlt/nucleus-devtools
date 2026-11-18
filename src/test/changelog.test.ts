@@ -35,6 +35,10 @@ test("What's New opens at the installed version, without Unreleased or the writi
   assert.match(md, /## 0\.7\.0/);
   // A build with no section of its own (between releases): from the newest release.
   assert.match(whatsNewMarkdown(log, '0.9.0'), /^# Changelog\n\nIntro\.\n\n## 0\.8\.0/);
+  // A version between two with no section: the release below it, never a newer one's notes.
+  assert.match(whatsNewMarkdown(log, '0.7.5'), /^# Changelog\n\nIntro\.\n\n## 0\.7\.0/);
+  // Relative links lead to the repository (the copy lives in the extension's storage).
+  assert.match(whatsNewMarkdown(log.replace('**Eight.**', '**Eight.** [Porting](PORTING.md) ![x](docs/a.webp)'), '0.8.0'), /\[Porting\]\(https:\/\/github\.com\/Snailedlt\/splitscreenme-vscode\/blob\/main\/PORTING\.md\) !\[x\]\(https:\/\/raw\.githubusercontent\.com\//);
   // The real changelog: the installed version's section first.
   const real = whatsNewMarkdown(fs.readFileSync(path.join(__dirname, '..', 'CHANGELOG.md'), 'utf8'), '0.8.0');
   assert.doesNotMatch(real, /## Unreleased|<!--/);

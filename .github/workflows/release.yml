@@ -94,7 +94,7 @@ jobs:
             const bots = await import(`${process.env.GITHUB_WORKSPACE}/scripts/issue-bots.mjs`);
             const tag = process.env.TAG;
             const url = `https://github.com/${context.repo.owner}/${context.repo.repo}/releases/tag/${tag}`;
-            const commits = await bots.commitsSincePrevious({ github, context, tag, prefix: 'v' });
+            const commits = await bots.commitsSincePrevious({ github, context, tag, prefix: 'v', core });
             const done = await bots.runFixedComments({ github, context, tag, url, notes: fs.readFileSync('release-notes.md', 'utf8'), commits, core });
             core.setOutput('issues', done.map((n) => `#${n}`).join(', '));
       - name: Summary (links and the Discord post)

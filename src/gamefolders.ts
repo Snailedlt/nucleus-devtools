@@ -23,7 +23,7 @@ const settingMap = (doc: vscode.TextDocument) => vscode.workspace.getConfigurati
 /** The game folder linked to this handler, if any: by the command (this PC), else the setting (by file name). */
 export function linkedFolder(doc: vscode.TextDocument): string | undefined {
   if (doc.uri.scheme !== 'file') return undefined;
-  return linksOf()[doc.uri.fsPath] ?? settingMap(doc)[keyOf(doc)];
+  return linksOf()[doc.uri.fsPath] ?? settingMap(doc)[keyOf(doc)]; // '' (unlinked over a setting): none
 }
 
 const fixOf = new WeakMap<vscode.Diagnostic, FolderFix>();
@@ -65,13 +65,19 @@ export function registerGameFolders(context: vscode.ExtensionContext, isHandler:
   /** Links (or, with no folder, unlinks) the handler. Returns whether anything was linked before. */
   const save = async (doc: vscode.TextDocument, dir: string | undefined): Promise<boolean> => {
     const links = { ...linksOf() };
-    let had = doc.uri.fsPath in links;
+    // The handler's own link (by the command), '' when it was unlinked over a setting, undefined when it has none.
+    const own: string | undefined = links[doc.uri.fsPath];
+    let had = !!own;
+    // Unlinking a handler that has its own link: only that goes. If the setting (by file name, so maybe shared with
+    // another handler of that name) would apply instead, an empty link here says "not linked", and the setting
+    // stays for the others.
     if (dir) links[doc.uri.fsPath] = dir;
+    else if (own !== undefined && settingMap(doc)[keyOf(doc)]) links[doc.uri.fsPath] = '';
     else delete links[doc.uri.fsPath];
     await store!.update(STATE, links);
-    // A link in the setting from an older version (or set by hand): unlinking removes it from where it is, and
-    // only then is a settings file written.
-    if (!dir) {
+    // A link in the setting from an older version (or set by hand), with no link of the handler's own: unlinking
+    // removes it from where it is, and only then is a settings file written.
+    if (!dir && own === undefined) {
       const cfg = vscode.workspace.getConfiguration('splitscreenme', doc.uri);
       const info = cfg.inspect<Record<string, string>>(SETTING);
       const targets: [Record<string, string> | undefined, vscode.ConfigurationTarget][] = [
@@ -122,9 +128,14 @@ export function registerGameFolders(context: vscode.ExtensionContext, isHandler:
     vscode.commands.registerCommand('splitscreenme.unlinkGameFolder', async () => {
       const doc = active();
       if (!doc) return;
-      const had = await save(doc, undefined);
-      markLinked();
-      recheck(doc);
+      let had = false;
+      try {
+        had = await save(doc, undefined);
+      } finally {
+        // Also after a settings write failed half-way: what is linked now shows.
+        markLinked();
+        recheck(doc);
+      }
       status(had ? `unlinked ${keyOf(doc)} from its game's folder` : `${keyOf(doc)} isn't linked to a game's folder`);
     }),
     // Fixes for the folder problems (e.g. the exe's real name, BinariesFolder set to where the exe is).

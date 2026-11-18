@@ -31,6 +31,8 @@ const SELECTOR: vscode.DocumentSelector = [
 ];
 
 const lintDiagnosticOf = new WeakMap<vscode.Diagnostic, LintDiagnostic>();
+/** The document version a check's diagnostic was made for (its lines are from that text). */
+const lintVersionOf = new WeakMap<vscode.Diagnostic, number>();
 
 function config() {
   return vscode.workspace.getConfiguration('splitscreenme');
@@ -157,7 +159,10 @@ export function activate(context: vscode.ExtensionContext) {
       const editor = vscode.window.activeTextEditor;
       if (!editor || !isHandler(editor.document)) return vscode.commands.executeCommand('editor.action.formatDocument');
       const opts = editor.options;
-      const [edit] = formatEdits(editor.document, { insertSpaces: opts.insertSpaces !== false, tabSize: typeof opts.tabSize === 'number' ? opts.tabSize : 4 });
+      // Refused (a syntax error) is not "already formatted": cantFormat said why.
+      const r = coreFormatEdits(editor.document.getText(), formatStyle({ insertSpaces: opts.insertSpaces !== false, tabSize: typeof opts.tabSize === 'number' ? opts.tabSize : 4 }));
+      if ('error' in r) return cantFormat(editor.document, r.error);
+      const [edit] = r.edits.map((e) => vscode.TextEdit.replace(toRange(editor.document, e), e.text));
       if (edit) await editor.edit((b) => b.replace(edit.range, edit.newText));
       else status('already formatted', 2500);
     }),
@@ -344,6 +349,7 @@ function toVsDiagnostics(doc: vscode.TextDocument, diags: LintDiagnostic[]): vsc
       v.tags = d.tags.map((t) => (t === 'deprecated' ? vscode.DiagnosticTag.Deprecated : vscode.DiagnosticTag.Unnecessary));
     }
     lintDiagnosticOf.set(v, d);
+    lintVersionOf.set(v, doc.version);
     return v;
   });
 }
@@ -426,7 +432,7 @@ class FixProvider implements vscode.CodeActionProvider {
       seen.add(lintD.rule);
       const a = new vscode.CodeAction(`This check is wrong (${lintD.rule})…`, REPORT_KIND);
       a.diagnostics = [d];
-      const args: CheckArgs = { uri: doc.uri.toString(), rule: lintD.rule, message: lintD.message, startLine: d.range.start.line, endLine: d.range.end.line };
+      const args: CheckArgs = { uri: doc.uri.toString(), rule: lintD.rule, message: lintD.message, startLine: d.range.start.line, endLine: d.range.end.line, version: lintVersionOf.get(d) };
       a.command = { title: 'This check is wrong…', command: REPORT_COMMANDS.check, arguments: [args] };
       actions.push(a);
     }

@@ -438,8 +438,10 @@ class Analyzer {
         if (m?.type !== 'MemberExpression' || m.object !== r.node) return false;
         const g = sc.parentOf.get(m);
         return (g?.type === 'AssignmentExpression' && g.left === m) || (g?.type === 'UpdateExpression' && g.argument === m) ||
-          // any method call on it, except read-only ones called by name (`answers["push"](2)` counts too)
-          (g?.type === 'CallExpression' && g.callee === m && (m.computed || !/^(slice|indexOf|lastIndexOf|join|concat|toString|map|filter|forEach|some|every|reduce|reduceRight)$/.test(m.property.name)));
+          // any method call on it, except read-only ones called by name, dotted or as a literal key (`answers["join"](",")`
+          // reads; `answers["push"](2)` and an unknown key count)
+          (g?.type === 'CallExpression' && g.callee === m && !/^(slice|indexOf|lastIndexOf|join|concat|toString|map|filter|forEach|some|every|reduce|reduceRight)$/.test(
+            (m.computed ? (m.property.type === 'Literal' && typeof m.property.value === 'string' ? m.property.value : '') : m.property.name) as string));
       }) ||
       // Escapes (`var alias = answers`, `f(answers)`): it may be changed where we don't follow it. Reading
       // `answers[i]` / `answers.length` and passing it to Game.AddOption are fine.
@@ -2051,27 +2053,37 @@ class Analyzer {
   // registers for raw input when RegisterRawInputHook is installed (RegisterRawInputHook::InstallImpl ->
   // RawInput::RegisterProtoForRawInput). Info only: controller-only handlers may want a frozen cursor on purpose.
   private checkNeedsRawInput() {
-    const isTrue = (k: string) => (this.topAssignments.get(`Game.ProtoInput.${k}`) ?? []).some((n) => n.right.type === 'Literal' && n.right.value === true);
+    // The value a setting ends up with: its last top-level assignment.
+    const last = (k: string) => (this.topAssignments.get(`Game.ProtoInput.${k}`) ?? []).at(-1);
+    const isTrue = (k: string) => {
+      const n = last(k);
+      return !!n && n.right.type === 'Literal' && n.right.value === true;
+    };
+    // Comments don't turn a hook on.
+    const code = this.text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
     const started = ['InjectStartup', 'InjectRuntime_RemoteLoadMethod', 'InjectRuntime_EasyHookMethod', 'InjectRuntime_EasyHookStealthMethod'].some(isTrue);
     if (!started) return;
     // Anywhere counts: inside an option's `if`, or installed at runtime (ProtoInput.InstallHook(..., RegisterRawInputHookID)).
-    if (/\bGame\.ProtoInput\.RegisterRawInputHook\s*=\s*true\b/.test(this.text) || /\bRegisterRawInputHookID\b/.test(this.text)) return;
+    if (/\bGame\.ProtoInput\.RegisterRawInputHook\s*=\s*true\b/.test(code) || /\bRegisterRawInputHookID\b/.test(code)) return;
     if (isTrue('TranslateXinputtoMKB')) return; // the state then comes from the controller
     // Only where players can bring keyboards and mice: for controller-only players a frozen cursor is harmless.
-    if (!/\bGame\.SupportsMultipleKeyboardsAndMice\s*=\s*true\b/.test(this.text)) return;
+    if (!/\bGame\.SupportsMultipleKeyboardsAndMice\s*=\s*true\b/.test(code)) return;
     const STATE = ['GetCursorPosHook', 'GetKeyStateHook', 'GetAsyncKeyStateHook', 'GetKeyboardStateHook'];
-    const hits = STATE.map((k) => ({ k, node: (this.topAssignments.get(`Game.ProtoInput.${k}`) ?? []).filter((n) => n.right.type === 'Literal' && n.right.value === true).pop() })).filter((h) => h.node);
+    const hits = STATE.filter(isTrue).map((k) => ({ k, node: last(k) }));
     if (!hits.length) return;
     const first = hits.reduce((a, b) => (a.node!.start < b.node!.start ? a : b));
     const names = hits.map((h) => '`' + h.k + '`').join(', ');
     const at = lineStart(this.text, first.node!.start);
+    const raw = last('RegisterRawInputHook');
+    const off = raw && raw.right.type === 'Literal' && raw.right.value === false ? raw : undefined;
     this.report({
       rule: 'protoinput-needs-raw-input',
       severity: 'info',
       message: `${names} answer${hits.length === 1 ? 's' : ''} from the player's own keyboard and mouse, which Proto Input only reads with \`Game.ProtoInput.RegisterRawInputHook\`. Without it, keyboard and mouse players get no key presses and a frozen cursor.`,
       start: first.node!.left.start,
       end: first.node!.left.end,
-      fixes: [{ title: 'Turn on Game.ProtoInput.RegisterRawInputHook', edits: [{ start: at, end: at, text: 'Game.ProtoInput.RegisterRawInputHook = true;\n' }] }],
+      // An explicit `= false` that wins is changed to true; else the line is added.
+      fixes: [{ title: 'Turn on Game.ProtoInput.RegisterRawInputHook', edits: [off ? { start: off.right.start, end: off.right.end, text: 'true' } : { start: at, end: at, text: 'Game.ProtoInput.RegisterRawInputHook = true;\n' }] }],
     });
   }
 

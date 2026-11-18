@@ -81,8 +81,12 @@ test('"In practice" parts: real members, labelled, with what they are based on; 
   for (const [o, obj] of Object.entries(api.objects)) for (const [k, m] of Object.entries(obj.members)) {
     if (!m.example || !m.exampleBy) continue;
     const where = m.exampleIn ?? 'top';
-    const handler = 'Game.GUID = "x";\nGame.GameName = "x";\nGame.ExecutableName = "x.exe";\n' + (where === 'top' ? `${m.example}\n` : `${where} = function (player) {\n${m.example}\n};\n`);
-    const errors = lint(handler).filter((d: any) => d.severity === 'error');
+    // (Proto Input examples in a handler that starts Proto Input, as they would be.)
+    const pi = /ProtoInput/.test(m.example + where) ? 'Game.ProtoInput.InjectStartup = true;\n' : '';
+    const handler = 'Game.GUID = "x";\nGame.GameName = "x";\nGame.ExecutableName = "x.exe";\n' + pi + (where === 'top' ? `${m.example}\n` : `${where} = function () {\n${m.example}\n};\n`);
+    // Callbacks get no arguments: an example defines what it uses. Nothing flagged at all (info included).
+    // (needs-option: an example shows one option; the one it depends on is in its doc.)
+    const errors = lint(handler).filter((d: any) => d.rule !== 'needs-option');
     assert.deepEqual(errors.map((d: any) => d.message), [], `${o}.${k}: ${m.example}`);
   }
 });
@@ -109,12 +113,18 @@ test('votes: people and AIs apart; "Verified by people" needs 10 human votes, 90
   }
 });
 
-test('AI votes: checked, sent as aivote/<part>/<name>, never as a person\'s vote', async () => {
+test('AI votes: checked, sent as aivote/<part>/<name>, never as a person\'s vote', async (t) => {
   const { sendAiVote } = require('../aivote');
   const urls: string[] = [];
   const fake = (async (url: string) => { urls.push(url); return { ok: true, status: 200 }; }) as any;
+  // A known endpoint, whatever the developer's environment says; restored afterwards.
+  const saved = { DO_NOT_TRACK: process.env.DO_NOT_TRACK, NCDEV_NO_FEEDBACK: process.env.NCDEV_NO_FEEDBACK, NCDEV_FEEDBACK_SITE: process.env.NCDEV_FEEDBACK_SITE };
+  t.after(() => {
+    for (const [k, v] of Object.entries(saved)) if (v === undefined) delete process.env[k]; else process.env[k] = v;
+  });
   delete process.env.DO_NOT_TRACK;
   delete process.env.NCDEV_NO_FEEDBACK;
+  process.env.NCDEV_FEEDBACK_SITE = 'nucleus-workbench';
   assert.equal((await sendAiVote('Game.Nope', 'doc', 'up', 't', fake)).ok, false);
   assert.equal((await sendAiVote('Game.GUID', 'practice', 'up', 't', fake)).ok, false, 'no "In practice" part to vote on');
   assert.equal((await sendAiVote('Game.KillMutex', 'practice', 'sideways', 't', fake)).ok, false);
@@ -124,6 +134,10 @@ test('AI votes: checked, sent as aivote/<part>/<name>, never as a person\'s vote
   assert.match(urls[0], /^https:\/\/nucleus-workbench\.goatcounter\.com\/count\?p=%2Faivote%2Fpractice%2FGame\.KillMutex%2Fdown&e=true/);
   assert.ok((await sendAiVote('Game.KillMutex', 'practice', 'down', 't', fake)).ok);
   assert.equal(urls.length, 1, 'once per part in a session');
+  // Two at once for the same part: only one is sent.
+  const slow = (async (url: string) => { urls.push(url); await new Promise((r) => setTimeout(r, 20)); return { ok: true, status: 200 }; }) as any;
+  await Promise.all([sendAiVote('Game.KillMutex', 'doc', 'up', 't', slow), sendAiVote('Game.KillMutex', 'doc', 'down', 't', slow)]);
+  assert.equal(urls.length, 2, 'one more, not two');
   process.env.NCDEV_NO_FEEDBACK = '1';
   assert.equal((await sendAiVote('Game.Play', 'doc', 'up', 't', fake)).ok, false, 'off when asked');
   delete process.env.NCDEV_NO_FEEDBACK;

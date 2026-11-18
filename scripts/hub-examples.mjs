@@ -39,7 +39,15 @@ const canon = (p) => {
   const name = parts.pop();
   return known.get(`${parts.join('.')}.${name[0].toLowerCase()}${name.slice(1)}`);
 };
-const dotted = (n) => (n.type === 'Identifier' ? n.name : n.type === 'MemberExpression' && !n.computed ? (dotted(n.object) ? `${dotted(n.object)}.${n.property.name}` : null) : null);
+// `Game.MaxPlayers` and `Game["MaxPlayers"]` alike (a key that needs running the code: null). Each prefix once.
+const dotted = (n) => {
+  if (n.type === 'Identifier') return n.name;
+  if (n.type !== 'MemberExpression') return null;
+  const key = !n.computed ? n.property.name : n.property.type === 'Literal' && typeof n.property.value === 'string' && /^[A-Za-z_$][\w$]*$/.test(n.property.value) ? n.property.value : null;
+  if (key === null) return null;
+  const o = dotted(n.object);
+  return o ? `${o}.${key}` : null;
+};
 
 /** A literal value written out the same way every time (so `true` and `true ` count together), or null. */
 function literal(n, src) {
@@ -77,7 +85,17 @@ for (const [id, info] of Object.entries(packages)) {
     program = acorn.parse(src, { ecmaVersion: 'latest', sourceType: 'script', allowReturnOutsideFunction: true, allowHashBang: true });
   } catch {
     try {
-      program = acorn.parse(src.replace(/\b(let|const)\b/g, (m) => 'var'.padEnd(m.length)), { ecmaVersion: 'latest', sourceType: 'script', allowReturnOutsideFunction: true });
+      // Jint lets `let`/`const` be declared again (they act as `var`): only the declaration keywords become `var`,
+      // never the same word inside a string or comment.
+      let fixed = '';
+      let at = 0;
+      for (const t of acorn.tokenizer(src, { ecmaVersion: 'latest', allowHashBang: true })) {
+        if ((t.type.label === 'name' && t.value === 'let') || t.type.keyword === 'const') {
+          fixed += src.slice(at, t.start) + 'var'.padEnd(t.end - t.start);
+          at = t.end;
+        }
+      }
+      program = acorn.parse(fixed + src.slice(at), { ecmaVersion: 'latest', sourceType: 'script', allowReturnOutsideFunction: true });
     } catch {
       failed++;
       continue;
@@ -87,6 +105,8 @@ for (const [id, info] of Object.entries(packages)) {
   const engine = engineOf[id]?.[0];
   if (engine) engineTotals[engine] = (engineTotals[engine] ?? 0) + 1;
   const inThis = new Set();
+  // Each option's value once Nucleus has loaded the handler: its last top-level assignment (null: not a literal).
+  const finalValue = new Map();
   const mark = (p) => {
     if (!inThis.has(p)) {
       entry(p).n++;
@@ -113,11 +133,11 @@ for (const [id, info] of Object.entries(packages)) {
       mark(p);
       const v = literal(n.right, src);
       // Options: only the top-level value counts (the one Nucleus reads when it loads the handler).
-      if (v !== null && (!p.startsWith('Context.') ? ancestorsWhere(ancestors.slice(0, -1)) === 'top level' : true)) {
+      if (p.startsWith('Context.')) {
         const e = entry(p);
-        if (!e[`v${handlers}`]) e.values.set(v, (e.values.get(v) ?? 0) + 1);
-        e[`v${handlers}`] = true; // one value per handler
-      }
+        if (v !== null && !e[`v${handlers}`]) e.values.set(v, (e.values.get(v) ?? 0) + 1);
+        if (v !== null) e[`v${handlers}`] = true; // one value per handler
+      } else if (ancestorsWhere(ancestors.slice(0, -1)) === 'top level') finalValue.set(p, v);
       if (/Function/.test(n.right.type)) entry(p).where.set('defined', (entry(p).where.get('defined') ?? 0) + 1);
     },
     CallExpression(n, _s, ancestors) {
@@ -127,8 +147,9 @@ for (const [id, info] of Object.entries(packages)) {
       mark(p);
       const e = entry(p);
       const w = ancestorsWhere(ancestors.slice(0, -1));
-      if (!e[`w${handlers}`]) e.where.set(w, (e.where.get(w) ?? 0) + 1);
-      e[`w${handlers}`] = true;
+      // Each callback a handler calls it from counts (once per handler and callback).
+      if (!e[`w${handlers}:${w}`]) e.where.set(w, (e.where.get(w) ?? 0) + 1);
+      e[`w${handlers}:${w}`] = true;
       const args = n.arguments.map((a) => literal(a, src));
       const call = `${p}(${args.join(', ')})`;
       if (args.every((a) => a !== null) && !e[`c${handlers}:${call}`]) {
@@ -142,6 +163,7 @@ for (const [id, info] of Object.entries(packages)) {
       if (p) mark(p);
     },
   });
+  for (const [p, v] of finalValue) if (v !== null) entry(p).values.set(v, (entry(p).values.get(v) ?? 0) + 1);
 }
 
 // A value or call only one or two handlers have says nothing about how handlers use a name (a game's own name, path or

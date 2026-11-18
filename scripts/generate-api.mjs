@@ -274,6 +274,8 @@ const FUNCTION_CATEGORIES = [
   [/^Context\.KillProcesses\w*$/, 'Processes'],
   [/^Context\.(Convert\w+|GCD|Random\w+|Log)$/, 'Helpers'],
 ];
+/** Options whose docs example contradicts their doc (sets it off where the doc says to enable it). */
+const offExample = new Set();
 function setDoc(key, info, override = false) {
   if (info.category === 'Path variables') { const c = FUNCTION_CATEGORIES.find(([re]) => re.test(key)); if (c) info = { ...info, category: c[1] }; }
   const prev = docs.get(key);
@@ -418,7 +420,13 @@ function parseProtoInputMd() {
         for (let b = k + 1; b < body.length && body[b].trim(); b++) if (OPT.test(body[b]) || /^\s*Game\./.test(body[b])) alone = false;
         if (above.length && alone) doc = above.join(' ');
       }
-      setDoc(`Game.ProtoInput.${m[2]}`, { example: m[1], doc: para || doc || undefined, category: 'Proto Input' });
+      // An example that turns the option off, under a doc that says to turn it on ("Enable this for…"), contradicts
+      // it: left out (an example from the Hub or the type takes its place).
+      const said = para || doc || '';
+      const off = /=\s*(false|0)\s*;?\s*$/.test(m[1]) && /^\s*(enable|turn on|use)\b/i.test(said);
+      const key = `Game.ProtoInput.${m[2]}`;
+      if (off) offExample.add(key); // nor from a later block (one that sets it in the input locking, say)
+      setDoc(key, { example: off || offExample.has(key) ? undefined : m[1], doc: said || undefined, category: 'Proto Input' });
     }
     i = end;
   }
@@ -812,7 +820,8 @@ for (const [obj, label] of Object.entries(LABELS)) {
     // The most common value (options) or call (methods), when at least 5 handlers and a fifth of its users agree.
     const [top, count] = (m.kind === 'method' ? hub?.calls : !inCallback && !m.readonly ? hub?.values : undefined)?.[0] ?? [];
     if (top && count >= 5 && count >= hub.n / 5) {
-      const code = m.kind === 'method' ? `${top};` : `${key} = ${top};`;
+      // A call on `player` (Proto Input's, in the lock callbacks, which get no arguments): in the loop that defines it.
+      const code = m.kind === 'method' ? (/\bplayer\./.test(top) ? forEachPlayer(`${top};`) : `${top};`) : `${key} = ${top};`;
       Object.assign(m, { example: code, exampleBy: 'hub', exampleNote: m.kind === 'method' ? `The most common call in Hub handlers: ${count} of the ${hub.n} that use it.` : `The most common value in Hub handlers: ${count} of the ${hub.n} that set it.`, exampleIn });
       continue;
     }
@@ -823,8 +832,9 @@ for (const [obj, label] of Object.entries(LABELS)) {
     if (m.readonly || inCallback) {
       if (label !== 'ProtoInput.Values') generated(`var ${name[0].toLowerCase()}${name.slice(1)} = ${key};`);
       // A hook or filter id goes to the call that takes it, in the callback Hub handlers use for it.
-      else if (/HookI[Dd]$|CursorInfoID$/.test(name)) Object.assign(generated(`ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ${key});`), { exampleIn: 'Game.ProtoInput.OnInputLocked' });
-      else if (/FilterID$/.test(name)) Object.assign(generated(`ProtoInput.EnableMessageFilter(player.ProtoInputInstanceHandle, ${key});`), { exampleIn: 'Game.ProtoInput.OnInputLocked' });
+      // (Not GetCursorInfoID: Nucleus gives it RemoveBorderHookID, so installing it installs another hook.)
+      else if (/HookI[Dd]$/.test(name)) Object.assign(generated(forEachPlayer(`ProtoInput.InstallHook(player.ProtoInputInstanceHandle, ${key});`)), { exampleIn: 'Game.ProtoInput.OnInputLocked' });
+      else if (/FilterID$/.test(name)) Object.assign(generated(forEachPlayer(`ProtoInput.EnableMessageFilter(player.ProtoInputInstanceHandle, ${key});`)), { exampleIn: 'Game.ProtoInput.OnInputLocked' });
     } else if (m.type === 'boolean') generated(`${key} = ${m.default === 'true' ? 'false' : 'true'};`);
     else if (m.type === 'number' && m.default !== undefined && /^-?\d+(\.\d+)?$/.test(m.default) && m.default !== '0') generated(`${key} = ${m.default};`);
   }
@@ -845,7 +855,16 @@ fs.writeFileSync(path.join(root, 'data', 'nucleus-api.json'), JSON.stringify(mod
 // ---------------------------------------------------------------------------
 
 const claudeNote = (m) => (m.docBy === 'claude' ? [`(AI-written, based on ${m.docBasis}.${m.docCheckedBy ? ` Checked by ${m.docCheckedBy}${m.docCheckedOn ? ` on ${m.docCheckedOn}` : ''}.` : ' Not from the official docs.'})`] : []);
+/** A statement about `player`, in the loop over the players that Hub handlers write in the Proto Input callbacks. */
+function forEachPlayer(stmt) {
+  // A call too long for 60 columns: one argument per line, as prettier lays it out (the loop is kept as written).
+  const call = /^([\w.]+)\((.*)\);$/.exec(stmt);
+  const body = `  ${stmt}`.length > 60 && call ? `  ${call[1]}(\n${call[2].split(/,\s*/).map((a) => `    ${a}`).join(',\n')}\n  );` : `  ${stmt}`;
+  return `for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n${body}\n}`;
+}
 const exampleTag = (m) => (m.exampleBy === 'claude' ? ' (AI-written example)' : m.exampleBy === 'hub' ? ` (${m.exampleNote})` : '');
+// Where the example comes from goes on its own line before @example, so the example stays copyable code.
+const exampleLines = (m) => (m.example ? [...(exampleTag(m) ? [exampleTag(m).trim().replace(/^\((.*)\)$/, '$1').replace(/\.$/, '') + ':'] : []), `@example ${m.example}`] : []);
 // The AI-written "In practice" part, as a paragraph of its own with its label.
 const practiceNote = (m) => [
   ...(m.practice ? ['', `In practice: ${m.practice}`, `(AI-written, based on ${m.practiceBasis}.${m.practiceCheckedBy ? ` Checked by ${m.practiceCheckedBy}.` : ''})`] : []),
@@ -869,14 +888,14 @@ function iface(name, obj) {
         if (o.params.some((p) => p.rest)) variants.push(o.params.map((p) => `${safeIdent(p.name)}${p.optional ? '?' : ''}: ${p.rest ? `(${p.type})[]` : p.type}`));
         for (const params of variants) {
           const paramTags = o.params.filter((p) => p.doc).map((p) => `@param ${safeIdent(p.name)} ${p.doc}${p.docBy === 'claude' ? ' (AI-written)' : ''}`);
-          s += jsdoc(m.doc, [...claudeNote(m), ...practiceNote(m), ...paramTags, ...(m.example ? [`@example ${m.example}${exampleTag(m)}`] : []), ...(m.internal ? ['@internal'] : [])]);
+          s += jsdoc(m.doc, [...claudeNote(m), ...practiceNote(m), ...paramTags, ...exampleLines(m), ...(m.internal ? ['@internal'] : [])]);
           s += `  ${k}(${params.join(', ')}): ${o.returns};\n`;
         }
       }
     } else {
       const extra = [...claudeNote(m), ...practiceNote(m)];
       if (m.default !== undefined) extra.push(`@default ${m.default}`);
-      if (m.example) extra.push(`@example ${m.example}${exampleTag(m)}`);
+      extra.push(...exampleLines(m));
       if (m.deprecated) extra.push(`@deprecated ${m.deprecated}`);
       s += jsdoc(m.doc, extra);
       let t = m.ts;

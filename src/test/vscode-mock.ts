@@ -244,18 +244,28 @@ function quickInput(kind: 'input' | 'pick') {
     onDidAccept: (f: any) => ((on.accept = f), disposable),
     onDidTriggerButton: (f: any) => ((on.button = f), disposable),
     onDidHide: (f: any) => ((on.hide = f), disposable),
-    dispose() {},
+    done: false,
+    dispose() { q.done = true; },
     show() {
       __inputs.push({ kind, title: q.title, step: q.step, totalSteps: q.totalSteps, prompt: q.prompt, placeholder: q.placeholder, value: q.value, back: q.buttons.includes(QuickInputButtons.Back), selected: q.selectedItems.map((i: any) => i.label) });
-      const a = __answers.shift();
-      setTimeout(() => {
-        if (a === undefined) return on.hide?.();
-        if (a === 'BACK') return on.button?.(QuickInputButtons.Back);
-        if (kind === 'input') { q.value = a; on.change?.(a); return on.accept?.(); }
-        const picked = q.items.filter((i: any) => (a as string[]).some((l) => i.label.includes(l)));
-        q.selectedItems = picked; q.activeItems = picked.slice(0, 1);
-        on.accept?.();
-      }, 0);
+      q.done = false;
+      // An answer the input refuses (its validation keeps it open): the next scripted answer goes into the same input.
+      const answer = () => {
+        const a = __answers.shift();
+        setTimeout(() => {
+          if (q.done) return;
+          if (a === undefined) return on.hide?.();
+          if (a === 'BACK') return on.button?.(QuickInputButtons.Back);
+          if (kind === 'input') {
+            q.value = a; on.change?.(a); on.accept?.();
+            return setTimeout(() => { if (!q.done && __answers.length) answer(); }, 0);
+          }
+          const picked = q.items.filter((i: any) => (a as string[]).some((l) => i.label.includes(l)));
+          q.selectedItems = picked; q.activeItems = picked.slice(0, 1);
+          on.accept?.();
+        }, 0);
+      };
+      answer();
     },
   };
   return q;

@@ -9,6 +9,9 @@ import { folderAt } from './gamefolder-node';
 import { folderSummary } from './core/gamefolder';
 
 /** "2 errors, 1 warning" or "No problems", from a handler's diagnostics. Exported for tests. */
+/** A file name as a glob that matches only itself (`Demo [DX11].js`: brackets, braces, * and ? taken literally). */
+export const globLiteral = (name: string) => name.replace(/[[{}*?]/g, '[$&]'); // (a ] alone is literal)
+
 export function checksText(diags: readonly vscode.Diagnostic[]): { text: string; severity: 'ok' | 'warning' | 'error' } {
   const errors = diags.filter((d) => d.severity === vscode.DiagnosticSeverity.Error).length;
   const warnings = diags.filter((d) => d.severity === vscode.DiagnosticSeverity.Warning).length;
@@ -36,12 +39,17 @@ export function registerLanguageStatus(context: vscode.ExtensionContext, isHandl
 
   const update = () => {
     const doc = vscode.window.activeTextEditor?.document;
-    if (!doc || !isHandler(doc)) return;
+    // Not a handler (any more): back to handlers only, so a JavaScript file that was one stops showing these.
+    if (!doc || !isHandler(doc)) {
+      checks.selector = folder.selector = report.selector = base;
+      return;
+    }
     // A handler kept in JavaScript mode: this file only, so other JavaScript files don't get it.
-    const selector: vscode.DocumentSelector = doc.languageId === HANDLER_LANGUAGE || doc.uri.scheme !== 'file' ? base : [...base, { language: 'javascript', pattern: new vscode.RelativePattern(vscode.Uri.file(path.dirname(doc.uri.fsPath)), path.basename(doc.uri.fsPath)) }];
+    const selector: vscode.DocumentSelector = doc.languageId === HANDLER_LANGUAGE || doc.uri.scheme !== 'file' ? base : [...base, { language: 'javascript', pattern: new vscode.RelativePattern(vscode.Uri.file(path.dirname(doc.uri.fsPath)), globLiteral(path.basename(doc.uri.fsPath))) }];
     checks.selector = folder.selector = report.selector = selector;
 
-    const c = checksText(vscode.languages.getDiagnostics(doc.uri));
+    // Only the Nucleus checks' own problems (not ESLint's or another extension's).
+    const c = checksText(vscode.languages.getDiagnostics(doc.uri).filter((d) => d.source === 'nucleus'));
     checks.text = c.text;
     checks.detail = 'Nucleus Co-op handler checks';
     checks.severity = c.severity === 'error' ? vscode.LanguageStatusSeverity.Error : c.severity === 'warning' ? vscode.LanguageStatusSeverity.Warning : vscode.LanguageStatusSeverity.Information;

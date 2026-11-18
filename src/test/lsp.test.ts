@@ -456,3 +456,67 @@ test('lsp: quick fixes in a CRLF document insert CRLF (no mixed line endings)', 
   assert.ok(applied >= 4, `${applied} quick fixes tried`);
   notify('textDocument/didClose', { textDocument: { uri } });
 });
+
+test('lsp: the default "This check is wrong" opens the form without the flagged code (a client that opens links)', async () => {
+  // A second server, for a client that advertises window/showDocument: nothing with code may reach GitHub before
+  // the person chooses it.
+  const p2 = spawn(process.execPath, [path.join(__dirname, '..', 'dist', 'cli.js'), 'lsp', '--stdio'], { stdio: ['pipe', 'pipe', 'inherit'], env: { ...process.env, NCDEV_NO_ISSUE_SEARCH: '1' } });
+  const write = (msg: unknown) => {
+    const body = Buffer.from(JSON.stringify(msg), 'utf8');
+    p2.stdin!.write(`Content-Length: ${body.length}\r\n\r\n`);
+    p2.stdin!.write(body);
+  };
+  const got: any[] = [];
+  const wait: { match: (m: any) => boolean; resolve: (m: any) => void }[] = [];
+  let buf = Buffer.alloc(0);
+  p2.stdout!.on('data', (chunk: Buffer) => {
+    buf = Buffer.concat([buf, chunk]);
+    for (;;) {
+      const sep = buf.indexOf('\r\n\r\n');
+      if (sep < 0) return;
+      const len = Number(buf.subarray(0, sep).toString().match(/Content-Length: (\d+)/i)![1]);
+      if (buf.length < sep + 4 + len) return;
+      const msg = JSON.parse(buf.subarray(sep + 4, sep + 4 + len).toString('utf8'));
+      buf = buf.subarray(sep + 4 + len);
+      got.push(msg);
+      const w = wait.find((x) => x.match(msg));
+      if (w) {
+        wait.splice(wait.indexOf(w), 1);
+        w.resolve(msg);
+      }
+    }
+  });
+  const next = (match: (m: any) => boolean): Promise<any> => {
+    const found = got.find(match);
+    return found ? Promise.resolve(found) : new Promise((resolve) => wait.push({ match, resolve }));
+  };
+  let id = 1000;
+  const ask = (method: string, params: unknown) => {
+    const n = id++;
+    write({ jsonrpc: '2.0', id: n, method, params });
+    return next((m) => m.id === n && m.method === undefined);
+  };
+  try {
+    await ask('initialize', { processId: null, rootUri: null, capabilities: { window: { showDocument: { support: true } } }, initializationOptions: { lint: { compareWithHub: false } } });
+    write({ jsonrpc: '2.0', method: 'initialized', params: {} });
+    const uri = 'file:///tmp/nucleus-lsp-test/handlers/Private.js';
+    write({ jsonrpc: '2.0', method: 'textDocument/didOpen', params: { textDocument: { uri, languageId: 'javascript', version: 1, text: HEADER + 'Game.Hook.ForceFocuss = true; // secret\n' } } });
+    const diags = (await next((m) => m.method === 'textDocument/publishDiagnostics' && m.params.uri === uri)).params.diagnostics;
+    const d = diags.find((x: any) => x.code === 'unknown-member');
+    const actions = (await ask('textDocument/codeAction', { textDocument: { uri }, range: d.range, context: { diagnostics: [d] } })).result;
+    const wrong = actions.find((a: any) => a.kind === 'quickfix.report');
+    assert.ok(wrong && !('choose' in wrong.command.arguments[0]), 'the default action, no choose');
+    const rep = (await ask('workspace/executeCommand', { command: wrong.command.command, arguments: wrong.command.arguments })).result;
+    assert.ok(new URL(rep.url).searchParams.has('code'), 'the choices still offer the version with the code');
+    const show = await next((m) => m.method === 'window/showDocument');
+    const opened = new URL(show.params.uri);
+    assert.equal(opened.searchParams.get('template'), 'check-wrong.yml');
+    assert.ok(!opened.searchParams.has('code') && !show.params.uri.includes('secret'), 'no flagged code in the opened link');
+    assert.ok(!got.some((m) => m.method === 'window/showDocument' && /secret/.test(m.params.uri)));
+    write({ jsonrpc: '2.0', id: show.id, result: { success: true } });
+    const msg = await next((m) => m.method === 'window/showMessage' && /Opened the report/.test(m.params.message));
+    assert.match(msg.params.message, /left out/);
+  } finally {
+    p2.kill();
+  }
+});

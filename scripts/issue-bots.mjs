@@ -53,8 +53,8 @@ export function detailsComment(body) {
   if (!block) return null;
   const { lines, status } = checkDetails(block);
   const says = {
-    ok: '✅ As the workbench filled it in.',
-    none: '⚠️ No checksum: typed or pasted by hand, not filled in by the workbench.',
+    ok: '✅ Checksum matches: as the tool filled it in.',
+    none: '⚠️ No checksum supplied: typed or pasted by hand, not filled in by a tool.',
     changed: '⚠️ Changed before sending: it no longer matches its checksum.',
   }[status];
   const safe = lines.join('\n').replace(/```/g, "'''").slice(0, 4000);
@@ -110,7 +110,7 @@ export const FIXED_MARKER = '<!-- fixed-in-bot -->';
  *  (#12)"; under a "Fixed" heading that's a fix, elsewhere an addition. Commit messages count with an explicit keyword:
  *  "Fixes #12", "closes owner/name#12". A number mentioned in passing ("see #4", "Ann for #10") doesn't count, and
  *  neither do other repositories' issues. */
-export function deliveredIssues(text, repo) {
+export function deliveredIssues(text, repo, { commits = false } = {}) {
   const out = new Map();
   const own = repo.toLowerCase();
   let group = '';
@@ -128,8 +128,10 @@ export function deliveredIssues(text, repo) {
       });
       return nums;
     };
-    // "(#12)" or "(#12, #13)" on an entry line (not a Thanks line).
-    if (!/thank/i.test(group)) for (const m of raw.matchAll(/\(([^()]*#\d+[^()]*)\)/g)) for (const n of ownNums(m[1])) add(n, kind);
+    // "(#12)" or "(#12, #13)" on an entry line (not a Thanks line): only a list of references, not "(see #12)".
+    // Release notes only: a commit subject's "(#12)" is GitHub's pull request number, not a delivery.
+    const REF = String.raw`(?:[\w.-]+\/[\w.-]+)?#\d+|https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/(?:issues|pull)\/\d+`;
+    if (!commits && !/thank/i.test(group)) for (const m of raw.matchAll(new RegExp(String.raw`\(\s*((?:${REF})(?:\s*,\s*(?:${REF}))*)\s*\)`, 'g'))) for (const n of ownNums(m[1])) add(n, kind);
     // "Fixes #12" / "closes owner/name#12" / "resolves …" anywhere (commit messages).
     for (const m of raw.matchAll(/\b(fix(?:e[sd])?|close[sd]?|resolve[sd]?)\b[\s:]+((?:the\s+)?(?:issue\s+)?(?:\S*#\d+|https:\/\/github\.com\/\S+\/(?:issues|pull)\/\d+))/gi)) {
       for (const n of ownNums(m[2])) add(n, /fix/i.test(m[1]) ? 'fixed' : kind);
@@ -151,14 +153,22 @@ export function fixedComment({ tag, url, reporter, owner, kind = 'fixed' }) {
  *  commit messages since the previous release (or [] to use the notes only). Returns what it did, for the summary. */
 export async function runFixedComments({ github, context, tag, url, notes, commits = [], core }) {
   const repo = `${context.repo.owner}/${context.repo.repo}`;
-  const found = deliveredIssues([notes, ...commits].join('\n'), repo).slice(0, 50);
+  // The notes with their headings' rules; each commit message alone, with keywords only; merged by issue (a fix wins).
+  const merged = new Map();
+  for (const x of [...deliveredIssues(notes, repo), ...commits.flatMap((c) => deliveredIssues(c, repo, { commits: true }))]) if (merged.get(x.n) !== 'fixed') merged.set(x.n, x.kind);
+  const found = [...merged.entries()].sort((a, b) => a[0] - b[0]).map(([n, kind]) => ({ n, kind }));
   const done = [];
   for (const { n, kind } of found) {
+    if (done.length >= 50) {
+      core?.warning?.(`Stopped after 50 comments; not looked at: ${found.filter((x) => x.n >= n).map((x) => '#' + x.n).join(', ')}`);
+      break;
+    }
     try {
       const { data: issue } = await github.rest.issues.get({ ...context.repo, issue_number: n });
       if (issue.pull_request) continue;
       const comments = await github.paginate(github.rest.issues.listComments, { ...context.repo, issue_number: n });
-      if (comments.some((c) => (c.body || '').includes(FIXED_MARKER))) continue;
+      // Already said: only this bot's own comment counts (anyone can paste the marker).
+      if (comments.some((c) => c.user?.login === 'github-actions[bot]' && (c.body || '').startsWith(FIXED_MARKER))) continue;
       await github.rest.issues.createComment({ ...context.repo, issue_number: n, body: fixedComment({ tag, url, reporter: issue.user?.login, owner: context.repo.owner, kind }) });
       done.push(n);
     } catch (e) {
@@ -169,14 +179,23 @@ export async function runFixedComments({ github, context, tag, url, notes, commi
 }
 
 /** The commit messages between the previous release and this one, from GitHub's compare API ([] when there's none). */
-export async function commitsSincePrevious({ github, context, tag, prefix = '' }) {
+export async function commitsSincePrevious({ github, context, tag, prefix = '', core }) {
+  let prev;
   try {
     const releases = await github.paginate(github.rest.repos.listReleases, { ...context.repo, per_page: 50 });
-    const prev = releases.filter((r) => !r.draft && r.tag_name !== tag && r.tag_name.startsWith(prefix))[0];
+    prev = releases.filter((r) => !r.draft && r.tag_name !== tag && r.tag_name.startsWith(prefix))[0];
     if (!prev) return [];
-    const { data } = await github.rest.repos.compareCommitsWithBasehead({ ...context.repo, basehead: `${prev.tag_name}...${tag}` });
-    return data.commits.map((c) => c.commit.message);
-  } catch {
+    // Every page (one page holds at most 100 of them).
+    const out = [];
+    for (let page = 1; page <= 100; page++) {
+      const { data } = await github.rest.repos.compareCommitsWithBasehead({ ...context.repo, basehead: `${prev.tag_name}...${tag}`, per_page: 100, page });
+      out.push(...data.commits.map((c) => c.commit.message));
+      if (data.commits.length < 100) break;
+    }
+    return out;
+  } catch (e) {
+    // The notes still count; only commit-only references are missed: say so.
+    core?.warning?.(`Couldn't read the commits${prev ? ` since ${prev.tag_name}` : ''} (${e?.message ?? e}): only the release notes' issue references get a comment.`);
     return [];
   }
 }

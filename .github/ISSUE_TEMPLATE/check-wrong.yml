@@ -56,5 +56,5 @@ body:
     id: context
     attributes:
       label: Details from the tool
-      description: Filled in for you (versions, which check, where the handler is from; never your code). Please leave it as it is. A bot keeps a copy as the first comment.
+      description: Filled in for you (versions, which check, where the handler is from; your code only if you chose to include it, for example as a link that opens your handler). Please leave it as it is. A bot keeps a copy as the first comment.
       render: text

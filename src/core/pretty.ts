@@ -68,9 +68,13 @@ function printNode(n: any, src: string): Doc {
       } catch (e) {
         if (!(e instanceof Unsupported)) throw e;
         // Kept as written: the common indent goes, the nesting inside (a loop's body, a call's arguments) stays.
-        const raw = src.slice(n.body.start + 1, n.body.end - 1).replace(/\t/g, '    ').replace(/^\s*\n/, '').trimEnd().split('\n').map((l) => l.trimEnd());
-        const common = Math.min(...raw.filter((l) => l.trim()).map((l) => l.match(/^ */)![0].length));
-        body = raw.map((l) => l.slice(common));
+        const inner = src.slice(n.body.start + 1, n.body.end - 1);
+        // A first statement on the brace's own line (`function () { if (x) {`) is not part of the common indent.
+        const inline = !/^[ \t]*(\r?\n|$)/.test(inner);
+        const raw = inner.replace(/\t/g, '    ').replace(/^\s*\n/, '').trimEnd().split('\n').map((l) => l.trimEnd());
+        const rest = inline ? raw.slice(1) : raw;
+        const common = Math.min(...rest.filter((l) => l.trim()).map((l) => l.match(/^ */)![0].length));
+        body = raw.map((l, i) => (inline && i === 0 ? l.trim() : l.slice(Number.isFinite(common) ? common : 0)));
       }
       return [...head, '{', indent(...body.flatMap((d) => [hardline, d])), hardline, '}'];
     }

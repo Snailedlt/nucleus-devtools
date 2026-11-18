@@ -50,5 +50,5 @@ body:
     id: context
     attributes:
       label: Details from the tool
-      description: Filled in for you when you open this form from the workbench, VS Code, Notepad++ or ncdev (versions, settings, which handler; never your code). Please leave it as it is. A bot keeps a copy as the first comment.
+      description: Filled in for you when you open this form from the workbench, VS Code, Notepad++ or ncdev (versions, settings, which handler; your code only if you chose to include it). Please leave it as it is. A bot keeps a copy as the first comment.
       render: text

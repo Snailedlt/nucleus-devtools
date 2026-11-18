@@ -109,11 +109,13 @@ const RULES = {
 /** The family a handler's code points to, or '' (no sign, or signs of two families). `{ definite: true }` asks for
  *  the family only when a weight-3 file layout shows it. */
 export function classifyCode(src, { definite = false } = {}) {
+  src = withoutComments(src);
   const scores = Object.entries(RULES)
     .map(([family, rules]) => [family, rules.reduce((s, [re, w]) => s + (re.test(src) ? w : 0), 0), rules.some(([re, w]) => w === 3 && re.test(src))])
     .filter(([, s, d]) => (definite ? d : s >= 2))
     .sort((a, b) => b[1] - a[1]);
-  if (!scores.length || (scores[1] && scores[1][1] === scores[0][1])) return '';
+  // Signs of two families (a Unity flag and a Source executable): no family, whichever scores higher.
+  if (scores.length !== 1) return '';
   return scores[0][0];
 }
 
@@ -123,7 +125,10 @@ export function classifyWikidata(engines) {
   return families.length === 1 ? families[0] : '';
 }
 
-export const steamIdOf = (src) => /^\s*Game\.SteamID\s*=\s*["']?(\d+)/im.exec(src)?.[1] ?? '';
+/** The code without its comments (a commented-out line or a note about another engine is no evidence). Not string
+ *  aware: a "//" in a string cuts that line, which only loses evidence. */
+export const withoutComments = (src) => String(src).replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:\\])\/\/.*$/gm, '$1');
+export const steamIdOf = (src) => /^\s*Game\.SteamID\s*=\s*["']?(\d+)/im.exec(withoutComments(src))?.[1] ?? '';
 /** The IGDB slug of a Hub index entry's `gameUrl` ("https://www.igdb.com/games/left-4-dead-2" → "left-4-dead-2"). */
 export const igdbSlugOf = (url) => /^https:\/\/www\.igdb\.com\/games\/([a-z0-9-]+)\/?$/.exec(url ?? '')?.[1] ?? '';
 

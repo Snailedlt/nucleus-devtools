@@ -1,6 +1,6 @@
 // Builds media/nucleus-{original,plain,line}.svg: Nucleus Co-op's logo (its icon.ico and theme logo.png) rebuilt from
 // geometry. Uses the svg-icons skill's scripts (devicon PR #2824, .claude/skills/svg-icons/scripts, npm install there):
-//   SVG_ICONS_SCRIPTS=/path/to/svg-icons/scripts node scripts/nucleus-logo/build-nucleus.js   (run from media/)
+//   cd media && SVG_ICONS_SCRIPTS=/path/to/svg-icons/scripts node ../scripts/nucleus-logo/build-nucleus.js   (writes into the current folder)
 // crossings.json: which orbit is on top at each of the 12 crossings (read from icon.ico); shine.json: the core.
 // Nucleus Co-op logo rebuilt from its geometry (measured from Nucleus Co-op's own icon.ico and theme logo.png):
 // three copies of one ellipse rotated 30/90/150 deg, woven as in the original; a disc behind; a core with a shine.
@@ -44,7 +44,7 @@ const disc=circle(C,52);
 const capsule=(p1,p2,r)=>{const v=p2.subtract(p1).normalize(r).rotate(90);
   const body=new paper.Path({segments:[p1.add(v),p2.add(v),p2.subtract(v),p1.subtract(v)],closed:true,insert:false});
   return body.unite(circle(p1,r),{insert:false}).unite(circle(p2,r),{insert:false});};
-const SH=JSON.parse(fs.existsSync(__dirname+'/shine.json')?fs.readFileSync(__dirname+'/shine.json'):'{}');
+const SH=JSON.parse(fs.readFileSync(__dirname+'/shine.json')); // required: it holds the core's tube and ring too
 const sh=Object.assign({rimDx:3.4,rimDy:2.2,rimR:16.4,dot:[-5.6,-5.5],dotR:5.6,patchR:8.2,tip:[5.6,3.2],tailR:4.3,round:1.6},SH);
 const dotC=C.add(sh.dot);
 // the core, read as the original draws it: a peach circle, a red tube bent into a C with round ends, a white

@@ -49,11 +49,19 @@ jobs:
           node scripts/doc-votes.mjs || echo "::warning::No votes report: data/doc-votes.json stays."
           if git clone -q --depth 1 --branch data --filter=blob:none https://github.com/Snailedlt/nucleuscoop-handler-testbench.git ../hubdata; then
             npm ci --ignore-scripts --no-audit --no-fund >/dev/null
-            node scripts/hub-engines.mjs --hub ../hubdata || echo "::warning::hub-engines failed: data/hub-engines.json stays."
-            node scripts/hub-examples.mjs --hub ../hubdata || echo "::warning::hub-examples failed: data/hub-examples.json stays."
+            # The two Hub snapshots go together: if either fails, both stay as they were.
+            if node scripts/hub-engines.mjs --hub ../hubdata && node scripts/hub-examples.mjs --hub ../hubdata; then :; else
+              echo "::warning::hub-engines or hub-examples failed: data/hub-engines.json and data/hub-examples.json stay."
+              git checkout -- data/hub-examples.json data/hub-engines.json
+            fi
           fi
-          # Only the date moved in hub-examples.json and hub-engines.json: nothing to review.
-          if git diff --numstat -- data/hub-examples.json data/hub-engines.json | awk '{ if ($1 > 1) found=1 } END { exit !found }' || ! git diff --quiet -- data/doc-votes.json; then echo "changed=true" >> "$GITHUB_OUTPUT"; else git checkout -- data/hub-examples.json data/hub-engines.json; echo "changed=false" >> "$GITHUB_OUTPUT"; fi
+          # Only the date moved in the Hub snapshots (their data, without takenAt, is the same): nothing to review.
+          same() { node -e 'const fs=require("fs"),cp=require("child_process");const f=process.argv[1];const strip=(t)=>{const j=JSON.parse(t);delete j.takenAt;return JSON.stringify(j)};let old="";try{old=cp.execSync("git show HEAD:"+f,{encoding:"utf8",maxBuffer:1e9})}catch{process.exit(1)}process.exit(strip(old)===strip(fs.readFileSync(f,"utf8"))?0:1)' "$1"; }
+          hub=false; votes=false
+          if ! same data/hub-examples.json || ! same data/hub-engines.json; then hub=true; else git checkout -- data/hub-examples.json data/hub-engines.json; fi
+          git diff --quiet -- data/doc-votes.json || votes=true
+          echo "hub=$hub" >> "$GITHUB_OUTPUT"; echo "votes=$votes" >> "$GITHUB_OUTPUT"
+          if [ $hub = true ] || [ $votes = true ]; then echo "changed=true" >> "$GITHUB_OUTPUT"; else echo "changed=false" >> "$GITHUB_OUTPUT"; fi
       - if: steps.check.outputs.changed == 'true' || steps.data.outputs.changed == 'true'
         uses: actions/setup-node@v4
         with:
@@ -67,6 +75,8 @@ jobs:
           git clone --quiet --depth 1 --filter=blob:none https://github.com/SplitScreen-Me/splitscreenme-protoInput ../splitscreenme-protoInput
           npm ci
           npm run generate
+          # Hub usage counted against the model this PR publishes (new members included), then the docs again.
+          if [ -d ../hubdata ] && [ "${{ steps.check.outputs.changed }}" = true ]; then node scripts/hub-examples.mjs --hub ../hubdata && npm run generate; fi
           npm run build
           npm test
       - name: Open or update the pull request
@@ -80,7 +90,11 @@ jobs:
           git switch -C "$branch"
           git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -qam "API model from Nucleus ${{ steps.check.outputs.nucleus }} and docs ${{ steps.check.outputs.www }}, with the docs' votes and Hub usage"
           git push -qf origin "$branch"
-          body="Nucleus Co-op's source or the splitscreen.me docs changed, so the generated API model, type definitions and skill reference were regenerated (tests pass).
+          what=""
+          [ "${{ steps.check.outputs.changed }}" = true ] && what="Nucleus Co-op's source or the splitscreen.me docs changed: review the diff of \`data/nucleus-api.json\` for new, removed or renamed options. "
+          [ "${{ steps.data.outputs.hub }}" = true ] && what="$what The Hub handlers' usage changed (\`data/hub-examples.json\`, \`data/hub-engines.json\`): examples and counts in the docs. "
+          [ "${{ steps.data.outputs.votes }}" = true ] && what="$what The docs' votes changed (\`data/doc-votes.json\`). "
+          body="The generated API model, type definitions and skill reference were regenerated (tests pass). $what
 
-          Review the diff of \`data/nucleus-api.json\` for new, removed or renamed options. If users will notice the change, add a line to \`CHANGELOG.md\` under Unreleased before merging."
+          If users will notice the change, add a line to \`CHANGELOG.md\` under Unreleased before merging."
           gh pr view "$branch" >/dev/null 2>&1 && gh pr edit "$branch" --body "$body" || gh pr create --head "$branch" --base main --title "Sync the API model with Nucleus and the docs" --body "$body"

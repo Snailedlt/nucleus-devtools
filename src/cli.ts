@@ -32,7 +32,7 @@ import { EVERY_KEYBOARD } from './core/sim';
 import { formatSimulation } from './simformat';
 import { serve } from './mcp';
 import { readGameBinaries } from './gamefolder-node';
-import { analyse, importsReport } from './core/importhooks';
+import { analyse, findExe, importsReport } from './core/importhooks';
 import type { PeFile } from './core/pe';
 import { serve as serveLsp } from './lsp';
 import { buildReport, DISCORD_THREAD, findDuplicates, handlerHelp, handlerOrigin, simSummary, type ReportInput } from './core/report';
@@ -598,7 +598,7 @@ function cmdImports(args: Args, json: boolean): number {
   const files = readGameBinaries(args.positional);
   if (!files.length) throw new Error(`No .exe or .dll files in ${args.positional.join(', ')}`);
   const exe = flag(args, '--exe');
-  if (exe && !files.some((f) => !f.dll && (f.fileName.toLowerCase() === exe.toLowerCase() || path.basename(f.fileName).toLowerCase() === path.basename(exe).toLowerCase())))
+  if (exe && !findExe(files.filter((f) => !f.dll), exe))
     throw new Error(`--exe: no program called ${exe} there (found: ${files.filter((f) => !f.dll).map((f) => f.fileName).join(', ') || 'none'})`);
   const a = analyse(files, exe);
   const opts = { controllers: !has(args, '--no-controllers'), kbm: !has(args, '--no-kbm') };
@@ -656,6 +656,8 @@ async function cmdReport(args: Args, json: boolean): Promise<number> {
   if (kind === 'check' && text !== undefined) {
     // The flagged line: --line, else the check's first problem in the file.
     const want = flag(args, '--line') ? Number(flag(args, '--line')) : undefined;
+    const count = text.split(/\r?\n/).length;
+    if (want !== undefined && !(Number.isInteger(want) && want >= 1 && want <= count)) throw new Usage(`report --line: a line number from 1 to ${count}`);
     const d = lint(text).filter((x) => x.rule === rule).find((x) => want === undefined || lineOf(text, x.start) + 1 === want);
     if (!d) process.stderr.write(want ? `Note: ${rule} doesn't flag line ${want} of ${file}. If it should, say so on the form.\n` : `Note: ${rule} doesn't flag anything in ${file}.\n`);
     const lines = text.split(/\r?\n/);
@@ -678,8 +680,9 @@ async function cmdReport(args: Args, json: boolean): Promise<number> {
       ...(hits.length ? ['', 'Is it one of these? Open it and add a 👍 or a comment:', ...hits.map((h) => `  #${h.number} ${h.title}${h.thumbs ? ` (👍 ${h.thumbs})` : ''}\n    ${h.url}`)] : []),
       ...(help ? ['', `Is the problem in this handler, not the tools? ${help.note}`, ...help.links.map((l) => `  ${l.label}: ${l.url}`)] : []),
       '',
-      opened ? 'Opened the form in your browser: check it, then submit.' : 'Open this link to send it (you see everything before it is sent):',
-      ...(opened ? [] : [r.url]),
+      // The browser may still fail to start (no xdg-open): the link is always printed.
+      opened ? 'Opening the form in your browser: check it, then submit. If it didn\'t open, use this link:' : 'Open this link to send it (you see everything before it is sent):',
+      r.url,
       ...(input.code ? ['', 'It includes the flagged line(s) only. Leave them out with --no-code, or delete them on the form.'] : []),
       '',
       `No GitHub account? ncdev report … --text prints it to paste in the testers' Discord thread: ${DISCORD_THREAD}`,
