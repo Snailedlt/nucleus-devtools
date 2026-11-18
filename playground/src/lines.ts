@@ -341,13 +341,71 @@ export function placeExample(text: string, path: string, example: string, where 
   // player whose instance it is: `Player` in Game.Play; in the other callbacks (Game.ProtoInput.OnInputLocked, ...,
   // which Nucleus calls once, with no arguments) each player in turn, inside the loop over PlayerList that Hub handlers
   // write there (made when the callback has none).
-  const usesPlayer = /\bplayer\./.test(example);
+  // A loop over the whole PlayerList, one player at a time: `for (var i = 0; i < PlayerList.Count; i++)` (or `++i`,
+  // `i += 1`, `i = i + 1`); its index's name, else undefined.
+  const isId = (n: any, name?: string) => n?.type === 'Identifier' && (!name || n.name === name);
+  const whole = (s: any) => {
+    if (s?.type !== 'ForStatement') return undefined;
+    const t = s.test, init = s.init?.type === 'VariableDeclaration' ? s.init.declarations[0] : s.init?.type === 'AssignmentExpression' && s.init.operator === '=' ? { id: s.init.left, init: s.init.right } : undefined;
+    const idx = isId(t?.left) ? t.left.name : undefined;
+    const u = s.update;
+    const one = (n: any) => n?.type === 'Literal' && n.value === 1;
+    const step = (u?.type === 'UpdateExpression' && u.operator === '++' && isId(u.argument, idx))
+      || (u?.type === 'AssignmentExpression' && isId(u.left, idx) && ((u.operator === '+=' && one(u.right))
+        || (u.operator === '=' && u.right?.type === 'BinaryExpression' && u.right.operator === '+' && ((isId(u.right.left, idx) && one(u.right.right)) || (one(u.right.left) && isId(u.right.right, idx))))));
+    return idx && step && t.operator === '<' && t.right?.type === 'MemberExpression' && isId(t.right.object, 'PlayerList') && isId(t.right.property, 'Count') && isId(init?.id, idx) && init.init?.type === 'Literal' && init.init.value === 0 ? idx as string : undefined;
+  };
+  // `var player = PlayerList[i];` in a loop's body: the player's name.
+  const playerVar = (d: any, idx: string) => (d?.type === 'VariableDeclaration' && d.declarations.length === 1 && isId(d.declarations[0].id) && d.declarations[0].init?.type === 'MemberExpression' && d.declarations[0].init.computed && isId(d.declarations[0].init.object, 'PlayerList') && isId(d.declarations[0].init.property, idx) ? d.declarations[0].id.name as string : undefined);
+  // Every identifier `name` in a tree, and how many of them are the object of a member (`name.X`).
+  const countIds = (n: any, name: string, acc = { all: 0, obj: 0 }): { all: number; obj: number } => {
+    if (!n || typeof n !== 'object') return acc;
+    if (Array.isArray(n)) { n.forEach((x) => countIds(x, name, acc)); return acc; }
+    if (n.type === 'Identifier' && n.name === name) acc.all++;
+    if (n.type === 'MemberExpression' && !n.computed && isId(n.object, name)) acc.obj++;
+    for (const k of Object.keys(n)) if (k !== 'type' && k !== 'start' && k !== 'end' && k !== 'loc' && typeof n[k] === 'object') countIds(n[k], name, acc);
+    return acc;
+  };
+  // An example that loops over PlayerList itself (most Proto Input ones: `for (...) { var player = PlayerList[i];
+  // ProtoInput.InstallHook(player....); }`) isn't wrapped in a second loop (each hook installed once per player, not
+  // once per player per player): its body goes in the callback's own loop or a new one, as a bare per-player call
+  // does. A loop that does more with its index than pick the player goes in as it is, at the callback's top level.
+  let selfLoop = false;
+  if (where !== 'top') {
+    let ex: any[] = [];
+    try { ex = (parseLikeJint(example, { ecmaVersion: 'latest', sourceType: 'script', allowReturnOutsideFunction: true }).program as any).body; } catch { /* not parsed: as before */ }
+    const lp = ex.length === 1 ? ex[0] : undefined;
+    const idx = whole(lp);
+    if (idx) {
+      selfLoop = true;
+      const inner = lp.body?.type === 'BlockStatement' ? lp.body.body as any[] : [];
+      const pv = playerVar(inner[0], idx);
+      const rest = inner.slice(1);
+      const ids = pv ? countIds(rest, pv) : undefined;
+      if (where !== 'Game.Play' && pv && rest.length && !countIds(rest, idx).all && ids!.all === ids!.obj) {
+        // The body without its `var player = PlayerList[i];`, back to the left margin, the player as `player.`.
+        const body = example.slice(lineStart(example, rest[0].start), rest[rest.length - 1].end);
+        const lines = body.split('\n');
+        const cut = Math.min(...lines.filter((l) => l.trim()).map((l) => /^[ \t]*/.exec(l)![0].length));
+        example = lines.map((l) => l.slice(Math.min(cut, /^[ \t]*/.exec(l)![0].length))).join('\n');
+        if (pv !== 'player') example = example.replace(new RegExp(`(^|[^\\w$.])${pv.replace(/\$/g, '\\$')}\\.`, 'g'), '$1player.');
+        selfLoop = false;
+      }
+    }
+  }
+  const usesPlayer = !selfLoop && /\bplayer\./.test(example);
   // A new loop's index and player get names the callback and the example don't use already (`return record(i);`
-  // after it would otherwise see the loop's last index).
+  // after it would otherwise see the loop's last index). `\u0069` is `i` (ES5's escapes, decoded).
   let names = { i: 'i', player: 'player' };
   const nameLoop = (src: string) => {
-    const used = new Set(src.match(/[A-Za-z_$][\w$]*/g) ?? []);
-    const free = (list: string[]) => list.find((x) => !used.has(x)) ?? list.map((x) => `${x}2`).find((x) => !used.has(x)) ?? `${list[0]}_${used.size}`;
+    const used = new Set((src.match(/(?:[A-Za-z_$]|\\u[0-9a-fA-F]{4})(?:[\w$]|\\u[0-9a-fA-F]{4})*/g) ?? []).map((x) => x.replace(/\\u([0-9a-fA-F]{4})/g, (_m, h: string) => String.fromCharCode(parseInt(h, 16)))));
+    const free = (list: string[]) => {
+      const pick = list.find((x) => !used.has(x)) ?? list.map((x) => `${x}2`).find((x) => !used.has(x));
+      if (pick) return pick;
+      let n = 3;
+      while (used.has(`${list[0]}${n}`)) n++;
+      return `${list[0]}${n}`;
+    };
     names = { i: free(['i', 'j', 'k', 'n', 'idx', 'index']), player: free(['player', 'pl', 'p', 'plyr', 'thisPlayer']) };
   };
   const loop = (code: string, ind: string) => `${ind}for (var ${names.i} = 0; ${names.i} < PlayerList.Count; ${names.i}++) {\n${ind}${unit}var ${names.player} = PlayerList[${names.i}];\n${block(names.player === 'player' ? code : code.replace(/\bplayer\./g, `${names.player}.`), ind + unit)}\n${ind}}`;
@@ -376,7 +434,7 @@ export function placeExample(text: string, path: string, example: string, where 
   }
   if (!fnStmt) {
     nameLoop(exampleNames);
-    const inner = usesPlayer && where !== 'Game.Play' ? loop(example, unit) : block(where === 'Game.Play' ? example.replace(/\bplayer\./g, 'Player.') : example, unit);
+    const inner = usesPlayer && where !== 'Game.Play' ? loop(example, unit) : block(where === 'Game.Play' && usesPlayer ? example.replace(/\bplayer\./g, 'Player.') : example, unit);
     const code = `${where} = function () {\n${inner}\n};\n`;
     const at = text.length;
     const lead = !text ? '' : text.endsWith('\n\n') ? '' : text.endsWith('\n') ? '\n' : '\n\n';
@@ -391,18 +449,6 @@ export function placeExample(text: string, path: string, example: string, where 
   else if (usesPlayer) {
     // The callback's own loop over PlayerList (`var p = PlayerList[i];` in a for loop's body), else a new one.
     // Only a loop over the whole list: `for (var i = 0; i < PlayerList.Count; i++)` with `PlayerList[i]`.
-    const isId = (n: any, name?: string) => n?.type === 'Identifier' && (!name || n.name === name);
-    const whole = (s: any) => {
-      const t = s.test, init = s.init?.type === 'VariableDeclaration' ? s.init.declarations[0] : s.init?.type === 'AssignmentExpression' && s.init.operator === '=' ? { id: s.init.left, init: s.init.right } : undefined;
-      const idx = isId(t?.left) ? t.left.name : undefined;
-      // One player at a time: `i++`, `++i`, `i += 1` or `i = i + 1`.
-      const u = s.update;
-      const one = (n: any) => n?.type === 'Literal' && n.value === 1;
-      const step = (u?.type === 'UpdateExpression' && u.operator === '++' && isId(u.argument, idx))
-        || (u?.type === 'AssignmentExpression' && isId(u.left, idx) && ((u.operator === '+=' && one(u.right))
-          || (u.operator === '=' && u.right?.type === 'BinaryExpression' && u.right.operator === '+' && ((isId(u.right.left, idx) && one(u.right.right)) || (one(u.right.left) && isId(u.right.right, idx))))));
-      return idx && step && t.operator === '<' && t.right?.type === 'MemberExpression' && isId(t.right.object, 'PlayerList') && isId(t.right.property, 'Count') && isId(init?.id, idx) && init.init?.type === 'Literal' && init.init.value === 0 ? idx : undefined;
-    };
     const forLoop = (fn.body.body as any[]).filter((s) => s.type === 'ForStatement' && s.body.type === 'BlockStatement' && whole(s)).map((s) => {
       const idx = whole(s);
       const x = s.body.body.flatMap((d: any) => (d.type === 'VariableDeclaration' ? d.declarations : [])).find((x: any) => x.init?.type === 'MemberExpression' && x.init.computed && isId(x.init.object, 'PlayerList') && isId(x.init.property, idx) && isId(x.id));

@@ -15,18 +15,42 @@ const PE_FILE_LIMIT = 400e6, PE_TOTAL_LIMIT = 1.5e9;
 const peHandles = new WeakMap<GameFolder, { path: string; file: File }[]>();
 const peRead = new WeakMap<GameFolder, Promise<PeFile[]>>();
 const peDone = new WeakMap<GameFolder, PeFile[]>();
+
+/** Reading a folder, for the progress shown while it lasts: listing (the total isn't known yet), then the program
+ *  files (n of total, in bytes), then done. */
+export type FolderProgress =
+  | { phase: 'listing'; name: string; files: number }
+  | { phase: 'binaries'; name: string; done: number; total: number; bytes: number; totalBytes: number }
+  | { phase: 'done' };
+let progress: ((p: FolderProgress) => void) | undefined;
+export function onFolderProgress(f: (p: FolderProgress) => void) { progress = f; }
+// Cancel (the progress's link): checked between files, so it's cheap and stops within one file.
+let cancelled = false;
+export function cancelFolderRead() { cancelled = true; }
+/** True while the folder's program files are still being read (Check's "Reading your game's files…"). */
+export const gameBinariesPending = (folder: GameFolder) => !!peHandles.get(folder)?.length && !peDone.has(folder);
 function readBinaries(folder: GameFolder): Promise<PeFile[]> {
   let p = peRead.get(folder);
   if (!p) {
     p = (async () => {
       const out: PeFile[] = [];
+      // The files that fit the budget, counted before reading (files that turn out not to be programs use it too).
       let total = 0;
-      for (const { path, file } of peHandles.get(folder) ?? []) {
-        if (file.size > PE_FILE_LIMIT || total + file.size > PE_TOTAL_LIMIT) continue;
-        total += file.size; // counted before reading: files that turn out not to be programs use the budget too
+      const todo = (peHandles.get(folder) ?? []).filter(({ file }) => {
+        if (file.size > PE_FILE_LIMIT || total + file.size > PE_TOTAL_LIMIT) return false;
+        total += file.size;
+        return true;
+      });
+      cancelled = false;
+      let bytes = 0;
+      for (const [i, { path, file }] of todo.entries()) {
+        if (cancelled) { progress?.({ phase: 'done' }); return []; } // no hints from half the files
+        progress?.({ phase: 'binaries', name: folder.name, done: i, total: todo.length, bytes, totalBytes: total });
         try { out.push(parsePE(new Uint8Array(await file.arrayBuffer()), path)); } catch { /* not a program */ }
+        bytes += file.size;
         await new Promise((r) => setTimeout(r)); // keep the page responsive between files
       }
+      progress?.({ phase: 'done' });
       return out;
     })();
     peRead.set(folder, p);
@@ -50,6 +74,8 @@ async function walkHandle(root: FsDirHandle): Promise<GameFolder> {
   const files: GameFolder['files'] = [], dirs: string[] = [];
   const pe: { path: string; file: File }[] = [];
   let count = 0, truncated = false;
+  cancelled = false;
+  progress?.({ phase: 'listing', name: root.name, files: 0 });
   const queue: { h: FsDirHandle; path: string; depth: number }[] = [{ h: root, path: '', depth: 0 }];
   while (queue.length) { // breadth first: the top folders are complete before a limit cuts deep ones
     const { h, path, depth } = queue.shift()!;
@@ -67,6 +93,8 @@ async function walkHandle(root: FsDirHandle): Promise<GameFolder> {
       }
     }
     await Promise.all(pending);
+    if (cancelled) { progress?.({ phase: 'done' }); throw new DOMException('Cancelled', 'AbortError'); }
+    progress?.({ phase: 'listing', name: root.name, files: files.length });
     if (truncated && count > MAX_ENTRIES) break;
   }
   files.sort((a, b) => a.path.localeCompare(b.path));

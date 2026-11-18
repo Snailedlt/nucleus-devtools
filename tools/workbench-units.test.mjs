@@ -603,6 +603,32 @@ test('docs: "Insert into handler" puts an example where it belongs (lines.ts pla
   r = L.placeExample('Game.ProtoInput.OnInputLocked = function () {\n  for (var j = 0; j < 1; j++) {\n    var p = PlayerList[j];\n  }\n};\n', 'X', 'X(player.H);', 'Game.ProtoInput.OnInputLocked');
   assert.match(r.text, /i < PlayerList\.Count/);
   assert.equal(r.text.split('\n')[r.line].trim(), 'X(player.H);');
+  // An example that loops over PlayerList itself (GetCursorPosHookID's) isn't wrapped in a second loop: one
+  // InstallHook per player, in the callback's own loop or a new one.
+  const parseLikeJint0 = (t) => jsp0.parseLikeJint(t, { ecmaVersion: 'latest' });
+  const jsp0 = await load(path.join(coreDir, 'src/core/jsparse.ts'));
+  const hookEx = 'for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.InstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.GetCursorPosHookID\n  );\n}';
+  const loops = (t) => (t.match(/PlayerList\.Count/g) ?? []).length;
+  const hooks = (t) => (t.match(/InstallHook\(/g) ?? []).length;
+  for (const base of ['', 'Game.ProtoInput.OnInputLocked = function () {\n  Context.Wait(1);\n};\n', 'Game.ProtoInput.OnInputLocked = function () {\n  for (var j = 0; j < PlayerList.Count; j++) {\n    var p = PlayerList[j];\n    X(p.H);\n  }\n};\n']) {
+    r = L.placeExample(base, 'ProtoInput.Values.GetCursorPosHookID', hookEx, 'Game.ProtoInput.OnInputLocked');
+    assert.equal(loops(r.text), 1, r.text);
+    assert.equal(hooks(r.text), 1, r.text);
+    assert.doesNotThrow(() => parseLikeJint0(r.text), r.text);
+    assert.equal(L.placeExample(r.text, 'ProtoInput.Values.GetCursorPosHookID', hookEx, 'Game.ProtoInput.OnInputLocked').action, 'same', r.text);
+  }
+  // Merged into the callback's own loop, with its player's name.
+  assert.match(L.placeExample('Game.ProtoInput.OnInputLocked = function () {\n  for (var j = 0; j < PlayerList.Count; j++) {\n    var p = PlayerList[j];\n  }\n};\n', 'X', hookEx, 'Game.ProtoInput.OnInputLocked').text, /var p = PlayerList\[j\];\n    ProtoInput\.InstallHook\(\n      p\.ProtoInputInstanceHandle/);
+  // A loop that uses its index for more than the player goes in as it is (no second loop round it).
+  r = L.placeExample('', 'X', 'for (var i = 0; i < PlayerList.Count; i++) {\n  X(i, PlayerList[i].H);\n}', 'Game.ProtoInput.OnInputLocked');
+  assert.equal(loops(r.text), 1, r.text);
+  // A new loop's names: escaped identifiers count as their names (`\\u0069` is `i`), and when every name is taken the
+  // next free numbered one.
+  r = L.placeExample('Game.ProtoInput.OnInputLocked = function () {\n  var \\u0069 = 0;\n};\n', 'X', 'X(player.H);', 'Game.ProtoInput.OnInputLocked');
+  assert.match(r.text, /for \(var j = 0;/);
+  const taken = ['i', 'j', 'k', 'n', 'idx', 'index', 'i2', 'j2', 'k2', 'n2', 'idx2', 'index2', 'i3'].map((x) => `var ${x};`).join(' ');
+  r = L.placeExample(`Game.ProtoInput.OnInputLocked = function () {\n  ${taken}\n};\n`, 'X', 'X(player.H);', 'Game.ProtoInput.OnInputLocked');
+  assert.match(r.text, /for \(var i4 = 0;/);
   // A handler that doesn't parse: no guessing.
   assert.equal(L.placeExample('Game.Play = function( {', 'Context.Wait', 'Context.Wait(1);', 'Game.Play'), undefined);
   // Every example in the docs goes somewhere in an empty handler and in a typical one, and the result still parses.
@@ -623,4 +649,20 @@ test('docs: "Insert into handler" puts an example where it belongs (lines.ts pla
     }
   }
   assert.ok(n > 400, `${n} examples placed`);
+});
+
+test('Check counts the package and game folder problems too (checklist.ts)', async () => {
+  const C = await load('playground/src/checklist.ts');
+  const code = [{ severity: 'warning' }, { severity: 'hint' }];
+  const game = Array.from({ length: 5 }, () => ({ severity: 'info' }));
+  const pkg = [{ severity: 'error' }];
+  // A linked game folder with 5 notes and clean code: not 0.
+  assert.deepEqual(C.countProblems([[], game, []]), { error: 0, warning: 0, info: 5, hint: 0, total: 5 });
+  assert.deepEqual(C.countProblems([code, game, pkg]), { error: 1, warning: 1, info: 5, hint: 1, total: 7 });
+  // The filter chips filter every list alike; Guided and All leave hints out.
+  assert.equal(C.shownInCheck('info', true, 'error'), true);
+  assert.equal(C.shownInCheck('info', false, 'error'), false);
+  assert.equal(C.shownInCheck('info', false, 'info'), true);
+  assert.equal(C.shownInCheck('hint', false, 'all'), false);
+  assert.equal(C.shownInCheck('hint', false, 'hint'), true);
 });

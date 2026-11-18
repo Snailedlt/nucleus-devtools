@@ -22,6 +22,8 @@ export function importSettings(text: string): { set: number; reset: number } {
   let data: any;
   try { data = JSON.parse(text); } catch { throw new Error("This isn't a settings file (it isn't JSON)."); }
   if (data?.format !== FORMAT || typeof data.settings !== 'object' || !data.settings || Array.isArray(data.settings)) throw new Error("This isn't a workbench settings file.");
+  // Version 1 is the only one so far: a newer file may mean something else by the same names, so nothing changes.
+  if (data.version !== 1) throw new Error(`This settings file is version ${String(data.version ?? 'unknown')}, and this workbench reads version 1. Nothing changed.`);
   // Only known settings, as text, and not huge (a custom theme is the biggest, a few KB).
   const values = new Map<string, string>();
   const invalid = new Set<string>(); // in the file but not usable: left as they are, not reset
@@ -30,6 +32,8 @@ export function importSettings(text: string): { set: number; reset: number } {
     if (!SETTINGS.includes(key)) continue;
     if (typeof v === 'string' && v.length <= 200_000) values.set(key, v); else invalid.add(key);
   }
+  // Settings, but none this workbench knows: not a backup of this one's (an empty file still puts back the defaults).
+  if (!values.size && !invalid.size && Object.keys(data.settings).length) throw new Error('None of the settings in this file are ones this workbench knows. Nothing changed.');
   // Switched-off usage counts stay off unless the file switches them on itself (a file from before the switch
   // existed, or one that leaves it out, never turns counting back on).
   const KEEP = new Set(['nucleus-workbench-feedback-off']);

@@ -571,8 +571,29 @@ for (const theme of ['light', 'dark']) {
     const at = await p.evaluate(() => { const cm = document.querySelector('.CodeMirror').CodeMirror; const r = cm.charCoords({ line: 5, ch: 6 }, 'window'); return { x: r.left + 2, y: (r.top + r.bottom) / 2 }; });
     await p.mouse.move(at.x, at.y);
     await p.waitForTimeout(900);
-    check(await p.isVisible('#tip') && (await p.$$('#tip code.hl :is(.cm-property, .cm-nucleus-prop)')).length > 0, `${theme}: the hover card shows code in the editor's colours`);
+    // The short card: the signature (its name in the editor's property colour) and any code in the first sentence.
+    check(await p.isVisible('#tip') && (await p.$$('#tip :is(code.hl :is(.cm-property, .cm-nucleus-prop), .dc-sig .sg-n)')).length > 0, `${theme}: the hover card shows code in the editor's colours`);
+    // The hover is short (help on request): the first sentence and "More in Docs", no "Explain this line".
+    const tipText = await p.textContent('#tip');
+    check((await p.isVisible('#tip .dc-more a[data-api]')) && !/Explain this line|In practice/.test(tipText), `${theme}: the hover card is short, with More in Docs and no Explain this line`);
     await p.mouse.move(5, 5);
+    // Parameter hints: not from clicking into a call; typing `,` in it opens them, Escape closes them.
+    const codeBefore = await p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue());
+    await p.evaluate(() => { const cm = document.querySelector('.CodeMirror').CodeMirror; cm.setValue('Game.AddOption("Mode", "Pick one", "mode", );\n'); });
+    await p.waitForTimeout(300);
+    const inCall = await p.evaluate(() => { const cm = document.querySelector('.CodeMirror').CodeMirror; const r = cm.charCoords({ line: 0, ch: 22 }, 'window'); return { x: r.left + 1, y: (r.top + r.bottom) / 2 }; });
+    await p.mouse.click(inCall.x, inCall.y);
+    await p.waitForTimeout(250);
+    check(await p.$eval('#sig', (e) => e.hidden), `${theme}: clicking into a call doesn't open parameter hints`);
+    await p.evaluate(() => { const cm = document.querySelector('.CodeMirror').CodeMirror; cm.focus(); cm.setCursor({ line: 0, ch: 41 }); });
+    await p.keyboard.type(',');
+    await p.waitForTimeout(250);
+    check(!(await p.$eval('#sig', (e) => e.hidden)), `${theme}: typing , in a call opens parameter hints`);
+    await p.keyboard.press('Escape');
+    await p.waitForTimeout(100);
+    check(await p.$eval('#sig', (e) => e.hidden), `${theme}: Escape closes parameter hints`);
+    await p.evaluate((c) => document.querySelector('.CodeMirror').CodeMirror.setValue(c), codeBefore);
+    await p.waitForTimeout(600);
     // Reports (reportflow.ts): "This check is wrong" on a problem opens the dialog with the check filled in and the
     // flagged line shown (nothing is sent); a Docs search with no results offers "Ask for this to be documented".
     {
@@ -882,6 +903,109 @@ await m.ctx.close();
     check(wide <= 1, `phone ${u}: no sideways scrolling, header included (${wide}px)`);
   }
   await ph.ctx.close();
+}
+{
+  // Linking the game's folder shows progress: listing, then the program files (n of m), and "Reading your game's
+  // files…" in Check until their hints are in; all gone when done. A folder picker that answers slowly stands in.
+  const s = await page('light');
+  await s.ctx.addInitScript(() => {
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const file = (name, size, ms) => ({ kind: 'file', name, getFile: async () => (await wait(ms), { name, size, arrayBuffer: async () => (await wait(400), new ArrayBuffer(64)) }) });
+    window.showDirectoryPicker = async () => ({
+      kind: 'directory', name: 'SlowGame',
+      async *values() { yield file('game.exe', 3e6, 500); yield file('a.dll', 2e6, 500); yield file('b.dll', 1e6, 500); yield file('readme.txt', 10, 500); },
+    });
+  });
+  await s.p.goto(BASE + '#example-mistakes');
+  await s.p.waitForTimeout(900);
+  await s.p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
+  if (await s.p.$eval('#files-panel', (e) => e.hidden)) await s.p.click('#files-toggle');
+  await s.p.waitForTimeout(300);
+  await s.p.click('#files-panel [data-gf=pick]');
+  await s.p.waitForTimeout(200);
+  const listing = await s.p.evaluate(() => ({ text: document.getElementById('gf-prog-text')?.textContent ?? '', bar: !!document.querySelector('#files-panel .fp-prog progress') }));
+  check(/Reading SlowGame/.test(listing.text) && listing.bar, `game folder: reading shows progress while listing (${listing.text})`);
+  await s.p.waitForTimeout(900);
+  const bins = await s.p.evaluate(() => ({ n: document.getElementById('gf-prog-n')?.textContent ?? '', check: document.querySelector('#status .st-reading')?.textContent ?? '' }));
+  check(/of 3/.test(bins.n) && /Reading your game/.test(bins.check), `game folder: the program files show n of m, and Check says it's reading them (${bins.n} | ${bins.check})`);
+  await s.p.waitForTimeout(2200);
+  const done = await s.p.evaluate(() => ({ prog: !!document.querySelector('.fp-prog'), check: !!document.querySelector('#status .st-reading') }));
+  check(!done.prog && !done.check, `game folder: the progress is gone when done (${JSON.stringify(done)})`);
+  check(!s.errors.length, `game folder progress: no page errors ${s.errors.join(' ')}`);
+  await s.ctx.close();
+}
+{
+  // Two tabs with the same code but different package files (pluginsInfo.txt in one): a Check still running when the
+  // tab changes is dropped, so each tab shows its own result (the plugin known in one tab, flagged in the other).
+  const s = await page('light');
+  // Check runs in a worker that answers in order: hold back the answer to the next request (window.__holdNext) so it
+  // arrives after the later tab's own, as a slow Check would.
+  await s.ctx.addInitScript(() => {
+    const W = window.Worker;
+    if (!W) return;
+    window.Worker = class extends W {
+      constructor(...a) {
+        super(...a);
+        this.__held = new Set();
+      }
+      postMessage(m, ...r) {
+        if (window.__holdNext && m && typeof m.id === 'number') { window.__holdNext = false; this.__held.add(m.id); }
+        return super.postMessage(m, ...r);
+      }
+      set onmessage(f) {
+        super.onmessage = (e) => (e.data && this.__held.has(e.data.id) ? setTimeout(() => f.call(this, e), 700) : f.call(this, e));
+      }
+      get onmessage() { return super.onmessage; }
+    };
+  });
+  await s.p.goto(BASE + '#example-mistakes');
+  await s.p.waitForTimeout(900);
+  const otherHub = await s.p.evaluate(() => window.HUB_EXAMPLES?.handlers?.[0]?.id ?? null);
+  if (otherHub) {
+    const CODE = 'Game.GUID = "Plug";\nGame.GameName = "Plug";\nGame.ExecutableName = "plug.exe";\nGame.Play = function () {\n  MyPlug.Run();\n};\n';
+    const prep = async () => {
+      await s.p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
+      await s.p.evaluate((c) => document.querySelector('.CodeMirror').CodeMirror.setValue(c), CODE);
+      await s.p.waitForTimeout(900);
+    };
+    const flagged = async () => /MyPlug/.test(await s.p.innerText('#panel-problems'));
+    // Tab A: a Hub handler, with pluginsInfo.txt added to its package.
+    await s.p.evaluate((id) => { location.hash = 'hub-' + id; }, otherHub);
+    await s.p.waitForTimeout(1500);
+    await prep();
+    if (await s.p.$eval('#files-panel', (e) => e.hidden)) await s.p.click('#files-toggle');
+    await s.p.waitForTimeout(300);
+    await s.p.evaluate(() => {
+      const dt = new DataTransfer();
+      dt.items.add(new File(['#MyPlug#MyPlug.dll#MyPlug.Main\n'], 'pluginsInfo.txt', { type: 'text/plain' }));
+      document.querySelector('#files-panel').dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+    });
+    await s.p.waitForTimeout(900);
+    const inA = await flagged();
+    // Tab B: the common-mistakes example (no package files), the same code.
+    await s.p.evaluate(() => { location.hash = 'example-mistakes'; });
+    await s.p.waitForTimeout(900);
+    await prep();
+    const inB = await flagged();
+    check(!inA && inB, `tabs: the same code, pluginsInfo.txt in one tab only: only the other flags the plugin (${inA}, ${inB})`);
+    // Start a Check in tab A, and change to tab B before its result is in: tab B keeps its own.
+    await s.p.evaluate(() => {
+      const ts = [...document.querySelectorAll('#htabs [role=tab]')];
+      const on = ts.findIndex((t) => t.getAttribute('aria-selected') === 'true');
+      const a = ts.find((t) => /other file/.test(t.title)); // tab A: the one with pluginsInfo.txt
+      const bId = (window.__tabB = ts[on].dataset.tabId);
+      a.click();
+      window.__holdNext = true;
+      document.querySelector('.CodeMirror').CodeMirror.performLint();
+      // The tabs are drawn anew on a switch: tab B's element by its id.
+      document.querySelector(`#htabs [data-tab-id="${bId}"]`).click();
+    });
+    await s.p.waitForTimeout(1500);
+    const backOnB = await s.p.evaluate(() => document.querySelector('#htabs [aria-selected=true]')?.dataset.tabId === window.__tabB);
+    check(backOnB && await flagged(), "tabs: a Check started in the other tab and finished after the switch doesn't replace this tab's result");
+  } else console.log('skip: no Hub handler in this build for the two-tab Check test');
+  check(!s.errors.length, `tabs with package files: no page errors ${s.errors.join(' ')}`);
+  await s.ctx.close();
 }
 {
   // Every handler can be closed, the last one too: the work area says nothing is open, with ways on; Reopen brings

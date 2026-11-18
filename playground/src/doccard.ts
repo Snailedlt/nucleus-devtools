@@ -53,16 +53,14 @@ export function memberCard(owner: string, name: string, m: Member, opts: { head?
   if (m.category) facts.push(`<span class="dc-chip">${esc(m.category)}</span>`);
   const note = claudeNote(m);
   if (opts.compact) {
-    const fact = [m.required ? '<span class="req">Required</span>' : '', m.readonly ? 'Read-only' : '', m.default !== undefined ? `Default <code>${esc(m.default)}</code>` : '', m.category ? esc(m.category) : ''].filter(Boolean).join(' · ');
+    // The hover: short, as VS Code's (help on request): the signature, the doc's first sentence (marked when AI
+    // wrote it) and a link to the whole card in Docs, where "In practice", the votes, the engines and the example are.
     return hlHtml(`<div class="dc compact">`
       + (opts.head === false ? '' : `<div class="dc-sig">${sigs.map((s) => `<div>${s}</div>`).join('')}</div>`)
       + `<div class="dc-text">`
       + (m.deprecated ? `<p class="dc-dep">${inline(m.deprecated)}</p>` : '')
-      + (m.doc ? paras(m.doc) : '<p class="muted">No description yet.</p>')
-      + (fact ? `<p class="dc-fact">${fact}</p>` : '')
-      + (note ? `<p class="dc-ai" title="${esc(note)}"><span class="ai-spark" aria-hidden="true"></span><span>${m.docCheckedBy ? `AI-written, checked by ${esc(m.docCheckedBy)}` : 'AI-written'}</span>${verified(path, 'doc')}${voteButtons('doc', path, VOTE_LABELS.doc)}<a href="${esc(withContext(docReviewUrl(path), { Doc: path }))}" target="_blank" rel="noopener">Report</a></p>` : '')
-      + (m.practice ? `<p class="dc-pr-h"><strong>In practice</strong></p>${paras(m.practice)}<p class="dc-ai" title="${esc(practiceNote(m))}"><span class="ai-spark" aria-hidden="true"></span><span>AI-written</span>${verified(path, 'practice')}${voteButtons('practice', path, VOTE_LABELS.practice)}</p>` : '')
-      + (m.byEngine ? `${m.practice ? '' : '<p class="dc-pr-h"><strong>In practice</strong></p>'}${engineLine(m.byEngine)}` : '')
+      + (m.doc ? `<p>${inline(firstSentence(m.doc))}${note ? ` <span class="dc-ai-mark" title="${esc(note)}"><span class="ai-spark" aria-hidden="true"></span>${m.docCheckedBy ? `AI-written, checked by ${esc(m.docCheckedBy)}` : 'AI-written'}</span>` : ''}</p>` : '<p class="muted">No description yet.</p>')
+      + `<p class="dc-more"><a href="#docs-${esc(path)}" data-api="${esc(path)}">More in Docs</a></p>`
       + `</div></div>`);
   }
   return hlHtml(`<div class="dc">`
@@ -82,6 +80,23 @@ export function memberCard(owner: string, name: string, m: Member, opts: { head?
 }
 
 /** "By engine: Unity games 74% of 203 handlers (all Hub handlers 20%). Counted from …": mechanical, not AI-written. */
+/** A doc's first sentence (its first paragraph's), cut at a word near 200 characters when longer. */
+export function firstSentence(doc: string): string {
+  const p = doc.split(/\n{2,}/)[0].replace(/\s+/g, ' ').trim();
+  // A full stop that ends a sentence: not inside `code`, not "e.g." / "i.e.", followed by a capital or code.
+  let s = p;
+  let tick = false;
+  for (let i = 0; i < p.length; i++) {
+    if (p[i] === '`') tick = !tick;
+    if (!tick && /[.!?]/.test(p[i]) && / [A-Z`(]/.test(p.slice(i + 1, i + 3)) && !/\b(e\.g|i\.e|etc|vs)$/i.test(p.slice(Math.max(0, i - 4), i))) { s = p.slice(0, i + 1); break; }
+  }
+  if (s.length <= 220) return s;
+  const cut = s.slice(0, 200);
+  const sp = cut.lastIndexOf(' ');
+  const out = cut.slice(0, sp > 120 ? sp : 200);
+  // An odd number of backticks would leave code open.
+  return (out.split('`').length % 2 ? out : out + '`') + '…';
+}
 const engineLine = (text: string) => `<p class="dc-engine">${esc(text)}</p>`;
 const paras = (text: string) => text.split(/\n{2,}/).map((p) => `<p>${inline(p)}</p>`).join('');
 /** "✓ Verified by people (12 votes)" for an AI-written part people verified ('' otherwise). */

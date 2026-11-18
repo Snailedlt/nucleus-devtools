@@ -1,5 +1,5 @@
 import { RULE_DOCS, ruleUrl } from '@core/ruledocs';
-import { inProblemList } from './checklist';
+import { inProblemList, shownInCheck, countProblems } from './checklist';
 import { initKeySettings } from './kbsettings';
 import { openFind } from './findwidget';
 import { hasCredit, withCredit, withoutCredit } from './credit';
@@ -52,7 +52,7 @@ import { mountFormView, type FormView } from './formview';
 import { mountBlocksView, type BlocksView } from './blocksview';
 import { initPackageUI, fileIcon } from './packageui';
 import type { PkgProblem } from './pkgcheck';
-import { pickGameFolder, checkAgainstFolder, initFolderPickers, folderSummaryHtml, gameBinariesNow, importProblems, type GameFolder, type FolderProblem } from './gamefolder';
+import { pickGameFolder, checkAgainstFolder, initFolderPickers, folderSummaryHtml, gameBinariesNow, gameBinariesPending, importProblems, onFolderProgress, cancelFolderRead, type GameFolder, type FolderProblem, type FolderProgress } from './gamefolder';
 import { openMenu, type MenuItem } from './menus';
 import { initTestGuide } from './testguide';
 import { initTestPins } from './testpins';
@@ -150,6 +150,7 @@ const PLAIN: Record<string, { title: string; why: string }> = {
   'guid-characters': { title: 'Special characters in the GUID', why: 'The GUID becomes a folder name. Letters, digits and spaces are safest.' },
   'protoinput-legacy-hooks': { title: 'Old input settings are still on', why: 'With Proto Input they should be turned off, or two input systems run at once.' },
   'protoinput-inactive': { title: "Proto Input never starts", why: "None of its start options (InjectStartup or an InjectRuntime method) is on, so Nucleus ignores every Proto Input setting here." },
+  'protoinput-needs-raw-input': { title: "Keyboard and mouse players won't get keys or the cursor", why: "These Proto Input hooks answer from each player's own keyboard and mouse, which Proto Input only reads with its raw input hook (Game.ProtoInput.RegisterRawInputHook). Without it the game sees no key pressed and a cursor that doesn't move. Turn it on." },
   'protoinput-needs-hook': { title: 'Blocked messages and filters do nothing yet', why: "They only work inside Proto Input's message filter hook, which isn't turned on." },
   'needs-option': { title: 'A setting that needs another one turned on', why: "Nucleus only reads it when the other setting is on, so on its own it does nothing." },
   'blocked-message': { title: "A window message Proto Input can't block as written", why: "It isn't in Proto Input's message list (it blocks something else, or nothing), or it's in the list twice." },
@@ -179,7 +180,8 @@ function plainFor(d: Diagnostic): { title: string; why: string } {
   }
   // General JavaScript mistakes (ESLint's rules, core/jsrules.ts) carry their own plain title and why.
   const js = (JS_RULES as Record<string, { title: string; why: string }>)[d.rule];
-  return PLAIN[d.rule] ?? (js ? { title: js.title, why: js.why } : { title: d.rule, why: '' });
+  // A rule without a plain entry yet (new in the core): its own description, so the why is never empty.
+  return PLAIN[d.rule] ?? (js ? { title: js.title, why: js.why } : { title: d.rule, why: (RULES as Record<string, { description?: string }>)[d.rule]?.description ?? '' });
 }
 
 const STORE_KEY = 'nucleus-workbench-draft';
@@ -371,6 +373,7 @@ const editorHandlers: Record<string, (cm: any) => void> = {
   },
   explainLine: () => explainAtCursor(),
   suggest: (cm: any) => cm.showHint({ hint: hinter, completeSingle: false, explicit: true }),
+  parameterHints: () => showSignature(),
   goToLine: () => showOpen('line'),
   definition: () => goToDefinition(),
   rename: () => renameSymbol(),
@@ -526,7 +529,10 @@ editor.on('inputRead', (cm: any, change: any) => {
 editor.on('keyHandled', (cm: any, name: string) => {
   if (/^'["'[]'$/.test(name) && !cm.state.completionActive) cm.showHint({ hint: hinter, completeSingle: false });
 });
-editor.on('cursorActivity', () => showSignature());
+// Parameter hints open as in VS Code: on typing `(` or `,`, on choosing a call from the suggestions, or on
+// Ctrl+Shift+Space; never because the cursor moved into a call. Once open they follow the cursor and close when it
+// leaves the call. Touch screens have no hover, so there a tap still shows what's under it.
+editor.on('cursorActivity', () => { if (!sig.hidden || coarse.matches) showSignature(); });
 // Settings › Accessibility: read out the problems on the line the cursor moves to (once per line).
 let spokenLine = -1;
 editor.on('cursorActivity', () => {
@@ -544,6 +550,8 @@ initValuePicker(editor);
 const folderPickers = initFolderPickers(editor, () => gameFolder, () => void pickFolder());
 async function pickFolder() {
   const f = await pickGameFolder(editor.getValue());
+  // Listed (or cancelled): the bar goes until the program files are read (Check starts that, below).
+  if (folderProg?.phase === 'listing') { folderProg = null; pkgUI?.render(); }
   if (!f) return;
   gameFolder = f;
   if (tabsReady) activeT().folder = f;
@@ -558,12 +566,38 @@ function afterFolderChange() {
 }
 // "Your game on this PC" (the game's install folder, read on this device only): a section of the Files panel, since
 // it is about files too: which ones the handler's paths point at, and file pickers for the symlink options.
+// While a folder is read: "Reading <folder>…" with a bar (no total while listing, then the program files n of m).
+let folderProg: FolderProgress | null = null;
+const mb = (n: number) => `${(n / 1e6).toFixed(n < 1e7 ? 1 : 0)} MB`;
+function folderProgText(p: FolderProgress): string {
+  if (p.phase === 'listing') return `Reading ${p.name}… ${p.files} file${p.files === 1 ? '' : 's'} listed`;
+  if (p.phase === 'binaries') return `Reading ${p.name}'s program files for hook hints… ${p.done} of ${p.total} (${mb(p.bytes)} of ${mb(p.totalBytes)})`;
+  return '';
+}
+function folderProgHtml(): string {
+  const p = folderProg;
+  if (!p || p.phase === 'done') return '';
+  const bar = p.phase === 'binaries' ? `<progress id="gf-prog-bar" max="${Math.max(1, p.totalBytes)}" value="${p.bytes}" aria-label="Reading the game's program files"></progress>` : '<progress id="gf-prog-bar" aria-label="Listing the game\'s files"></progress>';
+  // The status text is read out when the step changes (aria-live), not at every file.
+  return `<div class="fp-prog"><div class="fp-prog-row"><span id="gf-prog-text" role="status" aria-live="polite">${esc(p.phase === 'listing' ? `Reading ${p.name}…` : `Reading ${p.name}'s program files…`)}</span><button class="link" type="button" data-gf="cancel">Cancel</button></div>${bar}<div class="fp-prog-n muted" id="gf-prog-n">${esc(folderProgText(p))}</div></div>`;
+}
+onFolderProgress((p) => {
+  const phaseChanged = (folderProg?.phase ?? 'done') !== p.phase;
+  folderProg = p;
+  const bar = document.getElementById('gf-prog-bar') as HTMLProgressElement | null;
+  // A new step (or nothing drawn yet): draw the section again; else only the numbers move.
+  if (phaseChanged || !bar) { pkgUI?.render(); if (p.phase === 'done') (editor as any).performLint(); return; }
+  if (p.phase === 'binaries') { bar.max = Math.max(1, p.totalBytes); bar.value = p.bytes; }
+  const n = document.getElementById('gf-prog-n');
+  if (n) n.textContent = folderProgText(p);
+});
 function gameSection(): string {
-  return `<section class="fp-game" aria-label="Your game on this PC"><div class="fp-head">Your game on this PC</div>${gameFolder
+  return `<section class="fp-game" aria-label="Your game on this PC"><div class="fp-head">Your game on this PC</div>${folderProgHtml()}${gameFolder
     ? `<div class="fp-gname"><span class="fi-badge fi-dir" aria-hidden="true">▸</span>${esc(gameFolder.name)}</div><p>Check compares the handler's paths and file names with this folder, and the symlink options get a file picker. Nothing is uploaded.</p><div class="fp-gacts"><button class="btn" type="button" data-gf="show">What's in it</button><button class="btn" type="button" data-gf="pick">Pick another</button><button class="btn" type="button" data-gf="forget">Unlink</button></div>`
     : `<p>Link the folder your game is installed in, and Check tells you when <code>ExecutableName</code>, <code>BinariesFolder</code> or a symlink option names a file that isn't there. Only names and sizes are read, and the game's .exe and DLLs for hints about hooks, on this device.</p><div class="fp-gacts"><button class="btn" type="button" data-gf="pick">Link the game's folder…</button></div>`}</section>`;
 }
 async function onGameAction(act: string) {
+  if (act === 'cancel') { cancelFolderRead(); announce('Stopped reading the game folder.'); return; }
   if (act === 'pick') return void (await pickFolder());
   if (act === 'forget') { gameFolder = null; if (tabsReady) activeT().folder = null; afterFolderChange(); announce('Unlinked the game folder.'); return; }
   if (act === 'show' && gameFolder) showGameFolder();
@@ -616,13 +650,12 @@ function placeTip(from: { left: number; top: number; bottom: number }) {
 }
 function showHoverCard(text: string, at: number, list: Diagnostic[], doc: string, anchorFrom: number) {
   if (!list.length && !doc) return void (tip.hidden = true);
-  // Explain this line: on request, a link at the bottom of the card (as in VS Code); not on a gutter marker (at -1).
+  // Explain this line isn't here: the line's popup (Ctrl+.), Ctrl+Alt+E and the menus have it.
   tip.classList.remove('explain');
   // "This check is wrong": the flag at the end of the bottom bar, an icon with its tooltip (one per check here).
   const wrong = [...new Map(list.map((d) => [d.rule, d])).values()].map((d) => reportButton('flag', { label: `${REPORT_ACTIONS.flag.label}: ${d.rule}`, tip: `This check is wrong (${d.rule}): tell us, with the check and the line filled in`, className: 'hv-wrong', attrs: `data-hc-wrong="${list.indexOf(d)}"` })).join('');
-  const explain = at >= 0 ? `<div class="hv-bar"><button class="hv-link" type="button" data-hc-explain="${at}">Explain this line</button><span class="hv-key">${esc(labelOf('explainLine'))}</span>${wrong}</div>` : wrong ? `<div class="hv-bar">${wrong}</div>` : '';
-  tip.innerHTML = (list.length ? problemCard(list) : '') + (doc ? `<div class="hv-sec hv-doc">${doc}</div>` : '') + fixBar(list) + explain;
-  tip.querySelector<HTMLButtonElement>('[data-hc-explain]')?.addEventListener('click', () => showExplanation(at));
+  const bar = wrong ? `<div class="hv-bar">${wrong}</div>` : '';
+  tip.innerHTML = (list.length ? problemCard(list) : '') + (doc ? `<div class="hv-sec hv-doc">${doc}</div>` : '') + fixBar(list) + bar;
   tip.querySelectorAll<HTMLButtonElement>('[data-hc-wrong]').forEach((b) => b.addEventListener('click', () => ((tip.hidden = true), reportWrongCheck([list[Number(b.dataset.hcWrong)]]))));
   tip.classList.toggle('has-problems', list.length > 0);
   linkApiNames(tip);
@@ -881,30 +914,38 @@ editor.on('scroll', () => { if (!sig.hidden) placeSig(); });
 let extraFocus: { at: number; text: string } | undefined;
 function renderExtraProblems(text: string) {
   const box = $('#extra-problems');
+  // The same severity filter as the code's problems (Advanced mode's Errors / Warnings / Info chips).
+  const vis = (x: { severity: FolderProblem['severity'] }) => shownInCheck(x.severity, mode === 'simple', filter);
   const list = folderProblems;
   const pk = pkgProblems;
-  box.hidden = !list.length && !pk.length;
-  if (!list.length && !pk.length) return void (box.innerHTML = '');
+  const anyShown = list.some(vis) || pk.some(vis);
+  box.hidden = !anyShown;
+  // After a fix here, once both lists are drawn (the main list renders after this): the keyboard stays on the item
+  // now where the fixed one was, else on Check's first problem, else the Check tab.
+  if (extraFocus && extraFocus.text === text) {
+    const want = extraFocus;
+    extraFocus = undefined;
+    queueMicrotask(() => {
+      const rows = box.querySelectorAll<HTMLElement>('.xp');
+      const row = rows[Math.min(want.at, rows.length - 1)] as HTMLElement | undefined;
+      (row?.querySelector<HTMLElement>('.fix') ?? row?.querySelector<HTMLElement>('.loc') ?? document.querySelector<HTMLElement>('#problems .problem .fix, #problems .problem .loc, #status button, [data-tab=problems]'))?.focus();
+    });
+  }
+  if (!anyShown) return void (box.innerHTML = '');
   // Two groups, each a list of its own under its heading (the heading is no list item).
   const group = (id: string, head: string, items: string) => `<li class="xp-g"><div class="xp-h" id="${id}">${head}</div><ul class="xp-list" aria-labelledby="${id}">${items}</ul></li>`;
-  const pkHtml = pk.length ? group('xp-h-pkg', `In the package <span class="muted">· ${packageFiles.length} file${packageFiles.length === 1 ? '' : 's'} besides handler.js</span>`, pk.map((f, i) => {
+  const pkHtml = pk.some(vis) ? group('xp-h-pkg', `In the package <span class="muted">· ${packageFiles.length} file${packageFiles.length === 1 ? '' : 's'} besides handler.js</span>`, pk.map((f, i) => {
+    if (!vis(f)) return '';
     const where = f.file ? `<button class="loc" type="button" data-xopen="${esc(f.file)}"${f.line ? ` data-xline="${f.line}"` : ''}>${fileIcon(f.file)}${esc(f.file.split('/').pop()!)}${f.line ? `:${f.line}` : ''}</button>` : f.start !== undefined ? `<button class="loc" type="button" data-xjump="${f.start}">Line ${lineOf(text, f.start) + 1}</button>` : '';
     return `<li class="xp ${f.severity}"><span class="sev-ico" aria-hidden="true">${SEV_ICON[f.severity]}</span><div class="xp-b">${where} <strong>${esc(f.title)}</strong><p class="xp-why">${esc(f.why)}</p>${f.fix ? `<div class="xp-act"><button class="fix primary" type="button" data-pfix="${i}">${esc(f.fix.title)}</button></div>` : ''}</div></li>`;
   }).join('')) : '';
-  box.innerHTML = pkHtml + (!list.length ? '' : group('xp-h-game', `Against your game <span class="muted">· ${esc(gameFolder?.name ?? '')}</span>`, list.map((f, i) => {
+  box.innerHTML = pkHtml + (!list.some(vis) ? '' : group('xp-h-game', `Against your game <span class="muted">· ${esc(gameFolder?.name ?? '')}</span>`, list.map((f, i) => {
+    if (!vis(f)) return '';
     const line = lineOf(text, f.start) + 1;
     return `<li class="xp ${f.severity}"><span class="sev-ico" aria-hidden="true">${SEV_ICON[f.severity]}</span><div class="xp-b"><button class="loc" type="button" data-xjump="${f.start}">Line ${line}</button> <strong>${esc(f.title)}</strong><p class="xp-why">${esc(f.why)}</p>${f.fix ? `<div class="xp-act"><button class="fix primary" type="button" data-xfix="${i}">${esc(f.fix.title)}</button></div>` : ''}</div></li>`;
   }).join('')));
   box.querySelectorAll<HTMLButtonElement>('[data-xjump]').forEach((b) => b.addEventListener('click', () => jumpTo(Number(b.dataset.xjump))));
   box.querySelectorAll<HTMLButtonElement>('[data-xopen]').forEach((b) => b.addEventListener('click', () => pkgUI?.openFile(b.dataset.xopen!, b.dataset.xline ? Number(b.dataset.xline) : undefined)));
-  // After a fix, like Check's own: the keyboard stays here, on the item now where this one was, once Check has run
-  // again and drawn the list anew (or on the first problem when this list is gone).
-  if (extraFocus && extraFocus.text === text) {
-    const rows = box.querySelectorAll<HTMLElement>('.xp');
-    const row = rows[Math.min(extraFocus.at, rows.length - 1)] as HTMLElement | undefined;
-    (row?.querySelector<HTMLElement>('.fix') ?? row?.querySelector<HTMLElement>('.loc') ?? document.querySelector<HTMLElement>('#problems .problem .fix, #problems .problem .loc, #status button'))?.focus();
-    extraFocus = undefined;
-  }
   const keepFocus = (at: number) => {
     const mine = (extraFocus = { at, text: editor.getValue() });
     setTimeout(() => { if (extraFocus === mine) extraFocus = undefined; }, 5000);
@@ -915,6 +956,7 @@ function renderExtraProblems(text: string) {
     keepFocus(Number(b.dataset.pfix));
   }));
   box.querySelectorAll<HTMLButtonElement>('[data-xfix]').forEach((b) => b.addEventListener('click', () => {
+    if (editor.getValue() !== text) return void (editor as any).performLint(); // made for other text: Check again
     const f = list[Number(b.dataset.xfix)];
     const fx = f.fix!;
     const edits = [{ start: fx.start, end: fx.end, text: fx.text }];
@@ -925,9 +967,11 @@ function renderExtraProblems(text: string) {
 }
 function renderProblems(text: string) {
   renderExtraProblems(text);
-  const counts = { error: 0, warning: 0, info: 0, hint: 0 } as Record<string, number>;
-  for (const d of current) counts[d.severity]++;
+  // Counted with the package's and the game folder's problems (listed under the code's), so the tab, the chips and the
+  // summary never say 0 while those lists show something.
+  const counts = countProblems([current, folderProblems, pkgProblems]) as Record<string, number>;
   const simple = mode === 'simple';
+  const extraShown = [...pkgProblems, ...folderProblems].filter((x) => shownInCheck(x.severity, simple, filter));
   const rank = { error: 0, warning: 1, info: 2, hint: 3 } as Record<string, number>;
   // Errors first (they stop Nucleus), then in line order.
   const list = (simple ? current.filter(inProblemList) : current.filter((d) => (filter === 'all' ? d.severity !== 'hint' : d.severity === filter)))
@@ -938,7 +982,7 @@ function renderProblems(text: string) {
   queueMicrotask(renderStrip);
   // One count everywhere (tab, phone switch, filter, summary, phone strip): every problem the list shows,
   // errors, warnings and info. Hints (outdated options) are counted on their own.
-  const total = counts.error + counts.warning + counts.info;
+  const total = counts.total;
   $('#count-problems').textContent = String(total);
   $('#count-switch').textContent = String(total);
   $('#f-all').textContent = String(total);
@@ -952,6 +996,8 @@ function renderProblems(text: string) {
     : counts.warning
       ? `<span class="pill ok">Nucleus can use this handler</span><span>but ${plural(counts.warning, 'setting')} may not work as intended${tally}</span>`
       : `<span class="pill ok">Ready for Nucleus</span><span>Next: <button class="link" type="button" id="v-try">try it</button>${tally}</span>`;
+  // The game's program files are still being read: their hook hints join Check when they are.
+  if (gameFolder && gameBinariesPending(gameFolder)) $('#status').insertAdjacentHTML('beforeend', '<span class="muted st-reading">Reading your game\'s files…</span>');
   $('#status').querySelector('#v-try')?.addEventListener('click', () => selectTab('simulate'));
   const el = $('#problems');
   if (!list.length) {
@@ -961,7 +1007,12 @@ function renderProblems(text: string) {
       el.querySelector('#go-open')?.addEventListener('click', () => showOpen());
       return;
     }
-    el.innerHTML =
+    // Only the package's or the game folder's lists have something: say so, not "Nothing to fix".
+    const xn = extraShown.length;
+    const about = !folderProblems.some((x) => extraShown.includes(x)) ? 'the package' : !pkgProblems.some((x) => extraShown.includes(x)) ? 'your game' : 'the package and your game';
+    const what = extraShown.every((x) => x.severity === 'info') ? (xn === 1 ? 'note' : 'notes') : xn === 1 ? 'problem' : 'problems';
+    if (xn) el.innerHTML = `<li class="empty">Nothing in the code to fix; ${xn} ${what} about ${about} below.</li>`;
+    else el.innerHTML =
       simple || filter === 'all'
         ? `<li class="empty masc-empty">${mascot('n-ok', { size: 72, zoom: 1.2 })}<span>Nothing to fix. <button class="link" type="button" id="go-sim">Try it</button> to see what each player gets.${
             simple ? '' : counts.hint ? ` There ${counts.hint === 1 ? 'is' : 'are'} also <button class="link" type="button" id="go-hints">${plural(counts.hint, 'hint')}</button> about outdated options.` : ''
@@ -977,6 +1028,7 @@ function renderProblems(text: string) {
   // The same problem on many lines (12 copies of a ProtoController line) is one row: "×12, lines 197–208",
   // with one fix for all of them, as Try it already groups them.
   const groups = groupProblems(list);
+  const shownDoc = editor.getDoc();
   shownRowOf = groups.flatMap((g, i) => g.map(() => i));
   el.innerHTML = groups
     .map((g, i) => {
@@ -1021,13 +1073,24 @@ function renderProblems(text: string) {
       // A grouped row fixes every problem in it: the same fix (by position) of each.
       const g = groups[Number(b.dataset.d)], j = Number(b.dataset.f);
       const fix = g[0].fixes![j];
-      const edits = g.flatMap((x) => x.fixes?.[j]?.edits ?? []);
+      // Made for other text (typed in, or another tab, before Check ran again): its offsets point elsewhere now.
+      if (editor.getDoc() !== shownDoc || editor.getValue() !== text) return void (editor as any).performLint();
+      // Fixes whose edits overlap (`2 ** 3 ** 2`: the inner one's text is inside the outer one's) can't go in one
+      // batch: the ones that don't touch an earlier one now, the rest when Check has run again.
+      const edits: TextEdit[] = [];
+      let fixed = 0;
+      for (const x of g) {
+        const es = x.fixes?.[j]?.edits ?? [];
+        if (es.some((e) => edits.some((o) => e.start < Math.max(o.end, o.start + 1) && o.start < Math.max(e.end, e.start + 1)))) continue;
+        edits.push(...es);
+        fixed++;
+      }
       fixWithNucli(editor, applyEditsToText(editor.getValue(), edits), () =>
         editor.operation(() => {
           for (const e of [...edits].sort((a, z) => z.start - a.start)) editor.replaceRange(e.text, editor.posFromIndex(e.start), editor.posFromIndex(e.end));
         }),
       );
-      codeNote(editor, editor.posFromIndex(Math.min(...edits.map((e) => e.start))).line, `Fixed${g.length > 1 ? ` ${g.length}×` : ''}: ${fix.title.replace(/`/g, '')}.`, { action: undoAction });
+      codeNote(editor, editor.posFromIndex(Math.min(...edits.map((e) => e.start))).line, `Fixed${fixed > 1 ? ` ${fixed}×` : ''}${fixed < g.length ? ` (${g.length - fixed} more once Check has run again)` : ''}: ${fix.title.replace(/`/g, '')}.`, { action: undoAction });
       // Keep the keyboard in the list: focus the problem that is now where this one was (the list re-renders).
       const at = Number(b.dataset.d);
       setTimeout(() => {
@@ -1043,7 +1106,7 @@ const openProblems = new Set<string>();
 /** Groups problems that say the same thing (same rule, severity and message with the numbers ignored, same
  *  fixes) and are next to each other in the sorted list. */
 function groupProblems(list: Diagnostic[]): Diagnostic[][] {
-  const sig = (d: Diagnostic) => `${d.rule}|${d.severity}|${d.message.replace(/\d+/g, '#')}|${(d.fixes ?? []).map((f) => f.title.replace(/\d+/g, '#')).join('|')}`;
+  const sig = (d: Diagnostic) => `${d.rule}|${d.severity}|${d.message.replace(/\d+/g, '#')}|${(d.fixes ?? []).map((f) => `${f.preferred ? '*' : ''}${f.title.replace(/\d+/g, '#')}`).join('|')}`;
   const out: Diagnostic[][] = [];
   for (const d of list) {
     const last = out[out.length - 1];
@@ -1058,8 +1121,18 @@ function reportWrongCheck(g: Diagnostic[]) {
   const text = editor.getValue();
   const d = g[0];
   const first = lineOf(text, d.start);
-  const last = Math.min(first + 19, lineOf(text, Math.max(...g.map((x) => Math.max(x.start, x.end - 1)))));
-  const code = text.split('\n').slice(first, last + 1).join('\n');
+  // Each problem's own lines, never the ones between them (a comment there may be private), with `…` for a gap.
+  const ranges = g.map((x) => [lineOf(text, x.start), lineOf(text, Math.max(x.start, x.end - 1))]).sort((a, z) => a[0] - z[0]);
+  const all = text.split('\n');
+  const out: string[] = [];
+  let upTo = -1;
+  for (const [a, z] of ranges) {
+    if (upTo >= 0 && a > upTo + 1) out.push('// …');
+    for (let n = Math.max(a, upTo + 1); n <= z && out.length < 20; n++) out.push(all[n]);
+    upTo = Math.max(upTo, z);
+    if (out.length >= 20) break;
+  }
+  const code = out.join('\n');
   openReportFlow({ kind: 'check', rule: d.rule, message: d.message, line: first + 1, code, handlerCode: text });
 }
 /** `Player.ProtoController5–16` for a group whose names differ only in a number. */
@@ -1202,7 +1275,9 @@ function renderStrip() {
   if (!list.length) return;
   stripIndex = Math.min(stripIndex, list.length - 1);
   const d = list[stripIndex];
-  const n = (sev: string) => list.filter((x) => x.severity === sev).length;
+  // The counts include the package's and the game folder's problems shown under the list (one count everywhere).
+  const extra = [...pkgProblems, ...folderProblems].filter((x) => shownInCheck(x.severity, mode === 'simple', filter));
+  const n = (sev: string) => list.filter((x) => x.severity === sev).length + extra.filter((x) => x.severity === sev).length;
   const errors = n('error'), warnings = n('warning'), infos = n('info');
   const line = lineOf(editor.getValue(), d.start) + 1;
   $('#ps-text').innerHTML = `<span class="ps-count">${errors ? `<span class="e" title="Errors">✖ ${errors}</span>` : ''}${warnings ? `<span class="w" title="Warnings">⚠ ${warnings}</span>` : ''}${infos ? `<span class="i" title="Info">ℹ ${infos}</span>` : ''}</span><span class="ps-msg">Line ${line}: ${esc(plainFor(d).title)}</span>`;
@@ -1342,8 +1417,9 @@ function insertExample(path: string, m: Member) {
   const r = placeDocExample(path, m);
   if (!r) return toast("There's no telling where the example goes: the handler doesn't parse (Check lists what's wrong), or its callback is set to a function made elsewhere. Add it by hand.");
   if (r.action === 'same') {
-    editor.setCursor({ line: r.line, ch: 0 });
-    editor.scrollIntoView({ line: r.line, ch: 0 }, 80);
+    // Shown in the Code view (Form or Blocks would leave it hidden), as Check's "Show me" does.
+    if (viewMode !== 'code') setViewMode('code');
+    jumpTo(editor.indexFromPos({ line: r.line, ch: 0 }));
     codeNote(editor, r.line, `The handler has this already (line ${r.line + 1}).`, { mood: 'info' });
     return;
   }
@@ -1353,7 +1429,7 @@ function insertExample(path: string, m: Member) {
   while (a < before.length && a < r.text.length && before[a] === r.text[a]) a++;
   let b = 0;
   while (b < before.length - a && b < r.text.length - a && before[before.length - 1 - b] === r.text[r.text.length - 1 - b]) b++;
-  fixWithNucli(editor, r.text, () => editor.replaceRange(r.text.slice(a, r.text.length - b), editor.posFromIndex(a), editor.posFromIndex(before.length - b), '+docs-example'));
+  fixWithNucli(editor, r.text, () => editor.replaceRange(r.text.slice(a, r.text.length - b), editor.posFromIndex(a), editor.posFromIndex(before.length - b), 'docs-example'));
   use('docs-insert-example');
   codeNote(editor, r.line, r.action === 'update' ? `Updated ${path} to the example's value.` : r.action === 'callback' ? `Added ${r.where} with the example in it.` : `Added the example to ${r.where}.`, { action: undoAction });
 }
@@ -2529,20 +2605,29 @@ function cyclePane(dir: 1 | -1) {
   const shown = (el: HTMLElement) => el.offsetParent !== null && el.getClientRects().length > 0;
   if (next.matches('.pane:not(.side)') && viewMode === 'code' && shown(editor.getWrapperElement())) editor.focus();
   else if (next.matches('.pane:not(.side)') && viewMode === 'code') [...next.querySelectorAll<HTMLElement>(`.CodeMirror textarea, ${FOCUSABLE}`)].find(shown)?.focus();
-  else if (next.matches('.pane.side')) (next.querySelector<HTMLElement>('[role=tab][aria-selected=true]') ?? next.querySelector<HTMLElement>(FOCUSABLE))?.focus();
-  else next.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+  else if (next.matches('.pane.side')) (next.querySelector<HTMLElement>('[role=tab][aria-selected=true]') ?? [...next.querySelectorAll<HTMLElement>(FOCUSABLE)].find(shown))?.focus();
+  else {
+    // Form or Blocks: a control of the view that shows (the pane's first match can be a hidden one).
+    const view = next.matches('.pane:not(.side)') ? next.querySelector<HTMLElement>(viewMode === 'form' ? '#formview' : '#blocksview') : null;
+    [...(view ?? next).querySelectorAll<HTMLElement>(FOCUSABLE)].find(shown)?.focus();
+  }
   announce(next.getAttribute('aria-label') ?? (next.tagName === 'HEADER' ? 'Header' : 'Panel'));
 }
 /** Ctrl+Shift+M (VS Code's Problems) and the "Skip to Check" link: the problem list, its first problem focused. */
 function goToCheck() {
   selectTab('problems');
-  requestAnimationFrame(() => (document.querySelector<HTMLElement>('#problems .problem') ?? document.querySelector<HTMLElement>('[data-tab=problems]'))?.focus());
+  // The first problem's line button (a list item can't take the focus), else the Check tab.
+  requestAnimationFrame(() => (document.querySelector<HTMLElement>('#problems .problem .loc') ?? document.querySelector<HTMLElement>('[data-tab=problems]'))?.focus());
 }
 document.querySelectorAll<HTMLElement>('[data-skip]').forEach((a) => a.addEventListener('click', (e) => {
   e.preventDefault();
   if (a.dataset.skip === 'check') goToCheck();
   else if (viewMode === 'code') editor.focus();
-  else document.querySelector<HTMLElement>('.main > .pane:not(.side)')?.querySelector<HTMLElement>(FOCUSABLE)?.focus();
+  else {
+    const pane = document.querySelector<HTMLElement>('.main > .pane:not(.side)');
+    const view = pane?.querySelector<HTMLElement>(viewMode === 'form' ? '#formview' : '#blocksview') ?? pane;
+    [...(view?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])].find((el) => el.offsetParent !== null && el.getClientRects().length > 0)?.focus();
+  }
 }));
 // Double Shift, as in JetBrains: Open (examples, Hub handlers, commands). Settings › Keyboard shortcuts turns it off.
 {
@@ -2680,7 +2765,7 @@ $('#blocksview').addEventListener('keydown', (ev) => {
   ev.preventDefault();
   ev.stopPropagation();
   if (redo) editor.redo(); else editor.undo();
-  blocksView?.refresh();
+  blocksView?.refresh({ undo: true });
 }, true);
 setViewMode(viewMode);
 pkgUI = initPackageUI({
@@ -2899,6 +2984,9 @@ function setMode(m: Mode) {
   if (m === 'simple' && active === 'probes') selectTab('problems');
   (editor as any).performLint();
   if (active === 'simulate') runSim();
+  // The credit's default follows the mode (on in Guided); a choice of one's own stays.
+  const credit = document.querySelector<HTMLInputElement>('#set-credit');
+  if (credit) credit.checked = creditOn();
   try {
     tips.refresh();
   } catch {
@@ -3065,7 +3153,7 @@ const firstRun = initFirstRun($('#firstrun-dialog') as HTMLDialogElement, {
       }
       editor.refresh();
     }
-    if (exp) announce(exp === 'developer' ? 'Advanced mode is on: tips are off (Settings › Tips and help).' : 'Guided: tips and plain words. Getting started, at the bottom, shows the way round.');
+    if (exp) announce(exp === 'developer' ? 'Advanced mode is on: tips are the ones for people who write code (Settings › Tips and help turns them off).' : 'Guided: tips and plain words. Getting started, at the bottom, shows the way round.');
     editor.focus();
   },
 });

@@ -25,7 +25,8 @@ import USAGE from './usage.json';
 
 export type BlocksHost = FormHost;
 export interface BlocksView {
-  refresh(): void;
+  /** `undo`: the code went back or forward a step (Ctrl+Z / Ctrl+Y), so the focused field shows it too. */
+  refresh(opts?: { undo?: boolean }): void;
   destroy(): void;
 }
 
@@ -907,12 +908,12 @@ export function mountBlocksView(container: HTMLElement, host: BlocksHost): Block
     if (cf) {
       const ms = marksIn(v);
       if (ms) cf.setMarks(ms);
-      if (cf.hasFocus()) return;
+      if (cf.hasFocus() && !undoing) return;
       if (cf.value !== v.src) cf.value = v.src;
       cf.setInvalid(false);
       return;
     }
-    if (!el || el === document.activeElement) return;
+    if (!el || (el === document.activeElement && !undoing)) return;
     const want = kind === 'str' ? v.str! : kind === 'opt' ? v.optKey! : kind === 'prop' || kind === 'enum' ? v.path! : v.src;
     if (el.value !== want) el.value = want;
     if (el instanceof HTMLTextAreaElement) fit(el);
@@ -1804,6 +1805,8 @@ export function mountBlocksView(container: HTMLElement, host: BlocksHost): Block
   // --- refresh -----------------------------------------------------------------------------
 
   let focusTarget: string | undefined;
+  // During an undo or redo's refresh: the focused field takes the code's value too (else it's left alone while typed in).
+  let undoing = false;
   function focusTo(fid: string) {
     focusTarget = fid;
     const el = root.querySelector<HTMLElement>(`[data-bv="${CSS.escape(fid)}"]`);
@@ -1924,7 +1927,11 @@ export function mountBlocksView(container: HTMLElement, host: BlocksHost): Block
     focusWant = undefined;
   }
 
-  function refresh() {
+  function refresh(opts?: { undo?: boolean }) {
+    undoing = !!opts?.undo;
+    try { refreshNow(); } finally { undoing = false; }
+  }
+  function refreshNow() {
     const t = host.getText();
     diagBase = host.diagnosticsText ? host.diagnosticsText() : t;
     diags = host.diagnostics();

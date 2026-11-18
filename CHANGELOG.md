@@ -33,6 +33,8 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 ### 🛠️ Improved
 
+- **Linking your game's folder shows its progress.** While the folder is read, Files › *Your game on this PC* shows how far it is (the files listed, then the game's .exe and DLLs, n of m), with Cancel, and Check says it's still reading them until their hints arrive.
+- **A short hover, and parameter hints when you ask.** Hovering a name shows its signature, the doc's first sentence and *More in Docs*, which opens the whole card (In practice, votes, the example); *Explain this line* stays in the line's menu and Ctrl+Alt+E. Parameter hints open as you type `(` or `,`, pick a call from the suggestions or press Ctrl+Shift+Space, not when you click into a call.
 - **AI-written docs stand out on the Docs pages too.** On the site's Docs pages (`/docs/`), "In practice" has its own tinted section with an *AI-written* tag, and AI-written docs end with a marked note saying what they're based on, as in the workbench's Docs. Long names in a page's title wrap on a phone.
 - **Less on screen until you ask.** The window-message names and the "+" buttons in `BlockedMessages` and the game-folder lists show for the list your cursor is in, or when you point at its line. Try it's explanation is folded into *How this works*. The footer keeps only the beta guide and where to ask; the rest is in the ⋯ menu and the command palette. The AI-written docs call to action in Docs is one line.
 - **Credit lines are off for people who write code.** In Advanced mode, saved handlers get no credit lines unless you turn them on in Settings; Guided mode keeps them.
@@ -76,6 +78,9 @@ How to write it (people and AI agents read this, and the workbench shows it):
 - ***Insert into handler* knows when the example is in already.** Examples of more than one line (such as `Context.ReplaceLinesInTextFile`'s) now turn the button into *Show in handler*, instead of adding a second copy.
 - **"Add Game.ProtoInput…" from your game's files behaves like every other fix.** The changed lines light up with a note and Undo, and the keyboard stays in the list.
 - **Importing settings restores them exactly.** A setting that was at its default when you exported goes back to its default; older settings files still import.
+- **Check counts the notes about your game and package.** With a game folder linked, the tab, the filter chips and the summary counted only the code's problems and said *Nothing to fix* above the items under *Against your game*. They now count those and the package's, and the filter chips filter them too.
+- **A settings file from another version changes nothing.** Importing one the workbench can't read, or one with none of its settings, now says so instead of putting your settings back to their defaults.
+- **The credit setting follows the mode.** Switching between Guided and Advanced updates the *Add credit lines when saving* box when you haven't chosen yourself, so it shows what Save really does.
 - **The Discord bot's engine templates open cleanly.** Source, Generic, Diesel and MT Framework no longer start with an invisible character.
 - **Closing a report goes back to the menu.** After *Report a problem* or *Request a feature* from the menu, Esc or Cancel puts the keyboard back on the menu button.
 - **A feature request without text says what's missing.** Continue shows a message under the box, read out by screen readers, not only a red border.

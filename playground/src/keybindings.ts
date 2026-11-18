@@ -62,6 +62,7 @@ export const ACTIONS: Action[] = [
   { id: 'scrollUp', label: 'Scroll up a line', group: 'Find and navigate', keys: 'Ctrl+Up', mac: 'Ctrl+PageUp', where: 'code' },
   { id: 'scrollDown', label: 'Scroll down a line', group: 'Find and navigate', keys: 'Ctrl+Down', mac: 'Ctrl+PageDown', where: 'code' },
   { id: 'suggest', label: 'Suggestions', group: 'Editing', keys: 'Ctrl+Space', mac: 'Ctrl+Space', where: 'code' },
+  { id: 'parameterHints', label: 'Parameter hints (inside a call)', group: 'Editing', keys: 'Ctrl+Shift+Space', mac: 'Cmd+Shift+Space', where: 'code' },
   { id: 'comment', label: 'Comment or uncomment the line', group: 'Editing', keys: 'Ctrl+/', where: 'code', cm: 'toggleCommentIndented' },
   { id: 'addComment', label: 'Add a line comment', group: 'Editing', keys: 'Ctrl+K Ctrl+C', where: 'code' },
   { id: 'removeComment', label: 'Remove a line comment', group: 'Editing', keys: 'Ctrl+K Ctrl+U', where: 'code' },

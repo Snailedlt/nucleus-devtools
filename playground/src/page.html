@@ -2207,6 +2207,14 @@ details[open] > .fv-group-title::before { transform: rotate(45deg); }
 .fp-game p { margin: 0 4px 8px; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
 .fp-game .fp-gname { display: flex; align-items: center; gap: 6px; margin: 0 4px 8px; font: 600 13px var(--font-body); color: var(--fg); overflow-wrap: anywhere; }
 .fp-game .fp-gacts { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 4px; }
+.fp-game .fp-prog { margin: 0 4px 10px; font-size: 12.5px; }
+.fp-game .fp-prog-row { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; overflow-wrap: anywhere; }
+.fp-game .fp-prog progress { display: block; width: 100%; height: 6px; margin: 4px 0 2px; accent-color: var(--accent); }
+.fp-game .fp-prog-n { font-size: 11.5px; min-height: 1.4em; }
+/* No moving bar without a total when motion is reduced: the count below says it's working. */
+@media (prefers-reduced-motion: reduce) { .fp-game .fp-prog progress:indeterminate { visibility: hidden; } }
+:root[data-motion-ui="off"] .fp-game .fp-prog progress:indeterminate { visibility: hidden; }
+#status .st-reading { font-size: 12px; }
 .files-game { margin-left: 4px; font-size: 11.5px; font-weight: 600; color: var(--accent); }
 .fp-drop { margin: 10px 4px 0; padding: 10px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); font-size: 12px; text-align: center; }
 @media (max-width: 860px) { #files-panel { position: fixed; left: 0; right: 0; bottom: calc(60px + env(safe-area-inset-bottom, 0px)); width: auto; height: min(58vh, 520px); z-index: 30; border-left: 0; border-top: 1px solid var(--line); box-shadow: 0 -8px 24px rgba(0,0,0,.2); } }
