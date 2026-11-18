@@ -314,11 +314,14 @@ const editor = CodeMirror($('#editor'), {
   // drawn: draw them all (handlers are small), so the phone's Select all, copy and delete see every line.
   viewportMargin: window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 ? Infinity : 10,
   lint: {
-    getAnnotations: (text: string) =>
-      analyze(text).then((r) => {
+    getAnnotations: (text: string, _options: unknown, cm: any) => {
+      // The tab (CodeMirror document) this Check is for: two tabs with the same text can still differ in what the
+      // result depends on (package files, the published GUID). From `cm`: the first Check can start before `editor` is set.
+      const doc = cm.getDoc();
+      return analyze(text).then((r) => {
         // An older result (the text changed or another tab opened meanwhile): its offsets are for other text, and a
         // newer Check is already on its way.
-        if (text !== editor.getValue()) return [];
+        if (text !== editor.getValue() || doc !== editor.getDoc()) return [];
         current = r.diagnostics;
         currentText = text;
         if (gameFolder) {
@@ -344,7 +347,8 @@ const editor = CodeMirror($('#editor'), {
           ...folderProblems.map((f) => ({ from: posAt(text, f.start), to: posAt(text, Math.max(f.end, f.start + 1)), message: `${f.title}. ${f.why}`, severity: f.severity })),
           ...pkgProblems.filter((f) => f.start !== undefined).map((f) => ({ from: posAt(text, f.start!), to: posAt(text, Math.max(f.end!, f.start! + 1)), message: `${f.title}. ${f.why}`, severity: f.severity })),
         ];
-      }),
+      });
+    },
     delay: 250,
     tooltips: false, // our own hover card (showHoverCard)
   },

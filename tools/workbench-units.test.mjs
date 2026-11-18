@@ -572,6 +572,20 @@ test('docs: "Insert into handler" puts an example where it belongs (lines.ts pla
   assert.equal(L.placeExample('Game.MaxPlayers = 4;\nGame.MaxPlayers = 2;\n', 'Game.MaxPlayers', 'Game.MaxPlayers = 4;').action, 'update');
   assert.match(L.placeExample('Game.GUID = "x"; Game.Play = function () {\n};\n', 'Game.MaxPlayers', 'Game.MaxPlayers = 4;').text, /^Game\.GUID = "x";\nGame\.MaxPlayers = 4; Game\.Play/);
   assert.match(L.placeExample('Game.Play = function () {\n  a();\n  return;\n};\n', 'Context.Wait', 'Context.Wait(1);', 'Game.Play').text, /Context\.Wait\(1\);\n  return;/);
+  // A `return` sharing its line with the body, or with other code: the example still goes before it.
+  r = L.placeExample('Game.Play = function () { return; };\n', 'Context.Wait', 'Context.Wait(1);', 'Game.Play');
+  assert.equal(r.text, 'Game.Play = function () {\n  Context.Wait(1);\n  return;\n};\n');
+  assert.equal(r.text.split('\n')[r.line].trim(), 'Context.Wait(1);');
+  r = L.placeExample('Game.Play = function () { a(); return; };\n', 'Context.Wait', 'Context.Wait(1);', 'Game.Play');
+  assert.equal(r.text, 'Game.Play = function () {\n  a();\n  Context.Wait(1);\n  return;\n};\n');
+  assert.equal(r.text.split('\n')[r.line].trim(), 'Context.Wait(1);');
+  r = L.placeExample('Game.Play = function () {\n  a(); return;\n};\n', 'Context.Wait', 'Context.Wait(1);', 'Game.Play');
+  assert.equal(r.text, 'Game.Play = function () {\n  a();\n  Context.Wait(1);\n  return;\n};\n');
+  assert.equal(r.text.split('\n')[r.line].trim(), 'Context.Wait(1);');
+  // A new loop over PlayerList never reuses a name the callback uses (`return record(i);` after it, its own `player`).
+  r = L.placeExample('Game.ProtoInput.OnInputLocked = function () {\n  var i = 0, player = 1, j = 2;\n  return record(i, player, j);\n};\n', 'X', 'X(player.H);', 'Game.ProtoInput.OnInputLocked');
+  assert.match(r.text, /  for \(var k = 0; k < PlayerList\.Count; k\+\+\) \{\n    var pl = PlayerList\[k\];\n    X\(pl\.H\);\n  \}\n  return record\(i, player, j\);/);
+  assert.equal(r.text.split('\n')[r.line].trim(), 'X(pl.H);');
   assert.match(L.placeExample('function play() {\n  a();\n}\nGame.Play = play;\n', 'Context.Wait', 'Context.Wait(1);', 'Game.Play').text, /a\(\);\n  Context\.Wait\(1\);\n\}\nGame\.Play = play;\n$/);
   assert.equal(L.placeExample('Game.Play = other.fn;\n', 'Context.Wait', 'Context.Wait(1);', 'Game.Play'), undefined);
   // Rebound (`play = other;`): Nucleus runs another function, so nothing is edited.

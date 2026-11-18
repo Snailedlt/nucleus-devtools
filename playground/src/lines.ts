@@ -342,7 +342,16 @@ export function placeExample(text: string, path: string, example: string, where 
   // which Nucleus calls once, with no arguments) each player in turn, inside the loop over PlayerList that Hub handlers
   // write there (made when the callback has none).
   const usesPlayer = /\bplayer\./.test(example);
-  const loop = (code: string, ind: string) => `${ind}for (var i = 0; i < PlayerList.Count; i++) {\n${ind}${unit}var player = PlayerList[i];\n${block(code, ind + unit)}\n${ind}}`;
+  // A new loop's index and player get names the callback and the example don't use already (`return record(i);`
+  // after it would otherwise see the loop's last index).
+  let names = { i: 'i', player: 'player' };
+  const nameLoop = (src: string) => {
+    const used = new Set(src.match(/[A-Za-z_$][\w$]*/g) ?? []);
+    const free = (list: string[]) => list.find((x) => !used.has(x)) ?? list.map((x) => `${x}2`).find((x) => !used.has(x)) ?? `${list[0]}_${used.size}`;
+    names = { i: free(['i', 'j', 'k', 'n', 'idx', 'index']), player: free(['player', 'pl', 'p', 'plyr', 'thisPlayer']) };
+  };
+  const loop = (code: string, ind: string) => `${ind}for (var ${names.i} = 0; ${names.i} < PlayerList.Count; ${names.i}++) {\n${ind}${unit}var ${names.player} = PlayerList[${names.i}];\n${block(names.player === 'player' ? code : code.replace(/\bplayer\./g, `${names.player}.`), ind + unit)}\n${ind}}`;
+  const exampleNames = example.replace(/\bplayer\./g, ' ');
   let fnStmt = top.filter((s) => pathOfStmt(s) === where && isFn(s)).pop();
   let fn = fnStmt && assignOf(fnStmt).right;
   // Set by name (`Game.Play = play;`): the top-level function of that name; anything else is left alone (undefined).
@@ -358,6 +367,7 @@ export function placeExample(text: string, path: string, example: string, where 
     fn = decl;
   }
   if (!fnStmt) {
+    nameLoop(exampleNames);
     const inner = usesPlayer && where !== 'Game.Play' ? loop(example, unit) : block(where === 'Game.Play' ? example.replace(/\bplayer\./g, 'Player.') : example, unit);
     const code = `${where} = function () {\n${inner}\n};\n`;
     const at = text.length;
@@ -393,7 +403,10 @@ export function placeExample(text: string, path: string, example: string, where 
     if (forLoop) {
       body = forLoop.s.body;
       if (forLoop.name !== 'player') code = code.replace(/\bplayer\./g, `${forLoop.name}.`);
-    } else wrap = true;
+    } else {
+      wrap = true;
+      nameLoop(`${text.slice(fn.start, fn.end)} ${exampleNames}`);
+    }
   }
   const stmts = body.body as any[];
   const at = foundIn(stmts, code);
@@ -403,10 +416,24 @@ export function placeExample(text: string, path: string, example: string, where 
   const ind = last && lineStart(text, last.start) > body.start ? indentOf(text, last.start) : outer + unit;
   if (wrap) code = loop(code, '');
   const shift = (p: Placed): Placed => (wrap ? { ...p, line: p.line + 2 } : p); // the example's line, inside the new loop
-  // Ending in `return;` on a line of its own: before it, or the call would never run.
-  const ls = last ? lineStart(text, last.start) : -1;
-  if (last?.type === 'ReturnStatement' && ls > body.start && /^\s*$/.test(text.slice(ls, last.start))) return shift(insertAt(ls, `${block(code, ind)}\n`, where));
+  // Ending in `return;`: before it, or the call would never run.
   const close = body.end - 1;
+  const ls = last ? lineStart(text, last.start) : -1;
+  if (last?.type === 'ReturnStatement') {
+    // On a line of its own.
+    if (ls > body.start && /^\s*$/.test(text.slice(ls, last.start))) return shift(insertAt(ls, `${block(code, ind)}\n`, where));
+    // After other code on its line (`a(); return;`): the return moves to a line of its own.
+    if (ls > body.start) {
+      const before = text.slice(0, last.start).replace(/[ \t]+$/, '');
+      const out = before + `\n${block(code, ind)}\n${ind}` + text.slice(last.start);
+      return shift({ text: out, action: 'insert', line: lineAt(out, before.length + 1), where });
+    }
+    // On the line of the `{` (`function () { a(); return; }`): open it up, the example before the return.
+    const head = text.slice(body.start + 1, last.start).trim();
+    const ret = text.slice(last.start, close).trim();
+    const out = text.slice(0, body.start + 1) + (head ? `\n${ind}${head}` : '') + `\n${block(code, ind)}\n${ind}${ret}\n${outer}` + text.slice(close);
+    return shift({ text: out, action: 'insert', line: lineAt(out, body.start) + (head ? 2 : 1), where });
+  }
   const cls = lineStart(text, close);
   if (cls > body.start && /^\s*$/.test(text.slice(cls, close))) return shift(insertAt(cls, `${block(code, ind)}\n`, where));
   // `function () {}` or `{ a(); }` on one line: open it up.
