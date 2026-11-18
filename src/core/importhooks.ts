@@ -206,7 +206,8 @@ export function analyse(files: PeFile[], mainName?: string | PeFile, where: { bi
       // the .exe's folder, or above it by Game.BinariesFolder. An SDL2.dll outside that root can't be named: no line.
       const root = instanceRoot(dirOf(main.fileName), where.binariesFolder), dir = dirOf(sdl.fileName);
       const rel = !root ? dir : dir.toLowerCase().startsWith(root.toLowerCase() + '/') ? dir.slice(root.length + 1) : undefined;
-      if (rel) lines = [...lines, `Game.SDLPaths = [${jsString(rel.replace(/\//g, '\\'))}];`];
+      // The root itself (SDL2.dll above a Game.BinariesFolder .exe): "." (Instance<i>\.\SDL2.dll).
+      if (rel !== undefined) lines = [...lines, `Game.SDLPaths = [${jsString(rel ? rel.replace(/\//g, '\\') : '.')}];`];
     }
     found.push({ rule: r, hits, opts, lines });
   }
