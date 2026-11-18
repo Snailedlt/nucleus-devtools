@@ -71,10 +71,10 @@ jobs:
         run: |
           want="$WANT"
           if [ -z "$want" ]; then
-            # The exact branch (refs/heads/<name>, not one ending in it); main only when there is none (exit code 2),
-            # a failed lookup fails the run.
-            rc=0; git ls-remote --exit-code https://github.com/Snailedlt/splitscreenme-vscode.git "refs/heads/$BRANCH" >/dev/null || rc=$?
-            if [ "$rc" = 0 ]; then want="$BRANCH"; elif [ "$rc" = 2 ]; then want=main; else echo "::error::Couldn't look up $BRANCH."; exit 1; fi
+            # The exact branch: ls-remote also matches refs that only end in refs/heads/<name>, so compare the ref
+            # field. main when there is none; a failed lookup fails the run.
+            refs=$(git ls-remote --heads https://github.com/Snailedlt/splitscreenme-vscode.git) || { echo "::error::Couldn't look up $BRANCH."; exit 1; }
+            if printf '%s\n' "$refs" | awk -v r="refs/heads/$BRANCH" '$2 == r { f = 1 } END { exit !f }'; then want="$BRANCH"; else want=main; fi
           fi
           echo "Building with splitscreenme-vscode@$want"
           echo "ref=$want" >> "$GITHUB_OUTPUT"

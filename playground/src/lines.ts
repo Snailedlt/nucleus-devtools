@@ -351,6 +351,9 @@ export function placeExample(text: string, path: string, example: string, where 
     const r = assignOf(byRef).right;
     const decl = r.type === 'Identifier' ? top.filter((s) => s.type === 'FunctionDeclaration' && s.id?.name === r.name).pop() : undefined;
     if (!decl) return undefined;
+    // Rebound somewhere (`play = other;`, `var play = ...`): Nucleus may run another function, so leave it alone.
+    const name = r.name.replace(/\$/g, '\\$');
+    if (new RegExp(`(^|[^.\\w$])${name}\\s*=(?!=)`).test(text)) return undefined;
     fnStmt = decl;
     fn = decl;
   }
@@ -374,7 +377,13 @@ export function placeExample(text: string, path: string, example: string, where 
     const whole = (s: any) => {
       const t = s.test, init = s.init?.type === 'VariableDeclaration' ? s.init.declarations[0] : s.init?.type === 'AssignmentExpression' ? { id: s.init.left, init: s.init.right } : undefined;
       const idx = isId(t?.left) ? t.left.name : undefined;
-      return idx && t.operator === '<' && t.right?.type === 'MemberExpression' && isId(t.right.object, 'PlayerList') && isId(t.right.property, 'Count') && isId(init?.id, idx) && init.init?.type === 'Literal' && init.init.value === 0 ? idx : undefined;
+      // One player at a time: `i++`, `++i`, `i += 1` or `i = i + 1`.
+      const u = s.update;
+      const one = (n: any) => n?.type === 'Literal' && n.value === 1;
+      const step = (u?.type === 'UpdateExpression' && u.operator === '++' && isId(u.argument, idx))
+        || (u?.type === 'AssignmentExpression' && isId(u.left, idx) && ((u.operator === '+=' && one(u.right))
+          || (u.operator === '=' && u.right?.type === 'BinaryExpression' && u.right.operator === '+' && ((isId(u.right.left, idx) && one(u.right.right)) || (one(u.right.left) && isId(u.right.right, idx))))));
+      return idx && step && t.operator === '<' && t.right?.type === 'MemberExpression' && isId(t.right.object, 'PlayerList') && isId(t.right.property, 'Count') && isId(init?.id, idx) && init.init?.type === 'Literal' && init.init.value === 0 ? idx : undefined;
     };
     const forLoop = (fn.body.body as any[]).filter((s) => s.type === 'ForStatement' && s.body.type === 'BlockStatement' && whole(s)).map((s) => {
       const idx = whole(s);

@@ -2484,6 +2484,8 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
   // The workbench's shortcuts (keybindings.ts), whatever they're set to.
   const id = appActionFor(e);
   if (!id) return;
+  // F6 bound to an editor command too (Settings › Keyboard): the editor already ran it, so don't also move pane.
+  if ((id === 'nextPane' || id === 'prevPane') && inCode && e.defaultPrevented) return;
   e.preventDefault();
   if (id === 'pending') return;
   const run: Record<string, () => void> = {
@@ -2514,7 +2516,10 @@ function cyclePane(dir: 1 | -1) {
     .map((sel) => document.querySelector<HTMLElement>(sel))
     .filter((p): p is HTMLElement => !!p && !p.hidden && p.offsetParent !== null && p.getClientRects().length > 0);
   if (!panes.length) return;
-  const at = panes.findIndex((p) => p.contains(document.activeElement));
+  // The innermost pane with the focus (Lines can sit inside the code pane, which comes first in the order).
+  const holding = panes.filter((p) => p.contains(document.activeElement));
+  const inner = holding.find((p) => !holding.some((q) => q !== p && p.contains(q)));
+  const at = inner ? panes.indexOf(inner) : -1;
   const next = panes[at < 0 ? 0 : (at + dir + panes.length) % panes.length];
   if (next.matches('.pane:not(.side)') && viewMode === 'code') editor.focus();
   else if (next.matches('.pane.side')) (next.querySelector<HTMLElement>('[role=tab][aria-selected=true]') ?? next.querySelector<HTMLElement>(FOCUSABLE))?.focus();

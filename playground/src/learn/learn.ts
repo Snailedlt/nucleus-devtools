@@ -412,7 +412,10 @@ function renderTryIt(text: string, miss: string | null = null) {
   // and the arguments every copy gets.
   if (!r.hasPlay) {
     const cols = tryPlayers <= 2 ? tryPlayers : 2, rows = Math.ceil(tryPlayers / cols);
-    const args = /^\s*Game\.StartArguments\s*=\s*(["'])((?:(?!\1)[^\\]|\\.)*)\1/m.exec(text)?.[2] ?? '';
+    // The value the handler ends with, as the simulator evaluated it (a string option is given JSON-quoted).
+    const set = r.options.find((o) => o.path === 'Game.StartArguments')?.value;
+    let args = '';
+    try { const v = set === undefined ? '' : JSON.parse(set); args = typeof v === 'string' ? v : ''; } catch { /* not a string */ }
     r.players = Array.from({ length: tryPlayers }, (_, i) => ({ index: i, startArguments: args, calls: [], effects: [], window: `${Math.floor(1920 / cols)} × ${Math.floor(1080 / rows)}` }));
   }
   const card = (p: SimResult['players'][number], i: number) => {
