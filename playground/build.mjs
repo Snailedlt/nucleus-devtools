@@ -357,7 +357,7 @@ const votesFile = (() => {
 const docVotes = votesFile
   ? (await import('data:text/javascript;base64,' + Buffer.from((await esbuild.build({ entryPoints: [path.join(coreRepo, 'src', 'core', 'docvotes.ts')], bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'warning' })).outputFiles[0].text).toString('base64'))).snapshotFromReport(JSON.parse(fs.readFileSync(votesFile, 'utf8')))
   : null;
-const build = { bench: rev(path.join(here, '..')), core: rev(coreRepo), nucleus: apiModel.source?.nucleus ?? null, jint: apiModel.jint ?? null, feedback: feedbackSite, logo: handlerLogo, docVotes };
+const build = { bench: rev(path.join(here, '..')), core: rev(coreRepo), nucleus: apiModel.source?.nucleus ?? null, jint: apiModel.jint ?? null, feedback: feedbackSite, counts: countsSite, logo: handlerLogo, docVotes };
 // What's new, from ../CHANGELOG.md: dated sections ("## 2026-11-05"), newest first, in emoji groups
 // ("### ✨ New"); each bullet starts with a **short summary**, and may have a screenshot under it
 // ("  ![alt](docs/images/changelog/x-light.png)", plus x-dark.png beside it, copied to changes/ next to the page). "Unreleased" is only

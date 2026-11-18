@@ -772,11 +772,17 @@ li.CodeMirror-hint-active .hint-type { color: var(--muted); opacity: 1; }
 .vote-btn:hover, .vote-btn:focus-visible { opacity: 1; filter: none; border-color: var(--line); }
 .vote-btn[aria-pressed="true"] { opacity: 1; filter: none; background: color-mix(in srgb, var(--accent) 16%, transparent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
 #tip-votes .votes { margin-right: 2px; }
-/* The doc votes: one compact control, as the docs pages' [👍] score [👎] (no score here: #docs shows no counts). */
-.dc-check .votes { align-items: center; padding: 1px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); }
+/* The doc votes: one compact control, as the docs pages' [👍] score [👎] (site-chrome.mjs DOC_FEEDBACK_CSS). */
+.dc-check .vote-ctl { position: relative; display: inline-flex; align-items: center; gap: 2px; padding: 1px; border: 1px solid var(--line); border-radius: 999px; background: var(--bg); }
 .dc-check .vote-btn { filter: none; opacity: 1; border-radius: 999px; padding: 3px 7px; }
 .dc-check .vote-btn:hover { background: var(--surface); }
 .dc-check .vote-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.dc-check .vote-score { min-width: 1.6em; text-align: center; font-weight: 700; color: var(--fg); font-variant-numeric: tabular-nums; }
+.dc-check:has(.vote-btn[aria-pressed="true"]) .vote-score { color: var(--accent); }
+.dc-check .vote-tip { position: absolute; left: 0; top: calc(100% + 6px); z-index: 30; width: max-content; max-width: min(340px, 80vw); padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--fg); box-shadow: 0 4px 14px rgba(0,0,0,.25); font-size: 12px; line-height: 1.5; white-space: pre-line; visibility: hidden; opacity: 0; transition: opacity .12s; pointer-events: none; }
+.dc-check .vote-ctl:hover .vote-tip, .dc-check .vote-ctl:focus-within .vote-tip { visibility: visible; opacity: 1; }
+.dc-check .vote-ctl.tip-off .vote-tip { visibility: hidden; opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .dc-check .vote-tip { transition: none; } }
 .ai-doc { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
 .ai-box.ln-ai { margin: 4px 0; padding: 4px 8px; }
 

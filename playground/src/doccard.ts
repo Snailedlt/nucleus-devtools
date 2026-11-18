@@ -10,7 +10,8 @@ import { withContext } from './report';
 import { aiBasis, api, docReviewUrl, exampleSource, isAiPart, ownerLabel, type AiPart, type Member } from '@core/api';
 import { aiMeta } from '@core/aimark';
 import type { DocPart } from '@core/docvotes';
-import { myVote, voteButtons } from './feedback';
+import { myVote, feedbackOn } from './feedback';
+import { snapshotVotes, liveVotes, scoreText, voteTipText } from './votecounts';
 import { hlHtml } from './codehl';
 import { prettyCode } from '@core/pretty';
 
@@ -165,14 +166,42 @@ const VOTE_LABELS: Record<DocPart, { up: string; down: string }> = {
   doc: { up: 'The doc is correct', down: 'The doc is wrong or unclear' },
   practice: { up: '“How handlers use it” is correct', down: '“How handlers use it” is wrong or unclear' },
 };
-/** Is this right? [👍 👎], the docs pages' compact control without its score (no counts here: they're on the docs pages). The follow-up link shows only after a vote: after
- *  a 👎 "Tell us what's wrong", after a 👍 "Give feedback" (the same form, titled as feedback); taking the vote back
- *  hides it again. */
+/** Is this right? [👍] score [👎], the docs pages' control: the score is people's 👍 minus 👎 (the build's snapshot, then
+ *  live from GoatCounter), the tooltip on hover or focus tells people's and AIs' votes apart, and this browser's own
+ *  vote moves the score by one. The follow-up link shows only after a vote: after a 👎 "Tell us what's wrong", after a
+ *  👍 "Give feedback" (the same form, titled as feedback); taking the vote back hides it again. */
+let lineSeq = 0;
 function voteLine(path: string, part: DocPart): string {
   const mine = myVote(part, path);
-  return `<div class="dc-check"><span>${part === 'practice' ? 'Is this right?' : 'Is this doc right?'}</span>${voteButtons(part, path, VOTE_LABELS[part])}`
+  const q = part === 'practice' ? 'Is this right?' : 'Is this doc right?';
+  const c = snapshotVotes(path, part), id = `dc-vt-${++lineSeq}`, labels = VOTE_LABELS[part];
+  const b = (v: 'up' | 'down', icon: string, label: string) => `<button type="button" class="vote-btn" data-vote="${v}" data-vkind="${part}" data-vid="${esc(path)}" aria-pressed="${mine === v}" title="${esc(label)}" aria-label="${esc(label)}" aria-describedby="${id}">${icon}</button>`;
+  setTimeout(() => fillLive(id, path, part), 0);
+  return `<div class="dc-check" data-up="${c.up}" data-down="${c.down}" data-aiup="${c.aiUp}" data-aidown="${c.aiDown}" data-base="${mine ?? ''}"><span>${q}</span>`
+    + `<span class="vote-ctl" role="group" aria-label="${q}">${b('up', '👍', labels.up)}<span class="vote-score" aria-hidden="true"></span>${b('down', '👎', labels.down)}<span class="vote-tip" id="${id}" role="tooltip"></span></span>`
     + `<a class="dc-wrong" href="${esc(withContext(docReviewUrl(path), { Doc: path }))}" target="_blank" rel="noopener"${mine === 'down' ? '' : ' hidden'}>Tell us what's wrong</a>`
     + `<a class="dc-good" href="${esc(withContext(feedbackUrl(path), { Doc: path }))}" target="_blank" rel="noopener"${mine === 'up' ? '' : ' hidden'}>Give feedback</a></div>`;
+}
+/** The score and the tooltip from the line's counts and the vote pressed now. Live counts already hold the vote this
+ *  browser had sent before they were read (data-base), so only the change since counts. */
+function showVotes(line: HTMLElement) {
+  const v = line.querySelector<HTMLElement>('button[data-vote][aria-pressed="true"]')?.dataset.vote;
+  const was = line.dataset.live ? line.dataset.base : '';
+  const up = +line.dataset.up! + (v === 'up' ? 1 : 0) - (was === 'up' ? 1 : 0), down = +line.dataset.down! + (v === 'down' ? 1 : 0) - (was === 'down' ? 1 : 0);
+  const s = line.querySelector('.vote-score'), t = line.querySelector('.vote-tip');
+  if (s) s.textContent = scoreText(up - down);
+  if (t) t.textContent = voteTipText(up, down, +line.dataset.aiup!, +line.dataset.aidown!);
+}
+function fillLive(tipId: string, path: string, part: DocPart) {
+  const line = document.getElementById(tipId)?.closest<HTMLElement>('.dc-check');
+  if (!line) return;
+  if (!feedbackOn()) line.dataset.base = ''; // its votes were never sent, so the live counts don't hold them
+  showVotes(line);
+  liveVotes(path, part).then((c) => {
+    if (!c || !line.isConnected) return;
+    Object.assign(line.dataset, { up: String(c.up), down: String(c.down), aiup: String(c.aiUp), aidown: String(c.aiDown), live: '1' });
+    showVotes(line);
+  });
 }
 /** The doc review form titled as feedback (after a 👍: something to add, a better example). */
 export const feedbackUrl = (path: string) => docReviewUrl(path).replace(encodeURIComponent('Doc review: '), encodeURIComponent('Doc feedback: '));
@@ -182,17 +211,18 @@ export function syncVoteLinks(line: Element | null | undefined) {
   const v = line.querySelector<HTMLElement>('button[data-vote][aria-pressed="true"]')?.dataset.vote;
   line.querySelector<HTMLElement>('.dc-wrong')?.toggleAttribute('hidden', v !== 'down');
   line.querySelector<HTMLElement>('.dc-good')?.toggleAttribute('hidden', v !== 'up');
+  if (line instanceof HTMLElement && line.dataset.up != null) showVotes(line);
 }
 // One listener for every card, after the vote buttons have taken the vote (feedback.ts wireVotes).
 if (typeof document !== 'undefined' && document.addEventListener) {
   document.addEventListener('click', (e) => {
-    const line = (e.target as HTMLElement | null)?.closest?.('.dc-check button[data-vote]')?.closest('.dc-check');
+    const line = (e.target as HTMLElement | null)?.closest?.('.dc-check button[data-vote]')?.closest<HTMLElement>('.dc-check');
     if (line) setTimeout(() => syncVoteLinks(line), 0);
   });
   // Escape hides a sparkle's tooltip until the pointer or focus leaves it (WCAG 1.4.13).
-  const tipHosts = '.ai-badge, .dc-pr-h';
+  const tipHosts = '.ai-badge, .dc-pr-h, .dc-check .vote-ctl';
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape') document.querySelectorAll(`.ai-badge:hover, .ai-badge:focus, .dc-pr-h:focus`).forEach((b) => b.classList.add('tip-off'));
+    if (e.key === 'Escape') document.querySelectorAll(`.ai-badge:hover, .ai-badge:focus, .dc-pr-h:focus, .dc-check .vote-ctl:hover, .dc-check .vote-ctl:focus-within`).forEach((b) => b.classList.add('tip-off'));
   });
   for (const ev of ['mouseout', 'focusout'] as const) document.addEventListener(ev, (e) => {
     const b = (e.target as HTMLElement | null)?.closest?.(tipHosts);
