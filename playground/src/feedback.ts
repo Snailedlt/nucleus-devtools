@@ -108,9 +108,11 @@ export function vote(kind: VoteKind, id: string, v: Vote): Vote | undefined {
   const all = votes();
   const k = `${kind}/${id}`;
   if (automated()) return all[k]; // never sent, so not saved as a person's vote either
-  const now = all[k] === v ? undefined : v;
+  const was = all[k], now = was === v ? undefined : v;
   if (now) all[k] = now; else delete all[k];
   set(KEY, JSON.stringify(all));
+  // Changing 👍 to 👎 (or back) takes the old vote back first, so each browser counts once.
+  if (was && was !== v) send(`vote/${k}/undo-${was}`);
   send(`vote/${k}/${now ?? 'undo-' + v}`);
   return now;
 }

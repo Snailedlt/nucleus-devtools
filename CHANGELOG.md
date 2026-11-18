@@ -28,6 +28,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 ### ⚠️ Changed
 
+- **Changing a vote from 👍 to 👎 counts once.** Before, the old vote stayed counted too.
 - **Docs in the workbench shows the same vote control as the docs pages.** [👍] score [👎], with people's and AIs' votes apart on hover, counted live.
 - **Vote scores update within a minute.** The /docs pages read the counts live from GoatCounter instead of waiting for the daily snapshot (which stays as the fallback); previews show the real site's scores.
 - **Previews are built by Vercel itself.** Every pushed branch gets one, with the extension's branch of the same name; the next release's site is rebuilt after each test build.

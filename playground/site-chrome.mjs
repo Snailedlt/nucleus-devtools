@@ -129,9 +129,11 @@ export function docFeedbackScript(site, countsSite = site) {
   }
   box.addEventListener('click', function (e) {
     var b = e.target.closest('[data-vote]'); if (!b) return;
-    var all = votes(), v = b.dataset.vote, now = all[id] === v ? undefined : v;
+    var all = votes(), v = b.dataset.vote, was = all[id], now = was === v ? undefined : v;
     if (now) all[id] = now; else delete all[id];
     try { localStorage.setItem(KEY, JSON.stringify(all)); } catch (e) {}
+    // Changing 👍 to 👎 (or back) takes the old vote back first, so each browser counts once.
+    if (was && was !== v) send('vote/' + id + '/undo-' + was);
     send('vote/' + id + '/' + (now || 'undo-' + v));
     box.querySelector('.doc-fb-thanks').textContent = now ? 'Thanks!' : '';
     show();
