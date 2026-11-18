@@ -146,7 +146,7 @@ export function withoutComments(src) {
       i = end - 1;
       continue;
     }
-    if (c === '"' || c === "'" || (c === '/' && (!prev || /[(,=:[!&|?{};+\-*%<>~^]/.test(prev)))) {
+    if (c === '"' || c === "'" || (c === '/' && (!prev || /[(,=:[!&|?{};+\-*%<>~^]/.test(prev) || /(?:^|[^\w$])(?:return|typeof|case|do|else|in|instanceof|new|delete|void|throw)\s*$/.test(t.slice(Math.max(0, i - 16), i))))) {
       let k = i + 1, cls = false;
       for (; k < t.length && t[k] !== '\n'; k++) {
         const x = t[k];

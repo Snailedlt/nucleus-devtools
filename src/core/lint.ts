@@ -2065,7 +2065,7 @@ class Analyzer {
     };
     // Comments don't turn a hook on, nor does text in a string.
     const code = codeOf(this.text).code;
-    const codeNoStrings = code.replace(/"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'/g, '""');
+    const codeNoStrings = code.replace(/"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'/g, (s) => s[0] + ' '.repeat(s.length - 2) + s[0]); // same length: offsets stay comparable with this.text
     const started = ['InjectStartup', 'InjectRuntime_RemoteLoadMethod', 'InjectRuntime_EasyHookMethod', 'InjectRuntime_EasyHookStealthMethod'].some(isTrue);
     if (!started) return;
     // Installed at runtime (ProtoInput.InstallHook(..., RegisterRawInputHookID)) counts. So does the option set to true:

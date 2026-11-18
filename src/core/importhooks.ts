@@ -418,7 +418,7 @@ export function importProblems(text: string, files: PeFile[]): FolderProblem[] {
   const withBin = exe && bin ? bin.replace(/[\\/]+$/, '') + '\\' + exe.value : undefined;
   const name = withBin && findExe(exes, withBin) ? withBin : exe?.value;
   // A name several programs of the folder have (old/Game.exe and new/Game.exe): no guessing which one, no hints.
-  if (name && findExes(exes, name).length > 1) return [];
+  if (name && findExes(exes, name).length !== 1) return []; // no program, or several, by that name: no guessing
   const a = analyse(files, name, { binariesFolder: bin });
   const hints = importHints(text, a);
   if (!hints.length) return [];

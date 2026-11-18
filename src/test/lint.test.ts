@@ -796,6 +796,9 @@ test('protoinput-needs-raw-input: key and cursor hooks need the raw input hook',
   // Comments don't turn it on; the last assignment counts; an explicit false is turned into true.
   assert.equal(only(HEADER + KBM + '// Game.ProtoInput.RegisterRawInputHook = true;\n/* RegisterRawInputHookID */\nGame.ProtoInput.GetKeyStateHook = true;\n', 'protoinput-needs-raw-input').length, 1);
   assert.equal(only(HEADER + KBM + 'Game.ProtoInput.GetKeyStateHook = true;\nGame.ProtoInput.GetKeyStateHook = false;\n', 'protoinput-needs-raw-input').length, 0);
+  // Strings before the `= false` don't shift the comparison: a later `= true` in a block still counts.
+  const longStr = 'var s = "' + 'x'.repeat(400) + '";\n';
+  assert.equal(only(HEADER + KBM + longStr + 'Game.ProtoInput.GetKeyStateHook = true;\nGame.ProtoInput.RegisterRawInputHook = false;\nif (true) {\n  Game.ProtoInput.RegisterRawInputHook = true;\n}\n', 'protoinput-needs-raw-input').length, 0);
   const rawSrc = HEADER + KBM + 'Game.ProtoInput.GetKeyStateHook = true;\nGame.ProtoInput.RegisterRawInputHook = false;\n';
   const f = only(rawSrc, 'protoinput-needs-raw-input');
   assert.equal(f[0].fixes![0].edits[0].text, 'true');

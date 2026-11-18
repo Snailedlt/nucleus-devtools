@@ -56,8 +56,12 @@ function textViews(bytes: Uint8Array): string[] {
   return v;
 }
 export function runtimeNames(bytes: Uint8Array): string[] {
-  const views = textViews(bytes).map((t) => t.toLowerCase());
-  return RT_NAMES.filter((name) => views.some((t) => t.includes(name.toLowerCase())));
+  // Case-insensitive on the cached views themselves (no lower-cased copies of up to 80 MB of text).
+  const views = textViews(bytes);
+  return RT_NAMES.filter((name) => {
+    const re = new RegExp(name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i');
+    return views.some((t) => re.test(t));
+  });
 }
 export function exeMentions(bytes: Uint8Array): string[] {
   const found = new Set<string>();

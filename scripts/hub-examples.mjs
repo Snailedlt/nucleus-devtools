@@ -95,7 +95,7 @@ for (const [id, info] of Object.entries(packages)) {
         // `let` only as a declaration keyword: where a statement starts (after `;`, a brace, `for (`, or a line break)
         // and followed by a name (Jint has no destructuring, so `let[0]` and `let {` are the name `let`).
         const nx = toks[i + 1], pv = toks[i - 1];
-        const atStatement = !pv || [';', '{', '}', '('].includes(pv.type.label) || src.slice(pv.end, t.start).includes('\n');
+        const atStatement = !pv || [';', '{', '}', '(', ':'].includes(pv.type.label) || src.slice(pv.end, t.start).includes('\n');
         const letDecl = t.type.label === 'name' && t.value === 'let' && atStatement && nx && nx.type.label === 'name';
         if (letDecl || t.type.keyword === 'const') {
           fixed += src.slice(at, t.start) + 'var'.padEnd(t.end - t.start);

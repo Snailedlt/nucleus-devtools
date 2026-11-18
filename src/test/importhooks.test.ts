@@ -302,6 +302,8 @@ test('importhooks: Game.BinariesFolder picks the program Nucleus starts', () => 
   // Game.ExecutableName that two programs have, and no Game.BinariesFolder to pick one: no hints (no guessing by size).
   assert.deepEqual(importProblems('Game.ExecutableName = "Game.exe";\nGame.ProtoInput.InjectStartup = true;\n', [a, b]), []);
   assert.ok(importProblems('Game.ExecutableName = "Game.exe";\nGame.ProtoInput.InjectStartup = true;\n', [b]).some((p) => /XinputHook/.test(p.title)));
+  // A name no program has: no hints either (not the largest program instead).
+  assert.deepEqual(importProblems('Game.ExecutableName = "Foo.exe";\nGame.ProtoInput.InjectStartup = true;\n', [b]), []);
 });
 
 test('importhooks: launcher startup is a warning (not a quiet note); its fix keeps a trailing comment', () => {
