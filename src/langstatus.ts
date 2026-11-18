@@ -41,7 +41,8 @@ export function registerLanguageStatus(context: vscode.ExtensionContext, isHandl
     const doc = vscode.window.activeTextEditor?.document;
     // Not a handler (any more): back to handlers only, so a JavaScript file that was one stops showing these.
     if (!doc || !isHandler(doc)) {
-      checks.selector = folder.selector = report.selector = base;
+      // A file in the handler language that isn't one (any more) must not match either: a selector for no document.
+      checks.selector = folder.selector = report.selector = doc?.languageId === HANDLER_LANGUAGE ? [{ language: HANDLER_LANGUAGE, scheme: 'splitscreenme-none' }] : base;
       return;
     }
     // A handler kept in JavaScript mode: this file only, so other JavaScript files don't get it.

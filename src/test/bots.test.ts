@@ -177,8 +177,8 @@ test('bots: the release comments only on this repository\'s fixed issues, once',
   assert.deepEqual(bots.fixedIssueNumbers('Fixes #12\ncloses Snailedlt/splitscreenme-vscode#13 and Snailedlt/nucleuscoop-handler-testbench#14', 'Snailedlt/splitscreenme-vscode'), [12, 13]);
   const made: number[] = [];
   const github = {
-    // #9: the bot's own comment; #3: someone pasted the marker (doesn't count).
-    paginate: async (_fn: unknown, o: { issue_number: number }) => (o.issue_number === 9 ? [{ body: bots.FIXED_MARKER + '\n✅', user: { login: 'github-actions[bot]' } }] : o.issue_number === 3 ? [{ body: 'quote ' + bots.FIXED_MARKER, user: { login: 'someone' } }] : []),
+    // #9: the bot's own comment; #3: the same text from someone else (doesn't count: only the author differs).
+    paginate: async (_fn: unknown, o: { issue_number: number }) => (o.issue_number === 9 ? [{ body: bots.FIXED_MARKER + '\n✅', user: { login: 'github-actions[bot]' } }] : o.issue_number === 3 ? [{ body: bots.FIXED_MARKER + '\n✅', user: { login: 'someone' } }] : []),
     rest: {
       issues: {
         listComments: {},

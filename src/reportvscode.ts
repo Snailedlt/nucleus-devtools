@@ -7,7 +7,7 @@
 // (their labels, the Where list, the fields the bots read) can't be used, it needs a GitHub sign-in inside VS Code, and
 // it isn't in VS Code for the web. A prefilled form works everywhere and shows everything before it is sent.
 import * as vscode from 'vscode';
-import { buildReport, DISCORD_THREAD, findDuplicates, handlerHelp, handlerOrigin, HANDLER_OR_TOOLS, CHECK_VERDICTS, type ReportInput } from './core/report';
+import { buildReport, DISCORD_THREAD, findDuplicates, handlerHelp, handlerOrigin, HANDLER_OR_TOOLS, CHECK_VERDICTS, type ReportInput, type HandlerOrigin } from './core/report';
 import { REPORT_TRY_IT } from './tryit';
 
 /** Opens a link as the text it is: Uri.parse would decode the form's query (an "&" in a field would cut it short),
@@ -88,7 +88,10 @@ export function registerReports(context: vscode.ExtensionContext) {
         vscode.window.setStatusBarMessage('Nucleus: the handler changed since: open "This check is wrong…" again on the checked line', 5000);
         return;
       }
-      const code = doc ? Array.from({ length: Math.min(a.endLine, a.startLine + 19) - a.startLine + 1 }, (_, i) => doc.lineAt(Math.min(doc.lineCount - 1, a.startLine + i)).text).join('\n') : '';
+      // Only from the text the check ran on: no version (unknown) means no code.
+      const code = doc && a.version === doc.version ? Array.from({ length: Math.min(a.endLine, a.startLine + 19) - a.startLine + 1 }, (_, i) => doc.lineAt(Math.min(doc.lineCount - 1, a.startLine + i)).text).join('\n') : '';
+      // From the same text as the flagged lines (the file can reload while the questions are open).
+      const handler = handlerOrigin(doc?.getText());
       const verdict = await vscode.window.showQuickPick(CHECK_VERDICTS.map((v) => ({ label: v })), { title: `This check is wrong: ${a.rule}`, placeHolder: a.message.replace(/`/g, '') });
       if (!verdict) return;
       // The flagged lines, shown before anything is sent; leaving them out is one key away.
@@ -106,13 +109,14 @@ export function registerReports(context: vscode.ExtensionContext) {
       }
       const what = await vscode.window.showInputBox({ title: 'What does Nucleus really do? (optional)', prompt: 'You can also write it on the form', ignoreFocusOut: true });
       if (what === undefined) return;
-      await send({ kind: 'check', tool: 'vscode', rule: a.rule, message: a.message, line: a.startLine + 1, code: withCode ? code : undefined, verdict: verdict.label, what, handler: handlerOrigin(doc?.getText()) });
+      await send({ kind: 'check', tool: 'vscode', rule: a.rule, message: a.message, line: a.startLine + 1, code: withCode ? code : undefined, verdict: verdict.label, what, handler });
     }),
-    vscode.commands.registerCommand(REPORT_COMMANDS.tryIt, async (a?: { uri?: string; sim?: string }) => {
+    vscode.commands.registerCommand(REPORT_COMMANDS.tryIt, async (a?: { uri?: string; sim?: string; handler?: HandlerOrigin }) => {
       const doc = docFor(a?.uri);
       const what = await vscode.window.showInputBox({ title: 'Nucleus did something different', prompt: 'What really happened in Nucleus Co-op? (optional: you can write it on the form)', ignoreFocusOut: true });
       if (what === undefined) return;
-      await send({ kind: 'tryit', tool: 'vscode', sim: a?.sim, what, handler: handlerOrigin(doc?.getText()) });
+      // The origin of the text Try it ran (sent with the result), else the document's.
+      await send({ kind: 'tryit', tool: 'vscode', sim: a?.sim, what, handler: a?.handler && typeof a.handler === 'object' ? a.handler : handlerOrigin(doc?.getText()) });
     }),
   );
 }

@@ -10,6 +10,7 @@ import * as acorn from 'acorn';
 import { parseLikeJint } from './jsparse';
 import { BEFORE_SESSION } from './lifecycle';
 import { analyzeScopes, type Binding } from './scopes';
+import { codeOf } from './importhooks';
 import {
   api,
   Member,
@@ -2062,12 +2063,18 @@ class Analyzer {
       const n = last(k);
       return !!n && n.right.type === 'Literal' && n.right.value === true;
     };
-    // Comments don't turn a hook on.
-    const code = this.text.replace(/\/\*[\s\S]*?\*\//g, '').replace(/\/\/.*$/gm, '');
+    // Comments don't turn a hook on, nor does text in a string.
+    const code = codeOf(this.text).code;
+    const codeNoStrings = code.replace(/"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'/g, '""');
     const started = ['InjectStartup', 'InjectRuntime_RemoteLoadMethod', 'InjectRuntime_EasyHookMethod', 'InjectRuntime_EasyHookStealthMethod'].some(isTrue);
     if (!started) return;
-    // Anywhere counts: inside an option's `if`, or installed at runtime (ProtoInput.InstallHook(..., RegisterRawInputHookID)).
-    if (/\bGame\.ProtoInput\.RegisterRawInputHook\s*=\s*true\b/.test(code) || /\bRegisterRawInputHookID\b/.test(code)) return;
+    // Installed at runtime (ProtoInput.InstallHook(..., RegisterRawInputHookID)) counts. So does the option set to true:
+    // by the last top-level assignment, or (when no top-level `= false` wins) anywhere, such as inside an option's `if`.
+    if (/\bInstallHook\s*\([^;]*\bRegisterRawInputHookID\b/.test(codeNoStrings)) return;
+    const raw = last('RegisterRawInputHook');
+    if (isTrue('RegisterRawInputHook')) return;
+    const rawOff = raw && raw.right.type === 'Literal' && raw.right.value === false;
+    if (!rawOff && /\bGame\.ProtoInput\.RegisterRawInputHook\s*=\s*true\b/.test(codeNoStrings)) return;
     if (isTrue('TranslateXinputtoMKB')) return; // the state then comes from the controller
     // Only where players can bring keyboards and mice: for controller-only players a frozen cursor is harmless.
     if (!/\bGame\.SupportsMultipleKeyboardsAndMice\s*=\s*true\b/.test(code)) return;
@@ -2077,16 +2084,18 @@ class Analyzer {
     const first = hits.reduce((a, b) => (a.node!.start < b.node!.start ? a : b));
     const names = hits.map((h) => '`' + h.k + '`').join(', ');
     const at = lineStart(this.text, first.node!.start);
-    const raw = last('RegisterRawInputHook');
-    const off = raw && raw.right.type === 'Literal' && raw.right.value === false ? raw : undefined;
+    const off = rawOff ? raw : undefined;
     this.report({
       rule: 'protoinput-needs-raw-input',
       severity: 'info',
       message: `${names} answer${hits.length === 1 ? 's' : ''} from the player's own keyboard and mouse, which Proto Input only reads with \`Game.ProtoInput.RegisterRawInputHook\`. Without it, keyboard and mouse players get no key presses and a frozen cursor.`,
       start: first.node!.left.start,
       end: first.node!.left.end,
-      // An explicit `= false` that wins is changed to true; else the line is added.
-      fixes: [{ title: 'Turn on Game.ProtoInput.RegisterRawInputHook', edits: [off ? { start: off.right.start, end: off.right.end, text: 'true' } : { start: at, end: at, text: 'Game.ProtoInput.RegisterRawInputHook = true;\n' }] }],
+      // An explicit `= false` that wins is changed to true; with no assignment the line is added; a last assignment of
+      // another value (a variable, an expression): no fix, an added line before it would be overridden.
+      fixes: off ? [{ title: 'Turn on Game.ProtoInput.RegisterRawInputHook', edits: [{ start: off.right.start, end: off.right.end, text: 'true' }] }]
+        : raw ? undefined
+        : [{ title: 'Turn on Game.ProtoInput.RegisterRawInputHook', edits: [{ start: at, end: at, text: 'Game.ProtoInput.RegisterRawInputHook = true;\n' }] }],
     });
   }
 

@@ -110,13 +110,19 @@ export interface Analysis {
   runtime: boolean;
 }
 
-/** The program a name points at: a path (relative to the folder, "/" or "\\") matches that path, or the end of one;
- *  a bare name matches by file name. Case-insensitive, like Windows. */
-export function findExe(exes: PeFile[], name: string): PeFile | undefined {
+/** Every program a name can point at: a path (relative to the folder, "/" or "\\") matches that path, or the end of
+ *  one; a bare name matches by file name. Case-insensitive, like Windows. An exact path match is the only one. */
+export function findExes(exes: PeFile[], name: string): PeFile[] {
   const want = name.replace(/\\/g, '/').replace(/^\.\//, '').toLowerCase();
   const rel = (f: PeFile) => f.fileName.replace(/\\/g, '/').toLowerCase();
-  return exes.find((f) => rel(f) === want)
-    || (want.includes('/') ? exes.find((f) => rel(f).endsWith('/' + want)) : exes.find((f) => base(f.fileName).toLowerCase() === want));
+  const exact = exes.filter((f) => rel(f) === want);
+  if (exact.length) return exact.slice(0, 1);
+  return want.includes('/') ? exes.filter((f) => rel(f).endsWith('/' + want)) : exes.filter((f) => base(f.fileName).toLowerCase() === want);
+}
+/** The program a name points at, or undefined when none or several match (give the path then: `findExes` lists them). */
+export function findExe(exes: PeFile[], name: string): PeFile | undefined {
+  const all = findExes(exes, name);
+  return all.length === 1 ? all[0] : undefined;
 }
 
 /** Which program is the game (following launchers), which DLLs are its own and which are libraries. */
@@ -176,11 +182,11 @@ export function analyse(files: PeFile[], mainName?: string): Analysis {
     if (!hits.length && !r.kbmAlways) continue;
     const opts = Array.isArray(r.opts) ? r.opts : r.opts ? [...new Set(hits.map((h) => (r.opts as Record<string, string>)[h.fn]).filter(Boolean))] : [];
     let lines = r.code ?? [...(r.pre ?? []), ...opts.map((o) => `Game.ProtoInput.${o} = true;`)];
-    // SDL2.dll in another folder than the .exe: Nucleus copies its SDL2.dll into each Game.SDLPaths folder (SDL2Dll.cs).
+    // SDL2.dll in another folder than the .exe: Nucleus copies its SDL2.dll into each Game.SDLPaths folder (SDL2Dll.cs),
+    // and only there.
     if (r.id === 'sdl' && sdl?.size && main && dirOf(sdl.fileName) !== dirOf(main.fileName)) {
-      const d = dirOf(sdl.fileName), m = dirOf(main.fileName);
-      const rel = m && d.startsWith(m + '/') ? d.slice(m.length + 1) : d;
-      lines = [...lines, `Game.SDLPaths = [${jsString(rel.replace(/\//g, '\\'))}];`];
+      // Each path is relative to the instance's root, the game folder (SDL2Dll.cs: Instance<i>\<path>).
+      lines = [...lines, `Game.SDLPaths = [${jsString(dirOf(sdl.fileName).replace(/\//g, '\\'))}];`];
     }
     found.push({ rule: r, hits, opts, lines });
   }
@@ -201,8 +207,51 @@ export function analyse(files: PeFile[], mainName?: string): Analysis {
 
 const ID2OPT: Record<string, string> = { FocusHooksHookID: 'FocusHooks', CursorVisibilityStateHookID: 'CursorVisibilityHook', DinputOrderHookID: 'DinputDeviceHook', WindowStyleHookID: 'SetWindowStyleHook', GetCursorInfoID: 'GetCursorInfoHook' };
 /** Proto Input hooks a handler turns on: options set to true anywhere, and hooks installed at runtime (ProtoInput.InstallHook). */
+/** The handler with its comments blanked out (same length, newlines kept; strings and regular expressions left as
+ *  they are, so a `//` inside one stays), and the bracket depth at the start of each line (0: top level). A small
+ *  lexer rather than a parse: it works on handlers that don't parse yet. */
+export function codeOf(text: string): { code: string; depth: number[] } {
+  const out = text.split('');
+  const depth = [0];
+  let d = 0, prev = '';
+  const blank = (from: number, to: number) => { for (let k = from; k < to; k++) if (out[k] !== '\n') out[k] = ' '; };
+  for (let i = 0; i < text.length; i++) {
+    const c = text[i]!, n = text[i + 1];
+    if (c === '\n') { depth.push(d); continue; }
+    if (c === '/' && n === '/') {
+      let e = text.indexOf('\n', i);
+      if (e < 0) e = text.length;
+      blank(i, e); i = e - 1; continue;
+    }
+    if (c === '/' && n === '*') {
+      let e = text.indexOf('*/', i + 2);
+      e = e < 0 ? text.length : e + 2;
+      blank(i, e);
+      for (let k = i; k < e; k++) if (text[k] === '\n') depth.push(d);
+      i = e - 1; continue;
+    }
+    if (c === '"' || c === "'" || (c === '/' && (!prev || /[(,=:[!&|?{};+\-*%<>~^]/.test(prev)))) {
+      // A string, or a regular expression where one can start; ends at its closing mark or the line's end.
+      let k = i + 1, cls = false;
+      for (; k < text.length && text[k] !== '\n'; k++) {
+        const x = text[k];
+        if (x === '\\') { k++; continue; }
+        if (c === '/' && x === '[') cls = true;
+        else if (c === '/' && x === ']') cls = false;
+        else if (x === c && !cls) break;
+      }
+      i = Math.min(k, text.length - 1);
+      if (text[i] === '\n') i--;
+      prev = c; continue;
+    }
+    if (c === '(' || c === '[' || c === '{') d++;
+    else if (c === ')' || c === ']' || c === '}') d = Math.max(0, d - 1);
+    if (!/\s/.test(c)) prev = c;
+  }
+  return { code: out.join(''), depth };
+}
 /** The handler without its comments (block and line), for the text searches below. */
-const noComments = (text: string) => text.replace(/\/\*[\s\S]*?\*\//g, (c) => c.replace(/[^\n]/g, ' ')).replace(/\/\/.*$/gm, '');
+const noComments = (text: string) => codeOf(text).code;
 export function handlerHooks(text: string): Set<string> {
   const code = noComments(text);
   const on = new Set([...code.matchAll(/\bGame\.ProtoInput\.(\w+)\s*=\s*true\b/g)].map((m) => m[1]!));
@@ -236,12 +285,16 @@ export function importHints(text: string, a: Analysis): ImportHint[] {
   const used = (f: Finding) => f.hits.slice(0, 3).map((h) => (h.how === 'loads' ? `loads ${h.dll}` : h.how === 'imports' ? h.fn : h.fn)).join(', ');
   // Startup injection with a launcher goes into the launcher, so none of the hooks reach the game.
   const runtimeInject = ['InjectRuntime_RemoteLoadMethod', 'InjectRuntime_EasyHookMethod', 'InjectRuntime_EasyHookStealthMethod'].some((k) => isOn(text, 'ProtoInput.' + k));
-  if (/\bGame\.LauncherExe\s*=\s*["']/.test(noComments(text)) && isOn(text, 'ProtoInput.InjectStartup') && !runtimeInject)
+  // A launcher named (a non-empty string), and startup injection on: it goes into the launcher. With a runtime method
+  // as well, the runtime one never runs (GenericGameHandler: only when InjectStartup is off), so the fix turns startup off.
+  if (/\bGame\.LauncherExe\s*=\s*(["'])[^"'\n]+\1/.test(noComments(text)) && isOn(text, 'ProtoInput.InjectStartup'))
     out.push({
       rule: 'launcher-startup',
       title: 'Game.ProtoInput.InjectStartup injects Proto Input into the launcher, not the game',
-      why: 'With Game.LauncherExe, the program Nucleus starts is the launcher (GenericGameHandler), so its hooks never reach the game. Inject at runtime instead (it only runs with InjectStartup off): Nucleus then injects into the game process it finds.',
-      lines: ['Game.ProtoInput.InjectRuntime_EasyHookMethod = true;'],
+      why: runtimeInject
+        ? 'With Game.LauncherExe, the program Nucleus starts is the launcher (GenericGameHandler), so its hooks never reach the game; and with InjectStartup on, the runtime injection this handler also sets never runs. Turn startup injection off: Nucleus then injects into the game process it finds.'
+        : 'With Game.LauncherExe, the program Nucleus starts is the launcher (GenericGameHandler), so its hooks never reach the game. Inject at runtime instead (it only runs with InjectStartup off): Nucleus then injects into the game process it finds.',
+      lines: [runtimeInject ? 'Game.ProtoInput.InjectStartup = false;' : 'Game.ProtoInput.InjectRuntime_EasyHookMethod = true;'],
       severity: 'warning',
       fact: false,
     });
@@ -309,8 +362,13 @@ import type { FolderProblem } from './gamefolder';
 
 export function importProblems(text: string, files: PeFile[]): FolderProblem[] {
   if (!files.length) return [];
-  const exe = text.match(/^\s*Game\.ExecutableName\s*=\s*["']([^"']+)["']/m);
-  const a = analyse(files, exe?.[1]);
+  const { code, depth } = codeOf(text);
+  const exe = code.match(/^\s*Game\.ExecutableName\s*=\s*["']([^"']+)["']/m);
+  // Nucleus starts Game.BinariesFolder\Game.ExecutableName: with a binaries folder, that path picks the program.
+  const bin = code.match(/^\s*Game\.BinariesFolder\s*=\s*["']([^"']+)["']/m)?.[1];
+  const exes = files.filter((f) => !f.dll);
+  const withBin = exe && bin ? bin.replace(/[\\/]+$/, '') + '\\' + exe[1] : undefined;
+  const a = analyse(files, withBin && findExe(exes, withBin) ? withBin : exe?.[1]);
   const hints = importHints(text, a);
   if (!hints.length) return [];
   const anchor = exe ? { start: exe.index! + exe[0].indexOf(exe[1]!), end: exe.index! + exe[0].indexOf(exe[1]!) + exe[1]!.length } : { start: 0, end: 0 };
@@ -318,25 +376,30 @@ export function importProblems(text: string, files: PeFile[]): FolderProblem[] {
     const n = text.indexOf('\n', at);
     return n < 0 ? text.length : n + 1;
   };
-  // Only a complete one-line statement is a safe place to add after (not `OnInputLocked = function () {`).
+  const lineNo = (at: number) => text.slice(0, at).split('\n').length - 1;
+  // Only a complete one-line statement at the top level is a safe place to add after (not `OnInputLocked = function
+  // () {`, nor a line inside a callback's body, indented or not, nor one in a block comment: comments are blanked).
   const complete = (line: string) => {
-    const t = line.replace(/\/\/.*$/, '').trimEnd();
+    const t = line.trimEnd();
     const open = (re: RegExp) => (t.match(re) ?? []).length;
     return t.endsWith(';') && open(/[({[]/g) === open(/[)}\]]/g);
   };
-  const pis = [...text.matchAll(/^Game\.ProtoInput\.\w+\s*=.*$/gm)].filter((m) => complete(m[0]));
+  const top = (m: RegExpMatchArray) => depth[lineNo(m.index!)] === 0;
+  const pis = [...code.matchAll(/^Game\.ProtoInput\.\w+\s*=.*$/gm)].filter((m) => top(m) && complete(m[0]));
   const insertAt = pis.length ? lineEnd(pis[pis.length - 1]!.index!) : exe ? lineEnd(exe.index!) : 0;
   const nl = insertAt > 0 && text[insertAt - 1] !== '\n' ? '\n' : '';
-  // Startup injection into a launcher: the fix swaps the InjectStartup line for runtime injection.
-  // (A trailing comment stays.)
-  const startup = text.match(/^[ \t]*(Game\.ProtoInput\.InjectStartup\s*=\s*true\s*;?)[ \t]*(\/\/.*)?$/m);
-  return hints.map((h) => h.rule === 'launcher-startup' && startup ? {
+  // Startup injection into a launcher: the fix swaps the one active top-level InjectStartup line (a trailing comment
+  // stays). Several InjectStartup assignments, or one inside a block: no fix, it can't tell which one counts.
+  const assigns = [...code.matchAll(/\bGame\.ProtoInput\.InjectStartup\s*=/g)];
+  const startup = assigns.length === 1 ? code.match(/^[ \t]*(Game\.ProtoInput\.InjectStartup\s*=\s*true\s*;?)[ \t]*$/m) : null;
+  const swap = startup && top(startup) ? { start: startup.index! + startup[0].indexOf('Game.'), end: startup.index! + startup[0].indexOf('Game.') + startup[1]!.length } : undefined;
+  return hints.map((h) => h.rule === 'launcher-startup' && swap ? {
     ...anchor,
     severity: h.severity,
     title: h.title,
     why: h.why + ' (From the game’s program files.)',
     fact: undefined,
-    fix: { title: 'Inject at runtime instead', text: h.lines[0]!, start: startup.index! + startup[0].indexOf('Game.'), end: startup.index! + startup[0].indexOf('Game.') + startup[1]!.length },
+    fix: { title: /= false;$/.test(h.lines[0]!) ? 'Turn startup injection off' : 'Inject at runtime instead', text: h.lines[0]!, ...swap },
   } : ({
     ...anchor,
     severity: h.severity,

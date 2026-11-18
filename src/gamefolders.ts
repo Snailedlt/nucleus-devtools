@@ -26,7 +26,7 @@ export function linkedFolder(doc: vscode.TextDocument): string | undefined {
   return linksOf()[doc.uri.fsPath] ?? settingMap(doc)[keyOf(doc)]; // '' (unlinked over a setting): none
 }
 
-const fixOf = new WeakMap<vscode.Diagnostic, FolderFix>();
+const fixOf = new WeakMap<vscode.Diagnostic, { fix: FolderFix; version: number }>();
 
 /** The problems the linked game folder shows in this handler (none when no folder is linked). */
 export function gameFolderDiagnostics(doc: vscode.TextDocument, source: string, severity: Record<'error' | 'warning' | 'info', vscode.DiagnosticSeverity>): vscode.Diagnostic[] {
@@ -43,7 +43,7 @@ export function gameFolderDiagnostics(doc: vscode.TextDocument, source: string, 
     const d = new vscode.Diagnostic(new vscode.Range(doc.positionAt(p.start), doc.positionAt(Math.max(p.end, p.start))), `${p.title}. ${p.why}`, p.fact ? vscode.DiagnosticSeverity.Hint : severity[p.severity]);
     d.source = source;
     d.code = { value: 'game-folder', target: vscode.Uri.parse(RULES_URL) };
-    if (p.fix) fixOf.set(d, p.fix);
+    if (p.fix) fixOf.set(d, { fix: p.fix, version: doc.version });
     return d;
   });
 }
@@ -142,8 +142,10 @@ export function registerGameFolders(context: vscode.ExtensionContext, isHandler:
     vscode.languages.registerCodeActionsProvider(selector, {
       provideCodeActions: (doc, _r, ctx) =>
         ctx.diagnostics.flatMap((d) => {
-          const f = fixOf.get(d);
-          if (!f) return [];
+          const got = fixOf.get(d);
+          // Offsets from an older text would edit the wrong place: no fix until the handler is checked again.
+          if (!got || got.version !== doc.version) return [];
+          const f = got.fix;
           const a = new vscode.CodeAction(f.title, vscode.CodeActionKind.QuickFix);
           a.edit = new vscode.WorkspaceEdit();
           a.edit.replace(doc.uri, new vscode.Range(doc.positionAt(f.start), doc.positionAt(f.end)), f.text);

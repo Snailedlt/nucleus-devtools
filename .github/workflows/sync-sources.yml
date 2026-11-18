@@ -50,7 +50,7 @@ jobs:
           if git clone -q --depth 1 --branch data --filter=blob:none https://github.com/Snailedlt/nucleuscoop-handler-testbench.git ../hubdata; then
             npm ci --ignore-scripts --no-audit --no-fund >/dev/null
             # The two Hub snapshots go together: if either fails, both stay as they were.
-            if node scripts/hub-engines.mjs --hub ../hubdata && node scripts/hub-examples.mjs --hub ../hubdata; then :; else
+            if node scripts/hub-engines.mjs --hub ../hubdata && node scripts/hub-examples.mjs --hub ../hubdata; then echo "hubok=true" >> "$GITHUB_OUTPUT"; else
               echo "::warning::hub-engines or hub-examples failed: data/hub-engines.json and data/hub-examples.json stay."
               git checkout -- data/hub-examples.json data/hub-engines.json
             fi
@@ -75,8 +75,14 @@ jobs:
           git clone --quiet --depth 1 --filter=blob:none https://github.com/SplitScreen-Me/splitscreenme-protoInput ../splitscreenme-protoInput
           npm ci
           npm run generate
-          # Hub usage counted against the model this PR publishes (new members included), then the docs again.
-          if [ -d ../hubdata ] && [ "${{ steps.check.outputs.changed }}" = true ]; then node scripts/hub-examples.mjs --hub ../hubdata && npm run generate; fi
+          # Hub usage counted against the model this PR publishes (new members included), then the docs again: only
+          # when both snapshots were made above. A failed count stops the step (set -e) before the build and tests.
+          if [ "${{ steps.data.outputs.hubok }}" = true ] && [ "${{ steps.check.outputs.changed }}" = true ]; then
+            node scripts/hub-examples.mjs --hub ../hubdata
+            # Only the date moved (the data without takenAt is the same as committed): keep the committed file.
+            if node -e 'const fs=require("fs"),cp=require("child_process");const f=process.argv[1];const strip=(t)=>{const j=JSON.parse(t);delete j.takenAt;return JSON.stringify(j)};let old="";try{old=cp.execSync("git show HEAD:"+f,{encoding:"utf8",maxBuffer:1e9})}catch{process.exit(1)}process.exit(strip(old)===strip(fs.readFileSync(f,"utf8"))?0:1)' data/hub-examples.json; then git checkout -- data/hub-examples.json; fi
+            npm run generate
+          fi
           npm run build
           npm test
       - name: Open or update the pull request
@@ -86,13 +92,15 @@ jobs:
         run: |
           # Only the recorded commit ids changed: nothing to review.
           if git diff --quiet -- . ':(exclude)data/nucleus-api.json' ':(exclude)types/nucleus.d.ts' && [ "$(git diff --numstat | awk '{s+=$1} END {print s+0}')" -le 2 ]; then echo "Upstream moved, but no option or doc changed."; exit 0; fi
+          # The Hub note from the final snapshots (after the recount), not the first pass's flag.
+          hubdiff=false; git diff --quiet -- data/hub-examples.json data/hub-engines.json || hubdiff=true
           branch=sync/upstream
           git switch -C "$branch"
           git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -qam "API model from Nucleus ${{ steps.check.outputs.nucleus }} and docs ${{ steps.check.outputs.www }}, with the docs' votes and Hub usage"
           git push -qf origin "$branch"
           what=""
           [ "${{ steps.check.outputs.changed }}" = true ] && what="Nucleus Co-op's source or the splitscreen.me docs changed: review the diff of \`data/nucleus-api.json\` for new, removed or renamed options. "
-          [ "${{ steps.data.outputs.hub }}" = true ] && what="$what The Hub handlers' usage changed (\`data/hub-examples.json\`, \`data/hub-engines.json\`): examples and counts in the docs. "
+          [ "$hubdiff" = true ] && what="$what The Hub handlers' usage changed (\`data/hub-examples.json\`, \`data/hub-engines.json\`): examples and counts in the docs. "
           [ "${{ steps.data.outputs.votes }}" = true ] && what="$what The docs' votes changed (\`data/doc-votes.json\`). "
           body="The generated API model, type definitions and skill reference were regenerated (tests pass). $what
 

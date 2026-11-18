@@ -93,7 +93,8 @@ function readCappedSync(abs: string, budget: Budget): Uint8Array | undefined {
   } catch {
     return undefined;
   } finally {
-    if (fd !== undefined) fs.closeSync(fd);
+    // A failed close changes nothing about what was read.
+    if (fd !== undefined) try { fs.closeSync(fd); } catch { /* ignore */ }
   }
 }
 async function readCapped(abs: string, budget: Budget): Promise<Uint8Array | undefined> {
@@ -114,7 +115,7 @@ async function readCapped(abs: string, budget: Budget): Promise<Uint8Array | und
   } catch {
     return undefined;
   } finally {
-    await fh?.close();
+    await fh?.close().catch(() => undefined); // a failed close changes nothing about what was read
   }
 }
 const parseOr = (bytes: Uint8Array | undefined, rel: string): PeFile | undefined => {
@@ -150,6 +151,28 @@ export function readGameBinaries(paths: string[]): PeFile[] {
   return out;
 }
 
+/** Bytes of program files held at once by all the background scans together (each file is read whole, then parsed
+ *  and dropped): scans of several folders take turns instead of each holding up to its own total. */
+export const PE_INFLIGHT_LIMIT = 512e6;
+let inflight = 0;
+const queued: { size: number; go: () => void }[] = [];
+async function reserve(size: number): Promise<() => void> {
+  // A file larger than the limit on its own still goes, alone. A queued file is counted in when it is let through.
+  if (queued.length || (inflight && inflight + size > PE_INFLIGHT_LIMIT)) await new Promise<void>((go) => queued.push({ size, go }));
+  else inflight += size;
+  let done = false;
+  return () => {
+    if (done) return;
+    done = true;
+    inflight -= size;
+    while (queued.length && (!inflight || inflight + queued[0]!.size <= PE_INFLIGHT_LIMIT)) {
+      const q = queued.shift()!;
+      inflight += q.size;
+      q.go();
+    }
+  };
+}
+
 /** The same for an editor: read in the background, cached per folder until it changes (or for 10 minutes). */
 const PE_TTL = 600_000;
 interface Scan { files: Promise<PeFile[]>; pending: boolean; waiters: Set<() => void> }
@@ -159,6 +182,11 @@ const settled = new Map<string, { at: number; files: PeFile[] }>();
 const fresh = (dir: string) => {
   const s = settled.get(dir);
   return !!s && Date.now() - s.at < PE_TTL;
+};
+const wake = (scan: Scan) => {
+  const w = [...scan.waiters];
+  scan.waiters.clear();
+  for (const f of w) f();
 };
 export function gameBinaries(dir: string): Promise<PeFile[]> {
   const cur = scans.get(dir);
@@ -172,8 +200,13 @@ export function gameBinaries(dir: string): Promise<PeFile[]> {
     for (const f of folder.files) {
       if (scans.get(dir) !== scan) break; // forgotten (relinked or changed): stop early
       if (!PE_EXT.test(f.path) || f.size > PE_FILE_LIMIT || f.size > budget.left) continue;
-      const pf = parseOr(await readCapped(path.join(dir, f.path), budget), f.path);
-      if (pf) out.push(pf);
+      const release = await reserve(f.size);
+      try {
+        const pf = parseOr(await readCapped(path.join(dir, f.path), budget), f.path);
+        if (pf) out.push(pf);
+      } finally {
+        release();
+      }
       await new Promise((r) => setImmediate(r)); // let the editor breathe between files
     }
     return out;
@@ -182,11 +215,17 @@ export function gameBinaries(dir: string): Promise<PeFile[]> {
     // A scan that was forgotten meanwhile neither stores its result nor wakes anyone.
     if (scans.get(dir) === scan) {
       settled.set(dir, { at: Date.now(), files });
-      const w = [...scan.waiters];
-      scan.waiters.clear();
-      for (const f of w) f();
+      wake(scan);
     }
     return files;
+  }, () => {
+    // A failed scan: nothing stored, the next check starts a new one; whoever waited is told (they find no result).
+    scan.pending = false;
+    if (scans.get(dir) === scan) {
+      scans.delete(dir);
+      wake(scan);
+    }
+    return [] as PeFile[];
   });
   return scan.files;
 }
@@ -199,6 +238,14 @@ export function gameBinariesNow(dir: string, ready?: () => void): PeFile[] | und
   return settled.get(dir)?.files;
 }
 export const forgetBinaries = (dir: string) => {
+  const old = scans.get(dir);
   scans.delete(dir);
   settled.delete(dir);
+  // Whoever waited on the forgotten scan waits on its replacement (started now), so every waiting handler is told.
+  if (old?.waiters.size) {
+    void gameBinaries(dir);
+    const next = scans.get(dir)!;
+    for (const w of old.waiters) next.waiters.add(w);
+    old.waiters.clear();
+  }
 };

@@ -82,7 +82,8 @@ test('"In practice" parts: real members, labelled, with what they are based on; 
     if (!m.example || !m.exampleBy) continue;
     const where = m.exampleIn ?? 'top';
     // (Proto Input examples in a handler that starts Proto Input, as they would be.)
-    const pi = /ProtoInput/.test(m.example + where) ? 'Game.ProtoInput.InjectStartup = true;\n' : '';
+    // (Only when the example doesn't set an injection mode itself: a second one would be another handler.)
+    const pi = /ProtoInput/.test(m.example + where) && !/\bGame\.ProtoInput\.(InjectStartup|InjectRuntime_\w+)\s*=/.test(m.example) ? 'Game.ProtoInput.InjectStartup = true;\n' : '';
     const handler = 'Game.GUID = "x";\nGame.GameName = "x";\nGame.ExecutableName = "x.exe";\n' + pi + (where === 'top' ? `${m.example}\n` : `${where} = function () {\n${m.example}\n};\n`);
     // Callbacks get no arguments: an example defines what it uses. Nothing flagged at all (info included).
     // (needs-option: an example shows one option; the one it depends on is in its doc.)

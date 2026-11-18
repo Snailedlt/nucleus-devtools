@@ -127,5 +127,5 @@ test('cleanups: false leaves harmless lines that do nothing, and counts them', (
   assert.equal(all.cleanups, 0);
   // A deletion that also removes an error is a fix, not a cleanup.
   const err = HEADER + 'Game.MaxPlayers = missingCount;\nGame.MaxPlayers = 4;\n';
-  assert.doesNotMatch(fixAll(err, { cleanups: false }).code, /missingCount/);
+  assert.equal(fixAll(err, { cleanups: false }).code, HEADER + 'Game.MaxPlayers = 4;\n');
 });

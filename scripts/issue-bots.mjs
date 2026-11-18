@@ -53,8 +53,8 @@ export function detailsComment(body) {
   if (!block) return null;
   const { lines, status } = checkDetails(block);
   const says = {
-    ok: '✅ Checksum matches: as the tool filled it in.',
-    none: '⚠️ No checksum supplied: typed or pasted by hand, not filled in by a tool.',
+    ok: '✅ Checksum matches.',
+    none: '⚠️ No checksum line.',
     changed: '⚠️ Changed before sending: it no longer matches its checksum.',
   }[status];
   const safe = lines.join('\n').replace(/```/g, "'''").slice(0, 4000);
@@ -117,6 +117,8 @@ export function deliveredIssues(text, repo, { commits = false } = {}) {
   const add = (n, kind) => { if (n > 0 && out.get(n) !== 'fixed') out.set(n, kind); };
   for (const raw of String(text || '').split(/\r?\n/)) {
     if (/^#{2,4}\s/.test(raw)) { group = raw; continue; }
+    // Thanks lines name people and their reports, never deliveries (release notes only: commits have no groups).
+    if (!commits && /thank/i.test(group)) continue;
     const kind = /fix/i.test(group) ? 'fixed' : 'added';
     // This repository's references only: "#12", "owner/name#12", an issues/12 link.
     const ownNums = (s) => {
@@ -131,7 +133,7 @@ export function deliveredIssues(text, repo, { commits = false } = {}) {
     // "(#12)" or "(#12, #13)" on an entry line (not a Thanks line): only a list of references, not "(see #12)".
     // Release notes only: a commit subject's "(#12)" is GitHub's pull request number, not a delivery.
     const REF = String.raw`(?:[\w.-]+\/[\w.-]+)?#\d+|https:\/\/github\.com\/[\w.-]+\/[\w.-]+\/(?:issues|pull)\/\d+`;
-    if (!commits && !/thank/i.test(group)) for (const m of raw.matchAll(new RegExp(String.raw`\(\s*((?:${REF})(?:\s*,\s*(?:${REF}))*)\s*\)`, 'g'))) for (const n of ownNums(m[1])) add(n, kind);
+    if (!commits) for (const m of raw.matchAll(new RegExp(String.raw`\(\s*((?:${REF})(?:\s*,\s*(?:${REF}))*)\s*\)`, 'g'))) for (const n of ownNums(m[1])) add(n, kind);
     // "Fixes #12" / "closes owner/name#12" / "resolves …" anywhere (commit messages).
     for (const m of raw.matchAll(/\b(fix(?:e[sd])?|close[sd]?|resolve[sd]?)\b[\s:]+((?:the\s+)?(?:issue\s+)?(?:\S*#\d+|https:\/\/github\.com\/\S+\/(?:issues|pull)\/\d+))/gi)) {
       for (const n of ownNums(m[2])) add(n, /fix/i.test(m[1]) ? 'fixed' : kind);

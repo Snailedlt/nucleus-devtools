@@ -183,6 +183,8 @@ export function registerDocsPanel(context: vscode.ExtensionContext) {
   /** Sends one people's-vote event to the same anonymous counter as the workbench (GoatCounter); true when it was
    *  accepted, false offline or on an HTTP error (never fails loudly). */
   const send = async (event: string): Promise<boolean> => {
+    // Checked again before each request: telemetry can be turned off while a vote waits its turn.
+    if (vscode.env.isTelemetryEnabled === false) return false;
     try {
       const res = await fetch(`https://${FEEDBACK_SITE}.goatcounter.com/count?p=${encodeURIComponent('/' + event)}&e=true&rnd=${Math.random().toString(36).slice(2)}`, { signal: AbortSignal.timeout(3000) });
       return res.ok;

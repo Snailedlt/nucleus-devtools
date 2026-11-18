@@ -457,9 +457,9 @@ test('lsp: quick fixes in a CRLF document insert CRLF (no mixed line endings)', 
   notify('textDocument/didClose', { textDocument: { uri } });
 });
 
-test('lsp: the default "This check is wrong" opens the form without the flagged code (a client that opens links)', async () => {
-  // A second server, for a client that advertises window/showDocument: nothing with code may reach GitHub before
-  // the person chooses it.
+/** A second server, for a client that advertises window/showDocument. Every wait has a deadline and fails when the
+ *  server exits, so a missing message fails the test instead of hanging it. */
+function showDocumentClient() {
   const p2 = spawn(process.execPath, [path.join(__dirname, '..', 'dist', 'cli.js'), 'lsp', '--stdio'], { stdio: ['pipe', 'pipe', 'inherit'], env: { ...process.env, NCDEV_NO_ISSUE_SEARCH: '1' } });
   const write = (msg: unknown) => {
     const body = Buffer.from(JSON.stringify(msg), 'utf8');
@@ -467,7 +467,15 @@ test('lsp: the default "This check is wrong" opens the form without the flagged 
     p2.stdin!.write(body);
   };
   const got: any[] = [];
-  const wait: { match: (m: any) => boolean; resolve: (m: any) => void }[] = [];
+  const wait: { match: (m: any) => boolean; resolve: (m: any) => void; reject: (e: Error) => void; timer: NodeJS.Timeout }[] = [];
+  let exited = false;
+  p2.on('exit', () => {
+    exited = true;
+    for (const w of wait.splice(0)) {
+      clearTimeout(w.timer);
+      w.reject(new Error('the server exited before the expected message'));
+    }
+  });
   let buf = Buffer.alloc(0);
   p2.stdout!.on('data', (chunk: Buffer) => {
     buf = Buffer.concat([buf, chunk]);
@@ -482,13 +490,22 @@ test('lsp: the default "This check is wrong" opens the form without the flagged 
       const w = wait.find((x) => x.match(msg));
       if (w) {
         wait.splice(wait.indexOf(w), 1);
+        clearTimeout(w.timer);
         w.resolve(msg);
       }
     }
   });
-  const next = (match: (m: any) => boolean): Promise<any> => {
+  const next = (match: (m: any) => boolean, ms = 15000): Promise<any> => {
     const found = got.find(match);
-    return found ? Promise.resolve(found) : new Promise((resolve) => wait.push({ match, resolve }));
+    if (found) return Promise.resolve(found);
+    if (exited) return Promise.reject(new Error('the server has exited'));
+    return new Promise((resolve, reject) => {
+      const w = { match, resolve, reject, timer: setTimeout(() => {
+        wait.splice(wait.indexOf(w), 1);
+        reject(new Error(`no matching message within ${ms} ms`));
+      }, ms) };
+      wait.push(w);
+    });
   };
   let id = 1000;
   const ask = (method: string, params: unknown) => {
@@ -496,27 +513,58 @@ test('lsp: the default "This check is wrong" opens the form without the flagged 
     write({ jsonrpc: '2.0', id: n, method, params });
     return next((m) => m.id === n && m.method === undefined);
   };
-  try {
+  const start = async () => {
     await ask('initialize', { processId: null, rootUri: null, capabilities: { window: { showDocument: { support: true } } }, initializationOptions: { lint: { compareWithHub: false } } });
     write({ jsonrpc: '2.0', method: 'initialized', params: {} });
-    const uri = 'file:///tmp/nucleus-lsp-test/handlers/Private.js';
-    write({ jsonrpc: '2.0', method: 'textDocument/didOpen', params: { textDocument: { uri, languageId: 'javascript', version: 1, text: HEADER + 'Game.Hook.ForceFocuss = true; // secret\n' } } });
+  };
+  /** The default "This check is wrong" for the first diagnostic of a rule in a new document. */
+  const reportDefault = async (uri: string, text: string, rule: string) => {
+    write({ jsonrpc: '2.0', method: 'textDocument/didOpen', params: { textDocument: { uri, languageId: 'javascript', version: 1, text } } });
     const diags = (await next((m) => m.method === 'textDocument/publishDiagnostics' && m.params.uri === uri)).params.diagnostics;
-    const d = diags.find((x: any) => x.code === 'unknown-member');
+    const d = diags.find((x: any) => x.code === rule);
+    assert.ok(d, `a ${rule} diagnostic`);
     const actions = (await ask('textDocument/codeAction', { textDocument: { uri }, range: d.range, context: { diagnostics: [d] } })).result;
     const wrong = actions.find((a: any) => a.kind === 'quickfix.report');
     assert.ok(wrong && !('choose' in wrong.command.arguments[0]), 'the default action, no choose');
     const rep = (await ask('workspace/executeCommand', { command: wrong.command.command, arguments: wrong.command.arguments })).result;
-    assert.ok(new URL(rep.url).searchParams.has('code'), 'the choices still offer the version with the code');
     const show = await next((m) => m.method === 'window/showDocument');
+    return { rep, show };
+  };
+  return { write, next, got, start, reportDefault, kill: () => p2.kill() };
+}
+
+test('lsp: the default "This check is wrong" opens the form without the flagged code (a client that opens links)', async () => {
+  // Nothing with code may reach GitHub before the person chooses it.
+  const c = showDocumentClient();
+  try {
+    await c.start();
+    const { rep, show } = await c.reportDefault('file:///tmp/nucleus-lsp-test/handlers/Private.js', HEADER + 'Game.Hook.ForceFocuss = true; // secret\n', 'unknown-member');
+    // The choices (picked by the person) still offer the version with the flagged code.
+    assert.ok(rep.choices.some((ch: any) => new URL(ch.url).searchParams.get('code')?.includes('Game.Hook.ForceFocuss')), 'a choice with the flagged code');
     const opened = new URL(show.params.uri);
     assert.equal(opened.searchParams.get('template'), 'check-wrong.yml');
     assert.ok(!opened.searchParams.has('code') && !show.params.uri.includes('secret'), 'no flagged code in the opened link');
-    assert.ok(!got.some((m) => m.method === 'window/showDocument' && /secret/.test(m.params.uri)));
-    write({ jsonrpc: '2.0', id: show.id, result: { success: true } });
-    const msg = await next((m) => m.method === 'window/showMessage' && /Opened the report/.test(m.params.message));
+    assert.ok(!c.got.some((m) => m.method === 'window/showDocument' && /secret/.test(m.params.uri)));
+    c.write({ jsonrpc: '2.0', id: show.id, result: { success: true } });
+    const msg = await c.next((m) => m.method === 'window/showMessage' && /Opened the report/.test(m.params.message));
     assert.match(msg.params.message, /left out/);
   } finally {
-    p2.kill();
+    c.kill();
+  }
+});
+
+test('lsp: the default report leaves out a check message that quotes the handler (option-compare)', async () => {
+  const c = showDocumentClient();
+  try {
+    await c.start();
+    const text = HEADER + 'Game.AddOption("Fps", "", "fps", [30, 60]);\nGame.Play = function () {\n  var topsecret42 = Context.Options["fps"];\n  if (topsecret42 === 60) {}\n};\n';
+    const { show } = await c.reportDefault('file:///tmp/nucleus-lsp-test/handlers/Compare.js', text, 'option-compare');
+    const opened = new URL(show.params.uri);
+    const values = [...opened.searchParams.values()].join('\n');
+    assert.ok(!values.includes('topsecret42') && !values.includes('Context.Options'), values);
+    assert.ok(!opened.searchParams.has('code'));
+    assert.equal(opened.searchParams.get('rule'), 'option-compare');
+  } finally {
+    c.kill();
   }
 });

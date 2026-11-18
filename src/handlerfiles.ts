@@ -33,7 +33,9 @@ export function registerHandlerFiles(context: vscode.ExtensionContext, isHandler
     const g = bump(uri.fsPath);
     let on = false;
     try {
-      on = isHandlerText(uri.fsPath, await fs.readFile(uri.fsPath, 'utf8'));
+      // An open file: as the editor sees it (its language mode, its unsaved text); else from disk.
+      const open = vscode.workspace.textDocuments.find((d) => d.uri.toString() === uri.toString());
+      on = open ? isHandler(open) : isHandlerText(uri.fsPath, await fs.readFile(uri.fsPath, 'utf8'));
     } catch {
       /* gone or unreadable */
     }

@@ -39,7 +39,8 @@ export function whatsNewMarkdown(changelog: string, version: string): string {
   };
   const released = (p: string) => p.match(/^## (\d+\.\d+\.\d+)\b/)?.[1];
   if (at < 0 && /^\d+\.\d+\.\d+/.test(version)) at = sections.findIndex((p) => !!released(p) && below(released(p)!, version));
-  if (at < 0) at = sections.findIndex((p) => !/^## Unreleased/i.test(p)); // a build between releases: the newest released
+  // Without a numeric version, the newest released (a numeric one with nothing older released gets no section).
+  else if (at < 0) at = sections.findIndex((p) => !/^## Unreleased/i.test(p));
   // The copy is opened from the extension's storage: relative links lead to the repository's files instead.
   const body = (at < 0 ? [] : sections.slice(at)).join('').replace(/^---\n+/, '').replace(/(!?)\[([^\]]*)\]\((?![a-z][\w+.-]*:|#|\/)([^)\s]+)\)/gi, (_m, img: string, label: string, t: string) => `${img}[${label}](${img ? REPO_RAW : REPO_FILES}${t.replace(/^\.\//, '')})`);
   return `${head}\n\n${body}`;

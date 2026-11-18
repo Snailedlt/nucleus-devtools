@@ -763,7 +763,11 @@ export class Server {
     const freshFolder = folderDiags.length ? this.folderProblems(doc) : [];
     for (const cd of folderDiags) {
       const old = cd.data.fix;
-      const f = freshFolder.find((x) => x.fix && `${x.title}. ${x.why}` === cd.message && x.fix.text === old.text && x.fix.title === old.title)?.fix;
+      const same = freshFolder.filter((x) => x.fix && `${x.title}. ${x.why}` === cd.message && x.fix.text === old.text && x.fix.title === old.title);
+      // The one at the diagnostic's own place; else only an unambiguous one (a stale range among several: wait for
+      // the next diagnostics instead of guessing).
+      const s0 = l.offset(cd.range.start), e0 = l.offset(cd.range.end);
+      const f = (same.find((x) => x.start === s0 && Math.max(x.end, x.start) === e0) ?? (same.length === 1 ? same[0] : undefined))?.fix;
       if (f && typeof f.start === 'number') actions.push({ title: f.title, kind: 'quickfix', diagnostics: [cd], isPreferred: true, edit: { changes: { [doc.uri]: [{ range: l.range({ start: f.start, end: f.end }), newText: f.text }] } } } as any);
     }
     // "This check is wrong…": after the fixes, once per check on the line (kind quickfix.report: with the fixes, never
@@ -832,13 +836,16 @@ export class Server {
       ...(help ? help.links.map((l) => ({ title: `The problem is in this handler, not the tools: ${l.label}`, url: l.url })) : []),
     ];
     if (!a.choose && this.canShowDocument) {
-      // Opened without being asked first: never with the flagged code (GitHub would get it before the person chose
-      // to share it). The form says how to add it; the choices (choose) offer the version with the code.
+      // Opened without being asked first: never with the flagged code, the check's message (some quote the handler's
+      // code) or the Try it summary (GitHub would get them before the person chose to share them): the check's plain
+      // title instead. The form says how to add them; the choices (choose) offer the full report.
+      const auto = buildReport({ ...input, code: undefined, sim: undefined, message: input.rule ? RULE_DOCS[input.rule]?.title ?? input.rule : undefined }).url;
+      const left = [code?.trim() ? 'the flagged code' : '', input.message ? "the check's message" : '', sim ? 'the Try it summary' : ''].filter(Boolean);
       const more = `${hits.length ? ` Maybe the same: ${hits.map((h) => h.url).join(' ')}` : ''} No GitHub account? Post it in the testers' Discord thread: ${DISCORD_THREAD}${help ? ` A problem in this handler itself? Ask on its Hub page: ${help.links[0].url}` : ''}`;
-      void this.request('window/showDocument', { uri: withoutCode, external: true }).then((res) =>
+      void this.request('window/showDocument', { uri: auto, external: true }).then((res) =>
         this.notify('window/showMessage', res?.success
-          ? { type: 3, message: `Opened the report on GitHub: check it, then submit.${code?.trim() ? ' The flagged code was left out: paste it into the form if you want to share it.' : ''}${more}` }
-          : { type: 3, message: `Couldn't open the browser. The report: ${withoutCode}${more}` }),
+          ? { type: 3, message: `Opened the report on GitHub: check it, then submit.${left.length ? ` ${left.join(' and ').replace(/^./, (c) => c.toUpperCase())} ${left.length > 1 ? 'were' : 'was'} left out: paste ${left.length > 1 ? 'them' : 'it'} into the form if you want to share ${left.length > 1 ? 'them' : 'it'}.` : ''}${more}` }
+          : { type: 3, message: `Couldn't open the browser. The report: ${auto}${more}` }),
       );
     }
     return { title: r.title, url: r.url, text: r.text, choices };

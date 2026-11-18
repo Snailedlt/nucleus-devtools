@@ -125,9 +125,35 @@ export function classifyWikidata(engines) {
   return families.length === 1 ? families[0] : '';
 }
 
-/** The code without its comments (a commented-out line or a note about another engine is no evidence). Not string
- *  aware: a "//" in a string cuts that line, which only loses evidence. */
-export const withoutComments = (src) => String(src).replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:\\])\/\/.*$/gm, '$1');
+/** The code without its comments (a commented-out line or a note about another engine is no evidence). Strings stay
+ *  whole: a "//" or "/*" inside quotes (a URL, a launch argument) is text, not a comment. */
+export function withoutComments(src) {
+  const t = String(src);
+  let out = '';
+  for (let i = 0; i < t.length; i++) {
+    const c = t[i], n = t[i + 1];
+    if (c === '/' && n === '/') {
+      const e = t.indexOf('\n', i);
+      i = (e < 0 ? t.length : e) - 1;
+      continue;
+    }
+    if (c === '/' && n === '*') {
+      const e = t.indexOf('*/', i + 2);
+      out += ' ';
+      i = e < 0 ? t.length : e + 1;
+      continue;
+    }
+    if (c === '"' || c === "'") {
+      let k = i + 1;
+      for (; k < t.length && t[k] !== c && t[k] !== '\n'; k++) if (t[k] === '\\') k++;
+      out += t.slice(i, k + 1);
+      i = k;
+      continue;
+    }
+    out += c;
+  }
+  return out;
+}
 export const steamIdOf = (src) => /^\s*Game\.SteamID\s*=\s*["']?(\d+)/im.exec(withoutComments(src))?.[1] ?? '';
 /** The IGDB slug of a Hub index entry's `gameUrl` ("https://www.igdb.com/games/left-4-dead-2" → "left-4-dead-2"). */
 export const igdbSlugOf = (url) => /^https:\/\/www\.igdb\.com\/games\/([a-z0-9-]+)\/?$/.exec(url ?? '')?.[1] ?? '';

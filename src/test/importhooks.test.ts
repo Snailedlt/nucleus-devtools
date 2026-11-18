@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { parsePE, NotAProgram, PE_WORK_LIMIT, type PeFile } from '../core/pe';
-import { analyse, importHints, importsReport, handlerHooks, importProblems, jsString, findExe, RULES, HUB_SHARES } from '../core/importhooks';
+import { analyse, importHints, importsReport, handlerHooks, importProblems, jsString, findExe, findExes, RULES, HUB_SHARES } from '../core/importhooks';
 import { api } from '../core/api';
 
 const FIX = path.join(__dirname, '..', 'src', 'test', 'fixtures', 'pe');
@@ -28,7 +28,9 @@ test('pe: imports, delay-free tables, exports, 32 and 64 bit', () => {
 test('pe: not a program, and damaged files give fewer results instead of a crash', () => {
   assert.throws(() => parsePE(new TextEncoder().encode('hello world, not a program at all..................................'), 'x.txt'), NotAProgram);
   const real = fs.readFileSync(path.join(FIX, 'game', 'MyGame.exe'));
-  for (const cut of [200, 600, 1500, 5000, real.length - 100]) assert.doesNotThrow(() => parsePE(real.subarray(0, cut), 'cut.exe'));
+  // Cut inside the optional header's fixed part: not a program (NotAProgram, nothing else); cut later: fewer results.
+  assert.throws(() => parsePE(real.subarray(0, 200), 'cut.exe'), NotAProgram);
+  for (const cut of [600, 1500, 5000, real.length - 100]) assert.doesNotThrow(() => parsePE(real.subarray(0, cut), 'cut.exe'));
   const junk = Buffer.from(real);
   for (let i = 0x200; i < junk.length; i += 7) junk[i] = 0xff;
   assert.doesNotThrow(() => parsePE(junk, 'junk.exe'));
@@ -161,7 +163,9 @@ test('importhooks: file names become string literals; an explicit path wins; com
   const old = pe('old/Game.exe'), now = pe('new/Game.exe');
   assert.equal(findExe([old, now], 'new/Game.exe'), now);
   assert.equal(findExe([old, now], 'new\\Game.exe'), now);
-  assert.equal(findExe([old, now], 'Game.exe'), old);
+  // A bare name two programs have: ambiguous, none picked (both listed).
+  assert.equal(findExe([old, now], 'Game.exe'), undefined);
+  assert.deepEqual(findExes([old, now], 'Game.exe'), [old, now]);
   assert.equal(findExe([old, now], 'Missing.exe'), undefined);
   // A hook in a block comment is not on.
   assert.ok(!handlerHooks('/* Game.ProtoInput.XinputHook = true; */').has('XinputHook'));
@@ -177,6 +181,45 @@ test('importhooks: file names become string literals; an explicit path wins; com
   const x = importProblems(text, files).find((p) => /XinputHook/.test(p.title))!;
   const fixed = text.slice(0, x.fix!.start) + x.fix!.text + text.slice(x.fix!.end);
   assert.match(fixed, /InjectStartup = true;\nGame\.ProtoInput\.XinputHook = true;\nGame\.ProtoInput\.OnInputLocked/);
+  // An unindented callback body and a block comment are not the top level either.
+  const flat = 'Game.ExecutableName = "MyGame.exe";\nGame.ProtoInput.InjectStartup = true;\nGame.ProtoInput.OnInputLocked = function () {\nGame.ProtoInput.FocusHooks = true;\n};\n/*\nGame.ProtoInput.GetCursorPosHook = true;\n*/\n';
+  const y = importProblems(flat, files).find((p) => /XinputHook/.test(p.title))!;
+  assert.equal(y.fix!.start, flat.indexOf('Game.ProtoInput.OnInputLocked'));
+  // A "//" inside a string is no comment: the line still counts.
+  assert.ok(handlerHooks('var u = "http://x"; Game.ProtoInput.XinputHook = true;').has('XinputHook'));
+  // Game.SDLPaths is relative to the instance's root (the game folder), not the .exe's folder.
+  const exe2: PeFile = { ...pe('bin/Game.exe', 100), imports: [{ dll: 'SDL2.dll', fns: [{ name: 'SDL_Init' }], delay: false }] };
+  const sdl2: PeFile = { ...pe('bin/plugins/SDL2.dll', 50), dll: true };
+  assert.ok(analyse([exe2, sdl2]).found.find((f) => f.rule.id === 'sdl')!.lines.includes('Game.SDLPaths = ["bin\\\\plugins"];'));
+});
+
+test('importhooks: launcher startup only with a real launcher; in a block comment or twice, no fix; with runtime injection too, turn startup off', () => {
+  const files = read('launcher');
+  const warn = (t: string) => importProblems(t, files).find((p) => p.title.startsWith('Game.ProtoInput.InjectStartup injects'));
+  const head = 'Game.ExecutableName = "war3.exe";\nGame.LauncherExe = "Frozen Throne.exe";\n';
+  assert.equal(warn('Game.ExecutableName = "war3.exe";\nGame.LauncherExe = "";\nGame.ProtoInput.InjectStartup = true;\n'), undefined, 'an empty LauncherExe');
+  const commented = head + '/*\nGame.ProtoInput.InjectStartup = true;\n*/\nif (x) {\n  Game.ProtoInput.InjectStartup = true;\n}\n';
+  const c = warn(commented);
+  assert.ok(c && !c.fix, 'only an assignment inside a block: no fix');
+  const twice = head + 'Game.ProtoInput.InjectStartup = true;\nGame.ProtoInput.InjectStartup = true;\n';
+  assert.ok(warn(twice) && !warn(twice)!.fix, 'two assignments: no fix');
+  const both = head + 'Game.ProtoInput.InjectStartup = true; // on\nGame.ProtoInput.InjectRuntime_RemoteLoadMethod = true;\n';
+  const b = warn(both)!;
+  assert.ok(b, 'warns with a runtime method too');
+  assert.equal(b.fix!.title, 'Turn startup injection off');
+  const fixed = both.slice(0, b.fix!.start) + b.fix!.text + both.slice(b.fix!.end);
+  assert.match(fixed, /^Game\.ProtoInput\.InjectStartup = false; \/\/ on$/m);
+  assert.match(fixed, /InjectRuntime_RemoteLoadMethod = true/);
+  assert.equal(warn(fixed), undefined);
+});
+
+test('importhooks: Game.BinariesFolder picks the program Nucleus starts', () => {
+  const pe = (fileName: string, size: number): PeFile => ({ fileName, size, is64: true, machine: 0x8664, dll: false, imports: [{ dll: 'XINPUT1_3.dll', fns: [{ name: 'XInputGetState' }], delay: false }], exports: [], exportName: '', starts: false, mentions: [], rt: [] });
+  const a = pe('old/Game.exe', 500), b = pe('bin/Game.exe', 100);
+  const t = 'Game.ExecutableName = "Game.exe";\nGame.BinariesFolder = "bin";\nGame.ProtoInput.InjectStartup = true;\n';
+  const x = importProblems(t, [a, b]).find((p) => /XinputHook/.test(p.title));
+  assert.ok(x, 'a hint');
+  assert.equal(analyse([a, b], 'bin\\Game.exe').main, b);
 });
 
 test('importhooks: launcher startup is a warning (not a quiet note); its fix keeps a trailing comment', () => {

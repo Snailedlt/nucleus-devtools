@@ -11,7 +11,7 @@ import { pluginsFor, isTimeout } from './sandbox';
 import { simWorker, runMatrixInWorker, isCancelled } from './simworker';
 import { MATRIX_RESOLUTIONS, MatrixResult, planMatrix } from './core/matrix';
 import { reportButton, REPORT_BUTTON_CSS } from './core/reporticons';
-import { simSummary } from './core/report';
+import { simSummary, handlerOrigin, type HandlerOrigin } from './core/report';
 
 export interface TryItState {
   players: number;
@@ -48,6 +48,11 @@ const SCRIPT = `(function () {
   // Only after a click here, while the focus stayed in the panel (however long Test all takes): once you move to
   // the editor, a re-render never takes the focus.
   window.addEventListener('blur', function () { st.focus = undefined; save(); });
+  // Moving to another control in the panel: that one is what a re-render keeps (or nothing).
+  document.addEventListener('focusin', function (e) {
+    var id = e.target && e.target.getAttribute ? e.target.getAttribute('data-id') : null;
+    if (st.focus && id !== st.focus) { st.focus = id || undefined; save(); }
+  });
   if (st.focus) {
     var el = Array.prototype.filter.call(document.querySelectorAll('[data-id]'), function (x) { return x.getAttribute('data-id') === st.focus; })[0];
     if (el) el.focus();
@@ -171,7 +176,7 @@ export function registerTryIt(context: vscode.ExtensionContext, isHandler: (doc:
   const saved: TryItState = { ...DEFAULT_STATE, ...context.workspaceState?.get<Partial<TryItState>>(STATE_KEY, {}) };
   let state: TryItState = validState(saved) ? saved : { ...DEFAULT_STATE };
   let matrix: MatrixResult | undefined; // the last "Test all combinations", until the handler changes
-  let shown: { r: SimResult; state: TryItState; uri: string } | undefined; // what the panel shows (and for which handler), for "Nucleus did something different"
+  let shown: { r: SimResult; state: TryItState; uri: string; handler?: HandlerOrigin } | undefined; // what the panel shows (and for which handler), for "Nucleus did something different"
   // Shows the Try it button in the editor title bar only for handlers.
   const markHandler = (e: vscode.TextEditor | undefined) => void vscode.commands.executeCommand('setContext', 'splitscreenme.isHandler', !!e && isHandler(e.document));
   markHandler(vscode.window.activeTextEditor);
@@ -202,7 +207,8 @@ export function registerTryIt(context: vscode.ExtensionContext, isHandler: (doc:
     }
     if (mine !== run || !panel || doc !== d) return;
     stuck = isTimeout(r) ? key : undefined;
-    shown = { r, state: { ...state }, uri: d.uri.toString() };
+    // The origin from the very text simulated (no code kept), for the report.
+    shown = { r, state: { ...state }, uri: d.uri.toString(), handler: handlerOrigin(text) };
     panel.webview.html = renderTryIt(r, state, title, matrix, randomBytes(16).toString('base64'));
   };
   const schedule = (delay = 400) => {
@@ -238,7 +244,7 @@ export function registerTryIt(context: vscode.ExtensionContext, isHandler: (doc:
             // The handler the result on screen came from (the panel may already be on its way to another).
             const st = shown.state;
             const keyboard = st.keyboardPlayer === EVERY_KEYBOARD ? 'each player their own' : st.keyboardPlayer < 0 ? 'nobody' : `player ${st.keyboardPlayer + 1}`;
-            void vscode.commands.executeCommand(REPORT_TRY_IT, { uri: shown.uri, sim: simSummary(shown.r, { players: st.players, resolution: `${st.width}×${st.height}`, keyboard }) });
+            void vscode.commands.executeCommand(REPORT_TRY_IT, { uri: shown.uri, handler: shown.handler, sim: simSummary(shown.r, { players: st.players, resolution: `${st.width}×${st.height}`, keyboard }) });
           }
         }, null, context.subscriptions);
         panel.onDidDispose(() => ((panel = undefined), run?.abort(), stopMatrix()), null, context.subscriptions);
@@ -260,10 +266,12 @@ export function registerTryIt(context: vscode.ExtensionContext, isHandler: (doc:
     }),
     vscode.commands.registerCommand(TEST_ALL, async () => {
       // From the palette with no Try it panel yet: open it on the handler first; an open one comes to the front.
+      // The handler and panel asked for are noted first: if either changed while it opened, don't start.
+      const want = panel && doc ? doc : vscode.window.activeTextEditor?.document;
       if (!panel || !doc) await open();
       else panel.reveal(undefined, true);
-      // Closed (or moved to another handler) while it opened: don't start.
-      if (!panel || !doc) return;
+      const wantPanel = panel;
+      if (!panel || !doc || doc !== want || panel !== wantPanel) return;
       const d = doc;
       const code = d.getText();
       const plugins = d.isUntitled ? undefined : pluginsFor(d.fileName);

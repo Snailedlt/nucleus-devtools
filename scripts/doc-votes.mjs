@@ -24,6 +24,10 @@ const report = JSON.parse(text);
 const lists = ['docs', 'practice', 'aiDocs', 'aiPractice'];
 if (!report || typeof report !== 'object' || !lists.some((k) => Array.isArray(report[k])) || lists.some((k) => report[k] !== undefined && !Array.isArray(report[k])))
   throw new Error('doc-votes: not a votes report (no vote lists); data/doc-votes.json stays.');
+// Every row whole: an id and two counts (whole numbers, 0 or more). One bad row and the snapshot stays.
+const count = (n) => Number.isInteger(n) && n >= 0;
+for (const k of lists) for (const x of report[k] ?? [])
+  if (!x || typeof x.id !== 'string' || !x.id || !count(x.up) || !count(x.down)) throw new Error(`doc-votes: a ${k} row without an id or counts (${JSON.stringify(x)}); data/doc-votes.json stays.`);
 const pairs = (list, part) => (list ?? []).filter((x) => x.up > 0 || x.down > 0).map((x) => [`${part}/${x.id}`, [x.up, x.down]]);
 const sorted = (entries) => Object.fromEntries(entries.sort((a, b) => a[0].localeCompare(b[0])));
 const out = {

@@ -819,7 +819,8 @@ for (const [obj, label] of Object.entries(LABELS)) {
     }
     // The most common value (options) or call (methods), when at least 5 handlers and a fifth of its users agree.
     const [top, count] = (m.kind === 'method' ? hub?.calls : !inCallback && !m.readonly ? hub?.values : undefined)?.[0] ?? [];
-    if (top && count >= 5 && count >= hub.n / 5) {
+    // (Not an "off" value the docs' own example was left out for: it would contradict the doc just the same.)
+    if (top && count >= 5 && count >= hub.n / 5 && !(offExample.has(key) && /^(false|0)$/.test(String(top).trim()))) {
       // A call on `player` (Proto Input's, in the lock callbacks, which get no arguments): in the loop that defines it.
       const code = m.kind === 'method' ? (/\bplayer\./.test(top) ? forEachPlayer(`${top};`) : `${top};`) : `${key} = ${top};`;
       Object.assign(m, { example: code, exampleBy: 'hub', exampleNote: m.kind === 'method' ? `The most common call in Hub handlers: ${count} of the ${hub.n} that use it.` : `The most common value in Hub handlers: ${count} of the ${hub.n} that set it.`, exampleIn });
@@ -859,7 +860,8 @@ const claudeNote = (m) => (m.docBy === 'claude' ? [`(AI-written, based on ${m.do
 function forEachPlayer(stmt) {
   // A call too long for 60 columns: one argument per line, as prettier lays it out (the loop is kept as written).
   const call = /^([\w.]+)\((.*)\);$/.exec(stmt);
-  const body = `  ${stmt}`.length > 60 && call ? `  ${call[1]}(\n${call[2].split(/,\s*/).map((a) => `    ${a}`).join(',\n')}\n  );` : `  ${stmt}`;
+  // (Only arguments without quotes or brackets are split at their commas: a comma inside a string stays.)
+  const body = `  ${stmt}`.length > 60 && call && !/["'([{]/.test(call[2]) ? `  ${call[1]}(\n${call[2].split(/,\s*/).map((a) => `    ${a}`).join(',\n')}\n  );` : `  ${stmt}`;
   return `for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n${body}\n}`;
 }
 const exampleTag = (m) => (m.exampleBy === 'claude' ? ' (AI-written example)' : m.exampleBy === 'hub' ? ` (${m.exampleNote})` : '');

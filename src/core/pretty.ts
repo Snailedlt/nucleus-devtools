@@ -73,7 +73,8 @@ function printNode(n: any, src: string): Doc {
         const inline = !/^[ \t]*(\r?\n|$)/.test(inner);
         const raw = inner.replace(/\t/g, '    ').replace(/^\s*\n/, '').trimEnd().split('\n').map((l) => l.trimEnd());
         const rest = inline ? raw.slice(1) : raw;
-        const common = Math.min(...rest.filter((l) => l.trim()).map((l) => l.match(/^ */)![0].length));
+        let common = Infinity; // (a loop, not Math.min(...): a long body would overflow the call's arguments)
+        for (const l of rest) if (l.trim()) common = Math.min(common, l.match(/^ */)![0].length);
         body = raw.map((l, i) => (inline && i === 0 ? l.trim() : l.slice(Number.isFinite(common) ? common : 0)));
       }
       return [...head, '{', indent(...body.flatMap((d) => [hardline, d])), hardline, '}'];

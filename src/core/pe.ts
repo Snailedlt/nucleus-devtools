@@ -86,6 +86,9 @@ export function parsePE(input: Uint8Array | ArrayBuffer, fileName: string): PeFi
   const magic = u16(opt);
   if (magic !== 0x10b && magic !== 0x20b) throw new NotAProgram('not a Windows program or DLL');
   const is64 = magic === 0x20b;
+  // The fixed part of the optional header (up to NumberOfRvaAndSizes) must fit in its declared size and the file.
+  const fixed = is64 ? 112 : 96;
+  if (optSize < fixed || opt + fixed > n) throw new NotAProgram('not a Windows program or DLL');
   const optEnd = Math.min(opt + optSize, n);
   const imageBase = is64 ? Number(u64(opt + 24)) : u32(opt + 28);
   const nDD = u32(opt + (is64 ? 108 : 92)), ddOff = opt + (is64 ? 112 : 96);
@@ -110,15 +113,26 @@ export function parsePE(input: Uint8Array | ArrayBuffer, fileName: string): PeFi
   // One budget for every record decoded from this file.
   let work = 0;
   const spend = () => ++work <= PE_WORK_LIMIT;
-  const str = (rva: number) => {
+  const str = (rva: number) => strEnd(rva)[0];
+  /** A string and whether its terminating zero was found within the file-backed bytes (and before `limit`, an RVA). */
+  const strEnd = (rva: number, limit = Infinity): [string, boolean] => {
     let [o, end] = at(rva), out = '';
-    if (o < 0) return '';
+    if (o < 0) return ['', false];
+    if (limit !== Infinity) end = Math.min(end, o + Math.max(0, limit - rva));
     while (o < end && out.length < 300) {
       const c = bytes[o++];
-      if (!c) break;
+      if (!c) return [out, true];
       out += String.fromCharCode(c);
     }
-    return out;
+    return [out, false];
+  };
+  // A whole record of `len` bytes at an RVA inside one directory: in the file-backed bytes and the directory's range
+  // (a directory with no size given: the bytes only). Its file offset, or -1.
+  const rec = (rva: number, len: number, dir: { rva: number; size: number }) => {
+    const [o, end] = at(rva);
+    if (o < 0 || o + len > end) return -1;
+    if (dir.size && (rva < dir.rva || rva + len > dir.rva + dir.size)) return -1;
+    return o;
   };
   const step = is64 ? 8 : 4;
   const ordFlag = is64 ? 1n << 63n : 1n << 31n;
@@ -136,8 +150,7 @@ export function parsePE(input: Uint8Array | ArrayBuffer, fileName: string): PeFi
   const imports: PeImport[] = [];
   const id = dd(1);
   if (id.rva) {
-    let o = off(id.rva);
-    for (let k = 0; o >= 0 && k < 2000 && o + 20 <= n && spend(); k++, o += 20) {
+    for (let k = 0, o: number; k < 2000 && (o = rec(id.rva + k * 20, 20, id)) >= 0 && spend(); k++) {
       const oft = u32(o), nameRva = u32(o + 12), ft = u32(o + 16);
       if (!oft && !nameRva && !ft) break;
       imports.push({ dll: str(nameRva), fns: thunks(oft || ft), delay: false });
@@ -145,8 +158,7 @@ export function parsePE(input: Uint8Array | ArrayBuffer, fileName: string): PeFi
   }
   const dl = dd(13);
   if (dl.rva) {
-    let o = off(dl.rva);
-    for (let k = 0; o >= 0 && k < 2000 && o + 32 <= n && spend(); k++, o += 32) {
+    for (let k = 0, o: number; k < 2000 && (o = rec(dl.rva + k * 32, 32, dl)) >= 0 && spend(); k++) {
       const attr = u32(o), nameP = u32(o + 4), intP = u32(o + 16);
       if (!nameP && !intP) break;
       const fix = (p: number) => (attr & 1 ? p : p - imageBase); // old-style delay descriptors hold VAs
@@ -167,14 +179,18 @@ export function parsePE(input: Uint8Array | ArrayBuffer, fileName: string): PeFi
         const nmo = off(an + i * 4), oro = off(ao + i * 2);
         if (nmo < 0 || oro < 0) break;
         const k = u16(oro);
-        named.set(k, [...(named.get(k) ?? []), str(u32(nmo))]);
+        const names = named.get(k);
+        if (names) names.push(str(u32(nmo)));
+        else named.set(k, [str(u32(nmo))]);
       }
       for (let i = 0; i < Math.min(nf, 50000) && spend(); i++) {
         const fo = off(af + i * 4);
         if (fo < 0) break;
         const r = u32(fo);
         if (!r) continue;
-        const fwd = r >= ed.rva && r < ed.rva + ed.size ? str(r) : '';
+        // A forwarder ("DLL.Function") lies inside the export directory; its whole string has to, too.
+        const [f, whole] = r >= ed.rva && r < ed.rva + ed.size ? strEnd(r, ed.rva + ed.size) : ['', false];
+        const fwd = whole ? f : '';
         for (const name of named.get(i) ?? ['']) exports.push({ ord: base + i, name, fwd });
       }
     }

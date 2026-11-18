@@ -156,7 +156,18 @@ export async function newHandler() {
         replace = true;
       }
     }
-  } else await vscode.workspace.fs.writeFile(file, Buffer.from(content, 'utf8'));
+  } else {
+    // Other file systems (remote, virtual): a create that fails when the file exists, never a plain write.
+    for (;;) {
+      const edit = new vscode.WorkspaceEdit();
+      edit.createFile(file, { overwrite: replace, contents: Buffer.from(content, 'utf8') });
+      if (await vscode.workspace.applyEdit(edit)) break;
+      const exists = await vscode.workspace.fs.stat(file).then(() => true, () => false);
+      if (!exists || replace) throw new Error(`Couldn't create ${file.toString(true)}.`);
+      if (!(await askReplace())) return;
+      replace = true;
+    }
+  }
   log.info(`New handler: ${file.fsPath} and ${name}/`);
   await vscode.window.showTextDocument(file);
 }

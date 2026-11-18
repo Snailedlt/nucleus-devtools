@@ -796,8 +796,18 @@ test('protoinput-needs-raw-input: key and cursor hooks need the raw input hook',
   // Comments don't turn it on; the last assignment counts; an explicit false is turned into true.
   assert.equal(only(HEADER + KBM + '// Game.ProtoInput.RegisterRawInputHook = true;\n/* RegisterRawInputHookID */\nGame.ProtoInput.GetKeyStateHook = true;\n', 'protoinput-needs-raw-input').length, 1);
   assert.equal(only(HEADER + KBM + 'Game.ProtoInput.GetKeyStateHook = true;\nGame.ProtoInput.GetKeyStateHook = false;\n', 'protoinput-needs-raw-input').length, 0);
-  const f = only(HEADER + KBM + 'Game.ProtoInput.GetKeyStateHook = true;\nGame.ProtoInput.RegisterRawInputHook = false;\n', 'protoinput-needs-raw-input');
+  const rawSrc = HEADER + KBM + 'Game.ProtoInput.GetKeyStateHook = true;\nGame.ProtoInput.RegisterRawInputHook = false;\n';
+  const f = only(rawSrc, 'protoinput-needs-raw-input');
   assert.equal(f[0].fixes![0].edits[0].text, 'true');
+  const rawFixed = apply(rawSrc, f[0].fixes![0]);
+  assert.match(rawFixed, /^Game\.ProtoInput\.RegisterRawInputHook = true;$/m);
+  assert.match(rawFixed, /^Game\.ProtoInput\.GetKeyStateHook = true;$/m);
+  // A later false wins over an earlier true; the ID only in a string installs nothing; an unknown last value: no fix.
+  assert.equal(only(HEADER + KBM + 'Game.ProtoInput.RegisterRawInputHook = true;\nGame.ProtoInput.GetKeyStateHook = true;\nGame.ProtoInput.RegisterRawInputHook = false;\n', 'protoinput-needs-raw-input').length, 1);
+  assert.equal(only(HEADER + KBM + 'Game.ProtoInput.GetKeyStateHook = true;\nvar s = "InstallHook(RegisterRawInputHookID)";\n', 'protoinput-needs-raw-input').length, 1);
+  const unk = only(HEADER + KBM + 'Game.ProtoInput.GetKeyStateHook = true;\nGame.ProtoInput.RegisterRawInputHook = Context.x;\n', 'protoinput-needs-raw-input');
+  assert.equal(unk.length, 1);
+  assert.ok(!unk[0].fixes?.length);
 });
 test('blocked-message: unlisted, past the end, and repeated numbers', () => {
   const ok = HEADER + PI + 'Game.ProtoInput.MessageFilterHook = true;\nGame.ProtoInput.BlockedMessages = [0x0008, 0x02a3, 0x02a1, 6];\n';

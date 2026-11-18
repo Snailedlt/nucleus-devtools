@@ -7,7 +7,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
 import { readGameBinaries } from './gamefolder-node';
-import { analyse, findExe, importsReport } from './core/importhooks';
+import { analyse, findExes, importsReport } from './core/importhooks';
 import { lint, lineOf, lineStart, RULES } from './core/lint';
 import { fixAll } from './core/fix';
 import { formatHandler } from './core/format';
@@ -321,7 +321,9 @@ export const TOOLS: Tool[] = [
       const files = readGameBinaries([a.path]);
       if (!files.length) return { text: `No .exe or .dll files at ${a.path}.`, isError: true };
       const exe = a.exe ? String(a.exe) : undefined;
-      if (exe && !findExe(files.filter((f) => !f.dll), exe)) return { text: `No program called ${exe} at ${a.path} (found: ${files.filter((f) => !f.dll).map((f) => f.fileName).join(', ') || 'none'}).`, isError: true };
+      const exeHits = exe ? findExes(files.filter((f) => !f.dll), exe) : [];
+      if (exe && !exeHits.length) return { text: `No program called ${exe} at ${a.path} (found: ${files.filter((f) => !f.dll).map((f) => f.fileName).join(', ') || 'none'}).`, isError: true };
+      if (exeHits.length > 1) return { text: `${exe} could be ${exeHits.map((f) => f.fileName).join(' or ')}: give its path in \`exe\`.`, isError: true };
       const r = analyse(files, exe);
       const controllers = a.controllers !== false, kbm = a.kbm !== false;
       return {

@@ -32,7 +32,7 @@ import { EVERY_KEYBOARD } from './core/sim';
 import { formatSimulation } from './simformat';
 import { serve } from './mcp';
 import { readGameBinaries } from './gamefolder-node';
-import { analyse, findExe, importsReport } from './core/importhooks';
+import { analyse, findExes, importsReport } from './core/importhooks';
 import type { PeFile } from './core/pe';
 import { serve as serveLsp } from './lsp';
 import { buildReport, DISCORD_THREAD, findDuplicates, handlerHelp, handlerOrigin, simSummary, type ReportInput } from './core/report';
@@ -300,18 +300,37 @@ async function cmdLint(args: Args, json: boolean): Promise<number> {
     if (!all && !files.includes(file) && !looksLikeHandler(text)) continue;
     linted++;
     let fixed: { rule: string; title: string; line: number }[] = [];
+    let fixedText: string | undefined;
     const fileOptions = { ...options, plugins: lintPluginsFor(file), published: has(args, '--hub') ? await publishedFor(text) : undefined };
     if (fixMode) {
       const r = fixAll(text, fileOptions);
       fixed = r.applied;
+      fixedText = r.code;
       if (r.code !== text && fixMode === 'write') {
         fs.writeFileSync(file, (original.startsWith('﻿') ? '﻿' : '') + r.code);
         text = r.code;
       }
     }
-    // A dry run leaves the file as it is, so what's left is shown at the file's own line numbers: its problems minus the ones it would fix.
-    const unfixed = (d: { rule: string; start: number }) => fixMode !== 'dry' || !fixed.some((f) => f.rule === d.rule && f.line === lineOf(text, d.start) + 1);
-    const diags = lint(text, fileOptions).filter((d) => (quiet ? d.severity === 'error' : verbose || d.severity !== 'hint') && unfixed(d));
+    // A dry run leaves the file as it is, so what's left is shown at the file's own line numbers: the fixed text is
+    // checked in memory, and each problem it still has is matched (rule and message) to one of the file's own,
+    // those on lines no fix touches first. So an error the fixes leave on a fixed line still shows.
+    let found = lint(text, fileOptions);
+    if (fixMode === 'dry' && fixedText !== undefined && fixed.length) {
+      const key = (d: { rule: string; message: string }) => d.rule + '\0' + d.message;
+      const left = new Map<string, number>();
+      for (const d of lint(fixedText, fileOptions)) left.set(key(d), (left.get(key(d)) ?? 0) + 1);
+      const touched = (d: { rule: string; start: number }) => fixed.some((f) => f.rule === d.rule && f.line === lineOf(text, d.start) + 1);
+      const keep = new Set<(typeof found)[number]>();
+      for (const d of [...found.filter((d) => !touched(d)), ...found.filter(touched)]) {
+        const n = left.get(key(d)) ?? 0;
+        if (n > 0) {
+          keep.add(d);
+          left.set(key(d), n - 1);
+        }
+      }
+      found = found.filter((d) => keep.has(d));
+    }
+    const diags = found.filter((d) => (quiet ? d.severity === 'error' : verbose || d.severity !== 'hint'));
     for (const d of diags) {
       if (d.severity === 'error') errors++;
       else if (d.severity === 'warning') warnings++;
@@ -598,8 +617,10 @@ function cmdImports(args: Args, json: boolean): number {
   const files = readGameBinaries(args.positional);
   if (!files.length) throw new Error(`No .exe or .dll files in ${args.positional.join(', ')}`);
   const exe = flag(args, '--exe');
-  if (exe && !findExe(files.filter((f) => !f.dll), exe))
+  const exeHits = exe ? findExes(files.filter((f) => !f.dll), exe) : [];
+  if (exe && !exeHits.length)
     throw new Error(`--exe: no program called ${exe} there (found: ${files.filter((f) => !f.dll).map((f) => f.fileName).join(', ') || 'none'})`);
+  if (exeHits.length > 1) throw new Error(`--exe: ${exe} could be ${exeHits.map((f) => f.fileName).join(' or ')}; give its path`);
   const a = analyse(files, exe);
   const opts = { controllers: !has(args, '--no-controllers'), kbm: !has(args, '--no-kbm') };
   const listing = (f: PeFile) => [

@@ -89,8 +89,13 @@ for (const [id, info] of Object.entries(packages)) {
       // never the same word inside a string or comment.
       let fixed = '';
       let at = 0;
-      for (const t of acorn.tokenizer(src, { ecmaVersion: 'latest', allowHashBang: true })) {
-        if ((t.type.label === 'name' && t.value === 'let') || t.type.keyword === 'const') {
+      const toks = [...acorn.tokenizer(src, { ecmaVersion: 'latest', allowHashBang: true })];
+      for (let i = 0; i < toks.length; i++) {
+        const t = toks[i];
+        // `let` only as a declaration keyword (a name, `[` or `{` follows), never `let` used as a name.
+        const nx = toks[i + 1];
+        const letDecl = t.type.label === 'name' && t.value === 'let' && nx && (nx.type.label === 'name' || nx.type.label === '[' || nx.type.label === '{');
+        if (letDecl || t.type.keyword === 'const') {
           fixed += src.slice(at, t.start) + 'var'.padEnd(t.end - t.start);
           at = t.end;
         }

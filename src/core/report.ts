@@ -271,7 +271,8 @@ export function buildReport(r: ReportInput): Report {
   };
   fit(7000);
   // Still too long (a long goal in a script with long encodings): the other fields too, never the details.
-  for (const k of ['goal', 'idea', ...Object.keys(f).filter((k) => k !== 'context')]) { // (the details keep their checksum)
+  // (The details keep their checksum; dropdown answers stay whole, or the form wouldn't select them.)
+  for (const k of ['goal', 'idea', ...Object.keys(f).filter((k) => k !== 'context' && k !== 'area' && k !== 'verdict')]) {
     for (let i = 0; i < 6 && f[k] && f[k].length > 40 && size() > 7000; i++) f[k] = cut(f[k], Math.max(40, Math.floor(f[k].length * (7000 / size()) * 0.8)));
   }
   const url = formUrl(form.repo, fileOf(key), title, f);
