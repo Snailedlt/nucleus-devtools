@@ -113,10 +113,13 @@ export interface Analysis {
 /** Every program a name can point at: a path (relative to the folder, "/" or "\\") matches that path, or the end of
  *  one; a bare name matches by file name. Case-insensitive, like Windows. An exact path match is the only one. */
 export function findExes(exes: PeFile[], name: string): PeFile[] {
-  const want = name.replace(/\\/g, '/').replace(/^\.\//, '').toLowerCase();
+  const given = name.replace(/\\/g, '/').toLowerCase();
+  const want = given.replace(/^\.\//, '');
   const rel = (f: PeFile) => f.fileName.replace(/\\/g, '/').toLowerCase();
-  const exact = exes.filter((f) => rel(f) === want);
+  // An explicit path (`./Game.exe` included) first: several input folders label their files by input.
+  const exact = exes.filter((f) => rel(f) === given || rel(f) === want);
   if (exact.length) return exact.slice(0, 1);
+  if (given !== want) return [];
   return want.includes('/') ? exes.filter((f) => rel(f).endsWith('/' + want)) : exes.filter((f) => base(f.fileName).toLowerCase() === want);
 }
 /** The program a name points at, or undefined when none or several match (give the path then: `findExes` lists them). */

@@ -167,6 +167,12 @@ test('importhooks: file names become string literals; an explicit path wins; com
   assert.equal(findExe([old, now], 'Game.exe'), undefined);
   assert.deepEqual(findExes([old, now], 'Game.exe'), [old, now]);
   assert.equal(findExe([old, now], 'Missing.exe'), undefined);
+  // Two input folders (`ncdev imports . ../other`): `./Game.exe` is the first input's, not ambiguous.
+  const here = pe('./Game.exe'), other = pe('../other/Game.exe');
+  assert.deepEqual(findExes([here, other], './Game.exe'), [here]);
+  assert.deepEqual(findExes([here, other], 'Game.exe'), [here, other]);
+  assert.deepEqual(findExes([pe('sub/Game.exe')], './Game.exe'), [], 'an explicit ./ path is not a bare name');
+  assert.equal(findExe([pe('Game.exe')], './Game.exe')?.fileName, 'Game.exe');
   // A hook in a block comment is not on.
   assert.ok(!handlerHooks('/* Game.ProtoInput.XinputHook = true; */').has('XinputHook'));
   // SDL2.dll in another folder: Game.SDLPaths as a proper string literal, whatever the folder's name.
