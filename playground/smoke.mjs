@@ -454,11 +454,13 @@ for (const theme of ['light', 'dark']) {
     await q.waitForTimeout(400);
     ts = await tourState();
     check(ts.title === 'Check' && /^3 of/.test(ts.count) && await q.$eval('.pane-head [data-tab=problems]', (b) => b.getAttribute('aria-selected') === 'true'), `${theme}: → steps on, to Check (${ts.count}, ${ts.title})`);
-    // Check's action: clicking the tab in the cut-out shows "✓ Done" and goes on by itself.
-    await q.click('.pane-head [data-tab=problems]');
+    // Try it's action: clicking the tab in the cut-out shows "✓ Done", keeps Try it open and waits for Next.
+    await q.keyboard.press('ArrowRight');
+    await q.waitForTimeout(300);
+    await q.click('.pane-head [data-tab=simulate]');
     check(/Done/.test(await q.textContent('#tour-act')), `${theme}: doing a step's action marks it done`);
-    await q.waitForTimeout(1000);
-    check(/^4 of/.test(await q.textContent('#tour-count')), `${theme}: a step's action moves the tour on`);
+    await q.waitForTimeout(1500);
+    check(/^4 of/.test(await q.textContent('#tour-count')) && await q.evaluate(() => document.activeElement?.dataset.tour === 'next') && await q.$eval('.pane-head [data-tab=simulate]', (b) => b.getAttribute('aria-selected') === 'true'), `${theme}: after the action the tour waits for Next, with what opened still shown`);
     await q.keyboard.press('Escape');
     await q.waitForTimeout(300);
     const saved = await q.evaluate(() => JSON.parse(localStorage.getItem('nucleus-workbench-tour')));

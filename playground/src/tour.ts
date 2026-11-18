@@ -9,13 +9,16 @@
 // The card is a modal <dialog> in the top layer that covers the page, so the rest of the page is inert (the focus stays
 // in the card) and Esc is the dialog's own cancel. ←/→ step, Enter goes on; the focus returns where it was at the end.
 //
-// Nearly every step is a do-it step (`act`): click the part in the cut-out (Lines opens Lines), or press its key. Doing it
-// shows "✓ Done", moves the cut-out to what opened (`show`) for a short beat, then goes on by itself; leaving the step
-// puts back what it opened (`undo`: a panel closes again, a menu closes). Next, Back and Skip always work, so nothing
-// blocks. For those steps the card is a non-modal dialog, so the cut-out (and only it: `.tour-block` covers the rest)
-// can be clicked; Tab goes round the card's buttons and the part (Enter or Space on it does the action), Esc still
-// skips, and the step's key works from the card too (`run` does it for the person). A step whose part to click isn't
-// shown in this layout (and has no key) is a plain "look" step there.
+// Two kinds of step. A "look" step points at a part that is always on screen (the code, Check) and explains it. A
+// do-it step (`act`) is for a part that opens something: click it in the cut-out (Lines opens Lines), or press its key.
+// Doing it shows "✓ Done", moves the cut-out to what opened (`show`) and leaves it open, and Next gets the focus: the
+// tour never goes on by itself, only on Next (or Enter). Leaving the step (Next, Back, Skip, Esc) puts back what it
+// opened (`undo`: a panel closes again, a menu closes). Next, Back and Skip always work, so nothing blocks. Until the
+// action is done the card is a non-modal dialog, so the cut-out (and only it: `.tour-block` covers the rest) can be
+// clicked; Tab goes round the card's buttons and the part (Enter or Space on it does the action), Esc still skips, and
+// the step's key works from the card too (`run` does it for the person). Once done, the card is modal again: what
+// opened is there to look at, not to use (a menu's entries could save a file). A step whose part to click isn't shown
+// in this layout (and has no key) is a plain "look" step there.
 //
 // Text is plain words with keys in backticks (`Ctrl+B`): they're drawn as keys (kbd.ts), never as code.
 
@@ -37,16 +40,14 @@ export interface TourStep {
   view?: 'code' | 'results';
   /** The results tab to open for it (Check, Try it, Docs). Not opened for a step with `act`: that's the action. */
   tab?: string;
-  /** A tiny action that goes on by itself: a click on (or in) `click`, or a key `key` matches. */
+  /** A tiny action: a click on (or in) `click`, or a key `key` matches. The tour waits for Next after it. */
   act?: {
     text: string;
     click?: string;
     key?: (e: KeyboardEvent) => boolean;
     run?: () => void;
-    /** What the action opens: the cut-out moves to it for the beat before the next step. */
+    /** What the action opens: the cut-out moves to it and stays there until the step is left. */
     show?: string;
-    /** How long "✓ Done" (and what opened) stays before the next step, in ms. Default 900. */
-    beat?: number;
     /** Called when the step starts (e.g. to note whether a panel was open). */
     start?: () => void;
     /** Leaving a step whose action was done: put back what it opened. */
@@ -112,14 +113,14 @@ export function initTour(d: TourDeps) {
   let at = 0;
   let mode: 'steps' | 'ask' = 'steps';
   let back: { focus: Element | null; view: 'code' | 'results'; tab: string } | null = null;
-  let doneTimer = 0;
   /** The step whose action was done (its `undo` runs when it's left), and what it opened (the cut-out shows it). */
   let didAct: TourStep | null = null;
   let showing: HTMLElement | null = null;
   const firstShown = (sel: string) => [...document.querySelectorAll(sel)].find(shown) ?? null;
   /** The step's action here: none when its part to click isn't shown in this layout and it has no key. */
   const actOf = (s: TourStep | undefined) => (s?.act && (s.act.key || (s.act.click && firstShown(s.act.click))) ? s.act : undefined);
-  const act = () => (mode === 'steps' && dlg.open ? actOf(list[at]) : undefined);
+  /** The current step's action while it's still to do (none once done: the step waits for Next). */
+  const act = () => (mode === 'steps' && dlg.open && didAct !== list[at] ? actOf(list[at]) : undefined);
   const actTarget = () => { const c = act()?.click; return c ? firstShown(c) : null; };
   /** Modal for a plain step; non-modal (the cut-out can be used) for a step with an action. */
   function setModal(modal: boolean) {
@@ -187,8 +188,6 @@ export function initTour(d: TourDeps) {
 
   /** Leaving a step: put back what its action opened. */
   function leave() {
-    clearTimeout(doneTimer);
-    doneTimer = 0;
     showing = null;
     const s = didAct;
     didAct = null;
@@ -231,20 +230,25 @@ export function initTour(d: TourDeps) {
       document.addEventListener('keydown', onPageKey, true);
     }
   }
-  /** The step's action was done: "✓ Done", the cut-out on what opened for a beat, then on by itself. */
+  /** The step's action was done: "✓ Done", the cut-out on what opened, Next focused. It stays until the step is left. */
   function done() {
     const s = list[at], sa = act();
-    if (doneTimer || !sa) return;
+    if (!sa) return;
     if (sa.end) { end('done'); return; } // what it opens takes over (the page's own handler runs after this)
     didAct = s;
     const a = q('#tour-act');
     a.classList.add('done');
-    a.textContent = '✓ Done';
-    q('#tour-live').textContent = 'Done.';
-    const step = at;
-    // What opened is there once the page has handled the click or key (this runs first).
-    if (sa.show) setTimeout(() => { if (at === step && doneTimer) { showing = firstShown(sa.show!); requestAnimationFrame(place); } }, 60);
-    doneTimer = window.setTimeout(() => { doneTimer = 0; if (dlg.open && mode === 'steps' && at === step) next(); }, sa.beat ?? 900);
+    a.innerHTML = tourHtml('✓ Done. Press Next when you\'re ready.');
+    q('#tour-live').textContent = 'Done. Press Next when you\'re ready.';
+    // What opened is there once the page has handled the click or key (this runs first). Then the card is modal again
+    // (what opened is to look at) and Next has the focus.
+    setTimeout(() => {
+      if (!dlg.open || mode !== 'steps' || didAct !== s || list[at] !== s) return;
+      showing = sa.show ? firstShown(sa.show) : null;
+      setModal(true);
+      btn('next').focus();
+      requestAnimationFrame(place);
+    }, 60);
   }
   const onPageClick = (e: MouseEvent) => {
     const c = act()?.click;

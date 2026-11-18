@@ -3135,9 +3135,10 @@ setReportState(() => ({
   view: viewMode,
 }));
 // The guided tour of the workbench (tour.ts). Each step points at the first of its parts that's shown in this layout
-// (bar or rail, wide or phone); a step with none shown is left out. Nearly every step is done by doing it: click the
-// part (or press its key) and see what it opens; the tour puts back what it opened when it moves on. Nothing in it
-// saves a file or changes a setting: Save opens the Save as list, the menu step only opens the menu.
+// (bar or rail, wide or phone); a step with none shown is left out. Parts that are always on screen (the code, Check)
+// are "look" steps; parts that open something are done by doing it: click the part (or press its key), see what it
+// opens, then Next. The tour puts back what it opened when the step is left. Nothing in it saves a file or changes a
+// setting: Save opens the Save as list, the menu step only opens the menu.
 const visibleTab = () => document.querySelector<HTMLElement>('.pane-head [role=tab][aria-selected=true]')?.dataset.tab ?? 'problems';
 /** A tour step's toggle (Lines, Files): note its state at the start, put it back when the step is left. */
 const tourToggle = (isOn: () => boolean, flip: () => void) => {
@@ -3155,23 +3156,22 @@ const tour = initTour({
   finished: () => { if (BETA && !testDone('tour')) setTestDone('tour', true); },
   steps: [
     { title: 'Your handlers', text: 'Each open handler has a tab. The + starts a new one or opens yours: a file, an example or a Hub handler.', targets: ['.htabs-wrap', '.rail [data-rail=add]', '#doc-switch'], view: 'code',
-      act: { text: 'Click + to see what you can open.', click: '#tab-add, .rail [data-rail=add], #doc-switch', show: '.app-menu', beat: 1800, undo: () => closeMenu() } },
-    { title: 'The code', text: 'Write the handler here. Squiggles mark problems; hover a name for its docs. `Alt+Enter` fixes.', targets: ['#editor', '#formview', '#blocksview'], view: 'code',
-      // Pressed in the card, the tour does it: the code gets the focus and shows its suggestions.
-      act: { text: `Press \`${labelOf('suggest')}\` in the code to see suggestions.`, key: (e) => stepOf(e) === binding('suggest'), run: () => { editor.focus(); editor.showHint({ hint: hinter, completeSingle: false, explicit: true }); }, beat: 1500, undo: () => (editor as any).closeHint?.() } },
-    { title: 'Check', text: 'What Nucleus would reject or get wrong, each with why and a fix. `F8` jumps to the next problem.', targets: ['.pane-head [data-tab=problems]', '.pane.side'], view: 'results', tab: 'problems', act: { text: 'Click Check to open it.', click: '.pane-head [data-tab=problems]', show: '.pane.side', beat: 800 } },
-    { title: 'Try it', text: 'Runs the handler once per player, as Nucleus would, and shows what each one gets.', targets: ['.pane-head [data-tab=simulate]'], view: 'results', tab: 'simulate', act: { text: 'Click Try it to run the handler.', click: '.pane-head [data-tab=simulate]', show: '.pane.side', beat: 1800 } },
-    { title: 'Docs', text: 'Every option and function a handler can use, searchable. Insert into handler puts an example in your code.', targets: ['.pane-head [data-tab=api]'], view: 'results', tab: 'api', act: { text: 'Click Docs to open it.', click: '.pane-head [data-tab=api]', show: '.pane.side', beat: 1800 } },
+      act: { text: 'Click + to see what you can open.', click: '#tab-add, .rail [data-rail=add], #doc-switch', show: '.app-menu', undo: () => closeMenu() } },
+    // Always on screen: look steps.
+    { title: 'The code', text: `Write the handler here. Squiggles mark problems; hover a name for its docs. \`${labelOf('suggest')}\` suggests names, \`Alt+Enter\` fixes.`, targets: ['#editor', '#formview', '#blocksview'], view: 'code' },
+    { title: 'Check', text: 'What Nucleus would reject or get wrong, each with why and a fix. It checks as you type. `F8` jumps to the next problem.', targets: ['.pane.side', '.pane-head [data-tab=problems]'], view: 'results', tab: 'problems' },
+    { title: 'Try it', text: 'Runs the handler once per player, as Nucleus would, and shows what each one gets.', targets: ['.pane-head [data-tab=simulate]'], view: 'results', tab: 'simulate', act: { text: 'Click Try it to run the handler.', click: '.pane-head [data-tab=simulate]', show: '.pane.side' } },
+    { title: 'Docs', text: 'Every option and function a handler can use, searchable. Insert into handler puts an example in your code.', targets: ['.pane-head [data-tab=api]'], view: 'results', tab: 'api', act: { text: 'Click Docs to open it.', click: '.pane-head [data-tab=api]', show: '.pane.side' } },
     { title: 'Lines', text: 'Every name a handler can use, in a list beside the code. Click one to insert it. `Ctrl+B` opens and closes it.', targets: ['#lines-toggle', '.rail [data-rail=lines]'], view: 'code',
-      act: { text: 'Click Lines to open it.', click: '#lines-toggle, .rail [data-rail=lines]', key: (e) => stepOf(e) === binding('lines'), run: () => lines.toggle(), show: '#lines', beat: 1800, ...tourToggle(() => lines.isOpen(), () => lines.toggle()) } },
+      act: { text: 'Click Lines to open it.', click: '#lines-toggle, .rail [data-rail=lines]', key: (e) => stepOf(e) === binding('lines'), run: () => lines.toggle(), show: '#lines', ...tourToggle(() => lines.isOpen(), () => lines.toggle()) } },
     { title: 'Files', text: "The files that go with the handler. Your game on this PC links the game's folder, so Check compares paths with the real files.", targets: ['#files-toggle'], view: 'code',
-      act: { text: 'Click Files to open it.', click: '#files-toggle', show: '#files-panel', beat: 1800, ...tourToggle(filesOn, () => ($('#files-toggle') as HTMLButtonElement).click()) } },
+      act: { text: 'Click Files to open it.', click: '#files-toggle', show: '#files-panel', ...tourToggle(filesOn, () => ($('#files-toggle') as HTMLButtonElement).click()) } },
     // The arrow (Save as), not Save itself: the tour never downloads a file. Where there's no arrow (the side rail,
     // a phone), a look-only step.
     { title: 'Save', text: "Saves the handler for Nucleus: as a .zip, .js or .nc file, or straight into Nucleus Co-op's handlers folder. `Ctrl+S` saves.", targets: ['#save-more', '.rail [data-rail=save]', '#code-menu-phone'], view: 'code',
-      act: { text: 'Click the arrow to see the ways to save.', click: '#save-more', show: '.app-menu', beat: 1800, undo: () => closeMenu() } },
+      act: { text: 'Click the arrow to see the ways to save.', click: '#save-more', show: '.app-menu', undo: () => closeMenu() } },
     { title: 'Settings and help', text: "Settings, Advanced mode, keyboard shortcuts and What's new. Take the tour is here too, to see this again.", targets: ['#app-menu-open', '.rail [data-rail=menu]'],
-      act: { text: 'Click the menu to open it.', click: '#app-menu-open, .rail [data-rail=menu]', show: '.app-menu', beat: 1800, undo: () => closeMenu() } },
+      act: { text: 'Click the menu to open it.', click: '#app-menu-open, .rail [data-rail=menu]', show: '.app-menu', undo: () => closeMenu() } },
     // During the beta: how to help, and the guide one click away (its "Take the tour" task is ticked by Finish).
     ...(BETA ? [{ title: 'Help test the beta', text: "Try new things and tell us what works and what doesn't. The guide picks tasks that fit you, each with a Report button; a tick marks what you've tried.", targets: ['.rail [data-rail=test]', '#test-open'],
       act: { text: 'Click Help test this beta to open the guide.', click: '.rail [data-rail=test], #test-open', end: true },
