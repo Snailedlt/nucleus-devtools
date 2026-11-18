@@ -33,7 +33,7 @@ export function aiTip(m: Member, part: AiPart, id: string, o: AiTipOptions = {})
     + (checked ? `<span class="ai-tip-ok"> · ✓ ${esc(checked)}</span>` : '')
     + (verified ? `<span class="ai-tip-ok"> · ${esc(verified)}</span>` : '') + `${sr('. ')}</span>`;
   const cap = (t?: string) => t && t[0].toUpperCase() + t.slice(1);
-  const items = aiBasisItems(b).map((i) => aiBasisItemText({ ...i, text: cap(i.text) }, { code: (f) => `<code>${esc(f)}</code>`, text: esc, link: tipLink }));
+  const items = aiBasisItems(b).map((i) => aiBasisItemText({ ...i, text: cap(i.text) }, { code: (f) => `<code class="ai-file">${esc(f)}</code>`, text: esc, link: tipLink }));
   const list = items.length
     ? `<span class="ai-tip-k">Based on${sr(': ')}</span><span class="ai-tip-l" role="list">${items.map((x, n) => `<span class="ai-tip-i" role="listitem">${x}${sr(n < items.length - 1 ? '; ' : '.')}</span>`).join('')}</span>`
     : '';

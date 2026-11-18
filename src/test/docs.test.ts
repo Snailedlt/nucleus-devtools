@@ -206,7 +206,7 @@ test('AI basis as data: every entry has typed fields, and every renderer builds 
   const tip = aiTip(m, 'practice', 't');
   assert.match(tip, /<span class="ai-tip-h"><span aria-hidden="true">✨ <\/span>AI-written/);
   assert.match(tip, /<span class="ai-tip-k">Based on<span class="sr-only">: <\/span><\/span>/);
-  assert.match(tip, /<a class="ai-src" href="https:\/\/github\.com\/SplitScreen-Me\/splitscreenme-nucleus\/blob\/master\/[^"]*GenericGameHandler\.cs" target="_blank" rel="noopener noreferrer"><code>GenericGameHandler\.cs<\/code>/);
+  assert.match(tip, /<a class="ai-src" href="https:\/\/github\.com\/SplitScreen-Me\/splitscreenme-nucleus\/blob\/master\/[^"]*GenericGameHandler\.cs" target="_blank" rel="noopener noreferrer"><code class="ai-file">GenericGameHandler\.cs<\/code>/);
   assert.match(tip, /<a class="ai-src" href="https:\/\/hub\.splitscreen\.me\/"[^>]*>Verified Hub handlers, counted/);
   assert.match(tip, /href="[^"]*hub-engines\.json"[^>]*>Hub game engines/);
   assert.doesNotMatch(tip, /role="tooltip"|ai-tip-path|>Source<|>Engines</);
