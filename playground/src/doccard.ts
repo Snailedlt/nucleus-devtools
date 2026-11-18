@@ -176,7 +176,7 @@ function voteLine(path: string, part: DocPart): string {
   const mine = myVote(part, path);
   const q = part === 'practice' ? 'Is this right?' : 'Is this doc right?';
   const c = snapshotVotes(path, part), id = `dc-vt-${++lineSeq}`, labels = VOTE_LABELS[part];
-  const b = (v: 'up' | 'down', icon: string, label: string) => `<button type="button" class="vote-btn" data-vote="${v}" data-vkind="${part}" data-vid="${esc(path)}" aria-pressed="${mine === v}" title="${esc(label)}" aria-label="${esc(label)}" aria-describedby="${id}">${icon}</button>`;
+  const b = (v: 'up' | 'down', icon: string, label: string) => `<button type="button" class="vote-btn" data-vote="${v}" data-vkind="${part}" data-vid="${esc(path)}" aria-pressed="${mine === v}" aria-label="${esc(label)}" aria-describedby="${id}">${icon}</button>`;
   setTimeout(() => fillLive(id, path, part), 0);
   return `<div class="dc-check" data-up="${c.up}" data-down="${c.down}" data-aiup="${c.aiUp}" data-aidown="${c.aiDown}" data-base="${mine ?? ''}"><span>${q}</span>`
     + `<span class="vote-ctl" role="group" aria-label="${q}">${b('up', '👍', labels.up)}<span class="vote-score" aria-hidden="true"></span>${b('down', '👎', labels.down)}<span class="vote-tip" id="${id}" role="tooltip"></span></span>`
