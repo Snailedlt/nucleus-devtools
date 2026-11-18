@@ -960,12 +960,13 @@ class Analyzer {
     const maybePlugin = asObject && this.plugins === undefined;
     // `x = 1` makes a global (outside strict mode); collectBindings already counts it as declared.
     const s = suggest(name, [...this.declared, ...this.fnExprNames, ...Object.keys(api.globals).filter((g) => !api.globals[g].hidden)]);
-    const where =
-      ctx.fnDepth === 0
-        ? 'Nucleus runs this line when it loads the handler, so the handler fails to load'
-        : 'Nucleus stops with an error when this line runs (in `Game.Play`, that ends the session)';
     // Inside a function nothing calls or passes on: the line never runs, so it can't throw yet.
     const unused = this.uncalledFunction(n);
+    const where = unused
+      ? `It's inside \`${unused}\`, which nothing in the handler calls, so it does no harm yet`
+      : ctx.fnDepth === 0
+        ? 'Nucleus runs this line when it loads the handler, so the handler fails to load'
+        : 'Nucleus stops with an error when this line runs (in `Game.Play`, that ends the session)';
     if (unused && !maybePlugin) {
       this.report({
         rule: 'undefined-name',

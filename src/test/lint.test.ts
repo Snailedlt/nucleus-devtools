@@ -695,6 +695,11 @@ test('undefined-name: inside a function nothing calls, a warning that says so', 
   assert.deepEqual(unused.map((d) => d.severity), ['warning', 'warning']);
   assert.match(unused[0].message, /inside `RunCMD`, which nothing in the handler calls/);
   assert.match(unused[1].message, /inside `later`/);
+  // Used as an object (maybe a plugin), in a function nothing calls: says so, not "ends the session".
+  const obj = only(`${HEADER}function neverCalled() {\n  Contxt.Foo = 1;\n}\n`, 'undefined-name');
+  assert.equal(obj[0].severity, 'warning');
+  assert.match(obj[0].message, /inside `neverCalled`, which nothing in the handler calls/);
+  assert.doesNotMatch(obj[0].message, /ends the session/);
   // Called, passed on, or a Nucleus callback: still an error.
   const used = only(`${HEADER}function a() { return x1; }\nfunction b() { return x2; }\nvar c = function () { return x3; };\nGame.Play = function () { a(); var later = [b]; c(); return x4; };\n`, 'undefined-name');
   assert.deepEqual(used.map((d) => d.severity), ['error', 'error', 'error', 'error']);
