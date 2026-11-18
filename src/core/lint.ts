@@ -178,7 +178,7 @@ export const RULES = {
   },
   'undefined-name': {
     severity: 'error',
-    description: 'A name the handler never declares and Nucleus doesn\'t provide (a typo, a stray word, a variable from another handler). Reading it throws "<name> is not defined": at the top level Nucleus can\'t load the handler, inside a callback it stops there.',
+    description: 'A name the handler never declares and Nucleus doesn\'t provide (a typo, a stray word, a variable from another handler). Reading it throws "<name> is not defined": at the top level Nucleus can\'t load the handler, inside a callback it stops there. Only a warning inside a function nothing in the handler calls or passes on.',
   },
   'missing-builtin': {
     severity: 'error',
@@ -961,6 +961,19 @@ class Analyzer {
       ctx.fnDepth === 0
         ? 'Nucleus runs this line when it loads the handler, so the handler fails to load'
         : 'Nucleus stops with an error when this line runs (in `Game.Play`, that ends the session)';
+    // Inside a function nothing calls or passes on: the line never runs, so it can't throw yet.
+    const unused = this.uncalledFunction(n);
+    if (unused && !maybePlugin) {
+      this.report({
+        rule: 'undefined-name',
+        severity: 'warning',
+        message: `\`${name}\` is not defined anywhere: nothing in the handler declares it and Nucleus doesn't provide it. It's inside \`${unused}\`, which nothing in the handler calls, so it does no harm yet; calling \`${unused}\` would throw "${name} is not defined".${s ? ` Did you mean \`${s}\`?` : ' Remove it (or the unused function), or declare it with `var`.'}`,
+        start: n.start,
+        end: n.end,
+        fixes: s ? [{ title: `Change to ${s}`, edits: [{ start: n.start, end: n.end, text: s }] }] : undefined,
+      });
+      return;
+    }
     if (maybePlugin) {
       this.report({
         rule: 'undefined-name',
@@ -979,6 +992,37 @@ class Analyzer {
       // A guess, so never applied by Fix all.
       fixes: s ? [{ title: `Change to ${s}`, edits: [{ start: n.start, end: n.end, text: s }] }] : undefined,
     });
+  }
+
+  private usedNames?: Set<string>;
+  /** The name of a named function around `n` that nothing in the handler refers to (never called or passed on), if any. */
+  private uncalledFunction(n: Node): string | undefined {
+    if (!this.usedNames) {
+      const used = new Set<string>();
+      const walk = (x: Node, parent?: Node) => {
+        if (!x || typeof x.type !== 'string') return;
+        if (x.type === 'Identifier' && this.isReference(x, parent)) used.add(x.name);
+        for (const k of Object.keys(x)) {
+          if (k === 'parent') continue;
+          const v = (x as any)[k];
+          if (Array.isArray(v)) for (const c of v) c && typeof c.type === 'string' && walk(c, x);
+          else if (v && typeof v.type === 'string') walk(v, x);
+        }
+      };
+      walk(this.program);
+      this.usedNames = used;
+    }
+    for (let p = this.parentOf.get(n), child: Node = n; p; child = p, p = this.parentOf.get(p)) {
+      let fname: string | undefined;
+      if (p.type === 'FunctionDeclaration' && p.id) fname = p.id.name;
+      else if (p.type === 'FunctionExpression' && child !== p.id) {
+        const d = this.parentOf.get(p);
+        if (d?.type === 'VariableDeclarator' && d.init === p && d.id.type === 'Identifier') fname = d.id.name;
+        else continue;
+      } else continue;
+      if (fname && !this.usedNames.has(fname)) return fname;
+    }
+    return undefined;
   }
 
   private checkMissingBuiltin(n: Node, ctx: Ctx) {

@@ -41,6 +41,7 @@ How to write it (people and AI agents read this; the release workflow publishes 
 
 ### 🛠️ Improved
 
+- **No error for code that never runs.** A name that doesn't exist inside a function nothing in the handler calls is now a warning that says so, instead of an error: it can't break anything until something calls that function.
 - **Settings in titled groups.** Settings has the extension's settings in titled groups (General, Checks, Format, Nucleus Co-op) with readable choices (*JavaScript*, not `javascript`). Searching Settings for "nucleus" still finds them. Command ids, setting keys and keybindings stay the same, so nothing you set up breaks.
 - **Fewer pop-ups.** "Nothing to fix", "Fixed 3 problems", "Checked 12 handlers" and a handler that can't be formatted yet (with format on save, a syntax error used to warn on every save) now show briefly in the status bar and go to the output channel, not a notification.
 - **Game facts aren't problems.** With a game folder linked, facts such as *Your game: Unreal Engine* are hints (no squiggle, still in the hover and the language status); real mismatches stay problems.

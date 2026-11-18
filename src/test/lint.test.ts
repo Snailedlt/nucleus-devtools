@@ -688,6 +688,16 @@ test('undefined-name: a stray word in a list, at the top level and in Game.Play'
   assert.match(inPlay[0].message, /ends the session/);
 });
 
+test('undefined-name: inside a function nothing calls, a warning that says so', () => {
+  const unused = only(`${HEADER}function RunCMD(f) {\n  var p = instanceFolder + "\\\\" + f;\n}\nvar later = function () { return gone; };\n`, 'undefined-name');
+  assert.deepEqual(unused.map((d) => d.severity), ['warning', 'warning']);
+  assert.match(unused[0].message, /inside `RunCMD`, which nothing in the handler calls/);
+  assert.match(unused[1].message, /inside `later`/);
+  // Called, passed on, or a Nucleus callback: still an error.
+  const used = only(`${HEADER}function a() { return x1; }\nfunction b() { return x2; }\nvar c = function () { return x3; };\nGame.Play = function () { a(); var later = [b]; c(); return x4; };\n`, 'undefined-name');
+  assert.deepEqual(used.map((d) => d.severity), ['error', 'error', 'error', 'error']);
+});
+
 test('undefined-name: a typo of a variable suggests it, but Fix all leaves it alone', () => {
   const code = `${HEADER}Game.Play = function () {\n  var args = "-w";\n  Context.StartArguments = arsg;\n};\n`;
   const d = only(code, 'undefined-name');

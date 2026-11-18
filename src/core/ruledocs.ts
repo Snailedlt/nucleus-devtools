@@ -198,7 +198,7 @@ const NUCLEUS: Record<string, RuleDoc> = {
   },
   'undefined-name': {
     title: 'A name that doesn\'t exist',
-    why: 'Nothing declares this name and Nucleus doesn\'t provide it: a typo, a stray word or a variable from another handler. Reading it throws "<name> is not defined": at the top level the handler fails to load, in Game.Play the session ends.',
+    why: 'Nothing declares this name and Nucleus doesn\'t provide it: a typo, a stray word or a variable from another handler. Reading it throws "<name> is not defined": at the top level the handler fails to load, in Game.Play the session ends. Inside a function nothing in the handler calls, it\'s only a warning: that code never runs until something calls it.',
     bad: 'Game.Play = function () {\n  var args = "-w " + widht;\n};',
     good: 'Game.Play = function () {\n  var width = Context.Width;\n  var args = "-w " + width;\n};',
     fix: 'Fix the spelling (the problem suggests the closest name) or declare the variable first.',
