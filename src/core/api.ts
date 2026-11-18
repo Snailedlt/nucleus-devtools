@@ -71,7 +71,7 @@ export interface Member {
   hubUse?: number;
   /** Per engine family with enough Hub handlers (api.hubHandlers.engines): how many of its handlers use it. */
   engineUse?: Record<string, number>;
-  /** "By engine: Unreal Engine games 61% of 223 handlers (all Hub handlers 18%). Counted from …": only where an engine
+  /** "By engine: more common in Unreal Engine games, rarer in Unity games." (no counts: those are in `engineUse`): only where an engine
    *  family uses it notably more or less than all handlers (scripts/hub-engines.mjs engineLine). Mechanical, not
    *  AI-written; shown with "In practice", or alone. */
   byEngine?: string;
@@ -419,7 +419,8 @@ export const docReviewUrl = (path: string) =>
 export const practiceNote = (m: Member) =>
   !m.practice ? ''
   : `AI-written, based on ${m.practiceBasis}.${m.practiceCheckedBy ? ` Checked by ${m.practiceCheckedBy}${m.practiceCheckedOn ? ` on ${m.practiceCheckedOn}` : ''}.` : ''}`;
-/** "Used by 564 of 899 Hub handlers" (empty when no Hub handler uses it). */
+/** "Used by 564 of 899 Hub handlers" (empty when no Hub handler uses it). Not shown with "In practice", which has no
+ *  counts; kept for the workbench. */
 export const hubUseText = (m: Member) => (m.hubUse && api.hubHandlers ? `Used by ${m.hubUse} of ${api.hubHandlers.count} Hub handlers` : '');
 /** Where an example comes from, in a few words ('' for the official docs'). */
 export const exampleSource = (m: Member) => (m.exampleBy === 'claude' ? 'AI-written' : m.exampleBy ? m.exampleNote ?? '' : '');
@@ -501,9 +502,9 @@ export function memberMarkdown(owner: string, name: string, m: Member): string {
   // "In practice": AI-written, its own label and votes, apart from the doc above.
   if (m.practice) {
     const pv = votesMarkdown(path, 'practice', true);
-    parts.push(`**In practice** _(AI-written)_\n\n${m.practice}\n\n_✎ ${practiceNote(m)}${hubUseText(m) ? ` ${hubUseText(m)}.` : ''}_${m.practiceCheckedBy ? '' : ` [Is it wrong? Tell us](${docReviewUrl(path)})`}${pv ? `\n\n${pv}` : ''}`);
+    parts.push(`**In practice** _(AI-written)_\n\n${m.practice}\n\n_✎ ${practiceNote(m)}_${m.practiceCheckedBy ? '' : ` [Is it wrong? Tell us](${docReviewUrl(path)})`}${pv ? `\n\n${pv}` : ''}`);
   }
-  // Where one engine's handlers use it notably more or less: counted, not AI-written, under "In practice" or alone.
+  // Where one engine's handlers use it notably more or less: mechanical, not AI-written, under "In practice" or alone.
   if (m.byEngine) parts.push(`${m.practice ? '' : '**In practice**\n\n'}_${m.byEngine}_`);
   if (m.example) parts.push((exampleSource(m) ? `_Example: ${exampleSource(m)}_\n\n` : '') + '```js\n' + prettyCode(m.example) + '\n```');
   parts.push(isJsBuiltin(owner) ? `[MDN: ${owner ? `${owner}.` : ''}${name}](${mdnUrl(owner, name)})` : `[Handler API docs](${DOCS_URL})`);

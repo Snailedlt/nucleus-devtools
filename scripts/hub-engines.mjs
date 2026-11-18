@@ -205,15 +205,19 @@ export function notableEngines(use, n, totals, handlers) {
     .sort((a, b) => Math.abs(b.share - all) - Math.abs(a.share - all) || a.family.localeCompare(b.family));
 }
 
-const pct = (x) => `${Math.round(x * 100)}%`;
-/** The docs' line for a name ('' when no engine differs notably):
- *  "By engine: Unreal Engine games 61% of 223 handlers (all Hub handlers 18%). Counted from Hub handlers; engines
- *  from Wikidata and the handlers' code." */
+/** The docs' line for a name ('' when no engine differs notably), in words, without counts (they go stale; the
+ *  numbers stay in the model's `engineUse`): "By engine: more common in Unreal Engine games, rarer in Unity games." */
 export function engineLine(use, n, totals, handlers) {
   const notable = notableEngines(use, n, totals, handlers);
   if (!notable.length) return '';
-  const parts = notable.map(({ family, total, share }) => `${ENGINE_NAMES[family] ?? family} games ${pct(share)} of ${total} handlers`);
-  return `By engine: ${parts.join(', ')} (all Hub handlers ${pct(n / handlers)}). Counted from Hub handlers; engines from Wikidata and the handlers' code.`;
+  const all = n / handlers;
+  const names = (list) => {
+    const g = list.map(({ family }) => `${ENGINE_NAMES[family] ?? family}`);
+    return `${g.length > 1 ? `${g.slice(0, -1).join(', ')} and ${g[g.length - 1]}` : g[0]} games`;
+  };
+  const more = notable.filter(({ share }) => share > all), less = notable.filter(({ share }) => share < all);
+  const parts = [...(more.length ? [`more common in ${names(more)}`] : []), ...(less.length ? [`rarer in ${names(less)}`] : [])];
+  return `By engine: ${parts.join(', ')}.`;
 }
 
 const UA = 'ncdev-hub-engines/1.0 (Nucleus Co-op handler tools; https://github.com/Snailedlt/splitscreenme-vscode)';

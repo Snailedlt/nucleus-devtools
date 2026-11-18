@@ -1,6 +1,6 @@
 // API lookup/search for agents and the CLI (`nucleus api ...`), and the
 // Markdown API reference shipped with the agent skill.
-import { api, claudeNote, exampleSource, hubUseText, Member, memberSignature, ownerLabel, practiceNote, suggest } from './api';
+import { api, claudeNote, exampleSource, Member, memberSignature, ownerLabel, practiceNote, suggest } from './api';
 import { prettyCode } from './pretty';
 import { DocPart, partVotes, verifiedLabel, votesLine } from './docvotes';
 
@@ -180,7 +180,7 @@ export function formatEntry(e: Entry, verbose = true): string {
   if (m.deprecated) lines.push(`  ${m.deprecated}`);
   if (verbose && m.doc) lines.push(...m.doc.split('\n').map((l) => `  ${l}`));
   if (verbose && claudeNote(m)) lines.push(`  [${claudeNote(m)}${verifiedText(e.path, 'doc', m.docBy === 'claude')}]`);
-  if (verbose && m.practice) lines.push('  In practice (AI-written):', ...m.practice.split('\n').map((l) => `  ${l}`), `  [${practiceNote(m)}${hubUseText(m) ? ` ${hubUseText(m)}.` : ''}${verifiedText(e.path, 'practice', true)}]`);
+  if (verbose && m.practice) lines.push('  In practice (AI-written):', ...m.practice.split('\n').map((l) => `  ${l}`), `  [${practiceNote(m)}${verifiedText(e.path, 'practice', true)}]`);
   if (verbose && m.byEngine) lines.push(`  ${m.byEngine}`);
   if (verbose) for (const [part, label] of [['doc', 'Doc'], ['practice', 'In practice']] as const) {
     const v = votesLine(partVotes(e.path, part));
@@ -218,7 +218,7 @@ export function markdownReference(): string {
       if (m.deprecated) out.push(`**${m.deprecated}**`);
       if (m.doc) out.push(m.doc);
       if (claudeNote(m)) out.push(`_✎ ${claudeNote(m)}${verifiedText(e.path, 'doc', m.docBy === 'claude')}_`);
-      if (m.practice) out.push(`In practice (AI-written): ${m.practice}`, `_✎ ${practiceNote(m)}${hubUseText(m) ? ` ${hubUseText(m)}.` : ''}${verifiedText(e.path, 'practice', true)}_`);
+      if (m.practice) out.push(`In practice (AI-written): ${m.practice}`, `_✎ ${practiceNote(m)}${verifiedText(e.path, 'practice', true)}_`);
       if (m.byEngine) out.push(m.byEngine);
       if (m.example) out.push('Example' + (exampleSource(m) ? ` (${exampleSource(m)})` : '') + ':', '```js', prettyCode(m.example), '```');
       out.push('');

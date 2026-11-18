@@ -82,13 +82,13 @@ test('"By engine": the threshold, the rule and the line', () => {
   assert.equal(eng.ENGINE_MIN_HANDLERS, 30);
   const totals = { Unreal: 200, Unity: 200, Tiny: 10 };
   // 18% of all handlers; Unreal 61%: twice the share and 43 points apart.
-  assert.equal(eng.engineLine({ Unreal: 122, Unity: 20, Tiny: 10 }, 162, totals, 900), 'By engine: Unreal Engine games 61% of 200 handlers (all Hub handlers 18%). Counted from Hub handlers; engines from Wikidata and the handlers\' code.');
+  assert.equal(eng.engineLine({ Unreal: 122, Unity: 20, Tiny: 10 }, 162, totals, 900), 'By engine: more common in Unreal Engine games.');
   // Too few handlers for the family (Tiny, 100%): left out.
   assert.deepEqual(eng.notableEngines({ Tiny: 10, Unreal: 36, Unity: 36 }, 162, totals, 900), []);
   // Twice the share but only 10 points apart: not notable.
   assert.equal(eng.engineLine({ Unreal: 40 }, 90, totals, 900), '');
   // The reverse: much less than all handlers.
-  assert.match(eng.engineLine({ Unreal: 0, Unity: 100 }, 400, totals, 900), /^By engine: Unreal Engine games 0% of 200 handlers \(all Hub handlers 44%\)/);
+  assert.match(eng.engineLine({ Unreal: 0, Unity: 100 }, 400, totals, 900), /^By engine: rarer in Unreal Engine games\.$/);
 });
 
 test('"By engine" in the model is current, and shows wherever "In practice" does', () => {
