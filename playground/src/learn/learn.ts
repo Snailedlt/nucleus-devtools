@@ -433,7 +433,7 @@ let checkTimer: ReturnType<typeof setTimeout> | undefined;
 /** The learner has typed in this lesson (hints only show after that). */
 let touched = false;
 /** The Show me button, in code lessons until the editor holds the answer. It keeps its place when it hides, so Back
- *  and Next don't move; Reset is the code bar's (#reset). */
+ *  and Next don't move; Reset is the code bar's (#reset), and Start over (#redo) takes its place once the lesson is done. */
 function syncShow() {
   const l = lesson();
   const b = $('#show');
@@ -450,6 +450,11 @@ function syncShow() {
   h.setAttribute('aria-hidden', String(solved));
   h.tabIndex = solved ? -1 : 0;
   h.setAttribute('aria-expanded', String(hintOpen && !solved));
+  // Start over: once the lesson is done (by hand or with Show me), in the same place, so trying it yourself is one
+  // click away (the code bar's Reset does the same at any time).
+  const r = $('#redo');
+  r.hidden = l.kind !== 'code' || !(done || solved);
+  if (!r.hidden) { b.hidden = true; h.hidden = true; }
 }
 /** The Hint is open (until the lesson changes): it follows the code, so it always says what's still to do. */
 let hintOpen = false;
@@ -705,6 +710,7 @@ function reset() {
   editor.focus();
 }
 $('#show').addEventListener('click', () => { showMe(); status(); });
+$('#redo').addEventListener('click', () => { reset(); status(); });
 $('#hint').addEventListener('click', () => { hintOpen = !hintOpen; status(); if (hintOpen) testEvent('hint', lesson().id); });
 // Copy, on the code blocks in a lesson: the lines to add (para()).
 $('#lesson-body').addEventListener('click', (e) => {
