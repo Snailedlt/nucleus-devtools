@@ -16,6 +16,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 ### 🛠️ Improved
 
+- **Learn's hints point to the next step.** Every code lesson's Hint now says where in the code to look and what to add there, then names the option or call and the kind of value it takes, in the lesson's own game, instead of repeating what Check says is missing.
 - **AI-written docs are easy to tell apart, without a label.** In Docs and on the docs pages each AI-written part (a doc, "How handlers use it", an example) sits in a lightly tinted frame with a sparkle in its corner, whose tooltip says what it is based on; a search result gets a small sparkle. Human-written docs stay plain, and "Checked by …" and "Verified by people" still show.
 - **Docs shows what you need to write a handler.** A search lists short results (the signature, the first sentence and its tags) with *Open full doc ›*; a full entry goes from the doc and its tags to the example and *Insert into handler*, then "How handlers use it" folded, and 👍/👎 at the bottom. Where an AI-written part comes from is in its tag's tooltip, and the vote counts and the counted engine numbers are on the docs pages (`/docs/`); Docs says only which engines use it more or less.
 - **Each doc vote sits in the part it rates, and its link shows after you vote.** On the docs pages (`/docs/`) the doc's 👍/👎 is right under the description and "In practice"'s is inside its box, as in the workbench's Docs. In both, *Tell us what's wrong* shows after a 👎 and *Give feedback* after a 👍.

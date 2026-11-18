@@ -326,7 +326,7 @@ const FIRST: Lesson[] = [
       block(NAME_L, TOP.trim()),
     ],
     task: 'Add the two lines. Type them: suggestions pop up as you go, and Tab or Enter takes one.',
-    hint: 'Two lines under the comment on line 1: `Game.GUID = "Boring Man Tutorial";` and the same with `Game.GameName`. The name goes in double quotes, and each line ends with `;`.',
+    hint: 'Click the empty line under the comment on line 1 and type the name line from the code block on the left: `Game.GUID = `, the name in double quotes, then `;`. The second line is the same with `Game.GameName`; both names are `"Boring Man Tutorial"`.',
     notes: [
       { kind: 'why', text: 'The GUID becomes a folder: `Nucleus Co-op\\content\\Boring Man Tutorial`. Keep it to letters, numbers and spaces, and don\'t change it later: a new GUID is a new folder, and Nucleus starts over.' },
       { kind: 'pitfall', text: 'Give each handler a GUID of its own. When two handlers have the same GUID, Nucleus keeps only the one it reads last, so the other disappears from its list. The Boring Man handler on the Hub uses `"Boring Man"`, so `"Boring Man Tutorial"` lets you install both side by side.' },
@@ -351,6 +351,7 @@ const FIRST: Lesson[] = [
       block(GAME_L, lastLine(S.name) + '\n\n// The game'),
     ],
     task: 'Add the two lines under `// The game`.',
+    hint: 'Under `// The game`, say which program to start and how many players Nucleus may add. `Game.ExecutableName` takes the file name as text in quotes (`"BoringManGame.exe"`, as in the game\'s folder); `Game.MaxPlayers` takes a plain number without quotes: 20.',
     notes: [
       { kind: 'check', text: 'Check, under the code, lists what Nucleus would refuse. A handler needs `GUID`, `GameName` and `ExecutableName` to load at all, so Check waits until this lesson is done before it asks for them.' },
       {
@@ -387,6 +388,7 @@ const FIRST: Lesson[] = [
       block(FOLDERS_L + COPY_L, lastLine(S.game) + '\n\n// A folder for each player'),
     ],
     task: 'Add the two lines.',
+    hint: 'Under `// A folder for each player`, turn on links, then name the one file each player needs a real copy of: Boring Man\'s `options.ini`. `Game.SymlinkGame` takes `true` without quotes; `Game.FileSymlinkCopyInstead` takes a list in square brackets: `["options.ini"]`.',
     notes: [
       { kind: 'alt', text: 'Nucleus deletes the links in `content\\Boring Man Tutorial` when you close it, and makes them again on the next start. `Game.KeepSymLinkOnExit = true` keeps them instead; most handlers leave it at its default, `false`.' },
       { kind: 'why', text: 'How do you know which files need a copy? By testing: start two copies and see what they fight over. A later chapter is about exactly that.' },
@@ -409,6 +411,7 @@ const FIRST: Lesson[] = [
       block(ENV_L, lastLine(S.folders) + '\n\n// Each player\'s own settings folder'),
     ],
     task: 'Add the two lines. The backslashes are doubled: that\'s how a `\\` is written inside quotes.',
+    hint: 'Under `// Each player\'s own settings folder`, turn on a user folder per player, then say where Boring Man keeps its settings in it. `Game.UseNucleusEnvironment` takes `true`; `Game.UserProfileConfigPath` takes text that starts at `AppData`, with each backslash written twice: `"AppData\\\\Local\\\\BoringManRewrite"`.',
     notes: [
       { kind: 'odd', text: 'Nucleus copies your settings only the **first** time a player name is used. Changes after that stay in that player\'s folder: to start a player over, delete their folder in `C:\\Users\\you\\NucleusCoop`.' },
     ],
@@ -429,6 +432,7 @@ const FIRST: Lesson[] = [
       block(STEAM_L, lastLine(S.environment) + '\n\n// Steam'),
     ],
     task: 'Add the two lines.',
+    hint: 'Under `// Steam`, turn on the Goldberg emulator and tell it which game this is: the number in Boring Man\'s store address (store.steampowered.com/app/346120). `Game.UseGoldberg` takes `true`; `Game.SteamID` takes that number as text, in quotes: `"346120"`.',
     notes: [
       { kind: 'why', text: 'Most handlers for Steam games start here, and so does the official guide. It works when the game plays together through Steam itself, not through its own online servers.' },
       { kind: 'pitfall', text: 'Antivirus programs often flag Goldberg by mistake. That\'s why the installation guide has you add Nucleus\' folder to Microsoft Defender\'s exclusions.' },
@@ -450,6 +454,7 @@ const FIRST: Lesson[] = [
       block(WINDOWS_L, lastLine(S.steam) + '\n\n// The windows'),
     ],
     task: 'Add the four lines.',
+    hint: 'Under `// The windows`, first give Nucleus the window\'s title, then turn on the three window switches from the code block on the left. `Game.Hook.ForceFocusWindowName` takes the title as text, `"Boring Man"`; `Game.ResetWindows`, `Game.SetWindowHook` and `Game.RefreshWindowAfterStart` each take `true`.',
     notes: [
       { kind: 'odd', text: 'If every window ends up full screen or on top of the others, Nucleus may not have found them: the window name is the first thing to check.' },
     ],
@@ -470,6 +475,7 @@ const FIRST: Lesson[] = [
       block(FOCUS_L, lastLine(S.windows) + '\n\n// Every window in focus'),
     ],
     task: 'Add the line.',
+    hint: 'Under `// Every window in focus`, add the one switch that makes each copy believe its window is the one in focus. It\'s `Game.HookFocus`, set to `true` without quotes.',
     notes: [
       { kind: 'why', text: 'This is a **hook**: Nucleus slips its own code into each copy and answers some of its questions to Windows. That\'s how a handler changes things the game has no setting for.' },
     ],
@@ -490,6 +496,7 @@ const FIRST: Lesson[] = [
       block(TIMING_L, lastLine(S.focus) + '\n\n// Timing'),
     ],
     task: 'Add the two lines.',
+    hint: 'Under `// Timing`, set how long Nucleus waits before starting the next copy, and how often it checks the windows. Both take plain numbers without quotes: `Game.PauseBetweenStarts` is 25 (seconds), `Game.HandlerInterval` is 100 (milliseconds).',
     notes: [
       { kind: 'odd', text: '`PauseBetweenStarts` is in **seconds**, though its docs say milliseconds: Nucleus waits `TimeSpan.FromSeconds(…)`. On a fast PC a lower number may work: try it.' },
     ],
@@ -510,6 +517,7 @@ const FIRST: Lesson[] = [
       block(INPUT_L, lastLine(S.timing) + '\n\n// Controllers and keyboard'),
     ],
     task: 'Add the three lines.',
+    hint: 'Under `// Controllers and keyboard`, allow one keyboard player, turn on the XInput hook and turn the custom DLL off. `Game.SupportsKeyboard` and `Game.Hook.XInputEnabled` take `true`; `Game.Hook.CustomDllEnabled` takes `false`, because it\'s on unless a handler says otherwise.',
     notes: [
       { kind: 'pitfall', text: 'One keyboard means one keyboard player: Windows sends every key to the window in focus. Several keyboards and mice need Proto Input, which is a chapter of its own.' },
       { kind: 'odd', text: '`CustomDllEnabled = false` looks like it could go, but it can\'t: it\'s **on** unless a handler turns it off, and then Nucleus would add its own XInput DLL as well as XInputPlus.' },
@@ -531,6 +539,7 @@ const FIRST: Lesson[] = [
       block(ONE_PAD_L, lastLine(S.input)),
     ],
     task: 'Add the two lines at the end of the controller part.',
+    hint: 'Add two lines at the very end, under `Game.Hook.CustomDllEnabled`: XInputPlus, so each copy sees one controller, and the DirectInput blocker. `Game.XInputPlusDll` takes a list with the DLL\'s name, `["xinput1_3.dll"]`; `Game.UseDInputBlocker` takes `true`.',
     notes: [
       { kind: 'why', text: 'Nucleus writes each copy\'s `XInputPlus.ini` with `Controller1=` set to that player\'s controller. To the game, it\'s the only controller there is.' },
     ],
@@ -551,6 +560,7 @@ const FIRST: Lesson[] = [
       block(EXCLUDE_L, lastLine(S.pads) + '\n\n// Files Nucleus puts in each copy itself'),
     ],
     task: 'Add the line.',
+    hint: 'Under `// Files Nucleus puts in each copy itself`, list the files Goldberg, XInputPlus and the DInput blocker bring, so the game\'s own aren\'t linked in their place. `Game.FileSymlinkExclusions` takes one list in square brackets: `steam_api.dll`, `steam_appid.txt`, `dinput8.dll` and `xinput1_3.dll`, each in quotes, with commas between.',
     notes: [
       { kind: 'odd', text: 'Leave one out and the game may start with its real Steam DLL, or see every controller, even though everything else is right. Like the copy list, these match **part** of a file name.' },
     ],
@@ -570,6 +580,7 @@ const FIRST: Lesson[] = [
       block(DESCRIPTION_L, lastLine(S.name) + '\n\n// What players read before they start'),
     ],
     task: 'Add the `Game.Description` line. The Show me button has the tested handler\'s; your own words are fine too.',
+    hint: 'Under `// What players read before they start`, near the top, add the note Nucleus shows when someone picks the game: how the copies join each other (direct connect to `localhost`) and the Ctrl+T fix. It\'s `Game.Description = "…";`: one line, your text in double quotes.',
     notes: [
       { kind: 'why', text: 'Every copy runs on the same PC, so "direct connect" means joining `localhost`: "this computer".' },
     ],
@@ -623,7 +634,7 @@ const FIRST: Lesson[] = [
       '**Try it**, under the code, runs `Game.Play` for each player in your browser and shows each player\'s window. Nothing changes yet: the next lesson changes the file. Nothing on your PC is touched.',
     ],
     task: 'Add `Game.Play` at the end, then look at the players in Try it.',
-    hint: 'At the very end, after the last line: `Game.Play = function () {`, the `var VideoConfig = …;` line from the code block on the left, then `};`.',
+    hint: 'Go to the very end, after the `Game.FileSymlinkExclusions` line, and start the function Nucleus runs for each player: `Game.Play = function () {`, closed with `};`. Inside it, `var VideoConfig = …;` joins `Context.EnvironmentPlayer`, `Context.UserProfileConfigPath` and `"\\\\bm_settings.ini"` with `+`.',
     notes: [
       { kind: 'alt', text: 'Many games can be told on their command line instead: `Game.StartArguments = "-windowed";` starts every copy with `-windowed` (which argument works depends on the game). Boring Man keeps its window mode in its settings file, so this handler changes the file.' },
     ],
@@ -656,7 +667,7 @@ const FIRST: Lesson[] = [
       'Try it now shows what each player\'s copy changes before it starts. It catches mistakes like a wrong key in a second; a test in Nucleus Co-op takes minutes.',
     ],
     task: 'Add the `ModifySaveFile` call, then look at what each player gets in Try it.',
-    hint: 'Inside `Game.Play`, under the `var VideoConfig` line: `Context.ModifySaveFile(…);` with one `new Nucleus.IniSaveInfo("Video", "Fullscreen", \'"0"\')` in its list. The double quotes inside the single ones are part of the value.',
+    hint: 'Inside `Game.Play`, under the `var VideoConfig` line, call `Context.ModifySaveFile` to set `Fullscreen` in the `[Video]` part of `bm_settings.ini`. It takes `VideoConfig` twice (read, then write), `Nucleus.SaveType.INI`, and a list `[ … ]` with one `new Nucleus.IniSaveInfo("Video", "Fullscreen", \'"0"\')`: the double quotes inside the single ones are part of the value.',
     notes: [
       { kind: 'odd', text: 'The value is `\'"0"\'`: the quotes are part of it. Boring Man writes `Fullscreen="0"` in its file, so the handler does too.' },
       { kind: 'pitfall', text: 'The file is only in a player\'s folder if Nucleus could copy yours: start Boring Man once on its own first (step 3 of the overview).' },
@@ -789,6 +800,7 @@ const CURE: Lesson[] = [
       '`-windowed -noborder`: a window without a frame, which Nucleus can place. `-game cure`: the game\'s folder. `-novid`: no intro video. `-insecure`: no Valve Anti-Cheat, which can\'t work without the real Steam.',
     ],
     task: 'Add the line, then look at what each player starts with in Try it.',
+    hint: 'Under `// How every copy starts`, give every copy of `cure.exe` the same launch arguments, in one line. `Game.StartArguments` takes one text in double quotes, the five words separated by spaces: `-windowed`, `-noborder`, `-game cure`, `-novid` and `-insecure`.',
     notes: [
       { kind: 'odd', text: 'Launch Options you set in Steam don\'t reach these copies: Nucleus starts `cure.exe` itself, without Steam.' },
       { kind: 'alt', text: 'A word that starts with `+` runs one of the game\'s console commands at start, after its config files, like `+fps_max 60`. Lesson 4 uses one.' },
@@ -820,6 +832,7 @@ const CURE: Lesson[] = [
       'Try 1, 2 and 4 players in Try it: the sizes follow the windows.',
     ],
     task: 'Add `Game.Play`, then try a few player counts.',
+    hint: 'At the end, under `// Each player`, add `Game.Play = function () {` and its closing `};`: what goes between runs once for each player. Inside, one `Context.StartArguments += …;` line adds `" -w "` with `Context.Width` and `" -h "` with `Context.Height`, joined with `+`; each text starts with a space.',
     notes: [
       { kind: 'pitfall', text: 'Mind the space at the start of `" -w "`. Without it the words run together (`-insecure-w`), and the game reads neither.' },
       { kind: 'why', text: 'Nucleus reads `Context.StartArguments` right after `Game.Play`, so what you add there is what that copy starts with.' },
@@ -859,7 +872,7 @@ const CURE: Lesson[] = [
       'The values are **text**, in quotes. Nucleus keeps the players\' choices in their saved profile, and a saved choice always comes back as text: `"60"`, never `60`. Text from the start is the same every time.',
     ],
     task: 'Add the option, use it in `Game.Play`, then see the frame rate in Try it.',
-    hint: 'Two places: the `Game.AddOption` line under `// A choice for the players`, and a second `Context.StartArguments +=` line inside `Game.Play`, under the one with `-w`. The code blocks on the left have both.',
+    hint: 'Two parts: the choice itself under `// A choice for the players`, then its use in `Game.Play`, under the `-w` line. `Game.AddOption` takes a name, a description, the key `"fps"` and a list of values as text (`["60", "30", …]`); in `Game.Play`, a second `Context.StartArguments +=` line adds `" +fps_max "` and `Context.Options["fps"]`.',
     notes: [
       { kind: 'try', text: 'Once it works, take the quotes off the values: `[60, 30, 90, 120, 144]`. What does Check say? Then put them back.', answer: 'Check warns that with a saved profile Nucleus gives the option back as text. Adding it to the arguments would still work, as it becomes text there anyway; comparing it (`=== 60`) wouldn\'t. Lesson 7 has that mistake.' },
       { kind: 'why', text: 'The key (`"fps"`) is how the code finds the choice; the name and description are what players read. Keep the key once the handler is out: saved profiles use it.' },
@@ -894,6 +907,7 @@ const CURE: Lesson[] = [
       '`engine_no_focus_sleep 0`: Source slows a window down while it isn\'t in focus, and with Nucleus only one window ever is. This keeps them all at full speed.',
     ],
     task: 'Write `autoexec.cfg` in `Game.Play`, then open each player\'s file in Try it.',
+    hint: 'In `Game.Play`, under the `+fps_max` line, make this player\'s path to `cure\\cfg\\autoexec.cfg`, a list of lines, and then write the file. `var autoexec` is `Context.GetFolder(Nucleus.Folder.InstancedGameFolder)` + `"\\\\cure\\\\cfg\\\\autoexec.cfg"`, `var lines` is `["engine_no_focus_sleep 0"]`, and `Context.WriteTextFile` with both goes last, just before `};`.',
     notes: [
       { kind: 'why', text: '`WriteTextFile` deletes the file before it writes. Where the copy has a link to the game\'s own file, it\'s the link that goes, so the real game folder stays as it was.' },
       { kind: 'odd', text: 'The path starts with a backslash (`"\\\\cure…"`): `GetFolder` gives the folder without one at the end.' },
@@ -932,7 +946,7 @@ const CURE: Lesson[] = [
       'In Try it, untick *Player 1 on the keyboard*: every file gets `joystick 1`.',
     ],
     task: 'Add the `if`, then compare the players\' files in Try it.',
-    hint: 'Inside `Game.Play`, between the `var lines = …;` line and `Context.WriteTextFile(…)`: `if (Player.IsKeyboardPlayer) { … } else { … }`, with `lines.push("joystick 0");` in the first part and `lines.push("joystick 1");` in the second.',
+    hint: 'Between the `var lines = …;` line and `Context.WriteTextFile`, add one line to the list that depends on who plays: `joystick 0` for the keyboard player, `joystick 1` for everyone else. Use `if (Player.IsKeyboardPlayer) { … } else { … }`, with a `lines.push("…");` in each part.',
     notes: [
       { kind: 'alt', text: 'With Nucleus\' several keyboards and mice (a later chapter), those players count too: the Hub handler also checks `Player.IsRawMouse` and `Player.IsRawKeyboard`.' },
       { kind: 'pitfall', text: 'A controller that moves but whose buttons do nothing needs a button layout: the last lesson shows how the Hub handler brings one.' },
@@ -967,7 +981,7 @@ const CURE: Lesson[] = [
       'Check, under the code, runs the same checks as the workbench and the editors. It finds all three: fix them by hand, or with Check\'s fix buttons. **Why?** on each says what would go wrong in Nucleus.',
     ],
     task: 'Fix the three mistakes Check finds.',
-    hint: 'Check lists the three under the code: press F8 to jump to each one in turn, and *Why?* says what\'s wrong. One is about quotes, one is a misspelled name, and one compares a choice with a number.',
+    hint: 'Press F8 to jump to the first mistake Check marks, and open *Why?* on it to see what Nucleus would do. One is `Game.GameName` in single quotes (the Hub install fails on that line), one is a `Context` name missing its last letter, and one compares `Context.Options["fps"]` with a number, though a saved choice comes back as text.',
     notes: [
       { kind: 'why', text: 'None of these stops the handler from loading: Nucleus would start every copy, and you\'d only find out by playing (or, for the Hub one, when someone installs it). That\'s what Check is for.' },
     ],
