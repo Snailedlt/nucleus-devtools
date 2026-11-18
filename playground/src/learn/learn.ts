@@ -26,7 +26,7 @@ import { hlHtml, hlCode } from '../codehl';
 import { reportButton } from '@core/reporticons';
 import { openReportFlow, ensureReportStyles } from '../reportflow';
 import { initErrorReports } from '../errorcatch';
-import { CHAPTERS, chapterMinutes, findLesson, hintFor, isLocal, isUnverified, listed, lessonNumber, problems, progress, run, skipTo, textWrites, tipText, type Chapter, type Lesson, type Note, type NoteKind, type Step, type Tip } from './lessons';
+import { CHAPTERS, chapterMinutes, findLesson, hasHint, hintFor, isLocal, isUnverified, listed, lessonNumber, problems, progress, run, skipTo, textWrites, tipText, type Chapter, type Lesson, type Note, type NoteKind, type Step, type Tip } from './lessons';
 import type { SimResult } from '@core/sim';
 
 const KEY = 'nucleus-learn';
@@ -442,9 +442,10 @@ function syncShow() {
   b.style.visibility = done ? 'hidden' : '';
   b.setAttribute('aria-hidden', String(done));
   b.tabIndex = done ? -1 : 0;
-  // Hint: in code lessons until the task is done (it then has nothing to say); keeps its place like Show me.
+  // Hint: in code lessons until the task is done (it then has nothing to say); keeps its place like Show me. Not in a
+  // lesson whose text already shows the code to copy (lessons.ts hasHint): the lesson is the hint there.
   const h = $('#hint');
-  h.hidden = l.kind !== 'code';
+  h.hidden = !hasHint(l);
   const solved = l.kind === 'code' && l.check?.(editor.getValue()) === null;
   h.style.visibility = solved ? 'hidden' : '';
   h.setAttribute('aria-hidden', String(solved));
@@ -472,7 +473,7 @@ function status() {
   task.classList.toggle('ok', ok);
   task.innerHTML = kbdify(ok
     ? `<strong>✓ Done.</strong> ${l.pane === 'tryit' ? 'Look at what each player gets in Try it, then go on.' : 'Go on when you\'re ready.'}`
-    : `<strong>Your turn:</strong> ${inline(l.task!)}${hintOpen ? `<span class="hint-box"><strong>Hint:</strong> ${inline(hintFor(l, text))}</span>${reportButton('idea', { text: "I'm stuck here", tip: "I'm stuck here: tell us where this lesson loses you (the lesson and, if you want, your code are filled in)", className: 'stuck', attrs: 'data-stuck' })}` : miss && touched ? `<span class="hint">${inline(miss)}</span>` : ''}`);
+    : `<strong>Your turn:</strong> ${inline(l.task!)}${hintOpen && hasHint(l) ? `<span class="hint-box"><strong>Hint:</strong> ${inline(hintFor(l, text))}</span>${reportButton('idea', { text: "I'm stuck here", tip: "I'm stuck here: tell us where this lesson loses you (the lesson and, if you want, your code are filled in)", className: 'stuck', attrs: 'data-stuck' })}` : miss && touched ? `<span class="hint">${inline(miss)}</span>` : ''}`);
   $('#next').classList.toggle('primary', ok);
   const cp = document.getElementById('checkpoint');
   if (cp) cp.hidden = !ok;

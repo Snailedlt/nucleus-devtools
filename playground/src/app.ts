@@ -18,7 +18,7 @@ import 'codemirror/addon/edit/matchbrackets';
 import 'codemirror/addon/edit/closebrackets';
 import { semanticMarks } from './semmarks';
 import { codeHandlers, fixedCodeKeys, foldRange, keysByPosition, lineCommentFold, selectReferences, vscodeMouse } from './keys';
-import { ACTIONS, appActionFor, codeKeyMap, keyLabel, labelOf, binding, onBindingsChange, type Group } from './keybindings';
+import { ACTIONS, appActionFor, codeKeyMap, keyLabel, labelOf, binding, onBindingsChange, stepOf, type Group } from './keybindings';
 import { lint, Diagnostic, RULES, lineOf, pluginGlobals, type TextEdit } from '@core/lint';
 import { api, ownerLabel, Resolved, type Member } from '@core/api';
 import { resolveAt } from '@core/complete';
@@ -62,7 +62,7 @@ import { BETA } from './testplan';
 import { feedbackUrl, openReport, setReportState } from './report';
 import { openReportFlow, ensureReportStyles } from './reportflow';
 import { initErrorReports } from './errorcatch';
-import { reportButton, REPORT_ACTIONS } from '@core/reporticons';
+import { reportButton, reportIcon, REPORT_ACTIONS } from '@core/reporticons';
 import { firstRunDone, initFirstRun } from './firstrun';
 import { countVisit, feedbackAvailable, feedbackBlockedByBrowser, feedbackOn, setFeedback, totalsUrl, use, wireVotes } from './feedback';
 import { blockedItemAt, messageMarkdown } from '@core/wm';
@@ -2782,20 +2782,22 @@ const addItems = (): MenuItem[] => [
   { label: 'Examples and Hub handlers', hint: 'Ctrl K', run: () => showOpen() },
   ...(lastClosed ? [{ kind: 'separator' as const, label: '' }, { label: `Reopen ${lastClosed.tab.meta.name}`, run: reopenClosed }] : []),
 ];
+// The Menu's icons (aria-hidden; the labels are the names): the shared report icons where there is one, emoji else.
+const RAIL_ICON = '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linejoin="round"><rect x="3.5" y="4.5" width="17" height="15" rx="2"/><path d="M9 4.5v15"/></svg>';
 const appItems = (): MenuItem[] => [
-  { label: 'Advanced mode', checked: mode === 'dev', run: () => ($('#advanced') as HTMLInputElement).click() },
-  { label: 'Tools in a side rail', checked: layout() === 'rail', run: () => setLayout(layout() === 'rail' ? 'bar' : 'rail') },
+  { label: 'Advanced mode', icon: '🛠️', checked: mode === 'dev', run: () => ($('#advanced') as HTMLInputElement).click() },
+  { label: 'Tools in a side rail', icon: RAIL_ICON, checked: layout() === 'rail', run: () => setLayout(layout() === 'rail' ? 'bar' : 'rail') },
   { kind: 'separator', label: '' },
-  { label: 'Settings…', hint: 'Ctrl ,', run: () => settings.open() },
-  { label: 'Keyboard shortcuts', hint: '?', run: () => helpDialog.showModal() },
-  { label: "What's new", run: () => ($('#news-open-2') as HTMLButtonElement).click() },
-  { label: 'Take the tour', run: () => tour.take() },
-  { label: 'Report a problem…', run: () => openReportFlow({ kind: 'problem', handlerCode: editor.getValue() }) },
-  { label: 'Request a feature…', run: () => openReportFlow({ kind: 'feature' }) },
+  { label: 'Settings…', icon: '⚙️', hint: 'Ctrl ,', run: () => settings.open() },
+  { label: 'Keyboard shortcuts', icon: '⌨️', hint: '?', run: () => helpDialog.showModal() },
+  { label: "What's new", icon: '✨', run: () => ($('#news-open-2') as HTMLButtonElement).click() },
+  { label: 'Take the tour', icon: '🧭', run: () => tour.take() },
+  { label: 'Report a problem…', icon: reportIcon('flag'), run: () => openReportFlow({ kind: 'problem', handlerCode: editor.getValue() }) },
+  { label: 'Request a feature…', icon: reportIcon('idea'), run: () => openReportFlow({ kind: 'feature' }) },
   { kind: 'separator', label: '' },
-  { label: '⌂ Home: about these tools', run: () => (location.href = homeHref()) },
-  { label: '📘 Learn: making your first handler', run: () => openLearn() },
-  ...(document.getElementById('test-open') ? [{ label: '🧪 Help test this beta', run: () => testGuide.open() }] : []),
+  { label: 'Home: about these tools', icon: '🏠', run: () => (location.href = homeHref()) },
+  { label: 'Learn: making your first handler', icon: '📘', run: () => openLearn() },
+  ...(document.getElementById('test-open') ? [{ label: 'Help test this beta', icon: '🧪', run: () => testGuide.open() }] : []),
 ];
 $('#tab-add').addEventListener('click', () => openMenu($('#tab-add'), 'New or open', addItems()));
 $('#app-menu-open').addEventListener('click', () => openMenu($('#app-menu-open'), 'Menu', appItems()));
@@ -3136,9 +3138,11 @@ const tour = initTour({
   selectTab,
   steps: [
     { title: 'Your handlers', text: 'Each open handler has a tab. The + starts a new one or opens yours: a file, an example or a Hub handler.', targets: ['.htabs-wrap', '.rail [data-rail=add]', '#doc-switch'], view: 'code' },
-    { title: 'The code', text: 'Write the handler here. Squiggles mark problems; hover a name for its docs. Ctrl+Space suggests, Alt+Enter fixes.', targets: ['#editor', '#formview', '#blocksview'], view: 'code' },
-    { title: 'Check', text: 'What Nucleus would reject or get wrong, each with why and a fix. F8 jumps to the next problem.', targets: ['.pane.side', '.pane-head [data-tab=problems]'], view: 'results', tab: 'problems' },
-    { title: 'Try it', text: 'Runs the handler once per player, as Nucleus would, and shows what each one gets.', targets: ['.pane-head [data-tab=simulate]'], view: 'results', tab: 'simulate' },
+    { title: 'The code', text: 'Write the handler here. Squiggles mark problems; hover a name for its docs. Alt+Enter fixes.', targets: ['#editor', '#formview', '#blocksview'], view: 'code',
+      // Pressed in the card, the tour does it: the code gets the focus and shows its suggestions.
+      act: { text: `Press ${labelOf('suggest')} in the code to see suggestions.`, key: (e) => stepOf(e) === binding('suggest'), run: () => { editor.focus(); editor.showHint({ hint: hinter, completeSingle: false, explicit: true }); } } },
+    { title: 'Check', text: 'What Nucleus would reject or get wrong, each with why and a fix. F8 jumps to the next problem.', targets: ['.pane.side', '.pane-head [data-tab=problems]'], view: 'results', tab: 'problems', act: { text: 'Click Check to open it.', click: '.pane-head [data-tab=problems]' } },
+    { title: 'Try it', text: 'Runs the handler once per player, as Nucleus would, and shows what each one gets.', targets: ['.pane-head [data-tab=simulate]'], view: 'results', tab: 'simulate', act: { text: 'Click Try it to run the handler.', click: '.pane-head [data-tab=simulate]' } },
     { title: 'Docs', text: 'Every option and function a handler can use, searchable. Insert into handler puts an example in your code.', targets: ['.pane-head [data-tab=api]'], view: 'results', tab: 'api' },
     { title: 'Lines', text: 'Every name a handler can use, in a list beside the code. Click one to insert it (Ctrl+B).', targets: ['#lines-toggle', '.rail [data-rail=lines]'], view: 'code' },
     { title: 'Files', text: "The files that go with the handler. Your game on this PC links the game's folder, so Check compares paths with the real files.", targets: ['#files-toggle'], view: 'code' },

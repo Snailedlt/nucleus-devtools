@@ -1673,6 +1673,10 @@ header #app-menu-open { width: var(--hdr-ctl); }
 .app-menu .am-check { width: 14px; color: var(--accent); font-weight: 700; }
 /* in a menu with ticks, every label starts in the same column */
 .app-menu:has(.am-check) button:not(:has(.am-check))::before { content: ""; width: 14px; flex: none; }
+.app-menu .am-ico { flex: none; width: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; line-height: 1; }
+.app-menu .am-ico svg { display: block; }
+.app-menu.am-icons button::before { content: none !important; }
+.app-menu.am-icons .am-check { text-align: right; }
 .app-menu .am-sep { height: 1px; background: var(--line); margin: 5px 4px; }
 .app-menu .am-h { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; padding: 6px 10px 2px; }
 /* Side rail */
@@ -2245,6 +2249,13 @@ dialog.tour { position: fixed; inset: 0; width: 100vw; height: 100%; max-width: 
 dialog.tour::backdrop { background: transparent; backdrop-filter: none; }
 .tour-hole { position: fixed; border-radius: var(--r-ctl); box-shadow: 0 0 0 200vmax rgba(10, 15, 22, .55); outline: 2px solid var(--accent); outline-offset: 0; pointer-events: none; }
 .tour-hole.none { left: 50% !important; top: 50% !important; width: 0 !important; height: 0 !important; outline: 0; }
+/* A step with an action (tour.ts act): a non-modal dialog over the page; only the cut-out lets clicks through. */
+dialog.tour.free { z-index: 1000; pointer-events: none; }
+dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
+.tour-block { position: fixed; inset: 0; }
+.tour-card .tour-act { margin-top: 8px; font-weight: 600; }
+.tour-card .tour-act.done { color: var(--ok); }
+.tour-card .tour-ico { font-size: 1.05em; }
 .tour-card { position: fixed; box-sizing: border-box; width: min(340px, calc(100vw - 24px)); padding: 14px 16px 12px; background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--sh-2); }
 .tour-card.center { left: 50% !important; top: 50% !important; transform: translate(-50%, -50%); width: min(400px, calc(100vw - 24px)); }
 .tour-card[data-sheet] { left: 8px !important; right: 8px; width: auto; transform: none; }
@@ -2410,7 +2421,7 @@ dialog.tour::backdrop { background: transparent; backdrop-filter: none; }
       <div role="tabpanel" id="panel-probes" hidden><div id="probes"></div></div>
     </section>
   </main>
-  <footer><span id="build-info" class="dev-only"></span><span>Your draft is kept in this browser only.</span><button class="link foot-dup" id="tour-open" type="button">Take the tour</button><button class="link tg-open" id="test-open" type="button">🧪 Help test this beta</button><button class="link foot-dup" id="help-open-2" type="button">Keyboard shortcuts</button><button class="link foot-dup" type="button" data-tips-toggle aria-pressed="true">Tips: on</button><button class="link foot-dup" type="button" id="news-open-2">What's new</button><a class="link start-link foot-dup" href="https://snailedlt.github.io/nucleuscoop-handler-testbench/start/" title="What the workbench and the VS Code extension do, and how to install them">About these tools</a><span class="comm-foot">Questions? <a class="link" href="__DISCORD_INVITE__" target="_blank" rel="noopener">Discord</a> · <a class="link" href="__REDDIT__" target="_blank" rel="noopener">r/nucleuscoop</a></span><span class="made-by">Made by <a class="link" href="https://github.com/Snailedlt" rel="author" target="_blank">Snailedlt</a> (Jørgen KH)</span></footer>
+  <footer><span id="build-info" class="dev-only"></span><span>Your draft is kept in this browser only.</span><button class="link foot-dup" id="tour-open" type="button"><span aria-hidden="true">🧭</span> Take the tour</button><button class="link tg-open" id="test-open" type="button">🧪 Help test this beta</button><button class="link foot-dup" id="help-open-2" type="button">Keyboard shortcuts</button><button class="link foot-dup" type="button" data-tips-toggle aria-pressed="true">Tips: on</button><button class="link foot-dup" type="button" id="news-open-2">What's new</button><a class="link start-link foot-dup" href="https://snailedlt.github.io/nucleuscoop-handler-testbench/start/" title="What the workbench and the VS Code extension do, and how to install them">About these tools</a><span class="comm-foot">Questions? <a class="link" href="__DISCORD_INVITE__" target="_blank" rel="noopener">Discord</a> · <a class="link" href="__REDDIT__" target="_blank" rel="noopener">r/nucleuscoop</a></span><span class="made-by">Made by <a class="link" href="https://github.com/Snailedlt" rel="author" target="_blank">Snailedlt</a> (Jørgen KH)</span></footer>
 </div>
 
 <div id="tip" hidden></div>
@@ -2536,7 +2547,7 @@ dialog.tour::backdrop { background: transparent; backdrop-filter: none; }
   <div class="set-panel" role="tabpanel" id="sp-help" aria-labelledby="st-help" data-label="Tips and help" hidden>
 
     <div class="set-sec"><h3>Start-up questions</h3><p class="muted small" style="margin:0 0 6px">Nucli's two questions from your first visit: how much guidance, and where the tools go.</p><button class="btn" type="button" id="fr-again">Ask me again</button></div>
-    <div class="set-sec"><h3>Guided tour</h3><p class="muted small" style="margin:0 0 6px">A short walk past the parts of the workbench: tabs, code, Check, Try it, Docs and the rest.</p><button class="btn" type="button" id="set-tour">Take the tour</button></div>
+    <div class="set-sec"><h3>Guided tour</h3><p class="muted small" style="margin:0 0 6px">A short walk past the parts of the workbench: tabs, code, Check, Try it, Docs and the rest.</p><button class="btn" type="button" id="set-tour"><span aria-hidden="true">🧭</span> Take the tour</button></div>
     <div class="set-sec">
       <label class="set-check"><input type="checkbox" id="set-tips"> <span>Tips under the code<small>General tips, and a heads-up when the code makes one relevant</small></span></label>
       <button class="link" type="button" id="set-heads">Show heads-ups again</button></div>
@@ -2678,7 +2689,7 @@ dialog.tour::backdrop { background: transparent; backdrop-filter: none; }
 
 <dialog id="help-dialog" aria-label="Keyboard shortcuts">
   <h2 tabindex="-1" autofocus>Keyboard shortcuts</h2>
-  <p class="muted" style="margin:0 0 8px">The editor uses VS Code's keys. On a Mac, ⌘ instead of Ctrl. Keys with <kbd>[</kbd> <kbd>]</kbd> <kbd>/</kbd> <kbd>\</kbd> <kbd>;</kbd> go by position, as in VS Code: on a German, Spanish or Nordic keyboard, press the key where a US keyboard has that one (e.g. <kbd>Ü</kbd> for <kbd>[</kbd>). <button class="link" type="button" id="help-rebind">Change shortcuts</button> · <button class="link" type="button" id="help-tour">Take the tour</button></p>
+  <p class="muted" style="margin:0 0 8px">The editor uses VS Code's keys. On a Mac, ⌘ instead of Ctrl. Keys with <kbd>[</kbd> <kbd>]</kbd> <kbd>/</kbd> <kbd>\</kbd> <kbd>;</kbd> go by position, as in VS Code: on a German, Spanish or Nordic keyboard, press the key where a US keyboard has that one (e.g. <kbd>Ü</kbd> for <kbd>[</kbd>). <button class="link" type="button" id="help-rebind">Change shortcuts</button> · <button class="link" type="button" id="help-tour"><span aria-hidden="true">🧭</span> Take the tour</button></p>
   <table class="keys"><tbody>
     <tr class="kh"><th colspan="2">Workbench</th></tr>
     <tr><td><kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>P</kbd> · <kbd>F1</kbd></td><td>Command palette: every command (format, fix, try it, theme…)</td></tr>

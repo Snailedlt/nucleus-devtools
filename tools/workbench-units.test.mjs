@@ -177,7 +177,7 @@ test("the saved file's name: the folder a Hub install makes (Game.GameName), els
 // are what people copy (no errors); the finished handler has no warnings either; what the notes claim Check says,
 // it says.
 test('learn: every lesson starts unfinished, its solution passes, with no errors', async () => {
-  const { CHAPTERS, FINAL, solutionErrors, findLesson, hintFor } = await load('playground/src/learn/lessons.ts');
+  const { CHAPTERS, FINAL, solutionErrors, findLesson, hintFor, hasHint } = await load('playground/src/learn/lessons.ts');
   const { lint } = await load(path.join(coreDir, 'src', 'core', 'lint.ts'));
   const first = CHAPTERS.find((c) => c.id === 'first-handler');
   assert.ok(first && first.lessons.length >= 10, 'the first chapter');
@@ -237,6 +237,10 @@ test('learn: every lesson starts unfinished, its solution passes, with no errors
   let fixed = quiz.start;
   for (let i = 0; i < 3; i++) { const d = lint(fixed).find((x) => x.fixes?.length && (x.severity === 'error' || x.severity === 'warning')); if (d) fixed = applyEditsToText(fixed, d.fixes[0].edits); }
   assert.equal(quiz.check(fixed), null, `Check's fixes finish the quiz: ${quiz.check(fixed)}`);
+  // Hint only where the learner works something out: not where the text shows the lines to copy (W29).
+  assert.ok(hasHint(quiz), 'the fix-it keeps its Hint');
+  assert.ok(!hasHint(CHAPTERS[0].lessons.find((l) => l.id === 'name')), 'a copy-the-lines lesson has no Hint');
+  assert.ok(!hasHint({ ...quiz, hint: false }) && hasHint({ ...CHAPTERS[0].lessons.find((l) => l.id === 'name'), hint: true }), 'hint: false / true override it');
 });
 
 test('learn: optional lessons are skippable in one click, and the chapter works without them', async () => {

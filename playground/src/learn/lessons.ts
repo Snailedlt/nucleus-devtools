@@ -58,8 +58,9 @@ export interface Lesson {
   goals?: Goal[];
   /** What a goal counts: "lines", "mistakes"… */
   unit?: string;
-  /** The Hint button's text, where the one made from check()'s message and the lesson's empty section isn't good. */
-  hint?: string;
+  /** The Hint button's text, where the one made from check()'s message and the lesson's empty section isn't good.
+   *  `false`: no Hint button, `true`: one even though the lesson shows its code (hasHint decides otherwise). */
+  hint?: string | boolean;
   /** test and setup lessons: the steps, and what to download. */
   steps?: Step[];
   /** A small print line under the steps. */
@@ -158,13 +159,39 @@ function whereOf(l: Lesson, text: string): string {
   const line = text.split('\n').findIndex((x) => x.trim() === pick.c) + 1;
   return `Where: under \`${pick.c}\`${line ? ` (line ${line})` : ''}.`;
 }
+/** The lines a lesson's text gives to copy: its ```js blocks' lines to add ("+ "), or a whole block without any (as
+ *  learn.ts para() copies them); a diff with lines left out ("- ") has nothing to copy. */
+export function copyLines(l: Lesson): string[] {
+  const out: string[] = [];
+  for (const p of l.text) {
+    const m = /^```\w*\n([\s\S]*?)\n?```$/.exec(p.trim());
+    if (!m) continue;
+    const raw = m[1].split('\n');
+    if (raw.some((x) => x.startsWith('- '))) continue;
+    const adds = raw.filter((x) => x.startsWith('+ ')).map((x) => x.slice(2));
+    out.push(...(adds.length ? adds : raw).map((x) => x.trim()).filter((x) => x && x !== '…'));
+  }
+  return out;
+}
+/** Whether a code lesson has a Hint. Not where the text already shows the code to add as a block to copy (every line
+ *  the solution adds is in it): there the lesson is the hint, and Show me is still there. Only where the learner has
+ *  to work something out (fix-its, tasks in words). `hint: false` / `true` overrides it. */
+export function hasHint(l: Lesson): boolean {
+  if (l.kind !== 'code') return false;
+  if (typeof l.hint === 'boolean') return l.hint;
+  const start = new Set(l.start.split('\n').map((x) => x.trim()));
+  const added = l.solution.split('\n').map((x) => x.trim()).filter((x) => x && !start.has(x));
+  if (!added.length) return true;
+  const copy = new Set(copyLines(l));
+  return !added.every((x) => copy.has(x));
+}
 /** The Hint button: what the lesson's check says is still missing or wrong, and where to look. Empty once done. */
 export function hintFor(l: Lesson, text: string): string {
   const miss = l.check?.(text) ?? null;
   if (miss === null) return '';
   // A problem in the code comes first, whatever the lesson's own hint says.
   if (/^Check shows a problem on line/.test(miss)) return `${miss.replace(/([^.!?;])$/, '$1.')} Hover the marked code for what's wrong, and Ctrl+. for a fix.`;
-  if (l.hint) return l.hint;
+  if (typeof l.hint === 'string') return l.hint;
   return [miss.replace(/([^.!?;])$/, '$1.'), whereOf(l, text)].filter(Boolean).join(' ');
 }
 /** Try it: `players` players, the first on the keyboard (or none). */

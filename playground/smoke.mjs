@@ -454,9 +454,11 @@ for (const theme of ['light', 'dark']) {
     await q.waitForTimeout(400);
     ts = await tourState();
     check(ts.title === 'Check' && /^3 of/.test(ts.count) && await q.$eval('.pane-head [data-tab=problems]', (b) => b.getAttribute('aria-selected') === 'true'), `${theme}: → steps on, to Check (${ts.count}, ${ts.title})`);
-    await q.keyboard.press('ArrowRight');
-    await q.waitForTimeout(300);
-    check(await q.$eval('.pane-head [data-tab=simulate]', (b) => b.getAttribute('aria-selected') === 'true'), `${theme}: the tour opens Try it as it gets there`);
+    // Check's action: clicking the tab in the cut-out shows "✓ Done" and goes on by itself.
+    await q.click('.pane-head [data-tab=problems]');
+    check(/Done/.test(await q.textContent('#tour-act')), `${theme}: doing a step's action marks it done`);
+    await q.waitForTimeout(1000);
+    check(/^4 of/.test(await q.textContent('#tour-count')), `${theme}: a step's action moves the tour on`);
     await q.keyboard.press('Escape');
     await q.waitForTimeout(300);
     const saved = await q.evaluate(() => JSON.parse(localStorage.getItem('nucleus-workbench-tour')));
@@ -1132,14 +1134,11 @@ await m.ctx.close();
     await s.p.waitForTimeout(300);
     check(!(await s.p.isVisible('#drawer-list a[aria-current]')), `learn ${theme}: the lesson list closes`);
     await s.p.click('#drawer-toggle');
-    // Hint: folded until asked for, then what's still to do; chapter 2's Try it draws each player's window, and its
-    // quiz counts the mistakes left apart from the problems.
+    // Hint: none in a lesson that shows the code to copy (the lesson is the hint), Show me still there; chapter 2's Try
+    // it draws each player's window, and its quiz counts the mistakes left apart from the problems.
     await s.p.goto(BASE + `learn/#${CH2}/window-size`);
     await s.p.waitForTimeout(500);
-    check(!(await s.p.isVisible('.hint-box')) && (await s.p.isVisible('#hint')), `learn ${theme}: Hint is a button, its text hidden until asked for`);
-    await s.p.click('#hint');
-    await s.p.waitForTimeout(400);
-    check(/Game\.Play/.test(await s.p.textContent('.hint-box')) && (await s.p.getAttribute('#hint', 'aria-expanded')) === 'true', `learn ${theme}: Hint says what's missing`);
+    check(!(await s.p.isVisible('#hint')) && (await s.p.isVisible('#show')), `learn ${theme}: no Hint where the lesson shows the code to copy, Show me still there`);
     await s.p.click('#show');
     await s.p.waitForTimeout(700);
     check((await s.p.$$('#try-out .screen .swin')).length === Number(await s.p.inputValue('#try-players')) && /-w 960 -h (1080|540)/.test(await s.p.textContent('#try-out')) && /Task done/.test(await s.p.textContent('#pane')), `learn ${theme}: chapter 2's Try it shows each window and its arguments`);
@@ -1147,6 +1146,11 @@ await m.ctx.close();
     await s.p.goto(BASE + `learn/#${CH2}/fix-it`);
     await s.p.waitForTimeout(500);
     check(/0 of 3 mistakes/.test(await s.p.textContent('#pane')), `learn ${theme}: the quiz's task line counts the mistakes`);
+    // A fix-it keeps its Hint: folded until asked for, then what's still to do.
+    check(!(await s.p.isVisible('.hint-box')) && (await s.p.isVisible('#hint')), `learn ${theme}: Hint is a button in a fix-it, its text hidden until asked for`);
+    await s.p.click('#hint');
+    await s.p.waitForTimeout(400);
+    check((await s.p.textContent('.hint-box')).length > 20 && (await s.p.getAttribute('#hint', 'aria-expanded')) === 'true', `learn ${theme}: Hint says what's missing`);
     await s.p.goto(BASE + `learn/#${CH2}/overview`);
     await s.p.waitForTimeout(400);
     check((await s.p.$$('.ov-list li')).length >= 8 && (await s.p.isVisible('.steps .trouble summary')), `learn ${theme}: chapter 2's overview lists its lessons, and steps say what to do if it doesn't work`);

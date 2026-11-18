@@ -5,6 +5,9 @@ export interface MenuItem {
   /** A short hint on the right: a shortcut, a count. */
   hint?: string;
   run?: () => void;
+  /** A small icon before the label (trusted markup: an emoji or an SVG), hidden from screen readers. When any item of a
+   *  menu has one, every item gets the column (so the labels line up) and a switch shows its ✓ at the end. */
+  icon?: string;
   /** A switch item (role menuitemcheckbox). */
   checked?: boolean;
   /** A group heading or a separator (no run). */
@@ -32,13 +35,17 @@ export function openMenu(anchor: HTMLElement, label: string, items: MenuItem[], 
   closeMenu();
   if (was === anchor) return; // a second click on the same button closes it
   const el = document.createElement('div');
-  el.className = 'app-menu';
+  const icons = items.some((it) => it.icon);
+  el.className = icons ? 'app-menu am-icons' : 'app-menu';
   el.setAttribute('role', 'menu');
   el.setAttribute('aria-label', label);
   el.innerHTML = items.map((it, i) =>
     it.kind === 'separator' ? '<div class="am-sep" role="separator"></div>'
     : it.kind === 'heading' ? `<div class="am-h" role="presentation">${esc(it.label)}</div>`
-    : `<button type="button" role="${it.checked === undefined ? 'menuitem' : 'menuitemcheckbox'}" data-i="${i}"${it.checked !== undefined ? ` aria-checked="${it.checked}"` : ''}${it.disabled ? ' disabled' : ''}>${it.checked !== undefined ? `<span class="am-check" aria-hidden="true">${it.checked ? '✓' : ''}</span>` : ''}<span class="am-l">${esc(it.label)}</span>${it.hint ? `<kbd class="am-k">${esc(it.hint)}</kbd>` : ''}</button>`).join('');
+    : (() => {
+      const check = it.checked !== undefined ? `<span class="am-check" aria-hidden="true">${it.checked ? '✓' : ''}</span>` : '';
+      return `<button type="button" role="${it.checked === undefined ? 'menuitem' : 'menuitemcheckbox'}" data-i="${i}"${it.checked !== undefined ? ` aria-checked="${it.checked}"` : ''}${it.disabled ? ' disabled' : ''}>${icons ? `<span class="am-ico" aria-hidden="true">${it.icon ?? ''}</span>` : check}<span class="am-l">${esc(it.label)}</span>${it.hint ? `<kbd class="am-k">${esc(it.hint)}</kbd>` : ''}${icons ? check : ''}</button>`;
+    })()).join('');
   // In its own labelled region (a landmark), so screen readers find it in the page structure; on <body>, so a
   // header with a backdrop filter doesn't become its containing block.
   const region = document.createElement('div');
