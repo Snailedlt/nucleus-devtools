@@ -65,6 +65,7 @@ The Pages build uses splitscreenme-vscode's `main`: merge that first when the wo
 
 ## Conventions
 
+- **Structured and data-driven.** Put content in data (JSON, typed fields) and render it, rather than writing it into strings or code, so it's easy to maintain and reads consistently for people (e.g. the AI docs' `basis`: fields in the extension's `data/claude-*.json`, shown as the sparkle tooltip's list by the core's `aiTip`).
 - `.coderabbit.yaml` sets CodeRabbit's pull request reviews: this file is its guidelines, and its `path_instructions` repeat the rules here per folder, so change them together. The web app's setup (scope, DeepWiki) is in splitscreenme-vscode's [CODERABBIT.md](https://github.com/Snailedlt/splitscreenme-vscode/blob/main/CODERABBIT.md).
 
 - Show changes in the preview artifact or the test address first; go live only when the maintainer says so.
