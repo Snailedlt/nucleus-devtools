@@ -1,13 +1,22 @@
 name: Workbench preview (Vercel)
-# A preview of the workbench for every pull request, so it can be tried before it's merged: built like the
-# GitHub Pages site (pages.yml), with splitscreenme-vscode's branch of the same name when there is one (else its
-# main), and deployed to Vercel as a preview of the nucleus-workbench-preview project (created on the first
-# deploy). The pull request gets one comment with the link, updated on every push.
-# Previews sit behind Vercel's login unless the project's Deployment Protection is turned off.
+# Builds of the workbench to try before they're released, on Vercel (the nucleus-workbench-preview project,
+# created on the first deploy):
+# - every pull request: its own preview, linked in one comment on the pull request (updated on every push), built
+#   with splitscreenme-vscode's branch of the same name when there is one (else its main);
+# - the next release: https://nucleus-workbench-next.vercel.app, this repo's and splitscreenme-vscode's
+#   claude/next-release, with the tools page linking the `test-build` pre-release (test-build.yml) instead of the
+#   last release. Updated on every push to claude/next-release here and after every new test build.
+# Built with --preview (no search indexing, What's new shows Unreleased) and without FEEDBACK_GOATCOUNTER, so votes
+# and counts never mix with the live site's. Previews sit behind Vercel's login unless Deployment Protection is off.
 # One-time setup: a VERCEL_TOKEN repository secret (vercel.com/account/tokens, scoped to "snailedlt's projects").
 # Without it, or for pull requests from forks (no secrets), the workflow builds and says why it didn't deploy.
 on:
   pull_request:
+  push:
+    branches: [claude/next-release]
+  workflow_run:
+    workflows: [Test build]
+    types: [completed]
   workflow_dispatch:
     inputs:
       core:
@@ -19,25 +28,44 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: preview-${{ github.event.pull_request.number || github.ref }}
+  group: preview-${{ github.event.pull_request.number || 'next' }}
   cancel-in-progress: true
 
 env:
   VERCEL_SCOPE: snailedlts-projects
   VERCEL_PROJECT: nucleus-workbench-preview
+  NEXT_BRANCH: claude/next-release
+  NEXT_URL: nucleus-workbench-next.vercel.app
 
 jobs:
   preview:
+    # After a test build: only when it published one (a skipped hourly run publishes nothing).
+    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     steps:
+      - name: Pull request or the next release
+        id: mode
+        run: |
+          if [ "${{ github.event_name }}" = pull_request ]; then
+            echo "next=false" >> "$GITHUB_OUTPUT"; echo "ref=${{ github.head_ref }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = workflow_dispatch ] && [ "${{ github.ref_name }}" != "$NEXT_BRANCH" ]; then
+            echo "next=false" >> "$GITHUB_OUTPUT"; echo "ref=${{ github.ref_name }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "next=true" >> "$GITHUB_OUTPUT"; echo "ref=$NEXT_BRANCH" >> "$GITHUB_OUTPUT"
+          fi
       - uses: actions/checkout@v4
+        with:
+          # The next release always builds this repo's claude/next-release (a test build runs this file from main).
+          ref: ${{ steps.mode.outputs.next == 'true' && env.NEXT_BRANCH || '' }}
       - name: Which splitscreenme-vscode branch
         id: core
+        env:
+          WANT: ${{ inputs.core }}
+          BRANCH: ${{ steps.mode.outputs.ref }}
         run: |
-          want="${{ inputs.core }}"
-          branch="${{ github.head_ref || github.ref_name }}"
+          want="$WANT"
           if [ -z "$want" ]; then
-            if git ls-remote --exit-code --heads https://github.com/Snailedlt/splitscreenme-vscode.git "$branch" >/dev/null; then want="$branch"; else want=main; fi
+            if git ls-remote --exit-code --heads https://github.com/Snailedlt/splitscreenme-vscode.git "$BRANCH" >/dev/null; then want="$BRANCH"; else want=main; fi
           fi
           echo "Building with splitscreenme-vscode@$want"
           echo "ref=$want" >> "$GITHUB_OUTPUT"
@@ -56,8 +84,8 @@ jobs:
       - name: Every Hub handler, from our own copy (the data branch)
         run: git clone -q --depth 1 --branch data "https://github.com/${{ github.repository }}.git" playground/.hubdata
       - name: Build
-        # No FEEDBACK_GOATCOUNTER: votes and counts from previews would mix with the live site's.
-        run: node build.mjs --core ../core --hub-data .hubdata
+        # The next release's tools page links the test build; a pull request's links the last release.
+        run: node build.mjs --core ../core --hub-data .hubdata --preview ${{ steps.mode.outputs.next == 'true' && '--test-build' || '' }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
         working-directory: playground
@@ -65,6 +93,7 @@ jobs:
         id: deploy
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          NEXT: ${{ steps.mode.outputs.next }}
         run: |
           if [ -z "$VERCEL_TOKEN" ]; then
             echo "::notice::No VERCEL_TOKEN secret (or a pull request from a fork): built, not deployed."
@@ -73,6 +102,10 @@ jobs:
           cd playground/dist/pages
           npx --yes vercel@latest link --yes --project "$VERCEL_PROJECT" --scope "$VERCEL_SCOPE" --token "$VERCEL_TOKEN" >/dev/null
           url=$(npx --yes vercel@latest deploy --yes --scope "$VERCEL_SCOPE" --token "$VERCEL_TOKEN")
+          if [ "$NEXT" = true ]; then
+            npx --yes vercel@latest alias set "$url" "$NEXT_URL" --scope "$VERCEL_SCOPE" --token "$VERCEL_TOKEN"
+            url="https://$NEXT_URL"
+          fi
           echo "Preview: $url"
           echo "url=$url" >> "$GITHUB_OUTPUT"
           echo "### Preview: $url" >> "$GITHUB_STEP_SUMMARY"
@@ -90,7 +123,7 @@ jobs:
               marker,
               `**Try this pull request:** ${process.env.URL}`,
               '',
-              `The workbench as built from ${sha}, with splitscreenme-vscode@${process.env.CORE}. Updated on every push.`,
+              `The workbench as built from ${sha}, with splitscreenme-vscode@${process.env.CORE}. Updated on every push. The next release as a whole: https://${process.env.NEXT_URL}`,
             ].join('\n');
             const { owner, repo } = context.repo;
             const issue_number = context.payload.pull_request.number;
