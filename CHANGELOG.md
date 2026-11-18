@@ -33,6 +33,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 ### 🛠️ Improved
 
+- **AI-written docs stand out on the Docs pages too.** On the site's Docs pages (`/docs/`), "In practice" has its own tinted section with an *AI-written* tag, and AI-written docs end with a marked note saying what they're based on, as in the workbench's Docs. Long names in a page's title wrap on a phone.
 - **Less on screen until you ask.** The window-message names and the "+" buttons in `BlockedMessages` and the game-folder lists show for the list your cursor is in, or when you point at its line. Try it's explanation is folded into *How this works*. The footer keeps only the beta guide and where to ask; the rest is in the ⋯ menu and the command palette. The AI-written docs call to action in Docs is one line.
 - **Credit lines are off for people who write code.** In Advanced mode, saved handlers get no credit lines unless you turn them on in Settings; Guided mode keeps them.
 - **Move around with the keyboard, as in VS Code.** F6 and Shift+F6 go from the header to the files, the code and the results; Ctrl+Shift+M goes to Check. Skip links (*Skip to the code*, *Skip to Check*) appear on the first Tab. Press Shift twice to open Open, as in JetBrains editors (Settings › Keyboard shortcuts turns it off). All of them can be changed in Settings.

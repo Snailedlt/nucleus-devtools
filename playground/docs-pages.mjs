@@ -68,6 +68,27 @@ const folderOf = (v) => (/^[A-Za-z_$][\w$.]*$/.test(v) ? v : undefined);
  */
 /** The left-hand list of docs/ and rules/ (groups › names, a filter on top): its CSS, its markup, and nav.js fills it
  *  from docs/nav.json. `here`: the page's entry (a docs path, a check's id, or a group key) to mark. */
+// AI-written parts marked as in the workbench's Docs (doccard.ts): "In practice" in its own tinted section with the
+// sparkle and an "AI-written" tag, and the "✎ AI-written, based on …" notes (the doc's, the parameters') as a
+// sparkle note box. The Markdown (core/api.ts) is shared with the editors' hovers, so the marking happens here.
+const AI_CSS = `.ai-spark { display: inline-block; flex: none; width: 1.1em; height: 1.1em; vertical-align: -0.18em; background: linear-gradient(135deg, #a855f7 10%, #22d3ee 90%);
+  -webkit-mask: var(--spark) center / contain no-repeat; mask: var(--spark) center / contain no-repeat;
+  --spark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M14 1.5Q15 9.5 23 10.5Q15 11.5 14 19.5Q13 11.5 5 10.5Q13 9.5 14 1.5Z'/%3E%3Cpath d='M5.5 13.5Q6 17.5 10 18Q6 18.5 5.5 22.5Q5 18.5 1 18Q5 17.5 5.5 13.5Z'/%3E%3C/svg%3E"); }
+.ai-part { margin: 18px 0; padding: 10px 14px; border-left: 3px solid color-mix(in srgb, #a855f7 55%, var(--line)); background: color-mix(in srgb, #a855f7 6%, transparent); border-radius: 0 8px 8px 0; }
+.ai-part > :last-child { margin-bottom: 0; }
+.ai-h { display: flex; align-items: center; gap: 8px; margin: 0 0 8px; font-size: 1.05rem; }
+.ai-tag { font-size: 12px; font-weight: 500; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 0 8px; }
+.ai-note { display: flex; gap: 8px; align-items: flex-start; margin: 10px 0 16px; padding: 8px 10px; border: 1px solid color-mix(in srgb, #a855f7 35%, var(--line)); border-radius: 8px; font-size: 14px; color: var(--muted); }
+.ai-part .ai-note { margin: 10px 0 0; border: 0; border-top: 1px solid var(--line); border-radius: 0; padding: 8px 0 0; }
+.ai-note .ai-spark { margin-top: 2px; }`;
+function markAiWritten(html) {
+  const note = (inner, rest) => `<p class="ai-note"><span class="ai-spark" aria-hidden="true"></span><span>${inner.replace(/^AI-written/, '<strong>AI-written</strong>')}${rest}</span></p>`;
+  return html
+    .replace(/<p><strong>In practice<\/strong> <em>\(AI-written\)<\/em><\/p>([\s\S]*?)<p><em>✎ ([\s\S]*?)<\/em>([\s\S]*?)<\/p>/g, (_, body, inner, rest) =>
+      `<section class="ai-part" aria-label="In practice (AI-written)"><h2 class="ai-h"><span class="ai-spark" aria-hidden="true"></span>In practice <span class="ai-tag">AI-written</span></h2>${body}${note(inner, rest)}</section>`)
+    .replace(/<p><em>✎ ([^<]*AI-written[\s\S]*?)<\/em>([\s\S]*?)<\/p>/g, (_, inner, rest) => note(inner, rest));
+}
+
 export const DRAWER_CSS = `/* The docs list: a drawer on the left (groups › names, a filter on top), over the page on a narrow screen. */
 .docs-wrap { max-width: 1280px; margin: 0 auto; display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 0 8px; }
 .docs-wrap > main { max-width: 900px; margin: 0; min-width: 0; }
@@ -132,10 +153,12 @@ ${themeScript}
 ${style}
 <style>
 .crumbs { font-size: 14px; color: var(--muted); margin: 0 0 14px; }
+main h1 { overflow-wrap: anywhere; } /* a long name (Game.ProtoInput.RegisterRawInputHook) wraps on a phone */
 .crumbs a { color: inherit; }
 .open-wb { margin: 0 0 18px; font-size: 14px; }
 pre.cfg { white-space: pre-wrap; overflow-wrap: anywhere; }
 .dlist { padding-left: 20px; } .dlist li { margin: 0 0 6px; }
+${AI_CSS}
 ${SITE_HEADER_CSS}${DOC_FEEDBACK_CSS}
 ${DRAWER_CSS}
 table { border-collapse: collapse; margin: 0 0 16px; font-size: 14px; } th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
@@ -184,7 +207,7 @@ ${docsDrawer(up, here0, o.groups.map((g) => `<li><a href="${up}docs/${g.key}/">$
     const body = `<p class="crumbs">${crumbs.join(' › ')}</p>
 <h1>${esc(v ? title : 'Docs')}</h1>
 <p class="open-wb"><a href="${up}#docs${v ? `-${encodeURIComponent(v)}` : ''}">Open in the workbench</a> (search, and try it in a handler)</p>
-${mdToHtml(page.markdown.replace(/^## [^\n]*\n+/, ''), href)}
+${markAiWritten(mdToHtml(page.markdown.replace(/^## [^\n]*\n+/, ''), href))}
 ${page.path && o.docReviewUrl ? docFeedback(page.path, o.docReviewUrl(page.path), esc, 'doc', 'Is the doc right?') + (practiceOf(page.path) ? docFeedback(page.path, o.docReviewUrl(page.path), esc, 'practice', 'Is "In practice" right?') : '') + docFeedbackScript(o.feedbackSite ?? null) : ''}
 `;
     const dir = v ? path.join(o.outDir, v) : o.outDir;
