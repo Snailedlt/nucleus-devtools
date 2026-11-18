@@ -57,7 +57,7 @@ async function send(input: ReportInput) {
       { label: '$(github) Open the report on GitHub', description: 'recommended', detail: 'A form with everything filled in: check it, then submit', value: 'github' },
       { label: '$(copy) No GitHub account? Copy the report', detail: "Copies it as text and opens the testers' thread on Discord, to paste it there", value: 'copy' },
     ],
-    { title: r.title || 'Report', placeHolder: 'You see everything before it is sent' },
+    { title: r.title || (input.kind === 'feature' ? 'Request a feature' : input.kind === 'check' ? 'This check is wrong' : 'Report a problem'), placeHolder: 'You see everything before it is sent' },
   );
   if (!how) return;
   if (how.value === 'github') return void vscode.env.openExternal(vscode.Uri.parse(r.url));

@@ -284,7 +284,7 @@ function formUrl(repo: string, template: string, title: string, fields: Record<s
 /** The report as Markdown text to paste (Discord, a forum): the form's labels and answers, the details in a block. */
 function reportText(key: string, title: string, f: Record<string, string>): string {
   const form = FORMS[key];
-  const out = [`**${title || form.name}** (${form.name}, SplitScreen.Me tools)`];
+  const out = [title && title !== form.name ? `**${title}** (${form.name}, Nucleus Co-op dev tools)` : `**${form.name}** (Nucleus Co-op dev tools)`];
   for (const [id, label] of Object.entries(form.labels)) {
     if (id === 'context' || !f[id]) continue;
     const v = cut(f[id], id === 'code' || id === 'error' || id === 'simulated' ? 700 : 500);

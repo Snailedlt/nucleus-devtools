@@ -199,6 +199,9 @@ async function main(argv: string[]): Promise<number> {
       return args.positional.length || has(args, '-h') || has(args, '--help') ? 0 : 2;
     }
     cmd = 'lint';
+  } else if (has(args, '-h') || has(args, '--help')) {
+    console.log(commandHelp(cmd));
+    return 0;
   }
   const json = has(args, '--json');
   switch (cmd) {
@@ -301,12 +304,14 @@ async function cmdLint(args: Args, json: boolean): Promise<number> {
     if (fixMode) {
       const r = fixAll(text, fileOptions);
       fixed = r.applied;
-      if (r.code !== text) {
-        if (fixMode === 'write') fs.writeFileSync(file, (original.startsWith('﻿') ? '﻿' : '') + r.code);
+      if (r.code !== text && fixMode === 'write') {
+        fs.writeFileSync(file, (original.startsWith('﻿') ? '﻿' : '') + r.code);
         text = r.code;
       }
     }
-    const diags = lint(text, fileOptions).filter((d) => (quiet ? d.severity === 'error' : verbose || d.severity !== 'hint'));
+    // A dry run leaves the file as it is, so what's left is shown at the file's own line numbers: its problems minus the ones it would fix.
+    const unfixed = (d: { rule: string; start: number }) => fixMode !== 'dry' || !fixed.some((f) => f.rule === d.rule && f.line === lineOf(text, d.start) + 1);
+    const diags = lint(text, fileOptions).filter((d) => (quiet ? d.severity === 'error' : verbose || d.severity !== 'hint') && unfixed(d));
     for (const d of diags) {
       if (d.severity === 'error') errors++;
       else if (d.severity === 'warning') warnings++;
@@ -574,11 +579,28 @@ async function cmdTest(args: Args, json: boolean): Promise<number> {
 }
 
 // ncdev imports: a game's program files read for the hooks a handler likely needs (core/pe.ts, core/importhooks.ts).
+/** `ncdev <command> --help`: that command's lines from HELP (and their continuation lines), or all of HELP. */
+function commandHelp(cmd: string): string {
+  const lines = HELP.split('\n');
+  const out: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (!lines[i].startsWith(`  ${cmd} `) && lines[i] !== `  ${cmd}`) continue;
+    out.push(lines[i]);
+    while (i + 1 < lines.length && /^ {6,}\S/.test(lines[i + 1])) out.push(lines[++i]);
+  }
+  return out.length ? `Usage:\n${out.join('\n')}\n\nRun "ncdev --help" for every command and option.` : HELP;
+}
+
 function cmdImports(args: Args, json: boolean): number {
   if (!args.positional.length) throw new Usage('imports: give the game folder (or its .exe and DLLs)');
+  const missing = args.positional.filter((p) => !fs.existsSync(p));
+  if (missing.length) throw new Error(`${missing.join(', ')} doesn't exist`);
   const files = readGameBinaries(args.positional);
-  if (!files.length) throw new Usage('imports: no .exe or .dll files there');
-  const a = analyse(files, flag(args, '--exe'));
+  if (!files.length) throw new Error(`No .exe or .dll files in ${args.positional.join(', ')}`);
+  const exe = flag(args, '--exe');
+  if (exe && !files.some((f) => !f.dll && (f.fileName.toLowerCase() === exe.toLowerCase() || path.basename(f.fileName).toLowerCase() === path.basename(exe).toLowerCase())))
+    throw new Error(`--exe: no program called ${exe} there (found: ${files.filter((f) => !f.dll).map((f) => f.fileName).join(', ') || 'none'})`);
+  const a = analyse(files, exe);
   const opts = { controllers: !has(args, '--no-controllers'), kbm: !has(args, '--no-kbm') };
   const listing = (f: PeFile) => [
     `${f.fileName} (${f.is64 ? '64' : '32'}-bit ${f.dll ? 'DLL' : 'program'}, ${a.roles.get(f)})`,
@@ -588,7 +610,7 @@ function cmdImports(args: Args, json: boolean): number {
   print(json, {
     game: a.main?.fileName, launchers: a.launchers.map((f) => f.fileName),
     files: files.map((f) => ({ file: f.fileName, role: a.roles.get(f), is64: f.is64, dll: f.dll, imports: has(args, '--list') ? f.imports : f.imports.length, exports: has(args, '--list') ? f.exports : f.exports.length, loads: f.rt.filter((x) => /\.dll$/i.test(x)) })),
-    findings: a.found.map((f) => ({ id: f.rule.id, area: f.rule.area, title: f.rule.title, why: f.rule.why, group: f.rule.ctl ? 'controllers' : f.rule.kbm ? (f.rule.detail ? 'kbm-detail' : 'kbm') : f.rule.maybe ? 'only-if' : 'game', lines: f.lines, found: f.hits })),
+    findings: a.found.filter((f) => (opts.controllers || !f.rule.ctl) && (opts.kbm || !f.rule.kbm)).map((f) => ({ id: f.rule.id, area: f.rule.area, title: f.rule.title, why: f.rule.why, group: f.rule.ctl ? 'controllers' : f.rule.kbm ? (f.rule.detail ? 'kbm-detail' : 'kbm') : f.rule.maybe ? 'only-if' : 'game', lines: f.lines, found: f.hits })),
   }, () => importsReport(a, opts) + (has(args, '--list') ? '\n\n' + files.map(listing).join('\n\n') : ''));
   return 0;
 }
@@ -620,6 +642,9 @@ function openInBrowser(url: string): boolean {
 async function cmdReport(args: Args, json: boolean): Promise<number> {
   const rule = flag(args, '--check-rule');
   const words = ['problem', 'feature', 'tryit', 'check'];
+  const first0 = args.positional[0];
+  if (!rule && first0 && !words.includes(first0) && !fs.existsSync(first0) && !/\.js$/i.test(first0))
+    throw new Usage(`report: "${first0}" is neither a kind of report (${words.join(', ')}) nor a handler file`);
   const kind = (rule ? 'check' : words.includes(args.positional[0]) ? args.positional.shift()! : 'problem') as ReportInput['kind'];
   if (kind === 'check' && !rule) throw new Usage('report --check <rule> <handler.js>: which check is wrong? (ncdev rules lists them)');
   if (rule && !(rule in RULES)) throw new Usage(`report: no check called "${rule}" (ncdev rules lists them)`);
@@ -632,6 +657,7 @@ async function cmdReport(args: Args, json: boolean): Promise<number> {
     // The flagged line: --line, else the check's first problem in the file.
     const want = flag(args, '--line') ? Number(flag(args, '--line')) : undefined;
     const d = lint(text).filter((x) => x.rule === rule).find((x) => want === undefined || lineOf(text, x.start) + 1 === want);
+    if (!d) process.stderr.write(want ? `Note: ${rule} doesn't flag line ${want} of ${file}. If it should, say so on the form.\n` : `Note: ${rule} doesn't flag anything in ${file}.\n`);
     const lines = text.split(/\r?\n/);
     const first = d ? lineOf(text, d.start) : want ? want - 1 : undefined;
     const last = d ? lineOf(text, Math.max(d.start, d.end - 1)) : first;

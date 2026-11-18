@@ -161,14 +161,12 @@
         "command": "splitscreenme.testInNucleus",
         "title": "Test in Nucleus Co-op",
         "category": "Nucleus",
-        "icon": "$(run-all)",
-        "enablement": "!isWeb"
+        "icon": "$(run-all)"
       },
       {
         "command": "splitscreenme.openNucleusLog",
         "title": "Open Nucleus Co-op's Debug Log",
-        "category": "Nucleus",
-        "enablement": "!isWeb"
+        "category": "Nucleus"
       },
       {
         "command": "splitscreenme.browseHub",
@@ -276,7 +274,7 @@
       "editor/title/run": [
         {
           "command": "splitscreenme.testInNucleus",
-          "when": "splitscreenme.isHandler && isWindows && !isWeb",
+          "when": "splitscreenme.isHandler && isWindows",
           "group": "navigation@1"
         },
         {
@@ -298,7 +296,7 @@
         },
         {
           "command": "splitscreenme.installHandler",
-          "when": "resourcePath in splitscreenme.handlerFiles && !isWeb",
+          "when": "resourcePath in splitscreenme.handlerFiles",
           "group": "nucleus@2"
         }
       ],
@@ -341,23 +339,19 @@
         },
         {
           "command": "splitscreenme.installHandler",
-          "when": "splitscreenme.isHandler && !isWeb"
+          "when": "splitscreenme.isHandler"
         },
         {
           "command": "splitscreenme.testInNucleus",
-          "when": "splitscreenme.isHandler && !isWeb"
+          "when": "splitscreenme.isHandler"
         },
         {
           "command": "splitscreenme.linkGameFolder",
-          "when": "splitscreenme.isHandler && !isWeb"
+          "when": "splitscreenme.isHandler"
         },
         {
           "command": "splitscreenme.unlinkGameFolder",
-          "when": "splitscreenme.isHandler && splitscreenme.gameFolderLinked && !isWeb"
-        },
-        {
-          "command": "splitscreenme.setupAgents",
-          "when": "!isWeb"
+          "when": "splitscreenme.isHandler && splitscreenme.gameFolderLinked"
         },
         {
           "command": "splitscreenme.docsBack",

@@ -111,7 +111,10 @@ struct DarkColors {
 };
 
 static const wchar_t* PLUGIN_NAME = L"Nucleus Co-op handlers";
-static const char* PLUGIN_VERSION = "1.0.0";
+#ifndef NCDEV_VERSION
+#define NCDEV_VERSION "0.0.0"  // build.sh passes package.json's version
+#endif
+static const char* PLUGIN_VERSION = NCDEV_VERSION;
 
 static NppData npp;
 static HINSTANCE hModule;
@@ -1498,7 +1501,7 @@ static void runReport(const Value& args) {
     if (i < 0) return;
     if (cs[i]["copy"].isStr()) {
       copyText(cs[i]["copy"].str());
-      status(L"Nucleus: the report is copied: paste it in the Discord thread");
+      status(L"Nucleus: report copied, paste it on Discord");
     }
     ShellExecuteW(npp._nppHandle, L"open", wide(cs[i]["url"].str()).c_str(), nullptr, nullptr, SW_SHOWNORMAL);
   });
@@ -1643,7 +1646,7 @@ static void cmdWorkbench() {
     std::string url = r["url"].str();
     if (url.rfind("https://", 0) != 0) return;
     ShellExecuteW(npp._nppHandle, L"open", wide(url).c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-    if (!r["withHandler"].boolean()) status(L"Nucleus: this handler is too large for a link: in the workbench, use Open file… to open it");
+    if (!r["withHandler"].boolean()) status(L"Nucleus: too large for a link; use Open file… in the workbench");
   });
 }
 
@@ -2407,7 +2410,7 @@ static void cmdLinkFolder() {
   if (folder.empty()) return;
   iniSet(L"gameFolders", baseName(d->path), folder.c_str());
   if (lsp::running) lsp::notify("workspace/didChangeConfiguration", Value(Object{{"settings", lsp::settings()}}));
-  status(L"Nucleus: " + baseName(d->path) + L" is checked against " + folder);
+  status(L"Nucleus: game folder linked (" + baseName(folder) + L")");
 }
 static void cmdUnlinkFolder() {
   Doc* d = currentDoc();

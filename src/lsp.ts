@@ -460,7 +460,17 @@ export class Server {
           };
         }
         const items = completionsAt(doc.text, at, { explicit: p.context?.triggerKind !== 2, docsLink: this.docsLink });
-        return items ? { isIncomplete: false, items: items.map((e) => this.toCompletionItem(l, e)) } : null;
+        if (!items) return null;
+        // Only names that fit what's typed so far (in order, any case, as editors filter): a reply carries every item's docs,
+        // so after `Game.Xin` that's a few items, not all of Game's. isIncomplete makes the editor ask again as you type.
+        const word = (doc.text.slice(Math.max(0, at - 80), at).match(/[A-Za-z0-9_$]+$/) ?? [''])[0].toLowerCase();
+        const fits = (label: string) => {
+          let i = 0;
+          for (const c of label.toLowerCase()) if (c === word[i]) i++;
+          return i === word.length;
+        };
+        const kept = word ? items.filter((e) => fits(e.filterText ?? e.label)) : items;
+        return { isIncomplete: kept.length < items.length, items: kept.map((e) => this.toCompletionItem(l, e)) };
       }
       case 'textDocument/signatureHelp': {
         if (!this.featuresOn(doc)) return null;

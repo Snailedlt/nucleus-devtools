@@ -175,7 +175,7 @@ export function registerDocsPanel(context: vscode.ExtensionContext) {
   };
   /** Sends one people's-vote event to the same anonymous counter as the workbench (GoatCounter); never fails loudly. */
   const send = async (event: string) => {
-    try { await fetch(`https://${FEEDBACK_SITE}.goatcounter.com/count?p=${encodeURIComponent('/' + event)}&e=true&rnd=${Math.random().toString(36).slice(2)}`); } catch { /* offline: not counted */ }
+    try { await fetch(`https://${FEEDBACK_SITE}.goatcounter.com/count?p=${encodeURIComponent('/' + event)}&e=true&rnd=${Math.random().toString(36).slice(2)}`, { signal: AbortSignal.timeout(3000) }); } catch { /* offline: not counted */ }
   };
   const show = async (next: string, push: boolean) => {
     if (push && panel && next !== view) history.push(view);

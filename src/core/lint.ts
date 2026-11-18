@@ -1162,12 +1162,15 @@ class Analyzer {
       }
     }
     const indentOf = (pos: number) => text.slice(lineStart(text, pos), pos).match(/^\s*/)![0];
+    // The handler's own indent: its first indented line's, else two spaces.
+    const unit = text.match(/^([ \t]+)\S/m)?.[1] ?? '  ';
     if (playFn) {
-      const inner = indentOf(playStmt!.start) + '  ';
+      const firstInPlay = playFn.body.body[0];
+      const inner = firstInPlay && lineOf(text, firstInPlay.start) !== lineOf(text, playFn.body.start) ? indentOf(firstInPlay.start) : indentOf(playStmt!.start) + unit;
       const block = lines.map((l) => inner + l.replace(/\n/g, '\n' + inner)).join('\n');
       edits.push({ start: playFn.body.start + 1, end: playFn.body.start + 1, text: `\n${block}` });
     } else {
-      const block = lines.map((l) => '  ' + l.replace(/\n/g, '\n  ')).join('\n');
+      const block = lines.map((l) => unit + l.replace(/\n/g, '\n' + unit)).join('\n');
       edits.push({ start: text.length, end: text.length, text: `${text.endsWith('\n') ? '' : '\n'}\nGame.Play = function () {\n${block}\n};\n` });
     }
     this.moveFix = { title: playFn ? 'Move the code that uses it into Game.Play' : 'Move the code that uses it into a new Game.Play', edits, preferred: true };

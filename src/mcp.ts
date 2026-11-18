@@ -316,7 +316,9 @@ export const TOOLS: Tool[] = [
     inputSchema: { type: 'object', properties: { path: { type: 'string', description: 'The game\'s install folder, or one .exe/.dll.' }, exe: { type: 'string', description: 'The game\'s .exe name, if the folder has several.' }, controllers: { type: 'boolean', description: 'Include controller suggestions (default true).' }, kbm: { type: 'boolean', description: 'Include several-keyboards-and-mice suggestions (default true).' } }, required: ['path'] },
     annotations: { readOnlyHint: true },
     run: (a) => {
-      const files = readGameBinaries([String(a.path)]);
+      if (typeof a.path !== 'string' || !a.path) return { text: 'Give `path`: the game\'s install folder, or one .exe/.dll.', isError: true };
+      if (!fs.existsSync(a.path)) return { text: `${a.path} doesn't exist.`, isError: true };
+      const files = readGameBinaries([a.path]);
       if (!files.length) return { text: `No .exe or .dll files at ${a.path}.`, isError: true };
       const r = analyse(files, a.exe ? String(a.exe) : undefined);
       return {
