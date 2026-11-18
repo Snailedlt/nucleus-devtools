@@ -116,11 +116,13 @@ export function findExes(exes: PeFile[], name: string): PeFile[] {
   const given = name.replace(/\\/g, '/').toLowerCase();
   const want = given.replace(/^\.\//, '');
   const rel = (f: PeFile) => f.fileName.replace(/\\/g, '/').toLowerCase();
+  // A bare name: every program of that name (a root Game.exe and bin/Game.exe are ambiguous; give the path then).
+  if (!given.includes('/')) return exes.filter((f) => base(f.fileName).toLowerCase() === want);
   // An explicit path (`./Game.exe` included) first: several input folders label their files by input.
   const exact = exes.filter((f) => rel(f) === given || rel(f) === want);
   if (exact.length) return exact.slice(0, 1);
   if (given !== want) return [];
-  return want.includes('/') ? exes.filter((f) => rel(f).endsWith('/' + want)) : exes.filter((f) => base(f.fileName).toLowerCase() === want);
+  return exes.filter((f) => rel(f).endsWith('/' + want));
 }
 /** The program a name points at, or undefined when none or several match (give the path then: `findExes` lists them). */
 export function findExe(exes: PeFile[], name: string): PeFile | undefined {
@@ -330,7 +332,8 @@ export function importHints(text: string, a: Analysis): ImportHint[] {
       why: runtimeInject
         ? 'With Game.LauncherExe, the program Nucleus starts is the launcher (GenericGameHandler), so its hooks never reach the game; and with InjectStartup on, the runtime injection this handler also sets never runs. Turn startup injection off: Nucleus then injects into the game process it finds.'
         : 'With Game.LauncherExe, the program Nucleus starts is the launcher (GenericGameHandler), so its hooks never reach the game. Inject at runtime instead (it only runs with InjectStartup off): Nucleus then injects into the game process it finds.',
-      lines: runtimeUnclear ? [] : [runtimeInject ? 'Game.ProtoInput.InjectStartup = false;' : 'Game.ProtoInput.InjectRuntime_EasyHookMethod = true;'],
+      // Adding EasyHook where the handler also sets it (false) elsewhere: a later `= false` would undo the fix, so none.
+      lines: runtimeUnclear || (!runtimeInject && methods[1] !== undefined) ? [] : [runtimeInject ? 'Game.ProtoInput.InjectStartup = false;' : 'Game.ProtoInput.InjectRuntime_EasyHookMethod = true;'],
       severity: 'warning',
       fact: false,
     });

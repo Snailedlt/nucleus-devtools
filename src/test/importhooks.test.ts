@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import path from 'node:path';
 import { parsePE, NotAProgram, PE_WORK_LIMIT, type PeFile } from '../core/pe';
-import { analyse, importHints, importsReport, handlerHooks, importProblems, jsString, findExe, findExes, RULES, HUB_SHARES } from '../core/importhooks';
+import { analyse, importHints, importsReport, handlerHooks, importProblems, jsString, findExe, findExes, lastSwitch, RULES, HUB_SHARES } from '../core/importhooks';
 import { api } from '../core/api';
 
 const FIX = path.join(__dirname, '..', 'src', 'test', 'fixtures', 'pe');
@@ -173,6 +173,11 @@ test('importhooks: file names become string literals; an explicit path wins; com
   assert.deepEqual(findExes([here, other], 'Game.exe'), [here, other]);
   assert.deepEqual(findExes([pe('sub/Game.exe')], './Game.exe'), [], 'an explicit ./ path is not a bare name');
   assert.equal(findExe([pe('Game.exe')], './Game.exe')?.fileName, 'Game.exe');
+  // A root Game.exe and bin/Game.exe: a bare name is ambiguous; the path picks one.
+  const root = pe('Game.exe'), sub = pe('bin/Game.exe');
+  assert.deepEqual(findExes([root, sub], 'Game.exe'), [root, sub]);
+  assert.deepEqual(findExes([root, sub], './Game.exe'), [root]);
+  assert.deepEqual(findExes([root, sub], 'bin/Game.exe'), [sub]);
   // A hook in a block comment is not on.
   assert.ok(!handlerHooks('/* Game.ProtoInput.XinputHook = true; */').has('XinputHook'));
   // SDL2.dll in another folder: Game.SDLPaths as a proper string literal, whatever the folder's name.
@@ -216,6 +221,14 @@ test('importhooks: the last assignment of a runtime method counts; unclear ones 
   // On, then off: no runtime method, so the fix adds one instead of turning startup off.
   const w = warn(head + 'Game.ProtoInput.InjectRuntime_RemoteLoadMethod = true;\nGame.ProtoInput.InjectRuntime_RemoteLoadMethod = false;\n')!;
   assert.equal(w.fix!.title, 'Inject at runtime instead');
+  // EasyHook itself set false later: swapping InjectStartup for EasyHook = true would be undone, so no fix.
+  const e = warn(head + 'Game.ProtoInput.InjectRuntime_EasyHookMethod = false;\n')!;
+  assert.ok(e && !e.fix);
+  // The fixed handler (no EasyHook elsewhere) really leaves a runtime method on and startup off.
+  const ok = warn(head)!;
+  const fixed = head.slice(0, ok.fix!.start) + ok.fix!.text + head.slice(ok.fix!.end);
+  assert.equal(lastSwitch(fixed, 'ProtoInput.InjectRuntime_EasyHookMethod'), true);
+  assert.equal(lastSwitch(fixed, 'ProtoInput.InjectStartup'), undefined);
   // Set inside a block: can't tell, no fix.
   const u = warn(head + 'if (x) {\n  Game.ProtoInput.InjectRuntime_RemoteLoadMethod = true;\n}\n')!;
   assert.ok(u && !u.fix);
