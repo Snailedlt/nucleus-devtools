@@ -40,6 +40,8 @@ async function page(theme, opts = { viewport: { width: 1280, height: 800 } }) {
   await ctx.addInitScript(() => {
     try {
       localStorage.setItem('nucleus-workbench-welcomed', '1');
+      // Form and Blocks are hidden unless turned on (src/visual.ts); their checks below still run.
+      localStorage.setItem('nucleus-workbench-visual', '1');
     } catch {}
   });
   // Only the page's own origin: the release lookup, fonts and the Hub are not needed here.

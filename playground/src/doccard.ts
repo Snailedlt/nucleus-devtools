@@ -70,7 +70,7 @@ export function memberCard(owner: string, name: string, m: Member, opts: { head?
     + (m.doc ? paras(m.doc) : '<p class="muted">No description yet.</p>')
     + tagRow(owner, m)
     + (engines ? `<p class="dc-engine" title="Compared with all Hub handlers. The numbers are on the docs pages.">${esc(engines)}</p>` : '')
-    + (m.example ? `<div class="dc-example"><div class="dc-ex-head"><span class="dc-ex-t">Example</span>${exampleSource(m) ? `<span class="dc-ex-src">${esc(exampleSource(m))}</span>` : ''}${opts.insert ? `<button type="button" class="btn small dc-insert" data-insert="${esc(path)}">Insert into handler</button>` : ''}</div><pre class="doc-code">${esc(prettyCode(m.example))}</pre></div>` : '')
+    + (m.example ? `<div class="dc-example"><div class="dc-ex-head"><span class="dc-ex-t">Example</span>${exampleLabel(m) ? `<span class="dc-ex-src">${esc(exampleLabel(m))}</span>` : ''}${opts.insert ? `<button type="button" class="btn small dc-insert" data-insert="${esc(path)}">Insert into handler</button>` : ''}</div><pre class="doc-code">${esc(prettyCode(m.example))}</pre></div>` : '')
     + (m.practice ? `<details class="dc-practice"><summary class="dc-pr-h"><span class="dc-pr-t">How handlers use it</span>${aiTag(pnote, m.practiceCheckedBy)}</summary>${paras(m.practice)}${voteLine(path, 'practice')}</details>` : '')
     // Every doc gets its votes, human-written or not: people say whether it's right either way.
     + (m.doc ? voteLine(path, 'doc') : '')
@@ -153,16 +153,35 @@ const VOTE_LABELS: Record<DocPart, { up: string; down: string }> = {
   doc: { up: 'The doc is correct', down: 'The doc is wrong or unclear' },
   practice: { up: '“How handlers use it” is correct', down: '“How handlers use it” is wrong or unclear' },
 };
-/** Is this right? 👍 👎 (no counts here: they're on the docs pages). After a 👎, "Tell us what's wrong". */
+/** Is this right? 👍 👎 (no counts here: they're on the docs pages). The follow-up link shows only after a vote: after
+ *  a 👎 "Tell us what's wrong", after a 👍 "Give feedback" (the same form, titled as feedback); taking the vote back
+ *  hides it again. */
 function voteLine(path: string, part: DocPart): string {
+  const mine = myVote(part, path);
   return `<div class="dc-check"><span>${part === 'practice' ? 'Is this right?' : 'Is this doc right?'}</span>${voteButtons(part, path, VOTE_LABELS[part])}`
-    + `<a class="dc-wrong" href="${esc(withContext(docReviewUrl(path), { Doc: path }))}" target="_blank" rel="noopener"${myVote(part, path) === 'down' ? '' : ' hidden'}>Tell us what's wrong</a></div>`;
+    + `<a class="dc-wrong" href="${esc(withContext(docReviewUrl(path), { Doc: path }))}" target="_blank" rel="noopener"${mine === 'down' ? '' : ' hidden'}>Tell us what's wrong</a>`
+    + `<a class="dc-good" href="${esc(withContext(feedbackUrl(path), { Doc: path }))}" target="_blank" rel="noopener"${mine === 'up' ? '' : ' hidden'}>Give feedback</a></div>`;
 }
-// 👎 shows "Tell us what's wrong" next to it (help on request). One listener for every card.
+/** The doc review form titled as feedback (after a 👍: something to add, a better example). */
+export const feedbackUrl = (path: string) => docReviewUrl(path).replace(encodeURIComponent('Doc review: '), encodeURIComponent('Doc feedback: '));
+/** Shows the link that fits the vote now pressed in a vote line (none when the vote was taken back). */
+export function syncVoteLinks(line: Element | null | undefined) {
+  if (!line) return;
+  const v = line.querySelector<HTMLElement>('button[data-vote][aria-pressed="true"]')?.dataset.vote;
+  line.querySelector<HTMLElement>('.dc-wrong')?.toggleAttribute('hidden', v !== 'down');
+  line.querySelector<HTMLElement>('.dc-good')?.toggleAttribute('hidden', v !== 'up');
+}
+// One listener for every card, after the vote buttons have taken the vote (feedback.ts wireVotes).
 if (typeof document !== 'undefined' && document.addEventListener) {
   document.addEventListener('click', (e) => {
-    const b = (e.target as HTMLElement | null)?.closest?.<HTMLElement>('.dc-check button[data-vote="down"]');
-    const a = b?.closest('.dc-check')?.querySelector<HTMLElement>('.dc-wrong');
-    if (a) a.hidden = false;
+    const line = (e.target as HTMLElement | null)?.closest?.('.dc-check button[data-vote]')?.closest('.dc-check');
+    if (line) setTimeout(() => syncVoteLinks(line), 0);
   });
+}
+
+/** The example's source, short: "From Hub handlers" for a Hub example (never the counts an older model's note has),
+ *  "AI-written", or the generated example's note; nothing for the official docs' own. */
+export function exampleLabel(m: Member): string {
+  if (m.exampleBy === 'hub') return 'From Hub handlers';
+  return exampleSource(m);
 }

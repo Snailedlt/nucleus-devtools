@@ -1913,6 +1913,8 @@ details[open] > .fv-group-title::before { transform: rotate(45deg); }
 .gf-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
 /* Code | Form switch, the game folder button, and Check's extra groups (game folder, package) */
+/* Form and Blocks are hidden unless ?visual=1 (visual.ts sets html.visual). */
+html:not(.visual) .visual-only { display: none !important; }
 .view-switch { display: inline-flex; align-self: stretch; border: 1px solid var(--line); border-radius: var(--r-ctl); overflow: hidden; flex: none; }
 .view-switch button { border: 0; background: var(--surface); color: var(--muted); font: inherit; font-size: 12.5px; padding: 3px 10px; cursor: pointer; }
 .view-switch button[aria-pressed="true"] { background: var(--surface-2); color: var(--fg); font-weight: 600; }
@@ -2482,7 +2484,7 @@ footer .made-by { margin-left: auto; }
  <div class="set-panel" role="tabpanel" id="sp-keys" aria-labelledby="st-keys" data-label="Keyboard shortcuts" hidden></div>
   <div class="set-panel" role="tabpanel" id="sp-check" aria-labelledby="st-check" data-label="Check" hidden>
     <div class="set-sec"><h3>Check</h3>
-      <label class="set-row">How much each problem, and each option in Form, shows <select id="set-density"><option value="compact">Compact: one line, open for more</option><option value="comfortable">Comfortable: what and why</option><option value="detailed">Detailed: everything open</option></select></label></div>
+      <label class="set-row">How much each problem<span class="visual-only">, and each option in Form,</span> shows <select id="set-density"><option value="compact">Compact: one line, open for more</option><option value="comfortable">Comfortable: what and why</option><option value="detailed">Detailed: everything open</option></select></label></div>
   </div>
   <div class="set-panel" role="tabpanel" id="sp-lines" aria-labelledby="st-lines" data-label="Lines" hidden>
 

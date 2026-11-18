@@ -4,6 +4,7 @@
 // General tips come in five topics: best practices and pitfalls (writing handlers: Nucleus and Jint
 // behaviour), and shortcuts, settings and features (using this workbench). Add one with every new
 // workbench feature.
+import { aboutVisual, VISUAL } from './visual';
 
 export interface TipContext {
   text: string;
@@ -227,6 +228,13 @@ export type TipShow = 'mode' | 'all' | 'newcomer' | 'developer' | 'everyone';
 export const tipShown = (t: Tip, show: TipShow, who: 'newcomer' | 'developer') =>
   show === 'mode' ? tipFor(t, who) : show === 'all' ? true : show === 'everyone' ? !t.for : t.for === show;
 
+// Form and Blocks are hidden for now (visual.ts): their tips go with them, and the others don't mention them.
+if (!VISUAL) {
+  for (const g of [CONTEXT_TIPS, PITFALLS, SHORTCUTS, BEST, FEATURES_, SETTINGS]) {
+    for (const t of g) t.text = t.text.replace(/ It works in Form and Blocks too\./, '');
+    for (let i = g.length - 1; i >= 0; i--) if (aboutVisual(g[i].text)) g.splice(i, 1);
+  }
+}
 const GROUPS = [PITFALLS, SHORTCUTS, BEST, FEATURES_, SETTINGS];
 /** Every general tip, the topics taking turns, so Next goes round them. */
 export const GENERAL_TIPS: Tip[] = Array.from({ length: Math.max(...GROUPS.map((g) => g.length)) }, (_, i) => GROUPS.map((g) => g[i])).flat().filter(Boolean);

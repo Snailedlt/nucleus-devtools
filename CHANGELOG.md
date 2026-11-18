@@ -17,6 +17,16 @@ How to write it (people and AI agents read this, and the workbench shows it):
 ### 🛠️ Improved
 
 - **Docs shows what you need to write a handler.** A search lists short results (the signature, the first sentence and its tags) with *Open full doc ›*; a full entry goes from the doc and its tags to the example and *Insert into handler*, then "How handlers use it" folded, and 👍/👎 at the bottom. Where an AI-written part comes from is in its tag's tooltip, and the vote counts and the counted engine numbers are on the docs pages (`/docs/`); Docs says only which engines use it more or less.
+- **Each doc vote sits in the part it rates, and its link shows after you vote.** On the docs pages (`/docs/`) the doc's 👍/👎 is right under the description and "In practice"'s is inside its box, as in the workbench's Docs. In both, *Tell us what's wrong* shows after a 👎 and *Give feedback* after a 👍.
+- **Hub examples say "From Hub handlers".** An example's source is a short label in Docs and on the docs pages, without counts that go stale.
+
+### 🐛 Fixed
+
+- **Taking a vote back hides its link again.** Pressing the same 👍 or 👎 a second time no longer leaves *Tell us what's wrong* on screen.
+
+### ⚠️ Changed
+
+- **Form and Blocks are hidden for now.** The visual editor is being reworked, so the workbench shows only Code until it's back. A handler you had open in Form or Blocks opens in Code, unchanged; Lines still lists every name a handler can use.
 
 ---
 

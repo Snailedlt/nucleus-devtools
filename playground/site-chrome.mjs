@@ -37,19 +37,26 @@ export const SITE_HEADER_CSS = `
  * workbench's go: a GoatCounter event "vote/doc/<name>/up" ("vote/rule/<id>/up") (only when the build names a site, never with Do Not Track or after Settings › Feedback is
  * switched off), and each browser's own vote is kept in the same storage, so the buttons agree with the workbench.
  */
-export function docFeedback(name, reportUrl, esc, kind = 'doc', question = 'Is this right?') {
-  // A docs page can have two boxes (the doc and "In practice"): each button's name says which part it rates.
-  // (The same names as the workbench's, doccard.ts VOTE_LABELS.)
+export function docFeedback(name, reportUrl, esc, kind = 'doc', question = 'Is this right?', o = {}) {
+  // A docs page can have two vote lines (the doc and "In practice"): each button's name says which part it rates.
+  // (The same names as the workbench's, doccard.ts VOTE_LABELS.) The follow-up link shows only after a vote: after a
+  // 👎 "Tell us what's wrong", after a 👍 "Give feedback" (o.feedbackUrl: the same form, titled as feedback; without
+  // one, nothing). Taking the vote back hides it again. o.inline: a line inside the part it rates, not a box.
   const [up, down] = kind === 'practice' ? ['“In practice” is correct', '“In practice” is wrong or unclear'] : kind === 'doc' ? ['The doc is correct', 'The doc is wrong or unclear'] : ['Correct', 'Wrong or unclear'];
-  return `<div class="doc-fb" data-kind="${kind}" data-doc="${esc(name)}"><span>${esc(question)}</span>
+  return `<div class="doc-fb${o.inline ? ' inline' : ''}" data-kind="${kind}" data-doc="${esc(name)}"><span>${esc(question)}</span>
 <button type="button" class="vote-btn" data-vote="up" aria-pressed="false" aria-label="${up}" title="Correct">👍</button><button type="button" class="vote-btn" data-vote="down" aria-pressed="false" aria-label="${down}" title="Wrong or unclear">👎</button>
-<a href="${esc(reportUrl)}" target="_blank" rel="noopener">Tell us what's wrong</a><span class="doc-fb-thanks" role="status"></span></div>`;
+<a class="fb-down" href="${esc(reportUrl)}" target="_blank" rel="noopener" hidden>Tell us what's wrong</a>${o.feedbackUrl ? `<a class="fb-up" href="${esc(o.feedbackUrl)}" target="_blank" rel="noopener" hidden>Give feedback</a>` : ''}<span class="doc-fb-thanks" role="status"></span></div>`;
 }
 export const DOC_FEEDBACK_CSS = `
 .doc-fb { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 28px 0 0; padding: 10px 14px; border: 1px solid var(--line); border-radius: var(--r-pane); background: var(--surface); font-size: 14px; }
 .vote-btn { font: inherit; padding: 4px 10px; border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--bg); cursor: pointer; }
 .vote-btn[aria-pressed="true"] { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 16%, var(--surface)); }
 .doc-fb-thanks:empty { display: none; }
+.doc-fb [hidden] { display: none; }
+/* Inside the part it rates (the doc, "In practice"), as the workbench's Docs: a quiet line, not a box. */
+.doc-fb.inline { margin: 10px 0 18px; padding: 0; border: 0; background: none; font-size: 13px; color: var(--muted); }
+.doc-fb.inline .vote-btn { padding: 2px 8px; }
+.ai-part .doc-fb.inline { margin: 10px 0 0; }
 `;
 /** The script for the votes; `site` is the GoatCounter site code, or null (then votes stay in the browser). */
 export function docFeedbackScript(site) {
@@ -60,7 +67,14 @@ export function docFeedbackScript(site) {
   document.querySelectorAll('.doc-fb').forEach(function (box) {
   var id = (box.dataset.kind || 'doc') + '/' + box.dataset.doc;
   function votes() { try { return JSON.parse(get(KEY) || '{}'); } catch (e) { return {}; } }
-  function show() { var v = votes()[id]; box.querySelectorAll('[data-vote]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.vote === v)); }); }
+  // The buttons show the vote kept in this browser; the link that fits it shows, none without a vote.
+  function show() {
+    var v = votes()[id];
+    box.querySelectorAll('[data-vote]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.vote === v)); });
+    var dn = box.querySelector('.fb-down'), upl = box.querySelector('.fb-up');
+    if (dn) dn.hidden = v !== 'down';
+    if (upl) upl.hidden = v !== 'up';
+  }
   var site = ${JSON.stringify(site)};
   // navigator.webdriver: a browser driven by a program (tests, an AI agent's browser) never counts as a person.
   function off() { return !site || navigator.webdriver === true || navigator.doNotTrack === '1' || navigator.globalPrivacyControl === true || get('nucleus-workbench-feedback-off') === '1' || get('skipgc') === 't'; }
@@ -75,7 +89,7 @@ export function docFeedbackScript(site) {
     if (now) all[id] = now; else delete all[id];
     try { localStorage.setItem(KEY, JSON.stringify(all)); } catch (e) {}
     send('vote/' + id + '/' + (now || 'undo-' + v));
-    box.querySelector('.doc-fb-thanks').textContent = now ? 'Thanks!' + (now === 'down' ? ' Tell us what is wrong, if you can.' : '') : '';
+    box.querySelector('.doc-fb-thanks').textContent = now ? 'Thanks!' : '';
     show();
   });
   show();

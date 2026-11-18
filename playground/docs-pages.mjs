@@ -185,9 +185,39 @@ ${docsDrawer(up, here0, o.groups.map((g) => `<li><a href="${up}docs/${g.key}/">$
   for (const e of o.allEntries(true)) if (folderOf(e.path)) values.add(e.path);
   for (const n of o.enums ?? []) values.add(`Nucleus.${n}`);
   const written = [];
-  // Names with an AI-written "In practice" part: it gets its own 👍/👎 under the page.
-  const practices = new Map(o.allEntries(true).filter((e) => e.member.practice).map((e) => [e.path, true]));
-  const practiceOf = (p) => practices.has(p);
+  const members = new Map(o.allEntries(true).map((e) => [e.path, e.member]));
+  // A Hub example's source is "From Hub handlers", never the counts an older model's note has (they go stale).
+  for (const m of members.values()) if (m.exampleBy === 'hub') m.exampleNote = 'From Hub handlers';
+  // Each 👍/👎 inside the part it rates, as in the workbench's Docs (doccard.ts): the doc's right under the description
+  // (after its AI-written note and the votes so far), "In practice"'s inside its box. The follow-up link shows only
+  // after a vote (site-chrome.mjs docFeedback); the core's own "Is it wrong? Tell us" links are left out for it.
+  const feedbackUrl = (p) => o.docReviewUrl(p).replace(encodeURIComponent('Doc review: '), encodeURIComponent('Doc feedback: '));
+  const withVotes = (page, m, href) => {
+    let md = page.markdown.replace(/^## [^\n]*\n+/, '');
+    const votes = Boolean(page.path && o.docReviewUrl && m);
+    if (votes) md = md.replace(/ \[Is it wrong\? Tell us\]\([^)]*\)/g, '');
+    if (votes && m.doc) {
+      const at = md.indexOf(m.doc);
+      if (at >= 0) {
+        const paras = md.slice(at + m.doc.length).split('\n\n');
+        let n = 1; // paras[0] is what's left of the doc's own paragraph ('')
+        while (n < paras.length && (/^_✎ (?!Parameters)/.test(paras[n]) || /^(\*\*✓ |People: |AIs: )/.test(paras[n]))) n++;
+        md = md.slice(0, at + m.doc.length) + [...paras.slice(0, n), '@@DOCVOTE@@', ...paras.slice(n)].join('\n\n');
+      }
+    }
+    if (votes && m.practice) md = md.replace(/(\*\*In practice\*\* _\(AI-written\)_\n\n[\s\S]*?\n\n_✎ [^\n]*(?:\n\n(?:\*\*✓ |People: |AIs: )[^\n]*)?)/, '$1\n\n@@PRVOTE@@');
+    let html = markAiWritten(mdToHtml(md, href));
+    if (!votes) return html;
+    const line = (part, q) => docFeedback(page.path, o.docReviewUrl(page.path), esc, part, q, { inline: true, feedbackUrl: feedbackUrl(page.path) });
+    html = html.replace('<p>@@DOCVOTE@@</p>', () => line('doc', 'Is the doc right?'));
+    // "In practice"'s votes so far and its 👍/👎 go inside its box (markAiWritten closes it after the note).
+    html = html.replace(/<\/section>\n((?:<p>(?:<strong>✓ |People: |AIs: )[\s\S]*?<\/p>\n)?)<p>@@PRVOTE@@<\/p>/, (_, pv) => `${pv}${line('practice', 'Is "In practice" right?')}</section>`);
+    // Where a part's place wasn't found, its line goes where the marker is, or at the end.
+    html = html.replace('<p>@@PRVOTE@@</p>', () => line('practice', 'Is "In practice" right?'));
+    if (m.practice && !html.includes('data-kind="practice"')) html += line('practice', 'Is "In practice" right?');
+    if (m.doc && !html.includes('data-kind="doc"')) html += line('doc', 'Is the doc right?');
+    return html + docFeedbackScript(o.feedbackSite ?? null);
+  };
   for (const v of values) {
     if (v && !folderOf(v)) continue;
     const up = v ? '../../' : '../';
@@ -207,8 +237,7 @@ ${docsDrawer(up, here0, o.groups.map((g) => `<li><a href="${up}docs/${g.key}/">$
     const body = `<p class="crumbs">${crumbs.join(' › ')}</p>
 <h1>${esc(v ? title : 'Docs')}</h1>
 <p class="open-wb"><a href="${up}#docs${v ? `-${encodeURIComponent(v)}` : ''}">Open in the workbench</a> (search, and try it in a handler)</p>
-${markAiWritten(mdToHtml(page.markdown.replace(/^## [^\n]*\n+/, ''), href))}
-${page.path && o.docReviewUrl ? docFeedback(page.path, o.docReviewUrl(page.path), esc, 'doc', 'Is the doc right?') + (practiceOf(page.path) ? docFeedback(page.path, o.docReviewUrl(page.path), esc, 'practice', 'Is "In practice" right?') : '') + docFeedbackScript(o.feedbackSite ?? null) : ''}
+${withVotes(page, members.get(page.path), href)}
 `;
     const dir = v ? path.join(o.outDir, v) : o.outDir;
     fs.mkdirSync(dir, { recursive: true });

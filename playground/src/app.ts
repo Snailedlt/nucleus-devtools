@@ -46,10 +46,11 @@ import { prettyCode } from '@core/pretty';
 import { codeNote } from './codenote';
 import { initMessageHints } from './wmhints';
 import { initValuePicker } from './valuepick';
-import { memberCard } from './doccard';
+import { memberCard, syncVoteLinks } from './doccard';
 import { initKeyHints } from './keyhints';
 import { mountFormView, type FormView } from './formview';
 import { mountBlocksView, type BlocksView } from './blocksview';
+import { VISUAL, VISUAL_HIDDEN_NOTE } from './visual';
 import { initPackageUI, fileIcon } from './packageui';
 import type { PkgProblem } from './pkgcheck';
 import { pickGameFolder, checkAgainstFolder, initFolderPickers, folderSummaryHtml, gameBinariesNow, gameBinariesPending, importProblems, onFolderProgress, cancelFolderRead, type GameFolder, type FolderProblem, type FolderProgress } from './gamefolder';
@@ -2718,7 +2719,22 @@ function openLearn() {
 // two-way with the code (the code stays the one source).
 type ViewMode = 'code' | 'form' | 'blocks';
 const VIEW_KEY = 'nucleus-workbench-view';
-let viewMode: ViewMode = (() => { try { const v = localStorage.getItem(VIEW_KEY); return v === 'form' || v === 'blocks' ? v : 'code'; } catch { return 'code'; } })();
+// Form and Blocks are hidden for now (visual.ts: ?visual=1 brings them back): a saved Form or Blocks view opens Code,
+// and says so once.
+let viewMode: ViewMode = (() => {
+  try {
+    const v = localStorage.getItem(VIEW_KEY);
+    if ((v === 'form' || v === 'blocks') && !VISUAL) {
+      localStorage.setItem(VIEW_KEY, 'code');
+      setTimeout(() => notice(VISUAL_HIDDEN_NOTE, { kind: 'info' }), 0);
+      return 'code';
+    }
+    return v === 'form' || v === 'blocks' ? v : 'code';
+  } catch { return 'code'; }
+})();
+document.documentElement.classList.toggle('visual', VISUAL);
+// Only Code is left without them: no switcher at all.
+if (!VISUAL) document.querySelector('.view-switch')?.remove();
 let formView: FormView | null = null;
 let blocksView: BlocksView | null = null;
 const viewHost = (origin: string) => ({
@@ -2733,6 +2749,7 @@ const viewHost = (origin: string) => ({
   density: checkDensity,
 });
 function setViewMode(m: ViewMode) {
+  if (!VISUAL && m !== 'code') m = 'code';
   viewMode = m;
   pkgUI?.deselect();
   try { localStorage.setItem(VIEW_KEY, m); } catch { /* ignore */ }
@@ -2899,7 +2916,9 @@ initKeyHints([
 // Feedback (feedback.ts): votes on tips and Claude's docs, anonymous counts. A 👎 on a doc points at the issue link.
 countVisit(); // this page view, anonymous; the visit's first page also gives the site and ?ref= it came from (when sharing counts is on)
 wireVotes((kind, _id, v, el) => {
-  if (kind === 'doc' && v === 'down') el.closest('.dc-check')?.querySelector<HTMLElement>('a')?.focus();
+  // The link that fits the vote shows now (doccard.ts); after a 👎 the keyboard goes to "Tell us what's wrong".
+  syncVoteLinks(el.closest('.dc-check'));
+  if ((kind === 'doc' || kind === 'practice') && v === 'down') el.closest('.dc-check')?.querySelector<HTMLElement>('a.dc-wrong')?.focus();
   announce(v ? (v === 'up' ? 'Thanks: counted as helpful.' : 'Thanks: counted as not helpful.') : 'Vote taken back.');
 });
 {

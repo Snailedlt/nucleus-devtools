@@ -2,6 +2,7 @@
 // command palette while BETA is true.
 // AT THE FULL (NON-BETA) RELEASE: set BETA to false (the guide and its entry points disappear), or rewrite the plan for
 // what still needs testing. AGENTS.md › Releasing says so too.
+import { VISUAL } from './visual';
 export const BETA = true;
 
 /** Who's testing: how much they code, and how well they know Nucleus Co-op's handlers and API. */
@@ -59,7 +60,7 @@ export const priority = (t: { id: string }) => PRIORITY[t.id] ?? { need: 2 as co
 
 export interface TestItem { id: string; areas: Area[]; kinds: Kind[]; title: string; steps: string; look: string }
 
-export const TEST_PLAN: TestItem[] = [
+const ALL_ITEMS: TestItem[] = [
   // --- Developers and handler authors first: precision, speed, the keyboard and their own editor
   { id: 'own-handlers', areas: ['api'], kinds: ['verify', 'nucleus'], title: 'Check your own handlers', steps: 'Open handlers you maintain (Ctrl+P also lists the Hub), in the workbench or your editor. Read every problem and its why.', look: 'False alarms on handlers that work in Nucleus, real problems it missed, and fixes (Ctrl+. / Alt+Enter) that do the wrong thing.' },
   { id: 'no-freeze', areas: ['devx'], kinds: ['explore'], title: 'An endless loop never freezes the editor', steps: 'In VS Code, Notepad++ or here, put while (true) {} inside Game.Play and run Try it, then Test all (and cancel it). Keep typing while it runs.', look: 'Any freeze or lag while it runs, and whether the message says plainly that the handler never finishes.' },
@@ -103,3 +104,5 @@ export const TEST_PLAN: TestItem[] = [
   { id: 'reports', areas: ['uiux', 'devx'], kinds: ['explore'], title: 'Report something from where you are', steps: 'Open a problem in Check and use This check is wrong (also the flag in its hover); in Try it, the icon in the result\'s corner; in Docs, search for something that isn\'t there; in the menu, Report a problem and Request a feature; in Learn, the lesson list\'s I\'m stuck. In VS Code: Ctrl+. on a problem, and Nucleus: Report a Problem. Look at what each would send, then cancel (or send a real one).', look: 'Is it clear what gets sent before anything is? Does each open the right form with the right things filled in? Is anything in your way when you don\'t want to report?' },
   { id: 'reader', areas: ['uiux'], kinds: ['reader'], title: 'With a screen reader', steps: 'Open an example, go through Check, fix one problem, and open Settings.', look: 'Anything not announced, announced twice, or in a confusing order.' },
 ];
+// Form and Blocks are hidden for now (visual.ts): their tasks come back with them.
+export const TEST_PLAN: TestItem[] = ALL_ITEMS.filter((t) => VISUAL || (t.id !== 'form' && t.id !== 'blocks'));
