@@ -4,7 +4,7 @@
 // same behaviour. Positions are UTF-16 offsets into the text (what JavaScript strings index), which
 // is also what LSP counts by default. No `vscode` import here, no Node APIs either.
 import { blockedItemAt, blockedListAt, blockedLists, blockTarget, COMMON_MESSAGES, hex, messageMarkdown, WM_HUB_SAMPLE } from './wm';
-import { AI_MARK, aiBasis, aiChecked, api, DOCS_URL, isAiPart, firstSentence, memberHoverMarkdown, paramType, isStringMember, Member, memberMarkdown, memberSignature, membersOf, ownerLabel, Resolved, resolveCall, resolveGlobal, resolveIndex, resolveMember } from './api';
+import { AI_MARK, aiBasisLine, api, DOCS_URL, isAiPart, firstSentence, memberHoverMarkdown, paramType, isStringMember, Member, memberMarkdown, memberSignature, membersOf, ownerLabel, Resolved, resolveCall, resolveGlobal, resolveIndex, resolveMember } from './api';
 import { callContextAt, memberContextAt, resolveAt, valueContextAt } from './complete';
 export { explainLine, type LineExplanation } from './explain';
 import { Diagnostic, lineOf, lineStart, looksLikeHandler, RuleId, RULES, Severity, TextEdit } from './lint';
@@ -506,7 +506,7 @@ function signatureHelpAtRaw(text: string, offset: number, opts: FeatureOptions =
       const params = o.params.map((p) => `${p.rest ? '...' : ''}${p.name}: ${paramType(p)}`);
       // AI-written text: a ✨ before it, where the doc comes from on its own small line.
       const docs = o.params.map((p) => (p.doc ? (p.docBy === 'claude' ? `${AI_MARK} ` : '') + p.doc : undefined));
-      signatures.push({ label: `${ownerLabel(owner) ? `${ownerLabel(owner)}.` : ''}${name}(${params.join(', ')}): ${o.returns}`, documentation: isAiPart(member, 'doc') ? `${AI_MARK} ${member.doc}\n\n_${aiBasis(member, 'doc')}${aiChecked(member, 'doc') ? ` · ✓ ${aiChecked(member, 'doc')}` : ''}_` : member.doc, parameters: params, ...(docs.some(Boolean) ? { parameterDocs: docs } : {}) });
+      signatures.push({ label: `${ownerLabel(owner) ? `${ownerLabel(owner)}.` : ''}${name}(${params.join(', ')}): ${o.returns}`, documentation: isAiPart(member, 'doc') ? `${AI_MARK} ${member.doc}\n\n${aiBasisLine(member, 'doc')}` : member.doc, parameters: params, ...(docs.some(Boolean) ? { parameterDocs: docs } : {}) });
     }
     // Prefer the first overload that has enough parameters for the cursor position.
     const idx = (member.overloads ?? []).findIndex((o) => o.params.length > c.activeParameter || o.params.some((p) => p.rest));

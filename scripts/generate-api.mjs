@@ -12,6 +12,7 @@
 
 import { engineLine } from './hub-engines.mjs';
 import { basisWords } from './basis.mjs';
+import { linkBasis } from './sources.mjs';
 import fs from 'node:fs';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
@@ -38,6 +39,12 @@ for (const p of [gaming, path.join(wwwRepo, 'docs')]) {
     process.exit(1);
   }
 }
+
+// The AI docs' sources with their links (scripts/sources.mjs, data/sources.json): each source file found in its
+// repository's clone gets a `url`; one not found is listed once, at the end.
+const sourceWarnings = new Set();
+const linked = (basis) => linkBasis(basis, (w) => sourceWarnings.add(w));
+process.on('exit', () => { for (const w of sourceWarnings) console.warn(`warning: AI docs source without a link: ${w}`); });
 
 const read = (...p) => fs.readFileSync(path.join(...p), 'utf8').replace(/^﻿/, '').replace(/\r\n/g, '\n');
 
@@ -592,7 +599,7 @@ function pickDoc(key, human) {
   const c = claudeDocs[key];
   if (c && (c.override || !human)) {
     usedClaude.add(key);
-    return { doc: c.doc, docBy: 'claude', docBasis: c.basis, ...(c.checkedBy ? { docCheckedBy: c.checkedBy, docCheckedOn: c.checkedOn } : {}) };
+    return { doc: c.doc, docBy: 'claude', docBasis: linked(c.basis), ...(c.checkedBy ? { docCheckedBy: c.checkedBy, docCheckedOn: c.checkedOn } : {}) };
   }
   return { doc: human || '' };
 }
@@ -623,7 +630,7 @@ function buildObject(objName, docPrefix, parsed) {
         ...(d.category ? { category: d.category } : {}),
       });
       // What the AI-written parameter docs rest on (data/claude-param-docs.json basis), once any is used.
-      if (claudeParamDocs[key]?.basis && m.params.some((p) => claudeParamDocs[key].params?.[p.name])) entry.paramsBasis = claudeParamDocs[key].basis;
+      if (claudeParamDocs[key]?.basis && m.params.some((p) => claudeParamDocs[key].params?.[p.name])) entry.paramsBasis = linked(claudeParamDocs[key].basis);
       entry.overloads.push({
         returns: tsType(m.csType),
         params: m.params.filter((p) => !p.out).map((p) => ({
@@ -811,7 +818,7 @@ for (const [obj, label] of Object.entries(LABELS)) {
     const p = practiceFile[key];
     if (p) {
       usedPractice.add(key);
-      Object.assign(m, { practice: p.text, practiceBasis: p.basis }, p.checkedBy ? { practiceCheckedBy: p.checkedBy, practiceCheckedOn: p.checkedOn } : {});
+      Object.assign(m, { practice: p.text, practiceBasis: linked(p.basis) }, p.checkedBy ? { practiceCheckedBy: p.checkedBy, practiceCheckedOn: p.checkedOn } : {});
     }
     if (m.internal || m.kind === 'object') continue;
     // Where it goes: options at the top level; Context, Player and ProtoInput calls in the callback Hub handlers use

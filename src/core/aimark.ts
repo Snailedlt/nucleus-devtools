@@ -4,20 +4,25 @@
 // tells screen readers; "Checked by …" stays visible as a small mark, since it changes how far to trust it. Human
 // docs stay plain. Markdown, which has no frames (hovers, suggestion docs), gets a ✨ before the text instead
 // (core/api.ts memberMarkdown). No DOM: the callers bring their own icon and CSS (the same class names).
-import { aiBasisOf, aiChecked, aiDataFiles, aiEnginesText, aiHubText, aiSourceItems, type AiPart, type Member } from './api';
+import { aiBasisItems, aiBasisItemText, aiBasisOf, aiChecked, type AiPart, type Member } from './api';
 import { partVotes, verifiedLabel } from './docvotes';
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
-/** Options for the sparkle's tooltip: `path` (the member's path, "Game.KillMutex": its "Verified by people" label) and
- *  `paths` (also the repo files behind the Hub data, as a small muted line: only on the docs pages, for developers). */
-export interface AiTipOptions { path?: string; paths?: boolean }
+/** Options for the sparkle's tooltip: `path` (the member's path, "Game.KillMutex": its "Verified by people" label). */
+export interface AiTipOptions { path?: string }
+
+/** A source's link in the tooltip: opens in a new tab (the page stays), said for screen readers. */
+const tipLink = (html: string, url: string) =>
+  `<a class="ai-src" href="${esc(url)}" target="_blank" rel="noopener noreferrer">${html}<span class="sr-only"> (opens in a new tab)</span></a>`;
 
 /**
  * The sparkle's tooltip, structured: a heading ("✨ AI-written", "✓ Checked by …", "Verified by people (N votes)" when
- * they apply), then the basis as a short labelled list (Source, one item per file with the file as code; Hub handlers;
- * Engines), built from the basis' fields (api.ts AiBasis). Visually hidden punctuation makes it one readable
- * sentence for screen readers (aria-describedby reads it flat). Phrasing content only (spans), so it fits in a summary or a span.
+ * they apply), then "Based on" and one list item per source (api.ts aiBasisItems: the source files, a note, the
+ * verified Hub handlers, the Hub games' engines), each a link where it has one (the file on GitHub, the docs page,
+ * the Hub). Built from the basis' fields and data/sources.json; nothing per entry. The links make it a small popup
+ * rather than a tooltip: it stays open while the pointer is on it or focus is in it, so they can be clicked and
+ * tabbed to (aiFrameCss, AI_TIP_SCRIPT: Escape hides it). Phrasing content only (spans), so it fits in a span.
  */
 export function aiTip(m: Member, part: AiPart, id: string, o: AiTipOptions = {}): string {
   const b = aiBasisOf(m, part) ?? {};
@@ -27,14 +32,12 @@ export function aiTip(m: Member, part: AiPart, id: string, o: AiTipOptions = {})
   const head = `<span class="ai-tip-h"><span aria-hidden="true">✨ </span>AI-written`
     + (checked ? `<span class="ai-tip-ok"> · ✓ ${esc(checked)}</span>` : '')
     + (verified ? `<span class="ai-tip-ok"> · ${esc(verified)}</span>` : '') + `${sr('. ')}</span>`;
-  const source = aiSourceItems(b, (f) => `<code class="ai-file">${esc(f)}</code>`, esc);
-  const row = (k: string, items: string[]) => (items.length
-    ? `<span class="ai-tip-k">${k}${sr(': ')}</span><span class="ai-tip-v">${items.map((x, n) => `<span class="ai-tip-i">${x}${sr(n < items.length - 1 ? '; ' : '. ')}</span>`).join('')}</span>`
-    : '');
-  const rows = row('Source', source) + row('Hub handlers', b.hub ? [esc(aiHubText(b))] : []) + row('Engines', b.engines ? [esc(aiEnginesText(b))] : []);
-  const files = aiDataFiles(b);
-  return `<span class="ai-tip" role="tooltip" id="${esc(id)}">${head}${rows ? `<span class="ai-tip-l">${rows}</span>` : ''}`
-    + (o.paths && files.length ? `<span class="ai-tip-path">${sr('Files: ')}${files.map(esc).join(', ')}</span>` : '') + `</span>`;
+  const cap = (t?: string) => t && t[0].toUpperCase() + t.slice(1);
+  const items = aiBasisItems(b).map((i) => aiBasisItemText({ ...i, text: cap(i.text) }, { code: (f) => `<code>${esc(f)}</code>`, text: esc, link: tipLink }));
+  const list = items.length
+    ? `<span class="ai-tip-k">Based on${sr(': ')}</span><span class="ai-tip-l" role="list">${items.map((x, n) => `<span class="ai-tip-i" role="listitem">${x}${sr(n < items.length - 1 ? '; ' : '.')}</span>`).join('')}</span>`
+    : '';
+  return `<span class="ai-tip" id="${esc(id)}">${head}${list}</span>`;
 }
 
 /** The corner of an AI-written part's frame: "Checked by …" (when a person did) and the sparkle with its tooltip
@@ -65,8 +68,9 @@ export function placeAiFrames(html: string, m: Member, o: { icon: string; idPref
 }
 
 /** The frame's CSS, from the caller's colours: `fg`, `muted`, `line`, `surface` (the tooltip's background) and `tint`
- *  (the AI violet, mixed lightly into the background: light enough for text in every theme). */
-export function aiFrameCss(c: { fg: string; muted: string; line: string; surface: string; tint?: string }): string {
+ *  (the AI violet, mixed lightly into the background: light enough for text in every theme); `link`: the sources'
+ *  links (underlined; the text colour when not given). */
+export function aiFrameCss(c: { fg: string; muted: string; line: string; surface: string; tint?: string; link?: string }): string {
   const tint = c.tint ?? '#a855f7';
   return `.ai-box { display: flow-root; margin: 10px 0 14px; padding: 8px 12px; border: 1px solid color-mix(in srgb, ${tint} 45%, ${c.line}); border-radius: 8px; background: color-mix(in srgb, ${tint} 7%, transparent); }
 .ai-box > :last-child { margin-bottom: 0; }
@@ -79,25 +83,28 @@ export function aiFrameCss(c: { fg: string; muted: string; line: string; surface
 .ai-tip { position: absolute; z-index: 5; right: 0; top: 100%; margin-top: 4px; width: max-content; max-width: min(340px, 80vw); padding: 6px 10px; border: 1px solid ${c.line}; border-radius: 6px; background: ${c.surface}; color: ${c.fg}; font-size: 13px; font-weight: 400; line-height: 1.45; text-align: left; white-space: normal; box-shadow: 0 4px 14px rgb(0 0 0 / .18); visibility: hidden; }
 ${aiTipCss(c)}
 .ai-tip::before { content: ''; position: absolute; left: 0; right: 0; top: -6px; height: 6px; }
-.ai-badge:hover .ai-tip, .ai-badge:focus .ai-tip { visibility: visible; }
+.ai-badge:hover .ai-tip, .ai-badge:focus-within .ai-tip { visibility: visible; }
 .ai-badge.tip-off .ai-tip { visibility: hidden; }
 .ai-h { margin: 0 0 6px; font-size: 1.05em; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: -1px; }`;
 }
 
-/** The tooltip's inner layout (aiTip): the heading, the labelled list, the muted path line. Part of aiFrameCss; the
+/** The tooltip's inner layout (aiTip): the heading, "Based on" and its list, the links. Part of aiFrameCss; the
  *  workbench's page.html, which has its own frame CSS, adds it too. */
-export function aiTipCss(c: { muted: string; fg?: string }): string {
+export function aiTipCss(c: { muted: string; fg?: string; link?: string }): string {
   return `.ai-tip-h { display: block; margin-bottom: 4px; font-weight: 600; }
 .ai-tip-ok { font-weight: 400; color: ${c.muted}; }
-.ai-tip-l { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 3px 10px; }
-.ai-tip-k { color: ${c.muted}; font-size: .92em; white-space: nowrap; }
-.ai-tip-v, .ai-tip-i, .ai-tip-path { display: block; overflow-wrap: anywhere; }
+.ai-tip-k { display: block; color: ${c.muted}; font-size: .92em; }
+.ai-tip-l, .ai-tip-i { display: block; overflow-wrap: anywhere; }
+.ai-tip-i { position: relative; padding-left: 12px; }
+.ai-tip-i::before { content: ''; position: absolute; left: 3px; top: .62em; width: 4px; height: 4px; border-radius: 50%; background: ${c.muted}; }
 .ai-tip code { font-size: .92em; padding: 0 3px; border-radius: 3px; background: color-mix(in srgb, ${c.fg ?? 'currentColor'} 9%, transparent); }
-.ai-tip-path { margin-top: 5px; font-size: 11px; color: ${c.muted}; font-family: ui-monospace, monospace; }`;
+.ai-tip a.ai-src { color: ${c.link ?? 'inherit'}; text-decoration: underline; text-underline-offset: 2px; }
+.ai-tip a.ai-src:hover { text-decoration-thickness: 2px; }
+.ai-tip a.ai-src:focus-visible { outline: 2px solid currentColor; outline-offset: 1px; border-radius: 2px; }`;
 }
 
 /** Escape hides a sparkle's tooltip until the pointer or focus leaves it (WCAG 1.4.13), for pages that run scripts. */
-export const AI_TIP_SCRIPT = `document.addEventListener('keydown', function (e) { if (e.key === 'Escape') document.querySelectorAll('.ai-badge:hover, .ai-badge:focus').forEach(function (b) { b.classList.add('tip-off'); }); });
+export const AI_TIP_SCRIPT = `document.addEventListener('keydown', function (e) { if (e.key === 'Escape') document.querySelectorAll('.ai-badge:hover, .ai-badge:focus-within').forEach(function (b) { b.classList.add('tip-off'); }); });
 document.addEventListener('mouseout', function (e) { var b = e.target.closest && e.target.closest('.ai-badge'); if (b && !b.contains(e.relatedTarget)) b.classList.remove('tip-off'); });
-document.addEventListener('focusout', function (e) { var b = e.target.closest && e.target.closest('.ai-badge'); if (b) b.classList.remove('tip-off'); });`;
+document.addEventListener('focusout', function (e) { var b = e.target.closest && e.target.closest('.ai-badge'); if (b && !b.contains(e.relatedTarget)) b.classList.remove('tip-off'); });`;

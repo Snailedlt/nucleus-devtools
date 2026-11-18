@@ -1,5 +1,6 @@
 // Typed access to the generated Nucleus handler API model (data/nucleus-api.json).
 import raw from '../../data/nucleus-api.json';
+import sources from '../../data/sources.json';
 import { JS_FUNCTIONS, JS_GLOBAL_OBJECTS, JS_OBJECTS, isJsBuiltin, mdnUrl } from './jsbuiltins';
 import { DOTNET_OBJECTS } from './dotnet';
 import { prettyCode, prettySignature } from './pretty';
@@ -504,14 +505,18 @@ export function isAiPart(m: Member, part: AiPart): boolean {
   return (m.overloads ?? []).some((o) => o.params.some((p) => p.doc && p.docBy === 'claude'));
 }
 /** One source an AI-written part rests on (data/claude-*.json `basis.source`): `project` (Nucleus, ProtoInputHooks,
- *  Proto Input guide, …), `file` (shown as code) and `what` in it (functions, call sites); each optional. */
-export interface AiSource { project?: string; file?: string; what?: string }
+ *  Proto Input guide, …: data/sources.json `projects`), `file` (shown as code) and `what` in it (functions, call
+ *  sites); each optional. `url`: the link to it, which npm run generate looks up (scripts/sources.mjs). */
+export interface AiSource { project?: string; file?: string; what?: string; url?: string }
 /** What an AI-written part is based on, as data (data/claude-docs.json, claude-practice.json, claude-param-docs.json
  *  `basis`): the `source` files, the verified Hub handlers (`hub.counted`: the date they were counted), the Hub games'
  *  engines (`engines`: true, or the families the text names) and a `note` for anything else. Every place that shows
- *  it builds its text from these fields: the sparkle's tooltip (core/aimark.ts aiTip), the Markdown line
- *  (aiBasisSummary), the words for agents (aiBasisWords; scripts/generate-api.mjs has the same for the .d.ts). */
+ *  it builds its text from aiBasisItems: the sparkle's tooltip (core/aimark.ts aiTip), the Markdown line
+ *  (aiBasisMarkdown), the words for agents (aiBasisWords; scripts/basis.mjs has the same for the .d.ts). */
 export interface AiBasis { source?: AiSource[]; hub?: { counted: string }; engines?: true | string[]; note?: string }
+/** One thing a part is based on, ready to show: a source (`project`, named only where it changes, `file`, `what`) or
+ *  a `text` (the Hub handlers, the engines, a note), with its `url` when it has one. */
+export interface AiBasisItem { project?: string; file?: string; what?: string; text?: string; url?: string }
 
 /** The basis of an AI-written part (undefined when the part isn't AI-written). */
 export function aiBasisOf(m: Member, part: AiPart): AiBasis | undefined {
@@ -519,42 +524,58 @@ export function aiBasisOf(m: Member, part: AiPart): AiBasis | undefined {
   const b = part === 'doc' ? m.docBasis : part === 'params' ? m.paramsBasis : m.practiceBasis;
   return b ?? { note: 'the Nucleus source' };
 }
-/** The source items as text, the project named only where it changes ("Nucleus GenericGameHandler.cs (StartGame)",
- *  "ProcessUtil.cs"); the note last. `code` wraps a file name (HTML callers make it <code>). */
-export function aiSourceItems(b: AiBasis, code: (file: string) => string = (f) => f, text: (s: string) => string = (s) => s): string[] {
+/** The Hub data's words and links (data/sources.json `data`). */
+const basisData = sources.data as Record<'hub' | 'engines', { text: string; url: string }>;
+/** Everything a part is based on, one item per source, in order: the source files (the project named only where it
+ *  changes), the note, the verified Hub handlers, the Hub games' engines. Each with its link where it has one. */
+export function aiBasisItems(b: AiBasis): AiBasisItem[] {
   let prev = '';
-  const out = (b.source ?? []).map((i) => {
-    const project = i.project && i.project !== prev ? i.project : '';
+  const items: AiBasisItem[] = (b.source ?? []).map((i) => {
+    const project = i.project && i.project !== prev ? i.project : undefined;
     prev = i.project ?? prev;
-    const head = [project ? text(project) : '', i.file ? code(i.file) : ''].filter(Boolean).join(' ');
-    return head ? `${head}${i.what ? ` (${text(i.what)})` : ''}` : text(i.what ?? '');
+    return { project, file: i.file, what: i.what, url: i.url };
   });
-  return b.note ? [...out, text(b.note)] : out;
+  if (b.note) items.push({ text: b.note });
+  if (b.hub) items.push({ text: basisData.hub.text.replace('{counted}', b.hub.counted), url: basisData.hub.url });
+  if (b.engines) items.push({ text: basisData.engines.text.replace('{families}', Array.isArray(b.engines) && b.engines.length ? ` (${b.engines.join(', ')})` : ''), url: basisData.engines.url });
+  return items;
 }
-/** "verified handlers, counted 2026-11-17" ('' without Hub data). */
-export const aiHubText = (b: AiBasis) => (b.hub ? `verified handlers, counted ${b.hub.counted}` : '');
-/** "Source games, from Hub game engines (Wikidata/IGDB)" ('' without engine data). */
-export const aiEnginesText = (b: AiBasis) =>
-  !b.engines ? '' : `${Array.isArray(b.engines) && b.engines.length ? `${b.engines.join(', ')} games, f` : 'F'}rom Hub game engines (Wikidata/IGDB)`;
-/** The repo files behind the Hub data (for the docs pages, where developers look). */
-export const aiDataFiles = (b: AiBasis) => [b.hub ? 'data/hub-examples.json' : '', b.engines ? 'data/hub-engines.json' : ''].filter(Boolean);
-/** The labelled groups on one line, for Markdown: "Source: … · Hub handlers: … · Engines: …". */
-export function aiBasisSummary(b: AiBasis): string {
-  const src = aiSourceItems(b);
-  return [src.length ? `Source: ${src.join(', ')}` : '', b.hub ? `Hub handlers: ${aiHubText(b)}` : '', b.engines ? `Engines: ${aiEnginesText(b)}` : ''].filter(Boolean).join(' · ');
+/** One item as text; `code` wraps a file name, `text` escapes the rest, `link` wraps the linked part (the file, else
+ *  the whole item) in its link: "Nucleus GenericGameHandler.cs (StartGame)". */
+export function aiBasisItemText(i: AiBasisItem, f: { code?: (s: string) => string; text?: (s: string) => string; link?: (s: string, url: string) => string } = {}): string {
+  const code = f.code ?? ((s) => s), text = f.text ?? ((s) => s);
+  const link = (s: string) => (i.url && f.link ? f.link(s, i.url) : s);
+  if (i.text !== undefined) return link(text(i.text));
+  if (i.file) return `${i.project ? `${text(i.project)} ` : ''}${link(code(i.file))}${i.what ? ` (${text(i.what)})` : ''}`;
+  return link(text([i.project, i.what].filter(Boolean).join(': ')));
+}
+/** The basis on one line, for Markdown (hovers, suggestion docs): "Based on Nucleus [`GenericGameHandler.cs`](…)
+ *  (…) · [verified Hub handlers, counted …](…)", each source linked. */
+export function aiBasisMarkdown(b: AiBasis): string {
+  const items = aiBasisItems(b).map((i) => aiBasisItemText(i, { code: (s) => `\`${s}\``, text: (s) => s.replace(/[[\]*_`]/g, '\\$&'), link: (s, u) => `[${s}](${u})` }));
+  return items.length ? `Based on ${items.join(' · ')}` : '';
 }
 /** The basis in words, for agents (CLI, MCP, api.md: "AI-written, based on …"): "Nucleus GenericGameHandler.cs (…),
- *  ProcessUtil.cs; verified Hub handlers, counted 2026-11-17; Hub game engines (Source)". scripts/generate-api.mjs
+ *  ProcessUtil.cs; verified Hub handlers, counted 2026-11-17; Hub game engines (Source)". No links: scripts/basis.mjs
  *  basisWords is the same for the .d.ts (a test checks they agree). */
 export function aiBasisWords(b: AiBasis | undefined): string {
   if (!b) return 'the Nucleus source';
-  const eng = b.engines ? `Hub game engines${Array.isArray(b.engines) && b.engines.length ? ` (${b.engines.join(', ')})` : ''}` : '';
-  return [aiSourceItems(b).join(', '), b.hub ? `verified Hub handlers, counted ${b.hub.counted}` : '', eng].filter(Boolean).join('; ');
+  const items = aiBasisItems(b);
+  const src = items.filter((i) => i.text === undefined || i.text === b.note).map((i) => aiBasisItemText(i));
+  const rest = items.filter((i) => i.text !== undefined && i.text !== b.note).map((i) => aiBasisItemText(i));
+  return [src.join(', '), ...rest].filter(Boolean).join('; ');
 }
-/** Where an AI-written part comes from, on one labelled line ('' when the part isn't AI-written): aiBasisSummary. */
+/** Where an AI-written part comes from, as plain text on one line ('' when the part isn't AI-written): "Based on …",
+ *  for a title attribute. */
 export function aiBasis(m: Member, part: AiPart): string {
   const b = aiBasisOf(m, part);
-  return b ? aiBasisSummary(b) : '';
+  const items = b ? aiBasisItems(b).map((i) => aiBasisItemText(i)) : [];
+  return items.length ? `Based on ${items.join(' · ')}` : '';
+}
+/** The same in Markdown, each source linked (aiBasisMarkdown). */
+export function aiBasisMd(m: Member, part: AiPart): string {
+  const b = aiBasisOf(m, part);
+  return b ? aiBasisMarkdown(b) : '';
 }
 /** "Checked by Ann on 2026-11-01" for an AI-written part a person checked ('' otherwise): stays visible, small. */
 export function aiChecked(m: Member, part: AiPart): string {
@@ -562,7 +583,7 @@ export function aiChecked(m: Member, part: AiPart): string {
   return by && isAiPart(m, part) ? `Checked by ${by}${on ? ` on ${on}` : ''}` : '';
 }
 /** The small line under an AI-written part in Markdown: where it comes from, and who checked it. */
-const aiBasisLine = (m: Member, part: AiPart) => `_${aiBasis(m, part)}${aiChecked(m, part) ? ` · ✓ ${aiChecked(m, part)}` : ''}_`;
+export const aiBasisLine = (m: Member, part: AiPart) => `_${aiBasisMd(m, part)}${aiChecked(m, part) ? ` · ✓ ${aiChecked(m, part)}` : ''}_`;
 /** Text with the ✨ before its first paragraph (on its own when the text starts with a code block or a list). */
 const withMark = (md: string) => (/^(```|- |\d+\. |#)/.test(md.trimStart()) ? `${AI_MARK}\n\n${md}` : `${AI_MARK} ${md}`);
 

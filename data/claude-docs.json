@@ -612,7 +612,7 @@
     "source": [
      { "project": "Nucleus", "file": "LockInputRuntime.cs", "what": "Lock" },
      { "project": "Nucleus", "file": "GenericGameHandler.cs", "what": "after instance loop" },
-     { "file": "AGENTS.md", "what": "last player's Context" }
+     { "project": "Nucleus devtools", "file": "AGENTS.md", "what": "last player's Context" }
     ]
    }
   },

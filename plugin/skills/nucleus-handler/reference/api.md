@@ -3184,7 +3184,7 @@ Game.ProtoInput.MultipleProtoControllers = false;
 ### Game.ProtoInput.OnInputLocked
 `OnInputLocked: () => void`
 Function Nucleus calls each time input is locked (the lock key, the gamepad lock shortcut or `Game.LockInputAtStart`), and once after all instances are set up if input is locked by then. It sees the last player's `Context`.
-_✎ AI-written, based on Nucleus LockInputRuntime.cs (Lock), GenericGameHandler.cs (after instance loop), AGENTS.md (last player's Context). Not from the official docs._
+_✎ AI-written, based on Nucleus LockInputRuntime.cs (Lock), GenericGameHandler.cs (after instance loop), Nucleus devtools AGENTS.md (last player's Context). Not from the official docs._
 In practice (AI-written): Runs once when the player locks the input (the lock key, End by default), with no arguments, so handlers loop over `PlayerList` and act on each `player.ProtoInputInstanceHandle`. They use it to switch Proto Input on only while input is locked: `ProtoInput.InstallHook`, `ProtoInput.EnableMessageFilter`, `ProtoInput.SetDrawFakeCursor(…, true)`, `ProtoInput.StartFocusMessageLoop`, undone in `Game.ProtoInput.OnInputUnlocked`. `Context` in it is the last player's.
 _✎ AI-written, based on Nucleus ProtoInputOptions.cs (public Action OnInputLocked), LockInputRuntime.cs (OnInputLocked?.Invoke()); verified Hub handlers, counted 2026-11-17._
 Example (AI-written):
@@ -3339,7 +3339,7 @@ Proto Input
 Proto Input sends a mouse move window message with the player's fake cursor position to the game window each time the player's mouse moves. Applied per instance when Proto Input is injected (`Game.ProtoInput.InjectStartup` or an `InjectRuntime_…` option). Not sent while `Game.ProtoInput.TranslateMKBtoXinput` is on.
 _✎ AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → SetupMessagesToSend), ProtoInputHooks RawInput.cpp (SendInputMessages, ProcessMouseInput). Not from the official docs._
 In practice (AI-written): Handlers turn the four Send…Messages options on together: games that read the mouse from window messages (WM_MOUSEMOVE and the like) then get each player's own mouse. Games that only read raw input don't need them.
-_✎ AI-written, based on Proto Input docs (Send messages), ProtoInputHooks; verified Hub handlers, counted 2026-11-17._
+_✎ AI-written, based on Proto Input docs: Send messages, ProtoInputHooks; verified Hub handlers, counted 2026-11-17._
 Example:
 ```js
 Game.ProtoInput.SendMouseMovementMessages = true;

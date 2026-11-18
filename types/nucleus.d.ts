@@ -2227,7 +2227,7 @@ interface GameProtoInput {
    * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → SetupMessagesToSend), ProtoInputHooks RawInput.cpp (SendInputMessages, ProcessMouseInput). Not from the official docs.)
    *
    * In practice: Handlers turn the four Send…Messages options on together: games that read the mouse from window messages (WM_MOUSEMOVE and the like) then get each player's own mouse. Games that only read raw input don't need them.
-   * (AI-written, based on Proto Input docs (Send messages), ProtoInputHooks; verified Hub handlers, counted 2026-11-17.)
+   * (AI-written, based on Proto Input docs: Send messages, ProtoInputHooks; verified Hub handlers, counted 2026-11-17.)
    * @example Game.ProtoInput.SendMouseMovementMessages = true;
    */
   SendMouseMovementMessages: boolean;
@@ -2376,7 +2376,7 @@ interface GameProtoInput {
   FreezeExternalInputWhenInputNotLocked: boolean;
   /**
    * Function Nucleus calls each time input is locked (the lock key, the gamepad lock shortcut or `Game.LockInputAtStart`), and once after all instances are set up if input is locked by then. It sees the last player's `Context`.
-   * (AI-written, based on Nucleus LockInputRuntime.cs (Lock), GenericGameHandler.cs (after instance loop), AGENTS.md (last player's Context). Not from the official docs.)
+   * (AI-written, based on Nucleus LockInputRuntime.cs (Lock), GenericGameHandler.cs (after instance loop), Nucleus devtools AGENTS.md (last player's Context). Not from the official docs.)
    *
    * In practice: Runs once when the player locks the input (the lock key, End by default), with no arguments, so handlers loop over `PlayerList` and act on each `player.ProtoInputInstanceHandle`. They use it to switch Proto Input on only while input is locked: `ProtoInput.InstallHook`, `ProtoInput.EnableMessageFilter`, `ProtoInput.SetDrawFakeCursor(…, true)`, `ProtoInput.StartFocusMessageLoop`, undone in `Game.ProtoInput.OnInputUnlocked`. `Context` in it is the last player's.
    * (AI-written, based on Nucleus ProtoInputOptions.cs (public Action OnInputLocked), LockInputRuntime.cs (OnInputLocked?.Invoke()); verified Hub handlers, counted 2026-11-17.)

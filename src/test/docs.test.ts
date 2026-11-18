@@ -1,7 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import raw from '../../data/claude-docs.json';
-import { aiBasisSummary, aiBasisWords, aiEnginesText, aiSourceItems, api, claudeNote, memberMarkdown, type AiBasis } from '../core/api';
+import sources from '../../data/sources.json';
+import { aiBasisItems, aiBasisItemText, aiBasisMarkdown, aiBasisWords, api, claudeNote, memberMarkdown, type AiBasis } from '../core/api';
 import { basisWords } from '../../scripts/basis.mjs';
 import { aiTip } from '../core/aimark';
 import practiceRaw from '../../data/claude-practice.json';
@@ -27,12 +28,12 @@ test('Claude-written docs: each says what it is based on, and the tools label it
   const md = memberMarkdown(owner, name, api.objects.Game.members.Play);
   // Markdown has no frames: a ✨ before the AI-written text, where it comes from on its own small line.
   assert.match(md, /^✨ /m);
-  assert.match(md, /^_Source: Nucleus/m);
+  assert.match(md, /^_Based on Nucleus \[`/m);
   assert.doesNotMatch(md, /AI-written/, 'the ✨ says it');
   // With slots (the Docs panel, the docs pages) the caller frames it: no ✨ or basis line in the text.
   const framed = memberMarkdown(owner, name, api.objects.Game.members.Play, true);
   assert.match(framed, /@@slot:ai-doc@@[\s\S]*@@slot:ai-close@@/);
-  assert.doesNotMatch(framed, /✨|_Source: /);
+  assert.doesNotMatch(framed, /✨|_Based on /);
   assert.match(markdownReference(), /_✎ AI-written/);
   // Human docs carry no label.
   const human = Object.values(api.objects.Game.members).find((m) => m.doc && !m.docBy)!;
@@ -86,7 +87,7 @@ test('"In practice" parts: real members, labelled, with what they are based on; 
     const m = api.objects[OBJ[key.slice(0, i)]]?.members[key.slice(i + 1)];
     assert.ok(m, `${key}: a real member`);
     assert.equal(m.practice, p.text, `${key}: in the model (npm run generate)`);
-    assert.match(memberMarkdown(key.slice(0, i) === 'Player' ? 'PlayerInfo' : OBJ[key.slice(0, i)], key.slice(i + 1), m), /\*\*✨ In practice\*\*[\s\S]*_(Source|Hub handlers): /);
+    assert.match(memberMarkdown(key.slice(0, i) === 'Player' ? 'PlayerInfo' : OBJ[key.slice(0, i)], key.slice(i + 1), m), /\*\*✨ In practice\*\*[\s\S]*_Based on /);
   }
   // Every example in the model: ES5 that parses, and no errors from the checks once it sits where it belongs.
   for (const [o, obj] of Object.entries(api.objects)) for (const [k, m] of Object.entries(obj.members)) {
@@ -184,24 +185,29 @@ test('AI basis as data: every entry has typed fields, and every renderer builds 
     if (b.engines !== undefined) assert.ok(b.engines === true || (Array.isArray(b.engines) && b.engines.length), `${key}: engines is true or the families`);
     // The scripts' words (the .d.ts, the doc-review bot) are the tools' words.
     assert.equal(basisWords(b), aiBasisWords(b), key);
-    assert.doesNotMatch(aiBasisSummary(b), /data\/hub-|undefined/, key);
+    assert.doesNotMatch(aiBasisMarkdown(b), /undefined/, key);
+    // Every project is in the table of sources (data/sources.json), so it can be linked.
+    for (const i of b.source ?? []) assert.ok(i.project && (sources.projects as Record<string, unknown>)[i.project], `${key}: project ${i.project} is in data/sources.json`);
   }
-  const kill: AiBasis = { source: [{ project: 'Nucleus', file: 'GenericGameHandler.cs', what: 'the mutex kill before the next instance' }, { project: 'Nucleus', file: 'ProcessUtil.cs' }], hub: { counted: '2026-11-17' }, engines: ['Source'] };
-  assert.equal(aiBasisSummary(kill), 'Source: Nucleus GenericGameHandler.cs (the mutex kill before the next instance), ProcessUtil.cs · Hub handlers: verified handlers, counted 2026-11-17 · Engines: Source games, from Hub game engines (Wikidata/IGDB)');
+  const kill: AiBasis = { source: [{ project: 'Nucleus', file: 'GenericGameHandler.cs', what: 'the mutex kill before the next instance', url: 'https://x/G.cs' }, { project: 'Nucleus', file: 'ProcessUtil.cs' }], hub: { counted: '2026-11-17' }, engines: ['Source'] };
+  assert.equal(aiBasisMarkdown(kill), 'Based on Nucleus [`GenericGameHandler.cs`](https://x/G.cs) (the mutex kill before the next instance) · `ProcessUtil.cs` · [verified Hub handlers, counted 2026-11-17](https://hub.splitscreen.me/) · [Hub game engines (Source)](https://github.com/Snailedlt/splitscreenme-vscode/blob/main/data/hub-engines.json)');
   assert.equal(aiBasisWords(kill), 'Nucleus GenericGameHandler.cs (the mutex kill before the next instance), ProcessUtil.cs; verified Hub handlers, counted 2026-11-17; Hub game engines (Source)');
-  assert.equal(aiEnginesText({ engines: true }), 'From Hub game engines (Wikidata/IGDB)');
-  // The project is named where it changes; the note comes last.
-  assert.deepEqual(aiSourceItems({ source: [{ project: 'Nucleus', file: 'ProtoInput.cs' }, { project: 'ProtoInputHooks', file: 'A.cpp' }, { project: 'ProtoInputHooks', file: 'B.cpp' }], note: 'x' }), ['Nucleus ProtoInput.cs', 'ProtoInputHooks A.cpp', 'B.cpp', 'x']);
-  // The model carries the fields (npm run generate).
+  // One item per source, the project named where it changes, the note after the files; a project-only source links as a whole.
+  assert.deepEqual(aiBasisItems({ source: [{ project: 'Nucleus', file: 'ProtoInput.cs' }, { project: 'ProtoInputHooks', file: 'A.cpp' }, { project: 'ProtoInputHooks', file: 'B.cpp' }], note: 'x' }).map((i) => aiBasisItemText(i)), ['Nucleus ProtoInput.cs', 'ProtoInputHooks A.cpp', 'B.cpp', 'x']);
+  assert.equal(aiBasisItemText({ project: 'Proto Input docs', what: 'Send messages', url: 'u' }, { link: (h, u) => `<${u}>${h}` }), '<u>Proto Input docs: Send messages');
+  // The model carries the fields (npm run generate) and a link for every source file found in its repository.
   const m = api.objects.Game.members.KillMutex;
-  assert.deepEqual(JSON.parse(JSON.stringify(m.practiceBasis)), practice['Game.KillMutex'].basis);
+  const strip = (b?: AiBasis) => JSON.parse(JSON.stringify(b, (k, v) => (k === 'url' ? undefined : v)));
+  assert.deepEqual(strip(m.practiceBasis), practice['Game.KillMutex'].basis);
   assert.ok(api.objects.Context.members.GetFolder.paramsBasis?.source?.length, 'the parameter docs\' basis in the model');
-  // The tooltip: a heading, the labelled list with files as code, the data files only when asked.
+  for (const [on, o] of Object.entries(api.objects)) for (const [mn, mm] of Object.entries(o.members)) for (const b of [mm.docBasis, mm.practiceBasis, mm.paramsBasis])
+    for (const i of b?.source ?? []) assert.match(i.url ?? '', /^https:\/\/(github\.com\/[\w.-]+\/[\w.-]+(\/(blob|tree)\/[\w.-]+\/\S+)?|www\.splitscreen\.me\/docs\/\S+)$/, `${on}.${mn}: ${i.project} ${i.file ?? ''} has a link`);
+  // The tooltip: a heading, "Based on" and one item per source, each linked where it can be; no category labels.
   const tip = aiTip(m, 'practice', 't');
   assert.match(tip, /<span class="ai-tip-h"><span aria-hidden="true">✨ <\/span>AI-written/);
-  assert.match(tip, /<span class="ai-tip-k">Source<span class="sr-only">: <\/span><\/span>[\s\S]*<code class="ai-file">GenericGameHandler\.cs<\/code>/);
-  assert.match(tip, /Hub handlers[\s\S]*verified handlers, counted/);
-  assert.match(tip, /Engines[\s\S]*from Hub game engines \(Wikidata\/IGDB\)/);
-  assert.doesNotMatch(tip, /hub-engines\.json/);
-  assert.match(aiTip(m, 'practice', 't', { paths: true }), /class="ai-tip-path">[\s\S]*data\/hub-engines\.json/);
+  assert.match(tip, /<span class="ai-tip-k">Based on<span class="sr-only">: <\/span><\/span>/);
+  assert.match(tip, /<a class="ai-src" href="https:\/\/github\.com\/SplitScreen-Me\/splitscreenme-nucleus\/blob\/master\/[^"]*GenericGameHandler\.cs" target="_blank" rel="noopener noreferrer"><code>GenericGameHandler\.cs<\/code>/);
+  assert.match(tip, /<a class="ai-src" href="https:\/\/hub\.splitscreen\.me\/"[^>]*>Verified Hub handlers, counted/);
+  assert.match(tip, /href="[^"]*hub-engines\.json"[^>]*>Hub game engines/);
+  assert.doesNotMatch(tip, /role="tooltip"|ai-tip-path|>Source<|>Engines</);
 });

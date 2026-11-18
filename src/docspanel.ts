@@ -174,7 +174,7 @@ ul { padding-left: 20px; } li { margin: 3px 0; }
 .votes .follow { margin-left: 4px; }
 .practice { border: 1px solid var(--vscode-panel-border, #8884); border-radius: 6px; padding: 2px 12px; margin: 12px 0; }
 /* AI-written parts: a frame with a light violet tint and the sparkle in its corner (core/aimark.ts). */
-${aiFrameCss({ fg: 'var(--vscode-editorHoverWidget-foreground, var(--vscode-foreground))', muted: 'var(--vscode-descriptionForeground)', line: 'var(--vscode-panel-border, rgba(128,128,128,.35))', surface: 'var(--vscode-editorHoverWidget-background, var(--vscode-editor-background))' })}
+${aiFrameCss({ fg: 'var(--vscode-editorHoverWidget-foreground, var(--vscode-foreground))', muted: 'var(--vscode-descriptionForeground)', line: 'var(--vscode-panel-border, rgba(128,128,128,.35))', surface: 'var(--vscode-editorHoverWidget-background, var(--vscode-editor-background))', link: 'var(--vscode-textLink-foreground)' })}
 .ai-box.practice { padding: 8px 12px; } .ai-box .votes { margin-bottom: 0; }
 body.vscode-high-contrast .ai-box, body.vscode-high-contrast-light .ai-box { background: none; border-color: var(--vscode-contrastBorder, currentColor); }
 .vote { display: inline-block; padding: 2px 8px; border: 1px solid var(--vscode-button-border, #8886); border-radius: 4px; text-decoration: none; }

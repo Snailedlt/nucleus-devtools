@@ -453,7 +453,7 @@ test('Docs panel: 👍/👎 inside each part as command links; the follow-up lin
   assert.ok(box && /In practice/.test(box[1]) && /Is this right\?/.test(box[1]), 'the practice vote in its box');
   assert.ok(html.indexOf('Is this doc right?') < html.indexOf('<section class="ai-box practice"'), 'the doc vote before "In practice"');
   // AI-written parts framed, with the sparkle's tooltip (the basis) and a hidden "AI-written"; the human doc plain.
-  assert.match(box[1], /class="ai-badge" tabindex="0" aria-describedby="ai-practice"[\s\S]*<span class="sr-only">AI-written<\/span><span class="ai-tip" role="tooltip" id="ai-practice"><span class="ai-tip-h">[\s\S]*AI-written[\s\S]*Source/);
+  assert.match(box[1], /class="ai-badge" tabindex="0" aria-describedby="ai-practice"[\s\S]*<span class="sr-only">AI-written<\/span><span class="ai-tip" id="ai-practice"><span class="ai-tip-h">[\s\S]*AI-written[\s\S]*Based on[\s\S]*<a class="ai-src" href="https:\/\/github\.com\//);
   assert.match(html, /<div class="ai-box" data-ai="example">/, 'the AI-written example framed');
   assert.doesNotMatch(html, /data-ai="doc"/, 'the human doc stays plain');
   assert.doesNotMatch(html.replace(/<span class="ai-tip"[\s\S]*?<\/span><\/span><\/span>(?=<\/span>)/g, '').replace(/<span class="sr-only"[^>]*>[^<]*<\/span>/g, ''), />[^<]*AI-written/, 'no visible "AI-written" words');
