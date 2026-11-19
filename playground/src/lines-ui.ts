@@ -9,6 +9,9 @@
 import { allLines, KINDS, Kind, Line, matches, scanHandler, inCallback, Scan, USAGE_TOTAL } from './lines';
 import { BEFORE_SESSION } from '@core/lifecycle';
 import { narrow } from './dom';
+import { aiMeta } from '@core/aimark';
+
+let aiIds = 0;
 
 interface Deps {
   editor: any; // CodeMirror 5
@@ -110,11 +113,11 @@ export function initLines({ editor, openReference, previewReference }: Deps) {
   /** A name's doc; an AI-written one in the AI frame with the sparkle (and a hidden "AI-written"), as in Docs. */
   function docDiv(l: Line): HTMLElement {
     const d = text('div', l.aiDoc ? 'ai-box ln-ai' : '', l.doc ?? '');
-    if (l.aiDoc) {
-      const s = document.createElement('span');
-      s.className = 'ai-meta';
-      s.innerHTML = '<span class="ai-spark" role="img" aria-label="AI-written" title="AI-written, from the Nucleus source"></span>';
-      d.prepend(s);
+    if (l.aiDoc && l.member) {
+      // Docs' corner (core aimark): the sparkle focusable, its tooltip on hover and focus with the sources it's based on.
+      const t = document.createElement('template');
+      t.innerHTML = aiMeta(l.member, 'doc', '<span class="ai-spark" aria-hidden="true"></span>', `ln-ai-${++aiIds}`, { path: l.path });
+      d.prepend(t.content);
     }
     return d;
   }

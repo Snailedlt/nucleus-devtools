@@ -1140,7 +1140,7 @@ export function mountBlocksView(container: HTMLElement, host: BlocksHost): Block
         if (cf) {
           const ms = marksIn(s);
           if (ms) cf.setMarks(ms);
-          if (!cf.hasFocus() && cf.value !== s.src) cf.value = s.src!;
+          if ((!cf.hasFocus() || undoing) && cf.value !== s.src) cf.value = s.src!; // as fillValue
         }
       }
       // The expand button's docs: the step's member.

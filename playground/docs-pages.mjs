@@ -181,7 +181,7 @@ ${docsDrawer(up, here0, o.groups.map((g) => `<li><a href="${up}docs/${g.key}/">$
   // Each 👍/👎 where the workbench's Docs (doccard.ts) has it: the doc's at the bottom of the doc content, after the
   // example and before "Handler API docs"; "In practice"'s inside its box. The follow-up link shows only
   // after a vote (site-chrome.mjs docFeedback); the core's own "Is it wrong? Tell us" links are left out for it.
-  const feedbackUrl = (p) => o.docReviewUrl(p).replace(encodeURIComponent('Doc review: '), encodeURIComponent('Doc feedback: '));
+  const feedbackUrl = (p, part) => o.docReviewUrl(p, part).replace(encodeURIComponent('Doc review: '), encodeURIComponent('Doc feedback: '));
   const withVotes = (page, m, href) => {
     let md = page.markdown.replace(/^## [^\n]*\n+/, '');
     const votes = Boolean(page.path && o.docReviewUrl && m);
@@ -191,7 +191,7 @@ ${docsDrawer(up, here0, o.groups.map((g) => `<li><a href="${up}docs/${g.key}/">$
     let html = mdToHtml(md, href);
     // The page was made with slots (memberMarkdown): frame the AI-written parts, then each part's 👍/👎 where its slot is.
     if (m && o.placeAiFrames) html = o.placeAiFrames(html, m, { icon: SPARK, level: 2, path: page.path });
-    const line = (part, q) => docFeedback(page.path, o.docReviewUrl(page.path), esc, part, q, { inline: true, feedbackUrl: feedbackUrl(page.path), counts: o.partVotes ? o.partVotes(page.path, part) : undefined });
+    const line = (part, q) => docFeedback(page.path, o.docReviewUrl(page.path, part), esc, part, q, { inline: true, feedbackUrl: feedbackUrl(page.path, part), counts: o.partVotes ? o.partVotes(page.path, part) : undefined });
     if (votes) {
       html = html.replace('<p>@@slot:practice@@</p>', () => line('practice', 'Is "In practice" right?'));
       if (m.practice && !html.includes('data-kind="practice"')) html += line('practice', 'Is "In practice" right?');

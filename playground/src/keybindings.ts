@@ -187,13 +187,15 @@ export function appActionFor(e: KeyboardEvent): string | 'pending' | undefined {
   const now = Date.now();
   const first = pending && now - pending.at < 2000 ? pending.step : null;
   pending = null;
-  // A key someone set themselves wins over a default that uses it too (a default added later, like F6 for Next pane).
+  // A key someone set themselves wins over a default that uses it too (a default added later, like F6 for Next pane),
+  // also as the first step of their own two-step binding (F6 A): then a default's F6 waits for the second key.
+  const ownPrefix = !first && ACTIONS.some((a) => a.where === 'app' && isCustom(a.id) && steps(binding(a.id)).length === 2 && steps(binding(a.id))[0] === s);
   for (const a of [...ACTIONS].sort((x, y) => Number(isCustom(y.id)) - Number(isCustom(x.id)))) {
     if (a.where !== 'app') continue;
     const b = steps(binding(a.id));
     if (!b.length) continue;
     if (first && b.length === 2 && b[0] === first && b[1] === s) return a.id;
-    if (!first && b.length === 1 && b[0] === s) return a.id;
+    if (!first && b.length === 1 && b[0] === s && (isCustom(a.id) || !ownPrefix)) return a.id;
   }
   if (!first && ACTIONS.some((a) => a.where === 'app' && steps(binding(a.id)).length === 2 && steps(binding(a.id))[0] === s)) {
     pending = { step: s, at: now };

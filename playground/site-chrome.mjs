@@ -121,7 +121,8 @@ export function docFeedbackScript(site, countsSite = site) {
     if (box.dataset.up == null) return;
     // Live counts already hold the vote this browser sent before they were read (base): only the change since counts.
     var was = box.dataset.live ? base : undefined;
-    var up = +box.dataset.up + (v === 'up' ? 1 : 0) - (was === 'up' ? 1 : 0), down = +box.dataset.down + (v === 'down' ? 1 : 0) - (was === 'down' ? 1 : 0);
+    // Never below 0: a vote sent just before the read may not be in the (cached) counter yet.
+    var up = Math.max(0, +box.dataset.up + (v === 'up' ? 1 : 0) - (was === 'up' ? 1 : 0)), down = Math.max(0, +box.dataset.down + (v === 'down' ? 1 : 0) - (was === 'down' ? 1 : 0));
     var s = box.querySelector('.vote-score'), t = box.querySelector('.vote-tip');
     if (s) s.textContent = score(up - down);
     if (t) t.textContent = voteTipText(up, down, +box.dataset.aiup, +box.dataset.aidown);
@@ -156,7 +157,11 @@ export function docFeedbackScript(site, countsSite = site) {
   if (counts && box.dataset.up != null && window.fetch && window.Promise) {
     var n = function (p) {
       return fetch('https://' + counts + '.goatcounter.com/counter/' + encodeURIComponent(p) + '.json')
-        .then(function (r) { return r.ok ? r.json() : { count: '0' }; }) // 404: nobody has voted that way yet
+        .then(function (r) { // 404: nobody has voted that way yet; any other error keeps the snapshot
+          if (r.status === 404) return { count: '0' };
+          if (!r.ok) throw new Error('counter ' + r.status);
+          return r.json();
+        })
         .then(function (j) { return parseInt(String(j.count).replace(/\\D/g, ''), 10) || 0; });
     };
     var k = ['up', 'down', 'undo-up', 'undo-down'];

@@ -1770,9 +1770,12 @@ function reopenClosed() {
   if (!lastClosed) return;
   const { tab, index } = lastClosed;
   lastClosed = null;
-  // The template that took the last one's place goes again, if it's untouched.
+  // The template that took the last one's place goes again, if it's untouched: its code, its package files (edits
+  // still in the Files panel too) and no game folder linked.
+  pkgUI?.flush();
   const st = tabs.find((x) => x.id === starterTab);
-  const blank = st && tabs.length === 1 && (st.id === activeTab ? editor.getValue() : st.text) === STARTER ? st.id : null;
+  const on = st?.id === activeTab;
+  const blank = st && tabs.length === 1 && (on ? editor.getValue() : st.text) === STARTER && !(on ? packageFiles : st.files).length && !(on ? gameFolder : st.folder) ? st.id : null;
   starterTab = null;
   tabs.splice(Math.min(index, tabs.length), 0, tab);
   try { localStorage.setItem(textKey(tab.id), tab.text); } catch { /* ignore */ }
@@ -3034,14 +3037,14 @@ $('#save').addEventListener('click', () => void saveAs());
 // What a #link opens is links.ts (pure, tested in tools/links.test.mjs); here it's done. A moved link opens the new
 // place, puts the new address in the address bar and says so once.
 function followMoved(h: string): string {
-  const { to, why } = followMovedLink(h);
+  const { to, why, gone } = followMovedLink(h);
   if (why === undefined) return h;
   try {
     history.replaceState(history.state, '', `${location.pathname}${location.search}#${to}`);
   } catch {
     /* ignore */
   }
-  setTimeout(() => notice(movedNote(why), { kind: 'info' }), 0);
+  setTimeout(() => notice(movedNote(why, gone), { kind: 'info' }), 0);
   return to;
 }
 const linkCatalog = (): LinkCatalog => ({
@@ -3089,7 +3092,7 @@ function openFromHash(): boolean {
       setTimeout(() => tour.take(), 300);
       return false;
     case 'home':
-      // #welcome, #getting-started: the old home page is gone; the workbench opens as usual.
+      // #home, #start: the workbench opens as usual (#welcome, #getting-started lead to the tour: MOVED_LINKS).
       dropHash();
       return false;
     case 'dev':

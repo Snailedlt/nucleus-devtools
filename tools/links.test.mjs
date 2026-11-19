@@ -47,6 +47,15 @@ test('every MOVED_LINKS entry leads to the new place and says why', () => {
   // The removed Fallout example package: its Hub handler, which opens with its files.
   cases['package-nvmp'] = 'hub-vnPXYhWMJJ3FNuQuS';
   assert.equal(links.followMoved('package-nvmp').to, 'hub-vnPXYhWMJJ3FNuQuS');
+  // The old welcome page: the tour replaces it, and the note says so.
+  for (const h of ['welcome', 'getting-started', 'Getting-Started']) {
+    const r = links.followMoved(h);
+    cases[h] = 'tour';
+    assert.equal(r.to, 'tour', h);
+    assert.equal(r.gone, true);
+    assert.equal(links.movedNote(r.why, r.gone), 'This is an older link: the Getting started page is gone; the tour (Take the tour in the menu) replaces it. It opens that instead.');
+  }
+  assert.deepEqual(links.routeLink(links.followMoved('getting-started').to, CATALOG), { kind: 'tour' });
   // Every entry is exercised by the cases above.
   for (const m of links.MOVED_LINKS) assert.ok(Object.keys(cases).some((c) => m.from.test(c)), String(m.from));
   // Current links are left alone.
@@ -60,7 +69,7 @@ test('every kind of #link opens what it names', () => {
   assert.deepEqual(t('whats-new'), { kind: 'whats-new' });
   assert.deepEqual(t('dev'), { kind: 'dev' });
   assert.deepEqual(t('tour'), { kind: 'tour' });
-  // The old welcome page's names open the workbench as usual (links live for ever).
+  // #home and #start open the workbench as usual (#welcome, #getting-started: MOVED_LINKS, to the tour).
   for (const h of ['welcome', 'getting-started', 'home', 'start']) assert.deepEqual(t(h), { kind: 'home' });
   assert.deepEqual(t('docs'), { kind: 'docs', hash: 'docs' });
   assert.deepEqual(t('example-mistakes'), { kind: 'example-mistakes' });

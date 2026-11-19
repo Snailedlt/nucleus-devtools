@@ -49,7 +49,8 @@ export function importSettings(text: string): { set: number; reset: number } {
     }
   } catch {
     let restored = true;
-    for (const [key, v] of before) {
+    // Newest first: later additions free their space before earlier values go back.
+    for (const [key, v] of [...before].reverse()) {
       try { if (v === null) localStorage.removeItem(key); else localStorage.setItem(key, v); } catch { restored = false; }
     }
     throw new Error(restored ? "This browser didn't let the page store settings; nothing changed." : "This browser didn't let the page store settings, and only some were imported.");

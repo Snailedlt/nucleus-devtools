@@ -149,10 +149,16 @@ test('key bindings: defaults, own bindings, two-step keys, conflicts and keys th
   assert.deepEqual(keys.conflicts('palette', 'Ctrl+B'), [], 'the old binding is free now');
   keys.setBinding('save', '');
   assert.equal(keys.binding('save'), '');
+  // An own two-step binding that starts with a default's key (F6, Next pane) waits for its second key.
+  keys.setBinding('settings', 'F6 A');
+  assert.equal(keys.appActionFor(ev({ key: 'F6', code: 'F6' })), 'pending');
+  assert.equal(keys.appActionFor(ev({ key: 'a', code: 'KeyA' })), 'settings');
+  keys.setBinding('settings', null);
+  assert.equal(keys.appActionFor(ev({ key: 'F6', code: 'F6' })), 'nextPane');
   keys.resetAll();
   assert.equal(keys.binding('lines'), 'Ctrl+B');
   assert.equal(localStorage.getItem('nucleus-workbench-keys'), null);
-  assert.equal(changed, 3);
+  assert.equal(changed, 5);
   // The code editor's keymap: CodeMirror's notation, two steps with a space.
   const map = keys.codeKeyMap({ find: () => {} });
   assert.equal(typeof map['Ctrl-F'], 'function');
@@ -609,6 +615,12 @@ test('docs: "Insert into handler" puts an example where it belongs (lines.ts pla
   assert.match(r.text, /i < PlayerList\.Count; i\+\+/);
   r = L.placeExample('Game.ProtoInput.OnInputLocked = function () {\n  for (var j = 0; j < PlayerList.Count; j += 1) {\n    var p = PlayerList[j];\n  }\n};\n', 'X', 'X(player.H);', 'Game.ProtoInput.OnInputLocked');
   assert.match(r.text, /var p = PlayerList\[j\];\n    X\(p\.H\);/);
+  // A loop whose player (or index) is set again inside isn't reused: the example would act on another player.
+  for (const again of ['p = PlayerList[0];', 'j = 0;', 'var p = PlayerList[0];']) {
+    r = L.placeExample(`Game.ProtoInput.OnInputLocked = function () {\n  for (var j = 0; j < PlayerList.Count; j++) {\n    var p = PlayerList[j];\n    ${again}\n  }\n};\n`, 'X', 'X(player.H);', 'Game.ProtoInput.OnInputLocked');
+    assert.doesNotMatch(r.text, /X\(p\.H\)/, again);
+    assert.match(r.text, /var player = PlayerList\[i\];\n\s*X\(player\.H\);/, again);
+  }
   r = L.placeExample('Game.ProtoInput.OnInputLocked = function () {\n  for (var j = 0; j < 1; j++) {\n    var p = PlayerList[j];\n  }\n};\n', 'X', 'X(player.H);', 'Game.ProtoInput.OnInputLocked');
   assert.match(r.text, /i < PlayerList\.Count/);
   assert.equal(r.text.split('\n')[r.line].trim(), 'X(player.H);');
@@ -710,4 +722,75 @@ test('shortcuts as keys: plain sentences and backticked keys', async () => {
   const T = await load('playground/src/codetext.ts');
   assert.equal(T.looksLikeCodeText('Ctrl+.'), false, 'a shortcut in backticks is keys, not coloured code');
   assert.equal(T.looksLikeCodeText('Game.Play'), true);
+});
+
+test('doc votes: live counts keep the snapshot on a counter error, and keep the vote they were read with', async () => {
+  const realFetch = globalThis.fetch;
+  globalThis.BUILD = { counts: 'example', docVotes: null };
+  try {
+    let status = 503;
+    globalThis.fetch = async () => ({ status, ok: status < 400, json: async () => ({ count: '2' }) });
+    const V = await load('playground/src/votecounts.ts');
+    assert.equal(await V.liveVotes('Game.X', 'doc', ''), null, 'a 503 is not zero votes: the snapshot stays');
+    status = 404; // (the same module: another name, as the first read is kept for the page)
+    assert.deepEqual(await V.liveVotes('Game.Y', 'doc', 'up'), { up: 0, down: 0, aiUp: 0, aiDown: 0, base: 'up' }, 'a 404: nobody voted that way yet');
+    // Cached for the page: a later card gets the vote the counts were read with, not its own.
+    assert.equal((await V.liveVotes('Game.Y', 'doc', '')).base, 'up');
+  } finally {
+    globalThis.fetch = realFetch;
+    delete globalThis.BUILD;
+  }
+});
+
+test('visual flag: storage that throws (blocked by the browser) leaves Form and Blocks off, without an error', async () => {
+  const ls = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  globalThis.location = { search: '?visual=1' };
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, get() { throw new DOMException('blocked', 'SecurityError'); } });
+  try {
+    const { VISUAL } = await load('playground/src/visual.ts');
+    assert.equal(VISUAL, false);
+  } finally {
+    Object.defineProperty(globalThis, 'localStorage', ls);
+    delete globalThis.location;
+  }
+});
+
+test("game folder: Cancel stops only the read the progress shows, not another tab's", async () => {
+  const G = await load('playground/src/gamefolder.ts');
+  const file = (name) => ({ kind: 'file', name, getFile: async () => ({ size: 10, arrayBuffer: async () => new ArrayBuffer(10) }) });
+  const dir = (name, n) => ({ kind: 'directory', name, async *values() { for (let i = 0; i < n; i++) yield file(`f${i}.dll`); } });
+  const seen = [];
+  G.onFolderProgress((p) => seen.push(p));
+  let next;
+  globalThis.window.showDirectoryPicker = async () => next;
+  try {
+    next = dir('A', 5);
+    const a = await G.pickGameFolder();
+    next = dir('B', 5);
+    const b = await G.pickGameFolder();
+    const done = (f) => new Promise((r) => { if (G.gameBinariesNow(f, r)) r(); });
+    const aDone = done(a);
+    await new Promise((r) => setTimeout(r, 0));
+    const bDone = done(b);
+    await new Promise((r) => setTimeout(r, 0));
+    G.cancelFolderRead(); // the progress shows B now
+    await Promise.all([aDone, bDone]);
+    const last = (name) => seen.filter((p) => p.phase === 'binaries' && p.name === name).map((p) => p.done).pop();
+    assert.equal(last('A'), 4, "A's read went on to its last file");
+    assert.ok(last('B') < 4, "B's read stopped");
+  } finally {
+    delete globalThis.window.showDirectoryPicker;
+  }
+});
+
+test('doc votes: an "In practice" report says so in its title (core docReviewUrl/docFeedbackUrl, used by Docs and the docs pages)', async () => {
+  const A = await load(path.join(coreDir, 'src/core/api.ts'));
+  const t = (u) => new URL(u).searchParams.get('title');
+  assert.equal(t(A.docReviewUrl('Game.X', 'practice')), 'Doc review: Game.X (In practice)');
+  assert.equal(t(A.docFeedbackUrl('Game.X', 'practice')), 'Doc feedback: Game.X (In practice)');
+  assert.equal(t(A.docReviewUrl('Game.X', 'doc')), 'Doc review: Game.X');
+  assert.equal(new URL(A.docReviewUrl('Game.X', 'practice')).searchParams.get('member'), 'Game.X');
+  // The docs pages pass the part on (docs-pages.mjs), as the workbench's Docs does (doccard.ts).
+  const src = fs.readFileSync(path.join(root, 'playground/docs-pages.mjs'), 'utf8') + fs.readFileSync(path.join(root, 'playground/src/doccard.ts'), 'utf8');
+  for (const call of ['o.docReviewUrl(page.path, part)', 'feedbackUrl(page.path, part)', 'docReviewUrl(path, part)', 'docFeedbackUrl(path, part)']) assert.ok(src.includes(call), call);
 });

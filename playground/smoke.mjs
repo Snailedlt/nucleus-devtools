@@ -660,7 +660,8 @@ for (const theme of ['light', 'dark']) {
     await p.focus('#api-results .api-hit .api-open a');
     await p.keyboard.press('Enter');
     await p.waitForTimeout(400);
-    check(await p.isVisible('#api-results .dc:not(.hit) .dc-check'), `${theme}: Enter on Open full doc opens the whole entry`);
+    // The doc's own vote line (the one in "How handlers use it" is folded away), and the keyboard on the entry's heading.
+    check(await p.isVisible('#api-results .dc:not(.hit) .dc-check:has(button[data-vkind="doc"])') && (await p.evaluate(() => document.activeElement?.matches('#api-results article.api > h3'))), `${theme}: Enter on Open full doc opens the whole entry and moves focus to it`);
     // Insert into handler, twice: the second press shows it instead of adding a second copy (an example of two statements).
     {
       const cmText = () => p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue());

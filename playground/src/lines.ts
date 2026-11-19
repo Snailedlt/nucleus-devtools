@@ -32,6 +32,8 @@ export interface Line {
   doc: string;
   /** The doc was written by Claude (AI), not taken from the official docs. */
   aiDoc?: boolean;
+  /** Its member, for the AI-written doc's sparkle and the sources in its tooltip (aiMeta). */
+  member?: Member;
   deprecated?: boolean;
   scope: Scope;
   /** Settable with `path = value;` */
@@ -111,6 +113,7 @@ export function allLines(): Line[] {
       sig: memberSignature(e.owner, e.name, m)[0] ?? e.path,
       doc: firstSentence(m.deprecated ? `Deprecated. ${m.deprecated}` : m.doc || ''),
       aiDoc: m.docBy === 'claude',
+      member: m.docBy === 'claude' ? m : undefined,
       deprecated: !!m.deprecated,
       scope: CALLBACK_OWNERS.has(e.owner) ? 'callback' : BEFORE_SESSION[e.path] ? 'top' : 'any',
       assignable: !method && !m.readonly && SETTABLE_OWNERS.has(e.owner),
@@ -448,6 +451,16 @@ export function placeExample(text: string, path: string, example: string, where 
   let code = example;
   let body = fn.body;
   let wrap = false;
+  // Is `name` set anywhere in `n` (other than by `decl`)?
+  const written = (n: any, name: string, decl: any): boolean => {
+    if (!n || typeof n !== 'object') return false;
+    if (Array.isArray(n)) return n.some((x) => written(x, name, decl));
+    if (n.type === 'AssignmentExpression' && isId(n.left, name)) return true;
+    if (n.type === 'UpdateExpression' && isId(n.argument, name)) return true;
+    if (n.type === 'VariableDeclarator' && n !== decl && isId(n.id, name) && n.init) return true;
+    if ((n.type === 'ForInStatement' || n.type === 'ForOfStatement') && (isId(n.left, name) || n.left?.declarations?.some((d: any) => isId(d.id, name)))) return true;
+    return Object.keys(n).some((k) => k !== 'type' && k !== 'start' && k !== 'end' && k !== 'loc' && typeof n[k] === 'object' && written(n[k], name, decl));
+  };
   if (usesPlayer && where === 'Game.Play') code = code.replace(/\bplayer\./g, 'Player.');
   else if (usesPlayer) {
     // The callback's own loop over PlayerList (`var p = PlayerList[i];` in a for loop's body), else a new one.
@@ -455,7 +468,9 @@ export function placeExample(text: string, path: string, example: string, where 
     const forLoop = (fn.body.body as any[]).filter((s) => s.type === 'ForStatement' && s.body.type === 'BlockStatement' && whole(s)).map((s) => {
       const idx = whole(s);
       const x = s.body.body.flatMap((d: any) => (d.type === 'VariableDeclaration' ? d.declarations : [])).find((x: any) => x.init?.type === 'MemberExpression' && x.init.computed && isId(x.init.object, 'PlayerList') && isId(x.init.property, idx) && isId(x.id));
-      return x ? { s, name: x.id.name as string } : undefined;
+      // Only while the binding still is that player at the loop's end: neither it nor the index is set again
+      // (`p = PlayerList[0];`, `i = 5;`), or the example would act on another player.
+      return x && !written(s.body.body, x.id.name, x) && !written(s.body.body, idx!, null) ? { s, name: x.id.name as string } : undefined;
     }).filter(Boolean).pop();
     if (forLoop) {
       body = forLoop.s.body;

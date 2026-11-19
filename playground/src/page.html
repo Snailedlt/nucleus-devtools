@@ -118,6 +118,7 @@ body.resizing-v, body.resizing-v * { cursor: row-resize !important; user-select:
 #lines[hidden] { display: none; }
 #lines { position: relative; }
 #lines.wide { width: 520px; }
+#lines .ai-tip { max-width: min(240px, 70vw); } /* the AI sparkle's tooltip stays inside the 310px list */
 @media (min-width: 861px) {
   :root[data-files-side="left"] #files-panel, :root[data-lines-side="left"] #lines { order: -1; border-left: 0; border-right: 1px solid var(--line); }
   :root[data-files-side="left"][data-lines-side="left"] #files-panel { order: -2; }

@@ -103,12 +103,14 @@ export class CodeField {
   get value(): string {
     return this.cm ? this.cm.getValue() : this.ta.value;
   }
-  /** Sets the text from outside (no `oninput`). */
+  /** Sets the text from outside (no `oninput`, and no undo step of the field's own: its earlier steps were about
+   *  text that's gone, and Ctrl+Z there would write them back into the handler; with none, it undoes the handler). */
   set value(s: string) {
     if (this.value === s) return;
     if (this.cm) {
       this.silent = true;
       this.cm.setValue(s);
+      this.cm.clearHistory();
       this.silent = false;
       this.drawMarks();
     } else {

@@ -168,6 +168,9 @@ export function initDocs(deps: DocsDeps): DocsUI {
       if (e.ctrlKey || e.metaKey || e.shiftKey || e.button) return;
       e.preventDefault();
       refGo(`q:${a.dataset.open}`);
+      // The link that had focus is gone: the full entry's heading takes it, so the keyboard keeps its place.
+      const h = $('#api-results').querySelector<HTMLElement>('article.api:not(.api-hit) > h3');
+      if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
     }));
     el.querySelectorAll<HTMLButtonElement>('[data-group]').forEach((b) => b.addEventListener('click', () => refGo(`group:${b.dataset.group}`)));
     el.querySelectorAll<HTMLButtonElement>('[data-home]').forEach((b) => b.addEventListener('click', () => refGo('home')));

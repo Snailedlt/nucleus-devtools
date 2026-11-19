@@ -15,7 +15,8 @@ function read(): boolean {
 }
 
 /** Is the visual editor (Form and Blocks) on? Off unless turned on with `?visual=1`. */
-export const VISUAL = typeof location !== 'undefined' && typeof localStorage !== 'undefined' && read();
+// No `typeof localStorage` here: where storage is blocked, reading it throws (read() catches that).
+export const VISUAL = typeof location !== 'undefined' && read();
 
 /** The note for someone whose saved view (or a link) was Form or Blocks. */
 export const VISUAL_HIDDEN_NOTE = 'Form and Blocks are hidden for now while we rework them (they may not come back in this form), so this opens in Code. Your handler is the same.';

@@ -8,7 +8,7 @@
 // results, memberSummary), Form and Blocks.
 import { withContext } from './report';
 import { reportIcon } from '@core/reporticons';
-import { aiBasis, api, docReviewUrl, exampleSource, isAiPart, ownerLabel, type AiPart, type Member } from '@core/api';
+import { aiBasis, api, docFeedbackUrl, docReviewUrl, exampleSource, isAiPart, ownerLabel, type AiPart, type Member } from '@core/api';
 import { aiMeta, aiTipCss } from '@core/aimark';
 import type { DocPart } from '@core/docvotes';
 import { myVote, feedbackOn } from './feedback';
@@ -186,15 +186,16 @@ function voteLine(path: string, part: DocPart): string {
   setTimeout(() => fillLive(id, path, part), 0);
   return `<div class="dc-check" data-up="${c.up}" data-down="${c.down}" data-aiup="${c.aiUp}" data-aidown="${c.aiDown}" data-base="${mine ?? ''}"><span>${q}</span>`
     + `<span class="vote-ctl" role="group" aria-label="${q}">${b('up', '👍', labels.up)}<span class="vote-score" aria-hidden="true"></span>${b('down', '👎', labels.down)}<span class="vote-tip" id="${id}" role="tooltip"></span></span>`
-    + `<a class="dc-wrong" href="${esc(withContext(docReviewUrl(path), { Doc: path }))}" target="_blank" rel="noopener"${mine === 'down' ? '' : ' hidden'}>${reportIcon('flag', 14)}Tell us what's wrong</a>`
-    + `<a class="dc-good" href="${esc(withContext(feedbackUrl(path), { Doc: path }))}" target="_blank" rel="noopener"${mine === 'up' ? '' : ' hidden'}>Give feedback</a></div>`;
+    + `<a class="dc-wrong" href="${esc(withContext(docReviewUrl(path, part), { Doc: path }))}" target="_blank" rel="noopener"${mine === 'down' ? '' : ' hidden'}>${reportIcon('flag', 14)}Tell us what's wrong</a>`
+    + `<a class="dc-good" href="${esc(withContext(docFeedbackUrl(path, part), { Doc: path }))}" target="_blank" rel="noopener"${mine === 'up' ? '' : ' hidden'}>Give feedback</a></div>`;
 }
 /** The score and the tooltip from the line's counts and the vote pressed now. Live counts already hold the vote this
  *  browser had sent before they were read (data-base), so only the change since counts. */
 function showVotes(line: HTMLElement) {
   const v = line.querySelector<HTMLElement>('button[data-vote][aria-pressed="true"]')?.dataset.vote;
   const was = line.dataset.live ? line.dataset.base : '';
-  const up = +line.dataset.up! + (v === 'up' ? 1 : 0) - (was === 'up' ? 1 : 0), down = +line.dataset.down! + (v === 'down' ? 1 : 0) - (was === 'down' ? 1 : 0);
+  // Never below 0: a vote sent just before the read may not be in the (cached) counter yet.
+  const up = Math.max(0, +line.dataset.up! + (v === 'up' ? 1 : 0) - (was === 'up' ? 1 : 0)), down = Math.max(0, +line.dataset.down! + (v === 'down' ? 1 : 0) - (was === 'down' ? 1 : 0));
   const s = line.querySelector('.vote-score'), t = line.querySelector('.vote-tip');
   if (s) s.textContent = scoreText(up - down);
   if (t) t.textContent = voteTipText(up, down, +line.dataset.aiup!, +line.dataset.aidown!);
@@ -204,14 +205,13 @@ function fillLive(tipId: string, path: string, part: DocPart) {
   if (!line) return;
   if (!feedbackOn()) line.dataset.base = ''; // its votes were never sent, so the live counts don't hold them
   showVotes(line);
-  liveVotes(path, part).then((c) => {
+  liveVotes(path, part, line.dataset.base).then((c) => {
     if (!c || !line.isConnected) return;
-    Object.assign(line.dataset, { up: String(c.up), down: String(c.down), aiup: String(c.aiUp), aidown: String(c.aiDown), live: '1' });
+    // The base the counts were read with (an earlier card's, when cached), not this card's.
+    Object.assign(line.dataset, { up: String(c.up), down: String(c.down), aiup: String(c.aiUp), aidown: String(c.aiDown), base: c.base, live: '1' });
     showVotes(line);
   });
 }
-/** The doc review form titled as feedback (after a 👍: something to add, a better example). */
-export const feedbackUrl = (path: string) => docReviewUrl(path).replace(encodeURIComponent('Doc review: '), encodeURIComponent('Doc feedback: '));
 /** Shows the link that fits the vote now pressed in a vote line (none when the vote was taken back). */
 export function syncVoteLinks(line: Element | null | undefined) {
   if (!line) return;
