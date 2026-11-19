@@ -23,10 +23,12 @@ export function codeNote(editor: CM, line: number, text: string, opts: { action?
   let timer = 0;
   let done = false;
   const clear = () => { if (done) return; done = true; clearTimeout(timer); w.clear(); if (open?.clear === clear) open = null; editor.off('change', onEdit); opts.onClear?.(); };
-  // Sticky (an Undo note): stays until dismissed, replaced or the code is edited; otherwise it goes after a while.
+  // Sticky (an Undo note): stays until dismissed, replaced or the code is edited; otherwise it goes after a while (or
+  // stays, with Keep notes open). A note with a button (Undo, Try it) always goes when the code changes, so its action
+  // can't land on an edit made after it.
   const arm = () => { clearTimeout(timer); const ms = noteDuration(5000 + text.length * 30); if (!opts.sticky && Number.isFinite(ms)) timer = window.setTimeout(clear, ms); };
   const onEdit = () => clear();
-  if (opts.sticky) editor.on('change', onEdit);
+  if (opts.sticky || opts.action) editor.on('change', onEdit);
   if (act && opts.action) { act.textContent = opts.action.label; act.onclick = () => { clear(); opts.action!.run(); }; }
   (el.querySelector('.cn-x') as HTMLButtonElement).onclick = clear;
   el.addEventListener('pointerenter', () => clearTimeout(timer));
