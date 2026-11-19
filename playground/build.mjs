@@ -5,7 +5,7 @@
 //
 // The core is imported from a checkout of splitscreenme-vscode (src/core), so the
 // page always runs the same linter as the extension.
-import { siteHeader, SITE_HEADER_CSS, siteVisitScript, COPY_CSS, COPY_SCRIPT, COMMUNITY, COMMUNITY_CSS, withCommunity } from './site-chrome.mjs';
+import { siteHeader, SITE_HEADER_CSS, siteVisitScript, COPY_CSS, COPY_SCRIPT, COMMUNITY, COMMUNITY_CSS, withCommunity, setReportFlag } from './site-chrome.mjs';
 import fs from 'node:fs';
 import crypto from 'node:crypto';
 import path from 'node:path';
@@ -317,7 +317,7 @@ function botTemplates() {
     .sort()
     .map((f) => {
       const id = f.slice(0, -3);
-      return { id, name: NAMES[id] ?? id.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()), source: fs.readFileSync(path.join(tdir, f), 'utf8').replace(/\r\n/g, '\n') };
+      return { id, name: NAMES[id] ?? id.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()), source: fs.readFileSync(path.join(tdir, f), 'utf8').replace(/^\uFEFF/, '').replace(/\r\n/g, '\n') }; // no byte order mark (some are saved with one)
     });
   return { commit: rev(dir), templates };
 }
@@ -336,7 +336,28 @@ const feedbackSite = (() => {
   console.warn('FEEDBACK_GOATCOUNTER is set but is not a GoatCounter site code (letters, digits, -) or https://<code>.goatcounter.com: anonymous counts stay off.');
   return null;
 })();
-const build = { bench: rev(path.join(here, '..')), core: rev(coreRepo), nucleus: apiModel.source?.nucleus ?? null, jint: apiModel.jint ?? null, feedback: feedbackSite };
+// Where pages read live vote counts (GoatCounter's public counter): the feedback site, or for previews, which send
+// nothing, FEEDBACK_COUNTS_GOATCOUNTER (vercel-build.sh names the live site), so their scores are the real ones.
+const countsSite = feedbackSite ?? (() => {
+  const code = (process.env.FEEDBACK_COUNTS_GOATCOUNTER ?? '').trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\.goatcounter\.com\/?.*$/, '');
+  return /^[a-z0-9-]{2,50}$/.test(code) ? code : null;
+})();
+// Nucleus Co-op's logo (the extension's media/nucleus-handler.svg: the logo with a JS tag): the handler's file icon, as in VS Code.
+const logoFile = path.join(coreRepo, 'media', 'nucleus-handler.svg');
+const handlerLogo = fs.existsSync(logoFile) ? 'data:image/svg+xml,' + encodeURIComponent(fs.readFileSync(logoFile, 'utf8').trim()) : null;
+if (!handlerLogo) console.warn(`No ${logoFile}: the handler keeps the JS badge.`);
+// The votes on the docs (people's and AIs', apart), from the newest votes report (votes.json on the data branch, or
+// --votes <file>): the counts the docs show and their "Verified by people" labels (core/docvotes.ts). Without one, the
+// core's own snapshot (data/doc-votes.json) stays.
+const votesFile = (() => {
+  const a = process.argv.indexOf('--votes');
+  const f = a > 0 ? path.resolve(process.argv[a + 1]) : hubData ? path.join(hubData, 'votes.json') : null;
+  return f && fs.existsSync(f) ? f : null;
+})();
+const docVotes = votesFile
+  ? (await import('data:text/javascript;base64,' + Buffer.from((await esbuild.build({ entryPoints: [path.join(coreRepo, 'src', 'core', 'docvotes.ts')], bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'warning' })).outputFiles[0].text).toString('base64'))).snapshotFromReport(JSON.parse(fs.readFileSync(votesFile, 'utf8')))
+  : null;
+const build = { bench: rev(path.join(here, '..')), core: rev(coreRepo), nucleus: apiModel.source?.nucleus ?? null, jint: apiModel.jint ?? null, feedback: feedbackSite, counts: countsSite, logo: handlerLogo, docVotes };
 // What's new, from ../CHANGELOG.md: dated sections ("## 2026-11-05"), newest first, in emoji groups
 // ("### ✨ New"); each bullet starts with a **short summary**, and may have a screenshot under it
 // ("  ![alt](docs/images/changelog/x-light.png)", plus x-dark.png beside it, copied to changes/ next to the page). "Unreleased" is only
@@ -570,13 +591,45 @@ const hlStatic = (() => {
     return out;
   };
 })();
-// The code colours of the site's own pages (the www look's, AA on their code background, light and dark), for the
-// highlighted code (.hl) on every page.
-const HL_CSS = `.hl .cm-keyword { color: var(--kw); } .hl .cm-string { color: var(--str); } .hl .cm-number, .hl .cm-atom { color: var(--num); } .hl .cm-property { color: var(--prop); } .hl .cm-comment { color: var(--cmt); }
-:root { --kw: #6f2db8; --str: #b0175a; --num: #0f6f6d; --prop: #0b5c8a; --cmt: #5c636c; }
-@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --kw: #ff79c6; --str: #f1fa8c; --num: #bd93f9; --prop: #8be9fd; --cmt: #b0b4ba; } }
-:root[data-theme="dark"] { --kw: #ff79c6; --str: #f1fa8c; --num: #bd93f9; --prop: #8be9fd; --cmt: #b0b4ba; }
+// The code colours of the site's own pages: the workbench editor's, generated from the same sources (the default
+// look's code tokens in src/themes.json, and the token rules in src/page.html), so every code block on the site looks
+// like the editor's code, light and dark. `.hl` is the class of coloured code everywhere (pages, docs, checks, Learn).
+const HL_CSS = await (async () => {
+  const kit = await esbuild.build({ stdin: { contents: "export { resolve, codeTokens } from './themekit';", resolveDir: path.join(here, 'src'), loader: 'ts' }, bundle: true, format: 'esm', platform: 'neutral', write: false, logLevel: 'error' });
+  const { resolve, codeTokens } = await import('data:text/javascript;base64,' + Buffer.from(kit.outputFiles[0].text).toString('base64'));
+  const file = JSON.parse(fs.readFileSync(path.join(here, 'src', 'themes.json'), 'utf8'));
+  const KEYS = ['kw', 'str', 'num', 'prop', 'cmt', 'fn', 'obj', 'group', 'choice', 'op', 'kw-weight', 'op-weight', 'code-fg', 'code-bg', 'code-muted'];
+  const decl = (mode) => Object.entries(codeTokens(resolve(file.default, file.looks, mode))).filter(([k]) => KEYS.includes(k)).map(([k, v]) => `--${k}: ${v};`).join(' ');
+  const L = decl('light'), D = decl('dark');
+  // The editor's token rules, for .hl instead of the editor's .cm-s-default (named code themes are editor-only).
+  const rules = fs.readFileSync(path.join(here, 'src', 'page.html'), 'utf8').split('\n')
+    .filter((l) => /^\.cm-s-default \.cm-/.test(l) || /^:is\(\.cm-s-default, \.hl, \.ct-sample\) span\.cm-nucleus/.test(l))
+    .map((l) => l.replace(/\.cm-s-default \./g, '.hl .').replace(/:is\(\.cm-s-default, \.hl, \.ct-sample\)/g, '.hl'));
+  if (rules.length < 8) throw new Error(`build: found only ${rules.length} code colour rules in page.html`);
+  return `.hl { ${L} }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .hl { ${D} } }
+:root[data-theme="dark"] .hl { ${D} } :root[data-theme="light"] .hl { ${L} }
+pre.hl, pre:has(> code.hl) { background: var(--code-bg); color: var(--code-fg); }
+${rules.join('\n')}
 `;
+})();
+// Code in other languages (the editors' config files, shell commands): `<pre data-lang="lua">` etc., coloured at build
+// time by CodeMirror's mode for it, with the same token classes and colours as the editor (.hl).
+const hlLangBlocks = (() => {
+  const req = createRequire(import.meta.url);
+  const CM = req('codemirror/addon/runmode/runmode.node.js');
+  for (const m of ['lua/lua', 'toml/toml', 'commonlisp/commonlisp', 'shell/shell', 'javascript/javascript']) req(`codemirror/mode/${m}.js`);
+  const MODES = { lua: 'lua', toml: 'toml', commonlisp: 'commonlisp', shell: 'shell', json: { name: 'javascript', json: true }, js: 'javascript' };
+  const unesc = (t) => t.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+  const escT = (t) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+  return (html) => html.replace(/<pre class="([^"]*)"([^>]*) data-lang="(\w+)"><code>([^<]*)<\/code><\/pre>/g, (m, cls, attrs, lang, code) => {
+    const mode = MODES[lang];
+    if (!mode) throw new Error(`build: no colouring for data-lang="${lang}"`);
+    let out = '';
+    CM.runMode(unesc(code), mode, (t, style) => { out += style ? `<span class="${style.split(' ').map((x) => `cm-${x}`).join(' ')}">${escT(t)}</span>` : escT(t); });
+    return `<pre class="${cls} hl"${attrs} data-lang="${lang}"><code>${out}</code></pre>`;
+  });
+})();
 // Code coloured like the editors: CodeMirror's tokens, Nucleus names by what they are (src/semhl.ts, the core's
 // semantic tokens). For the start page's inline code, the docs and checks pages' code blocks, and the site pass below.
 const hlSem = await (async () => {
@@ -610,7 +663,8 @@ const toolsSrc = (() => {
     .replace(/(<meta (?:property="og|name="twitter):description" content=")[^"]*"/g, `$1${desc}"`)
     .replace(/__BASE__start\/"/g, '__BASE__tools/"')
     .replace(/(content="__BASE__)tools\/og\.png"/g, '$1start/og.png"')
-    + '<body>\n' + fs.readFileSync(path.join(here, 'src', 'tools.html'), 'utf8');
+    // Its <script> stays as written (hlLangBlocks only on the HTML around it).
+    + '<body>\n' + fs.readFileSync(path.join(here, 'src', 'tools.html'), 'utf8').split(/(<script\b[\s\S]*?<\/script>)/i).map((part, i) => (i % 2 ? part : hlLangBlocks(part))).join('');
 })();
 const toolsDir = path.join(here, 'dist', 'pages', 'tools');
 fs.mkdirSync(toolsDir, { recursive: true });
@@ -676,6 +730,13 @@ fs.copyFileSync(path.join(here, '..', 'docs', 'images', 'og.png'), path.join(sta
 // One page per check (rules/<id>/) and the list of them (rules/), from the core's core/ruledocs.ts (rules-pages.mjs).
 // The checks for the docs list's Checks section (rules-pages.mjs), handed to the docs pages below.
 let checksNav = [];
+// The report flag (core/reporticons.ts) for the site pages' "Tell us what's wrong" links (site-chrome.mjs), the same as
+// the workbench's: the flag means "report" everywhere.
+{
+  const ri = await esbuild.build({ entryPoints: [path.join(coreRepo, 'src', 'core', 'reporticons.ts')], bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'warning' });
+  const { reportIcon } = await import('data:text/javascript;base64,' + Buffer.from(ri.outputFiles[0].text).toString('base64'));
+  setReportFlag(reportIcon('flag', 14));
+}
 {
   const mod = await esbuild.build({ entryPoints: [path.join(coreRepo, 'src', 'core', 'ruledocs.ts')], bundle: true, format: 'esm', platform: 'node', write: false, nodePaths: [path.join(coreRepo, 'node_modules')], logLevel: 'warning', banner: { js: `import { createRequire as __cr } from 'node:module'; const require = __cr(${JSON.stringify(import.meta.url)});` } });
   const { RULE_DOCS } = await import('data:text/javascript;base64,' + Buffer.from(mod.outputFiles[0].text).toString('base64'));
@@ -683,7 +744,7 @@ let checksNav = [];
   const { RULES, JS_RULES } = await import('data:text/javascript;base64,' + Buffer.from(lintAll.outputFiles[0].text).toString('base64'));
   const { writeRulePages } = await import('./rules-pages.mjs');
   let ruleIds;
-  ({ ids: ruleIds, nav: checksNav } = writeRulePages({ hl: hlSem, outDir: path.join(here, 'dist', 'pages', 'rules'), startHtml: fs.readFileSync(path.join(here, 'src', 'start.html'), 'utf8'), RULES, RULE_DOCS, JS_RULES, base: PAGES_BASE, preview: PREVIEW, noindex: NOINDEX, feedbackSite }));
+  ({ ids: ruleIds, nav: checksNav } = writeRulePages({ hl: hlSem, outDir: path.join(here, 'dist', 'pages', 'rules'), startHtml: fs.readFileSync(path.join(here, 'src', 'start.html'), 'utf8'), RULES, RULE_DOCS, JS_RULES, base: PAGES_BASE, preview: PREVIEW, noindex: NOINDEX, feedbackSite, countsSite }));
   if (!PREVIEW) fs.writeFileSync(path.join(here, 'dist', 'pages', 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[PAGES_BASE, `${PAGES_BASE}start/`, `${PAGES_BASE}tools/`, `${PAGES_BASE}rules/`, `${PAGES_BASE}learn/`, `${PAGES_BASE}docs/`, ...ruleIds.map((id) => `${PAGES_BASE}rules/${id}/`)].map((u) => `  <url><loc>${u}</loc></url>`).join('\n')}\n</urlset>\n`);
 }
 // Learn (learn/): the lessons, one page with its own small bundle (src/learn/): the editor, the checks and Try it,
@@ -692,6 +753,8 @@ let checksNav = [];
   const learnJs = await esbuild.build({
     entryPoints: [path.join(here, 'src', 'learn', 'learn.ts')],
     bundle: true, format: 'iife', platform: 'browser', target: 'es2020', minify: true, write: false,
+    // The reports' details (report.ts) say which build this is, as the workbench's do.
+    define: { BUILD: JSON.stringify({ bench: build.bench, core: build.core }) },
     alias: { '@core': path.join(coreRepo, 'src', 'core'), 'eslint/universal': path.join(coreRepo, 'src', 'core', 'eslint-stub.ts'), 'node:path': 'path-browserify', path: 'path-browserify' },
     banner: { js: "var process = globalThis.process || { env: {}, argv: [], versions: {}, platform: 'browser', cwd: function () { return '/'; }, emitWarning: function () {}, nextTick: function (f) { Promise.resolve().then(f); } };" },
     nodePaths: [path.join(coreRepo, 'node_modules'), path.join(here, 'node_modules')],
@@ -712,10 +775,12 @@ let checksNav = [];
 // and searchable, each with "Open in the workbench".
 let docValues = [];
 {
-  const mod = await esbuild.build({ stdin: { contents: "export { docsPage, docsView, docsValue, DOCS_GROUPS } from './docspage'; export { allEntries } from './lookup'; export { api, docReviewUrl } from './api';", resolveDir: path.join(coreRepo, 'src', 'core'), loader: 'ts' }, bundle: true, format: 'esm', platform: 'node', write: false, nodePaths: [path.join(coreRepo, 'node_modules')], logLevel: 'warning', banner: { js: `import { createRequire as __cr } from 'node:module'; const require = __cr(${JSON.stringify(import.meta.url)});` } });
+  const mod = await esbuild.build({ stdin: { contents: "export { docsPage, docsView, docsValue, DOCS_GROUPS } from './docspage'; export { allEntries } from './lookup'; export { api, docReviewUrl } from './api'; export { setDocVotes, partVotes } from './docvotes'; export { placeAiFrames, aiFrameCss, AI_TIP_SCRIPT } from './aimark';", resolveDir: path.join(coreRepo, 'src', 'core'), loader: 'ts' }, bundle: true, format: 'esm', platform: 'node', write: false, nodePaths: [path.join(coreRepo, 'node_modules')], logLevel: 'warning', banner: { js: `import { createRequire as __cr } from 'node:module'; const require = __cr(${JSON.stringify(import.meta.url)});` } });
   const D = await import('data:text/javascript;base64,' + Buffer.from(mod.outputFiles[0].text).toString('base64'));
+  // The pages show the votes and the "Verified by people" labels from the newest votes report too.
+  D.setDocVotes(docVotes);
   const { writeDocPages } = await import('./docs-pages.mjs');
-  docValues = writeDocPages({ hl: hlSem, checks: checksNav, outDir: path.join(here, 'dist', 'pages', 'docs'), startHtml: fs.readFileSync(path.join(here, 'src', 'start.html'), 'utf8'), docsPage: D.docsPage, docsView: D.docsView, docsValue: D.docsValue, allEntries: D.allEntries, groups: D.DOCS_GROUPS, enums: Object.keys(D.api.enums), docReviewUrl: D.docReviewUrl, feedbackSite, base: PAGES_BASE, preview: PREVIEW, noindex: NOINDEX });
+  docValues = writeDocPages({ hl: hlSem, checks: checksNav, outDir: path.join(here, 'dist', 'pages', 'docs'), startHtml: fs.readFileSync(path.join(here, 'src', 'start.html'), 'utf8'), docsPage: D.docsPage, docsView: D.docsView, docsValue: D.docsValue, allEntries: D.allEntries, groups: D.DOCS_GROUPS, enums: Object.keys(D.api.enums), docReviewUrl: D.docReviewUrl, partVotes: D.partVotes, placeAiFrames: D.placeAiFrames, aiFrameCss: D.aiFrameCss, aiTipScript: D.AI_TIP_SCRIPT, feedbackSite, countsSite, base: PAGES_BASE, preview: PREVIEW, noindex: NOINDEX });
   // Each docs page in the sitemap too (written with the rule pages above).
   const sm = path.join(here, 'dist', 'pages', 'sitemap.xml');
   if (!PREVIEW && fs.existsSync(sm)) fs.writeFileSync(sm, fs.readFileSync(sm, 'utf8').replace('</urlset>', docValues.filter(Boolean).map((v) => `  <url><loc>${PAGES_BASE}docs/${v}/</loc></url>\n`).join('') + '</urlset>'));
@@ -730,9 +795,8 @@ if (TEST_BUILD && fs.existsSync(path.join(here, 'test-guide.md'))) {
 // votes/: the anonymous votes for the maintainers (votes-page.mjs), from votes.json on the data branch
 // (tools/votes-report.mjs, daily in hub-sync.yml), or --votes <file>. Unlisted and not for search engines.
 {
-  const argVotes = process.argv.indexOf('--votes');
-  const file = argVotes > 0 ? path.resolve(process.argv[argVotes + 1]) : argData > 0 ? path.join(path.resolve(process.argv[argData + 1]), 'votes.json') : null;
-  if (file && fs.existsSync(file)) {
+  const file = votesFile;
+  if (file) {
     const { writeVotesPage } = await import('./votes-page.mjs');
     writeVotesPage({ outDir: path.join(here, 'dist', 'pages', 'votes'), startHtml: fs.readFileSync(path.join(here, 'src', 'start.html'), 'utf8'), votes: JSON.parse(fs.readFileSync(file, 'utf8')) });
   }
@@ -783,17 +847,20 @@ for (const f of fs.readdirSync(path.join(here, 'src', 'editor-icons'))) if (f.en
 // on its code blocks and inline commands (site-chrome.mjs COPY_SCRIPT), and the community links where it asks for
 // them (<!--COMMUNITY--> box, <!--COMMUNITY_FOOTER--> links; site-chrome.mjs COMMUNITY).
 {
+  /** `fn` on the HTML outside <script>…</script>; the scripts stay exactly as they are. */
+  const outsideScripts = (html, fn) => html.split(/(<script\b[\s\S]*?<\/script>)/i).map((part, i) => (i % 2 ? part : fn(part))).join('');
   const script = siteVisitScript(feedbackSite);
   const kb = await esbuild.build({ stdin: { contents: "export { kbdify, KEYS_CSS } from './kbd'; export { SEM_STATIC_CSS } from './semcss';", resolveDir: path.join(here, 'src'), loader: 'ts' }, bundle: true, format: 'esm', platform: 'neutral', write: false, logLevel: 'error' });
   const { kbdify, KEYS_CSS, SEM_STATIC_CSS } = await import('data:text/javascript;base64,' + Buffer.from(kb.outputFiles[0].text).toString('base64'));
   const page = (html) => {
     const b = html.search(/<body[^>]*>/i), e = html.lastIndexOf('</body>');
     if (b < 0 || e < 0) return html;
-    // Inline code that is clearly code (Game.Play, a call, a string) coloured like the editor; then the keys.
-    const body = kbdify(withCommunity(html.slice(b, e)).replaceAll('__EDITOR_POLL__', COMMUNITY.editorPoll).replaceAll('__DISCORD_INVITE__', COMMUNITY.discord).replace(/<code>([^<]*)<\/code>/g, (m, inner) => {
+    // Inline code that is clearly code (Game.Play, a call, a string) coloured like the editor; then the keys. Only in
+    // the page's text: a page's own <script> builds HTML in template strings, which must stay as written.
+    const body = outsideScripts(withCommunity(html.slice(b, e)).replaceAll('__EDITOR_POLL__', COMMUNITY.editorPoll).replaceAll('__DISCORD_INVITE__', COMMUNITY.discord), (part) => kbdify(hlLangBlocks(part).replace(/<code>([^<]*)<\/code>/g, (m, inner) => {
       const t = inner.replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
       return hlSem.looksLikeCode(t) ? `<code class="hl">${hlSem(t)}</code>` : m;
-    }));
+    })));
     return html.slice(0, b).replace('</style>', () => `${KEYS_CSS}\n${COPY_CSS}\n${HL_CSS}\n${SEM_STATIC_CSS}\n${COMMUNITY_CSS}</style>`) + body + `${COPY_SCRIPT}\n${script ?? ''}\n` + html.slice(e);
   };
   const add = (d) => {

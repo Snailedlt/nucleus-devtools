@@ -8,20 +8,38 @@ const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 
 export function initMessageHints(editor: CM) {
   let marks: { clear: () => void }[] = [];
+  // Help on request: the names and the "+" show for the list the cursor is in, or on hover (CSS), not all the time.
+  // Each list's brackets as bookmarks, so the bounds follow edits made before the next redraw.
+  let groups: { from: { find: () => any }; to: { find: () => any }; els: HTMLElement[] }[] = [];
+  const reveal = () => {
+    const at = editor.indexFromPos(editor.getCursor());
+    for (const g of groups) {
+      const a = g.from.find(), b = g.to.find();
+      const near = !!a && !!b && at >= editor.indexFromPos(a) && at <= editor.indexFromPos(b) + 1;
+      g.els.forEach((e) => e.classList.toggle('near', near));
+    }
+  };
   let timer = 0;
   let menu: HTMLElement | null = null;
-  const closeMenu = () => { menu?.remove(); menu = null; };
+  let opener: HTMLElement | null = null; // the + stays shown while its menu is open (.open)
+  const closeMenu = () => { menu?.remove(); menu = null; opener?.classList.remove('open'); opener = null; };
   const draw = () => {
     marks.forEach((m) => m.clear());
     marks = [];
+    groups = [];
     const text: string = editor.getValue();
     for (const l of blockedLists(text)) {
+      const els: HTMLElement[] = [];
+      const from = editor.setBookmark(editor.posFromIndex(l.open)), to = editor.setBookmark(editor.posFromIndex(l.close));
+      marks.push(from, to);
+      groups.push({ from, to, els });
       for (const it of l.items) {
         const t = blockTarget(it.id);
         const el = document.createElement('span');
         el.className = `wm-hint${t.kind === 'ok' ? '' : ' bad'}`;
         el.textContent = t.kind === 'ok' ? t.name : t.kind === 'out' ? 'unknown' : `→ ${t.name}?`;
         el.setAttribute('aria-hidden', 'true'); // the hover and Check say it in words
+        els.push(el);
         marks.push(editor.setBookmark(editor.posFromIndex(it.end), { widget: el, insertLeft: true }));
       }
       const add = document.createElement('button');
@@ -32,11 +50,16 @@ export function initMessageHints(editor: CM) {
       add.setAttribute('aria-label', 'Add a window message to block');
       add.addEventListener('mousedown', (e) => e.preventDefault()); // keep the editor's selection
       add.addEventListener('click', () => openMenu(add, l));
+      els.push(add);
       marks.push(editor.setBookmark(editor.posFromIndex(l.close), { widget: add, insertLeft: true }));
     }
+    reveal();
   };
+  editor.on('cursorActivity', reveal);
   function openMenu(anchor: HTMLElement, list: BlockedList) {
     closeMenu();
+    opener = anchor;
+    anchor.classList.add('open');
     const have = new Set(list.items.map((i) => i.id));
     menu = document.createElement('div');
     menu.className = 'wm-menu';
@@ -65,7 +88,8 @@ export function initMessageHints(editor: CM) {
       const i = items.indexOf(document.activeElement as HTMLButtonElement);
       if (e.key === 'ArrowDown') { e.preventDefault(); items[(i + 1) % items.length]?.focus(); }
       else if (e.key === 'ArrowUp') { e.preventDefault(); items[(i - 1 + items.length) % items.length]?.focus(); }
-      else if (e.key === 'Escape') { e.preventDefault(); closeMenu(); anchor.focus(); }
+      // Back to the + while it shows; else to the code (a hidden button can't hold the focus).
+      else if (e.key === 'Escape') { e.preventDefault(); closeMenu(); if (anchor.isConnected && anchor.getClientRects().length) anchor.focus(); else editor.focus(); }
     });
     setTimeout(() => document.addEventListener('pointerdown', function off(e) { if (menu && !menu.contains(e.target as Node)) { closeMenu(); } if (!menu) document.removeEventListener('pointerdown', off); }), 0);
   }

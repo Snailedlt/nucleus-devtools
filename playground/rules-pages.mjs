@@ -114,7 +114,7 @@ ${d.bad ? `<h2>Example</h2>
 <p>${inline(d.fix)}</p>
 <h2>Turn it off, or change how it shows</h2>
 <p class="small">Each check can be shown as an error, warning, info or hint, or turned off. VS Code: <code>${esc(off)}</code> in your settings. Notepad++: <strong>Plugins › Nucleus Co-op handlers › Settings</strong>. Command line: <code>ncdev lint --rule ${esc(id)}=off</code>. Other editors: the <code>lint.rules</code> setting of <code>ncdev lsp</code>.</p>
-${docFeedback(id, ruleReportUrl(id, `${o.base}rules/${id}/`), esc, 'rule')}${docFeedbackScript(o.feedbackSite ?? null)}
+${docFeedback(id, ruleReportUrl(id, `${o.base}rules/${id}/`), esc, 'rule')}${docFeedbackScript(o.feedbackSite ?? null, o.countsSite ?? o.feedbackSite ?? null)}
 <nav class="pn" aria-label="Other checks">${prev ? `<a href="../${encodeURIComponent(prev)}/">‹ ${inline(RULE_DOCS[prev].title)}</a>` : '<span></span>'}${next ? `<a href="../${encodeURIComponent(next)}/">${inline(RULE_DOCS[next].title)} ›</a>` : ''}</nav>
 `;
     fs.mkdirSync(path.join(outDir, id), { recursive: true });

@@ -33,7 +33,7 @@ function render(md) {
       close();
       const code = [];
       while (++i < lines.length && !/^```/.test(lines[i])) code.push(lines[i]);
-      out.push(`<div class="code"><pre tabindex="0"><code>${esc(code.join('\n'))}</code></pre><button type="button" class="copy" aria-label="Copy the command">Copy</button></div>`);
+      out.push(`<div class="code"><pre class="cfg" tabindex="0" data-lang="${/^\s*(Game|Context|var|function)\b/.test(code[0] ?? '') ? 'js' : 'shell'}"><code>${esc(code.join('\n'))}</code></pre><button type="button" class="copy" aria-label="Copy the command">Copy</button></div>`);
       continue;
     }
     let m;

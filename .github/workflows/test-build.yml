@@ -1,5 +1,5 @@
 name: Test build
-run-name: Test build of splitscreenme-vscode ${{ inputs.branch || 'claude/brave-thompson-maiubs' }}
+run-name: Test build of splitscreenme-vscode ${{ inputs.branch || 'claude/next-release' }}
 # The tools as they'll be released, before they are: builds the real .vsix, ncdev.exe (with the Notepad++ plugin
 # inside) and the plugin's zip from a splitscreenme-vscode branch, the way its Release workflow does, and publishes
 # them here as the pre-release `test-build` (replaced each run). A local site built with
@@ -21,6 +21,10 @@ on:
   push:
     branches: [preview-ux]
     paths: ['.github/workflows/test-build.yml']
+  # Hourly: the next release's tools stay current (the `claude/next-release` preview's tools page links them). Skipped
+  # when the published test build already is the branch's newest commit.
+  schedule:
+    - cron: '23 * * * *'
 
 # Nothing by default; each job asks for what it needs.
 permissions: {}
@@ -34,15 +38,38 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  # On the hourly schedule: only when the extension branch has a commit the test build doesn't have yet.
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      stale: ${{ steps.c.outputs.stale }}
+    steps:
+      - id: c
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          BRANCH: ${{ inputs.branch || 'claude/next-release' }}
+        run: |
+          if [ "${{ github.event_name }}" != schedule ]; then echo "stale=true" >> "$GITHUB_OUTPUT"; exit 0; fi
+          # A failed lookup (network, GitHub) fails the run; only a lookup that finds no branch skips it.
+          refs=$(git ls-remote "https://github.com/$EXT_REPO" "refs/heads/$BRANCH") || { echo "::error::Couldn't look up $BRANCH."; exit 1; }
+          head=$(printf '%s\n' "$refs" | cut -f1)
+          [ -n "$head" ] || { echo "No branch $BRANCH: nothing to build."; echo "stale=false" >> "$GITHUB_OUTPUT"; exit 0; }
+          if gh release view test-build --json body -q .body 2>/dev/null | grep -q "$head"; then echo "The test build is $head already."; echo "stale=false" >> "$GITHUB_OUTPUT"; else echo "stale=true" >> "$GITHUB_OUTPUT"; fi
+
   # Runs the extension branch's own npm scripts, so it gets no token that can write: read-only, and it hands the
   # built files to the publish job as an artifact. (Its scripts could change PATH or the environment of later steps
   # in this job, which is why publishing happens in a separate job.)
   build:
+    needs: check
+    if: needs.check.outputs.stale == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: read
     env:
-      BRANCH: ${{ inputs.branch || 'claude/brave-thompson-maiubs' }}
+      BRANCH: ${{ inputs.branch || 'claude/next-release' }}
       COMMIT: ${{ inputs.commit }}
     outputs:
       ver: ${{ steps.vsix.outputs.ver }}
@@ -106,7 +133,7 @@ jobs:
     permissions:
       contents: write
     env:
-      BRANCH: ${{ inputs.branch || 'claude/brave-thompson-maiubs' }}
+      BRANCH: ${{ inputs.branch || 'claude/next-release' }}
       VER: ${{ needs.build.outputs.ver }}
       SHA: ${{ needs.build.outputs.sha }}
       AUTHOR: ${{ needs.build.outputs.author }}
@@ -136,7 +163,7 @@ jobs:
 
           Built from commit \`$SHA\` by $AUTHOR, committed $DATE.
 
-          Get it the way users will: build the site with \`node build.mjs --preview --test-build\`, serve \`dist/pages\` and download from its tools page (\`/tools/\`). The steps are in the test guide.
+          Get it the way users will: from the tools page of the next release's site, https://nucleus-workbench-next.vercel.app/tools/ (or build the site with \`node build.mjs --preview --test-build\` and serve \`dist/pages\`).
           EOF
           gh release create test-build "out/splitscreenme-vscode-v$VER-test.vsix" out/ncdev.exe out/NcDev.zip --prerelease --target "$GITHUB_SHA" --title "Test build: v$VER (${SHA:0:7})" --notes-file notes.md
       - name: Summary

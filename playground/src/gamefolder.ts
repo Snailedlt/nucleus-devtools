@@ -1,10 +1,77 @@
 // The game's install folder in the workbench: the checks themselves are in the core (splitscreenme-vscode
 // src/core/gamefolder.ts, shared with VS Code); this file reads a folder the author picks and draws the list pickers.
 export * from '@core/gamefolder';
+export { importProblems } from '@core/importhooks';
+import { parsePE, type PeFile } from '@core/pe';
 import { type FolderList, type GameFolder, MAX_DEPTH, MAX_ENTRIES, type PickOption, SKIP_DIRS, engineFacts, findExe, folderLists, folderSummary, insertEntry, pickerOptions, join, base } from '@core/gamefolder';
 const lower = (s: string) => s.toLowerCase();
 // ---------------------------------------------------------------------------------------------------------------
 // Reading a folder (DOM).
+
+// The game's program files (.exe, .dll, .asi) are kept as File handles, in memory only, so their import tables can be
+// read for the hints (core/importhooks.ts). Nothing is uploaded; a restored tab has no handles (pick the folder again).
+const PE_EXT = /\.(exe|dll|asi)$/i;
+const PE_FILE_LIMIT = 400e6, PE_TOTAL_LIMIT = 1.5e9;
+const peHandles = new WeakMap<GameFolder, { path: string; file: File }[]>();
+const peRead = new WeakMap<GameFolder, Promise<PeFile[]>>();
+const peDone = new WeakMap<GameFolder, PeFile[]>();
+
+/** Reading a folder, for the progress shown while it lasts: listing (the total isn't known yet), then the program
+ *  files (n of total, in bytes), then done. */
+export type FolderProgress =
+  | { phase: 'listing'; name: string; files: number }
+  | { phase: 'binaries'; name: string; done: number; total: number; bytes: number; totalBytes: number }
+  | { phase: 'done' };
+let progress: ((p: FolderProgress) => void) | undefined;
+export function onFolderProgress(f: (p: FolderProgress) => void) { progress = f; }
+// Cancel (the progress's link): checked between files, so it's cheap and stops within one file. Each read has its
+// own token, and Cancel stops only the newest read still going (the one just started), never another tab's.
+type ReadToken = { cancelled: boolean };
+const reading: ReadToken[] = [];
+const newRead = (): ReadToken => { const t = { cancelled: false }; reading.push(t); return t; };
+// Progress shows only the newest read, the one Cancel stops; an older read (another tab's) reads on quietly.
+const say = (t: ReadToken, p: FolderProgress) => { if (reading[reading.length - 1] === t) progress?.(p); };
+/** Ends a read; with `done`, hides the progress if this read was the one shown. */
+const endRead = (t: ReadToken, done: boolean) => { const top = reading[reading.length - 1] === t; const i = reading.indexOf(t); if (i >= 0) reading.splice(i, 1); if (top && done) progress?.({ phase: 'done' }); };
+export function cancelFolderRead() { const t = reading[reading.length - 1]; if (t) t.cancelled = true; }
+/** True while the folder's program files are still being read (Check's "Reading your game's files…"). */
+export const gameBinariesPending = (folder: GameFolder) => !!peHandles.get(folder)?.length && !peDone.has(folder);
+function readBinaries(folder: GameFolder): Promise<PeFile[]> {
+  let p = peRead.get(folder);
+  if (!p) {
+    p = (async () => {
+      const out: PeFile[] = [];
+      // The files that fit the budget, counted before reading (files that turn out not to be programs use it too).
+      let total = 0;
+      const todo = (peHandles.get(folder) ?? []).filter(({ file }) => {
+        if (file.size > PE_FILE_LIMIT || total + file.size > PE_TOTAL_LIMIT) return false;
+        total += file.size;
+        return true;
+      });
+      const read = newRead();
+      try {
+        let bytes = 0;
+        for (const [i, { path, file }] of todo.entries()) {
+          if (read.cancelled) return []; // no hints from half the files (endRead says done)
+          say(read, { phase: 'binaries', name: folder.name, done: i, total: todo.length, bytes, totalBytes: total });
+          try { out.push(parsePE(new Uint8Array(await file.arrayBuffer()), path)); } catch { /* not a program */ }
+          bytes += file.size;
+          await new Promise((r) => setTimeout(r)); // keep the page responsive between files
+        }
+      } finally { endRead(read, true); }
+      return out;
+    })();
+    peRead.set(folder, p);
+  }
+  return p;
+}
+/** The folder's program files once read (undefined while reading, or when the folder came from a restored tab); onReady runs once when they are. */
+export function gameBinariesNow(folder: GameFolder, onReady?: () => void): PeFile[] | undefined {
+  if (peDone.has(folder)) return peDone.get(folder);
+  if (!peHandles.get(folder)?.length) return undefined;
+  void readBinaries(folder).then((files) => { if (!peDone.has(folder)) { peDone.set(folder, files); onReady?.(); } });
+  return undefined;
+}
 
 interface FsHandle { kind: 'file' | 'directory'; name: string }
 interface FsFileHandle extends FsHandle { kind: 'file'; getFile(): Promise<File> }
@@ -13,34 +80,44 @@ type DirPicker = (o: { mode: 'read'; id?: string }) => Promise<FsDirHandle>;
 
 async function walkHandle(root: FsDirHandle): Promise<GameFolder> {
   const files: GameFolder['files'] = [], dirs: string[] = [];
+  const pe: { path: string; file: File }[] = [];
   let count = 0, truncated = false;
-  const queue: { h: FsDirHandle; path: string; depth: number }[] = [{ h: root, path: '', depth: 0 }];
-  while (queue.length) { // breadth first: the top folders are complete before a limit cuts deep ones
-    const { h, path, depth } = queue.shift()!;
-    const pending: Promise<void>[] = [];
-    for await (const e of h.values()) {
-      if (++count > MAX_ENTRIES) { truncated = true; break; }
-      const p = join(path, e.name);
-      if (e.kind === 'directory') {
-        if (SKIP_DIRS.has(lower(e.name))) continue;
-        dirs.push(p);
-        if (depth + 1 < MAX_DEPTH) queue.push({ h: e, path: p, depth: depth + 1 }); else truncated = true;
-      } else {
-        // getFile() gives the File's metadata (size); its content is never read.
-        pending.push(e.getFile().then((f) => { files.push({ path: p, size: f.size }); }, () => { files.push({ path: p, size: 0 }); }));
+  const read = newRead();
+  try {
+    say(read, { phase: 'listing', name: root.name, files: 0 });
+    const queue: { h: FsDirHandle; path: string; depth: number }[] = [{ h: root, path: '', depth: 0 }];
+    while (queue.length) { // breadth first: the top folders are complete before a limit cuts deep ones
+      const { h, path, depth } = queue.shift()!;
+      const pending: Promise<void>[] = [];
+      for await (const e of h.values()) {
+        if (++count > MAX_ENTRIES) { truncated = true; break; }
+        const p = join(path, e.name);
+        if (e.kind === 'directory') {
+          if (SKIP_DIRS.has(lower(e.name))) continue;
+          dirs.push(p);
+          if (depth + 1 < MAX_DEPTH) queue.push({ h: e, path: p, depth: depth + 1 }); else truncated = true;
+        } else {
+          // getFile() gives the File's metadata (size); only program files' import tables are read later, for the hints.
+          pending.push(e.getFile().then((f) => { files.push({ path: p, size: f.size }); if (PE_EXT.test(e.name)) pe.push({ path: p, file: f }); }, () => { files.push({ path: p, size: 0 }); }));
+        }
       }
+      await Promise.all(pending);
+      if (read.cancelled) throw new DOMException('Cancelled', 'AbortError'); // endRead says done
+      say(read, { phase: 'listing', name: root.name, files: files.length });
+      if (truncated && count > MAX_ENTRIES) break;
     }
-    await Promise.all(pending);
-    if (truncated && count > MAX_ENTRIES) break;
-  }
+  } finally { endRead(read, read.cancelled); }
   files.sort((a, b) => a.path.localeCompare(b.path));
   dirs.sort((a, b) => a.localeCompare(b));
-  return { name: root.name, files, dirs, truncated: truncated || undefined };
+  const folder: GameFolder = { name: root.name, files, dirs, truncated: truncated || undefined };
+  peHandles.set(folder, pe);
+  return folder;
 }
 
 function fromFileList(list: FileList): GameFolder | null {
   if (!list.length) return null;
   const files: GameFolder['files'] = [], dirs = new Set<string>();
+  const pe: { path: string; file: File }[] = [];
   let name = '', truncated = false;
   for (const f of Array.from(list)) {
     const parts = ((f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name).split('/');
@@ -51,9 +128,12 @@ function fromFileList(list: FileList): GameFolder | null {
     if (files.length >= MAX_ENTRIES) { truncated = true; break; }
     for (let i = 1; i < inside.length; i++) dirs.add(inside.slice(0, i).join('/'));
     files.push({ path: inside.join('/'), size: f.size });
+    if (PE_EXT.test(f.name)) pe.push({ path: inside.join('/'), file: f });
   }
   files.sort((a, b) => a.path.localeCompare(b.path));
-  return { name: name || 'Game folder', files, dirs: [...dirs].sort((a, b) => a.localeCompare(b)), truncated: truncated || undefined };
+  const folder: GameFolder = { name: name || 'Game folder', files, dirs: [...dirs].sort((a, b) => a.localeCompare(b)), truncated: truncated || undefined };
+  peHandles.set(folder, pe);
+  return folder;
 }
 
 function pickWithInput(): Promise<GameFolder | null> {
@@ -113,7 +193,7 @@ export function folderSummaryHtml(folder: GameFolder, handlerText: string): stri
 ${folder.truncated ? '<p class="gf-note">Very large or deep folder: only part of it was listed, so some checks are skipped.</p>' : ''}
 <dl class="gf-dl"><dt>Executable</dt><dd>${exeRow}</dd><dt>Game root</dt><dd>${rootRow}</dd></dl>
 ${facts.length ? `<ul class="gf-facts">${facts.map((f) => `<li><b>${esc(f.title)}</b>: ${esc(f.text)}</li>`).join('')}</ul>` : ''}
-<p class="gf-privacy muted">Only the names and sizes are kept, in this tab. Nothing is uploaded and no file is opened.</p>
+<p class="gf-privacy muted">Only the names and sizes are kept, in this tab, and the game's .exe and DLLs are read for their import tables (for hints about hooks). Nothing is uploaded.</p>
 <div class="gf-actions"><button type="button" class="btn" data-gf="pick">Pick another folder…</button><button type="button" class="btn" data-gf="forget">Forget folder</button></div>
 </section>`;
 }
@@ -133,9 +213,16 @@ export function initFolderPickers(editor: CM, getFolder: () => GameFolder | null
     menu?.remove(); menu = null;
     if (offDoc) { document.removeEventListener('pointerdown', offDoc); offDoc = null; }
   };
+  // Help on request: the "+" shows for the list the cursor is in, or on hover (CSS), not all the time.
+  let adds: { from: number; to: number; el: HTMLElement }[] = [];
+  const reveal = () => {
+    const at = editor.indexFromPos(editor.getCursor());
+    for (const a of adds) a.el.classList.toggle('near', at >= a.from && at <= a.to + 1);
+  };
   const draw = () => {
     marks.forEach((m) => m.clear());
     marks = [];
+    adds = [];
     const text: string = editor.getValue();
     const folder = getFolder();
     for (const l of folderLists(text)) {
@@ -149,9 +236,12 @@ export function initFolderPickers(editor: CM, getFolder: () => GameFolder | null
       add.setAttribute('aria-haspopup', 'dialog');
       add.addEventListener('mousedown', (e) => e.preventDefault()); // keep the editor's selection
       add.addEventListener('click', () => openMenu(add, l));
+      adds.push({ from: l.open, to: l.close, el: add });
       marks.push(editor.setBookmark(editor.posFromIndex(l.close), { widget: add, insertLeft: true }));
     }
+    reveal();
   };
+  editor.on('cursorActivity', () => reveal());
   const place = (anchor: HTMLElement) => {
     if (!menu) return;
     const r = anchor.getBoundingClientRect();

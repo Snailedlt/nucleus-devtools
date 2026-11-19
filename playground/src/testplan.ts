@@ -2,6 +2,8 @@
 // command palette while BETA is true.
 // AT THE FULL (NON-BETA) RELEASE: set BETA to false (the guide and its entry points disappear), or rewrite the plan for
 // what still needs testing. AGENTS.md › Releasing says so too.
+import { VISUAL } from './visual';
+import type { IconName } from './icons';
 export const BETA = true;
 
 /** Who's testing: how much they code, and how well they know Nucleus Co-op's handlers and API. */
@@ -48,18 +50,22 @@ export const EFFORT: Record<1 | 2 | 3, { label: string; how: string }> = {
 const PRIORITY: Record<string, { need: 1 | 2 | 3; effort: 1 | 2 | 3 }> = {
   'own-handlers': { need: 3, effort: 2 }, 'no-freeze': { need: 3, effort: 1 }, notepadpp: { need: 3, effort: 2 }, 'notepadpp-install': { need: 3, effort: 1 }, vscode: { need: 3, effort: 2 },
   'other-editor': { need: 2, effort: 2 }, 'try-it': { need: 3, effort: 3 }, debugger: { need: 3, effort: 1 }, 'docs-links': { need: 3, effort: 1 },
-  'claude-docs': { need: 3, effort: 1 }, autocomplete: { need: 3, effort: 2 }, keyboard: { need: 2, effort: 1 }, 'window-messages': { need: 2, effort: 2 },
+  'claude-docs': { need: 3, effort: 1 }, 'in-practice': { need: 3, effort: 1 }, autocomplete: { need: 3, effort: 2 }, keyboard: { need: 2, effort: 1 }, 'window-messages': { need: 2, effort: 2 },
   'game-folder': { need: 2, effort: 2 }, packages: { need: 3, effort: 3 }, 'hub-files': { need: 2, effort: 1 }, reference: { need: 2, effort: 1 },
-  'first-run': { need: 3, effort: 1 }, tutorial: { need: 3, effort: 2 }, 'first-handler': { need: 3, effort: 3 }, messages: { need: 3, effort: 1 }, form: { need: 2, effort: 1 },
+  'first-run': { need: 3, effort: 1 }, tour: { need: 3, effort: 1 }, tutorial: { need: 3, effort: 2 }, 'first-handler': { need: 3, effort: 3 }, messages: { need: 3, effort: 1 }, form: { need: 2, effort: 1 },
   blocks: { need: 2, effort: 2 }, 'value-picker': { need: 2, effort: 1 }, 'hover-check': { need: 2, effort: 1 }, 'save-copy': { need: 2, effort: 2 },
   compare: { need: 2, effort: 1 }, layout: { need: 1, effort: 1 }, lines: { need: 1, effort: 1 }, tabs: { need: 1, effort: 1 }, tips: { need: 1, effort: 1 },
   'settings-backup': { need: 1, effort: 1 }, a11y: { need: 1, effort: 1 }, reader: { need: 1, effort: 2 },
 };
 export const priority = (t: { id: string }) => PRIORITY[t.id] ?? { need: 2 as const, effort: 2 as const };
 
-export interface TestItem { id: string; areas: Area[]; kinds: Kind[]; title: string; steps: string; look: string }
+export interface TestItem {
+  id: string; areas: Area[]; kinds: Kind[]; title: string; steps: string; look: string;
+  /** A link that starts the task (a workbench #link), shown beside Report. */
+  link?: { href: string; label: string; icon?: IconName };
+}
 
-export const TEST_PLAN: TestItem[] = [
+const ALL_ITEMS: TestItem[] = [
   // --- Developers and handler authors first: precision, speed, the keyboard and their own editor
   { id: 'own-handlers', areas: ['api'], kinds: ['verify', 'nucleus'], title: 'Check your own handlers', steps: 'Open handlers you maintain (Ctrl+P also lists the Hub), in the workbench or your editor. Read every problem and its why.', look: 'False alarms on handlers that work in Nucleus, real problems it missed, and fixes (Ctrl+. / Alt+Enter) that do the wrong thing.' },
   { id: 'no-freeze', areas: ['devx'], kinds: ['explore'], title: 'An endless loop never freezes the editor', steps: 'In VS Code, Notepad++ or here, put while (true) {} inside Game.Play and run Try it, then Test all (and cancel it). Keep typing while it runs.', look: 'Any freeze or lag while it runs, and whether the message says plainly that the handler never finishes.' },
@@ -73,6 +79,7 @@ export const TEST_PLAN: TestItem[] = [
   { id: 'autocomplete', areas: ['devx'], kinds: ['task', 'keyboard'], title: 'Write from scratch with suggestions', steps: 'Start an empty handler (in VS Code or Notepad++, typing handler in an empty file gives the template) and write it using only suggestions: Game. or Context., Ctrl+Space, a space after =, the hints while typing a call. Comments and strings should stay quiet, except option keys in Context.Options["…"].', look: 'Missing or wrong suggestions, suggestions in the way, and anything slower than your usual editor.' },
   { id: 'keyboard', areas: ['devx'], kinds: ['keyboard'], title: 'Keyboard only', steps: 'Ctrl+P, Ctrl+Shift+P, Ctrl+K Ctrl+0 (fold all), Ctrl+B, Alt+Z (word wrap), Ctrl+S, Ctrl+F5, F8, Ctrl+. on a problem, F12, F2, Esc then Tab to leave the editor. Change a shortcut in Settings › Keyboard shortcuts.', look: 'Anything you couldn\'t reach, a lost focus, or a shortcut that clashes with your browser or keyboard layout.' },
   { id: 'claude-docs', areas: ['api'], kinds: ['verify'], title: 'Check the AI-written docs', steps: 'Docs → Help check AI-written docs. Pick names you know well.', look: '👍 if it\'s right, 👎 and "Tell us what\'s wrong" if not. Each doc says what source it\'s based on.' },
+  { id: 'in-practice', areas: ['api', 'uiux'], kinds: ['verify'], title: '"In practice" and Insert into handler', steps: 'In Docs, open options you know (Game.Hook.ForceFocus, Game.LockInputToggleKey, Game.ProtoInput.BlockedMessages, Context.ReplaceLinesInTextFile). Read the In practice part, vote on it and on the doc, then press Insert into handler under the example (or, where the handler sets it already, Show in handler and Replace with the example\'s value).', look: 'In practice claims that are wrong for the Nucleus you know, examples that don\'t work, and an insert that lands in the wrong place or can\'t be undone with one Ctrl+Z.' },
   { id: 'window-messages', areas: ['api'], kinds: ['verify', 'nucleus'], title: 'Window messages in BlockedMessages', steps: 'In Game.ProtoInput.BlockedMessages, check the names after each number, hover them, and add one with the +.', look: 'Wrong names, and whether blocking them in Nucleus does what the hover says.' },
   { id: 'game-folder', areas: ['api'], kinds: ['verify', 'nucleus'], title: 'Check against your game folder', steps: 'Open a handler for a game you have installed and link the game’s folder (Files › Your game on this PC here, Link the Game’s Folder… in VS Code and Notepad++). Read what it finds, and try the + on a symlink or exclusion list.', look: 'False alarms on a handler that works, missed real problems, wrong path forms for Nucleus, and whether the engine notes are right.' },
   { id: 'packages', areas: ['api', 'devx'], kinds: ['task', 'nucleus'], title: 'A whole package', steps: 'Open your own .nc or .zip (or a Hub handler that has files), open Files, edit an ini, add a file, save the package and install it in Nucleus.', look: 'Files missing after saving, what Try it says Nucleus installs against what it really installs, and checks that are wrong.' },
@@ -81,6 +88,7 @@ export const TEST_PLAN: TestItem[] = [
 
   // --- Newcomers: can you get a working handler without help?
   { id: 'first-run', areas: ['uiux', 'devx'], kinds: ['explore'], title: 'The first-visit choice', steps: 'In a private window, open the workbench twice: once answer "I write code", once "Guide me". Work for a few minutes each way.', look: '"I write code" should start compact (no tips, no banner), "Guide me" should help. Anything on screen you didn\'t ask for, or help you couldn\'t find.' },
+  { id: 'tour', areas: ['uiux'], kinds: ['task'], title: 'Take the tour', steps: 'Take the tour (the link here, or Menu › Take the tour) and do each step: click or press what it points at. Skip it halfway once, then Take the tour again to carry on. It ticks itself here when you finish.', look: 'A step that didn\'t react when you did it, moved on too soon or too late, or pointed at the wrong place. Optional: tell us what you thought of the tour with Report what you found.', link: { href: '#tour', label: 'Take the tour', icon: 'compass' } },
   { id: 'tutorial', areas: ['uiux'], kinds: ['task'], title: 'Learn: making your first handler', steps: 'Menu › Learn: do every lesson without Solve, as if you had never seen a handler, then test the handler in Nucleus Co-op with Sonic Robo Blast 2 (free).', look: 'A lesson you couldn\'t finish, a tick that came too early or never came, a word you didn\'t know, or a step in Nucleus Co-op that didn\'t go as the lesson said.' },
   { id: 'first-handler', areas: ['uiux'], kinds: ['task', 'nucleus'], title: 'Make your first handler', steps: 'New handler… → fill in a game you own → fix what Check finds → Try it → Save (Ctrl+S) → install it in Nucleus Co-op.', look: 'Could you finish without asking anyone? Which step was unclear? Did the game start in Nucleus?' },
   { id: 'messages', areas: ['uiux'], kinds: ['explore'], title: 'Do the messages make sense?', steps: 'Open "Handler with common mistakes" (Ctrl+P). Read each problem in Check and on hover, without opening Technical details.', look: 'Any word or sentence you didn\'t understand, or a fix you were afraid to press.' },
@@ -99,5 +107,8 @@ export const TEST_PLAN: TestItem[] = [
   { id: 'tips', areas: ['uiux'], kinds: ['explore'], title: 'Tips under the code', steps: 'With Guide me (or tips on in Settings), work a while and vote 👍 or 👎 on the tips you see.', look: 'Tips that came at the wrong moment, repeated, or pointed at the wrong thing.' },
   { id: 'settings-backup', areas: ['uiux'], kinds: ['task'], title: 'Settings: find, export and import', steps: 'Open Settings, search for a setting, then Updates and backup › Export settings, change something, and Import the file.', look: 'A setting you could not find by searching, or one that did not come back after importing.' },
   { id: 'a11y', areas: ['uiux'], kinds: ['task'], title: 'Accessibility settings', steps: 'Open Settings › Accessibility and try each switch, with a screen reader or only the keyboard if you use one.', look: 'Anything that is hard to see, hard to reach with the keyboard, or read out wrongly; and anything missing that you need.' },
+  { id: 'reports', areas: ['uiux', 'devx'], kinds: ['explore'], title: 'Report something from where you are', steps: 'Open a problem in Check and use This check is wrong (also the flag in its hover); in Try it, the icon in the result\'s corner; in Docs, search for something that isn\'t there; in the menu, Report a problem and Request a feature; in Learn, the lesson list\'s I\'m stuck. In VS Code: Ctrl+. on a problem, and Nucleus: Report a Problem. Look at what each would send, then cancel (or send a real one).', look: 'Is it clear what gets sent before anything is? Does each open the right form with the right things filled in? Is anything in your way when you don\'t want to report?' },
   { id: 'reader', areas: ['uiux'], kinds: ['reader'], title: 'With a screen reader', steps: 'Open an example, go through Check, fix one problem, and open Settings.', look: 'Anything not announced, announced twice, or in a confusing order.' },
 ];
+// Form and Blocks are hidden for now (visual.ts): their tasks come back with them.
+export const TEST_PLAN: TestItem[] = ALL_ITEMS.filter((t) => VISUAL || (t.id !== 'form' && t.id !== 'blocks'));

@@ -40,6 +40,8 @@ async function page(theme, opts = { viewport: { width: 1280, height: 800 } }) {
   await ctx.addInitScript(() => {
     try {
       localStorage.setItem('nucleus-workbench-welcomed', '1');
+      // Form and Blocks are hidden unless turned on (src/visual.ts); their checks below still run.
+      localStorage.setItem('nucleus-workbench-visual', '1');
     } catch {}
   });
   // Only the page's own origin: the release lookup, fonts and the Hub are not needed here.
@@ -413,19 +415,20 @@ for (const theme of ['light', 'dark']) {
     await q.waitForTimeout(300);
     check((await q.$$('#test-body .tg-list > .tg-item')).length >= 3 && await q.isVisible('#tg-change'), `${theme}: the answers show the recommendations, with Change`);
     await axe(q, `${theme}, tester recommendations`);
-    // Behind the questions: the home page, not a handler (what a handler is, the steps, New / Open / Learn).
+    // Behind the questions: the editor with the template (there's no home page), and no tour for a program's browser.
     await q.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
-    check(await q.isVisible('#no-handler .nh-intro') && (await q.textContent('#nh-title')) === 'Welcome to the workbench' && await q.isHidden('#main'), `${theme}: a first visit starts on the home page`);
-    await axe(q, `${theme}, home page`);
-    // Dragging a file: the same hint over the whole window, wherever the pointer is (home page, header, footer).
+    await q.waitForTimeout(200);
+    check(!(await q.$('#no-handler')) && await q.isVisible('#main') && /Game\.GameName/.test(await q.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue())), `${theme}: a first visit opens the template in the editor`);
+    check(!(await q.$eval('#tour', (d) => d.open)), `${theme}: the tour never starts by itself in an automated browser`);
+    // Dragging a file: the same hint over the whole window, wherever the pointer is (code, header, footer).
     const dragOver = (sel) => q.evaluate((sel) => {
       const dt = new DataTransfer();
       dt.items.add(new File(['Game.GameName = "Dropped";\n'], 'dropped.js', { type: 'text/javascript' }));
       document.querySelector(sel).dispatchEvent(new DragEvent('dragover', { dataTransfer: dt, bubbles: true, cancelable: true }));
       return !document.getElementById('drop-hint').hidden && getComputedStyle(document.getElementById('drop-hint')).position === 'fixed';
     }, sel);
-    const overHome = await dragOver('#no-handler'), overHeader = await dragOver('header'), overFooter = await dragOver('footer');
-    check(overHome && overHeader && overFooter, `${theme}: dragging a file shows the drop hint over the whole page (home ${overHome}, header ${overHeader}, footer ${overFooter})`);
+    const overMain = await dragOver('#main'), overHeader = await dragOver('header'), overFooter = await dragOver('footer');
+    check(overMain && overHeader && overFooter, `${theme}: dragging a file shows the drop hint over the whole page (main ${overMain}, header ${overHeader}, footer ${overFooter})`);
     // Held still: browsers repeat dragover only every ~350 ms, so the hint must outlast a pause like that.
     await q.waitForTimeout(700);
     check(await q.isVisible('#drop-hint'), `${theme}: the drop hint stays while the file is held still`);
@@ -435,16 +438,41 @@ for (const theme of ['light', 'dark']) {
       document.querySelector('header').dispatchEvent(new DragEvent('dragleave', { dataTransfer: dt, bubbles: true, relatedTarget: null, clientX: -1, clientY: 10 }));
     });
     check(await q.isHidden('#drop-hint'), `${theme}: the drop hint goes away when the drag leaves the window`);
-    await q.click('[data-nh=new]');
-    await q.fill('#new-name', 'Smoke Game');
-    await q.fill('#new-exe', 'Smoke.exe');
-    await q.click('#new-dialog button[type=submit]');
-    await q.waitForTimeout(600);
-    check(await q.isHidden('#no-handler') && await q.isVisible('#main') && !(await q.$('#welcome')), `${theme}: New handler… leaves the home page for the code, with no welcome box above it`);
-    await q.click('#welcome-open');
-    check(await q.isVisible('#no-handler') && (await q.textContent('#nh-title')) === 'Getting started' && await q.isVisible('[data-nh=back]'), `${theme}: Getting started shows the home page over the open handler`);
+    // The tour (tour.ts): from the menu, keyboard-driven, Esc skips and remembers the step, Take the tour offers to continue.
+    const takeTour = async () => {
+      await q.click('#app-menu-open');
+      await q.click('[role=menuitem]:has-text("Take the tour")');
+      await q.waitForTimeout(400);
+    };
+    await takeTour();
+    const tourState = () => q.evaluate(() => ({ open: document.getElementById('tour').open, count: document.getElementById('tour-count').textContent, title: document.getElementById('tour-title').textContent, inCard: !!document.activeElement?.closest('.tour-card') }));
+    let ts = await tourState();
+    check(ts.open && /^1 of \d+$/.test(ts.count) && ts.inCard, `${theme}: Take the tour opens step 1 with the focus in the card (${ts.count}, ${ts.title})`);
+    await axe(q, `${theme}, tour`);
+    await q.keyboard.press('ArrowRight');
+    await q.keyboard.press('ArrowRight');
+    await q.waitForTimeout(400);
+    ts = await tourState();
+    check(ts.title === 'Check' && /^3 of/.test(ts.count) && await q.$eval('.pane-head [data-tab=problems]', (b) => b.getAttribute('aria-selected') === 'true'), `${theme}: → steps on, to Check (${ts.count}, ${ts.title})`);
+    // Try it's action: clicking the tab in the cut-out shows "✓ Done", keeps Try it open and waits for Next.
+    await q.keyboard.press('ArrowRight');
+    await q.waitForTimeout(300);
+    await q.click('.pane-head [data-tab=simulate]');
+    check(/Done/.test(await q.textContent('#tour-act')), `${theme}: doing a step's action marks it done`);
+    await q.waitForTimeout(1500);
+    check(/^4 of/.test(await q.textContent('#tour-count')) && await q.evaluate(() => document.activeElement?.dataset.tour === 'next') && await q.$eval('.pane-head [data-tab=simulate]', (b) => b.getAttribute('aria-selected') === 'true'), `${theme}: after the action the tour waits for Next, with what opened still shown`);
     await q.keyboard.press('Escape');
-    check(await q.isHidden('#no-handler') && await q.isVisible('#main'), `${theme}: Esc goes back to the code`);
+    await q.waitForTimeout(300);
+    const saved = await q.evaluate(() => JSON.parse(localStorage.getItem('nucleus-workbench-tour')));
+    check(!(await q.$eval('#tour', (d) => d.open)) && saved?.state === 'skipped' && saved.step === 3 && await q.evaluate(() => document.activeElement?.id === 'app-menu-open'), `${theme}: Esc skips, remembers the step and gives the focus back (${JSON.stringify(saved)})`);
+    check(await q.$eval('.pane-head [data-tab=problems]', (b) => b.getAttribute('aria-selected') === 'true'), `${theme}: the tour puts back the tab that was open`);
+    await takeTour();
+    check(/Continue where you left off/.test(await q.textContent('[data-tour=next]')) && /Start over/.test(await q.textContent('[data-tour=back]')), `${theme}: Take the tour after a skip offers to continue or start over`);
+    await q.click('[data-tour=next]');
+    await q.waitForTimeout(300);
+    check(/^4 of/.test(await q.textContent('#tour-count')), `${theme}: Continue picks up at the skipped step`);
+    for (let i = 0; i < 12 && await q.$eval('#tour', (d) => d.open); i++) await q.click('[data-tour=next]');
+    check((await q.evaluate(() => JSON.parse(localStorage.getItem('nucleus-workbench-tour'))))?.state === 'done', `${theme}: Finish ends the tour and remembers it`);
     await fresh.close();
   }
   // One handler per tab: another handler opens a new tab; one that's already open switches to its tab.
@@ -571,13 +599,86 @@ for (const theme of ['light', 'dark']) {
     const at = await p.evaluate(() => { const cm = document.querySelector('.CodeMirror').CodeMirror; const r = cm.charCoords({ line: 5, ch: 6 }, 'window'); return { x: r.left + 2, y: (r.top + r.bottom) / 2 }; });
     await p.mouse.move(at.x, at.y);
     await p.waitForTimeout(900);
-    check(await p.isVisible('#tip') && (await p.$$('#tip code.hl :is(.cm-property, .cm-nucleus-prop)')).length > 0, `${theme}: the hover card shows code in the editor's colours`);
+    // The short card: the signature (its name in the editor's property colour) and any code in the first sentence.
+    check(await p.isVisible('#tip') && (await p.$$('#tip :is(code.hl :is(.cm-property, .cm-nucleus-prop), .dc-sig .sg-n)')).length > 0, `${theme}: the hover card shows code in the editor's colours`);
+    // The hover is short (help on request): the first sentence and "More in Docs", no "Explain this line".
+    const tipText = await p.textContent('#tip');
+    check((await p.isVisible('#tip .dc-more a[data-api]')) && !/Explain this line|In practice/.test(tipText), `${theme}: the hover card is short, with More in Docs and no Explain this line`);
     await p.mouse.move(5, 5);
+    // Parameter hints: not from clicking into a call; typing `,` in it opens them, Escape closes them.
+    const codeBefore = await p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue());
+    await p.evaluate(() => { const cm = document.querySelector('.CodeMirror').CodeMirror; cm.setValue('Game.AddOption("Mode", "Pick one", "mode", );\n'); });
+    await p.waitForTimeout(300);
+    const inCall = await p.evaluate(() => { const cm = document.querySelector('.CodeMirror').CodeMirror; const r = cm.charCoords({ line: 0, ch: 22 }, 'window'); return { x: r.left + 1, y: (r.top + r.bottom) / 2 }; });
+    await p.mouse.click(inCall.x, inCall.y);
+    await p.waitForTimeout(250);
+    check(await p.$eval('#sig', (e) => e.hidden), `${theme}: clicking into a call doesn't open parameter hints`);
+    await p.evaluate(() => { const cm = document.querySelector('.CodeMirror').CodeMirror; cm.focus(); cm.setCursor({ line: 0, ch: 41 }); });
+    await p.keyboard.type(',');
+    await p.waitForTimeout(250);
+    check(!(await p.$eval('#sig', (e) => e.hidden)), `${theme}: typing , in a call opens parameter hints`);
+    await p.keyboard.press('Escape');
+    await p.waitForTimeout(100);
+    check(await p.$eval('#sig', (e) => e.hidden), `${theme}: Escape closes parameter hints`);
+    await p.evaluate((c) => document.querySelector('.CodeMirror').CodeMirror.setValue(c), codeBefore);
+    await p.waitForTimeout(600);
+    // Reports (reportflow.ts): "This check is wrong" on a problem opens the dialog with the check filled in and the
+    // flagged line shown (nothing is sent); a Docs search with no results offers "Ask for this to be documented".
+    {
+      const before = await p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue());
+      await p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.setValue('Game.GUID = "Demo";\nGame.GameName = "Demo";\nGame.ExecutableName = "demo.exe";\nGame.Hook.ForceFocuss = true;\n'));
+      await p.waitForTimeout(700);
+      await p.click('[role=tab][data-tab=problems]');
+      await p.click('#problems .ptoggle');
+      await p.click('#problems [data-wrong]');
+      await p.waitForSelector('#report-dialog[open]');
+      check((await p.textContent('#report-dialog .rf-pre')).trim() === 'Game.Hook.ForceFocuss = true;' && /Rule: unknown-member/.test(await p.textContent('#rf-block')), `${theme}: This check is wrong shows the flagged line and the check before anything is sent`);
+      await axe(p, `${theme}: the report dialog`);
+      await p.keyboard.press('Escape');
+      await p.evaluate((c) => document.querySelector('.CodeMirror').CodeMirror.setValue(c), before);
+      await p.waitForTimeout(700);
+    }
     await p.click('[role=tab][data-tab=api]');
+    await p.fill('#api-q', 'zzqq no such thing');
+    await p.waitForTimeout(400);
+    check(await p.isVisible('[data-report-docs]'), `${theme}: a Docs search with no results offers Ask for this to be documented`);
     await p.fill('#api-q', 'Game.PlayersPerInstance');
     await p.waitForTimeout(400);
     check((await p.$$('#api-results pre.doc-code.hl .cm-number')).length > 0, `${theme}: Docs shows its example coloured like the code`);
     check(/docs\/Game\.PlayersPerInstance\/$/.test((await p.getAttribute('#api-results .api-page a', 'href')) ?? ''), `${theme}: Docs' Open as a page leads to that name's docs page`);
+    // The full entry, for handler authors: "How handlers use it" folded, the engines as one line with no numbers, votes
+    // without counts (the counts, the basis and the counted "By engine" line are on the docs pages).
+    await p.fill('#api-q', 'Context.EditRegKey');
+    await p.waitForTimeout(400);
+    const entry = (await p.textContent('#api-results .dc').catch(() => '')) ?? '';
+    check(/More common in: Unity/.test((await p.textContent('#api-results .dc-engine').catch(() => '')) ?? '') && !/By engine:|Counted from/.test(entry), `${theme}: Docs shows the engines as one line, with no numbers or basis`);
+    check((await p.$$('#api-results details.dc-practice:not([open]) > summary')).length === 1 && /How handlers use it/.test(entry), `${theme}: Docs folds "How handlers use it"`);
+    // A search: short results, each with Open full doc, which opens the entry (Enter works).
+    await p.fill('#api-q', 'keyboard');
+    await p.waitForTimeout(400);
+    check((await p.$$('#api-results .api-hit .api-open a[data-open]')).length > 3 && (await p.$$('#api-results .api-hit .doc-code, #api-results .api-hit details')).length === 0, `${theme}: Docs search shows short results with Open full doc`);
+    await p.focus('#api-results .api-hit .api-open a');
+    await p.keyboard.press('Enter');
+    await p.waitForTimeout(400);
+    // The doc's own vote line (the one in "How handlers use it" is folded away), and the keyboard on the entry's heading.
+    check(await p.isVisible('#api-results .dc:not(.hit) .dc-check:has(button[data-vkind="doc"])') && (await p.evaluate(() => document.activeElement?.matches('#api-results article.api > h3'))), `${theme}: Enter on Open full doc opens the whole entry and moves focus to it`);
+    // Insert into handler, twice: the second press shows it instead of adding a second copy (an example of two statements).
+    {
+      const cmText = () => p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue());
+      const was = await cmText();
+      await p.fill('#api-q', 'Context.ReplaceLinesInTextFile');
+      await p.waitForTimeout(400);
+      const ins = '#api-results [data-insert="Context.ReplaceLinesInTextFile"]';
+      await p.click(ins);
+      await p.waitForTimeout(300);
+      const label = await p.textContent(ins);
+      await p.click(ins);
+      await p.waitForTimeout(300);
+      const cfgs = ((await cmText()).match(/var cfg\b/g) ?? []).length;
+      check(label === 'Show in handler' && cfgs === 1, `${theme}: Insert into handler, pressed again, shows the example instead of adding it twice (${label}, ${cfgs}× var cfg)`);
+      await p.evaluate((t) => document.querySelector('.CodeMirror').CodeMirror.setValue(t), was);
+      await p.waitForTimeout(300);
+    }
     // Blocks: a code step is a small CodeMirror with the colours, and typing in it edits the handler.
     await p.click('[data-view-mode=blocks]');
     await p.waitForTimeout(800);
@@ -591,10 +692,67 @@ for (const theme of ['light', 'dark']) {
     await p.keyboard.press('Escape');
     await p.waitForTimeout(400);
     await axe(p, `${theme}, Blocks with a code editor`);
+    // Blocks, compact (#25): no Action tags, kind pickers only on the value with the focus, repeated steps grouped.
+    {
+      const before = await p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue());
+      const rep = 'Game.GUID = "Demo";\nGame.GameName = "Demo";\nGame.ExecutableName = "demo.exe";\nGame.Play = function () {\n    Context.StartArguments = "-windowed";\n' + [1, 2, 3, 4].map((i) => `    Context.CopyScriptFolder("a${i}");\n`).join('') + '};\n';
+      await p.evaluate((c) => document.querySelector('.CodeMirror').CodeMirror.setValue(c), rep);
+      await p.waitForTimeout(900);
+      const g = '#blocksview .bv-group';
+      check((await p.$$(g)).length === 1 && /4 steps/.test(await p.innerText(`${g} .bv-g-toggle`)) && (await p.$$(`${g} .bv-g-line`)).length === 4 && (await p.getAttribute(`${g} .bv-g-toggle`, 'aria-expanded')) === 'false', `${theme}: four Context.CopyScriptFolder steps are one group with a count and a line each`);
+      check(!/\bAction\b/i.test(await p.innerText('#blocksview')), `${theme}: Blocks has no Action tags`);
+      const shownKinds = () => p.$$eval('#blocksview .bv-kind', (ks) => ks.filter((k) => getComputedStyle(k).opacity !== '0').length);
+      check((await shownKinds()) === 0, `${theme}: no kind pickers while nothing is selected`);
+      await p.click(`${g} .bv-g-line >> nth=2`);
+      await p.waitForTimeout(200);
+      check((await p.getAttribute(`${g} .bv-g-toggle`, 'aria-expanded')) === 'true' && (await p.evaluate(() => document.activeElement?.closest('.bv-row')?.getAttribute('data-key'))) === 'Play/3' && (await shownKinds()) === 1, `${theme}: a click on a line opens the group at that step, and only its value shows the kind picker`);
+      await axe(p, `${theme}, Blocks with a group open`);
+      await p.keyboard.press('ControlOrMeta+a');
+      await p.keyboard.type('b3');
+      await p.waitForTimeout(400);
+      check((await p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue())) === rep.replace('"a3"', '"b3"'), `${theme}: editing a step in a group changes only that value in the code`);
+      // The kind picker floats below the value being edited (above only without room below), never over it.
+      check(await p.evaluate(() => { const k = document.activeElement.closest('.bv-val').querySelector(':scope > .bv-kind'); return k.getBoundingClientRect().top >= document.activeElement.getBoundingClientRect().bottom; }), `${theme}: the kind picker shows below the value`);
+      // A long comment folds to its first line and "… N more lines", which unfolds it.
+      const long = 'Game.GUID = "Demo";\nGame.GameName = "Demo";\nGame.ExecutableName = "demo.exe";\nGame.Play = function () {\n    // one\n    // two\n    // three\n    // four\n    // five\n    Context.StartArguments = "-windowed";\n};\n';
+      await p.evaluate((c) => document.querySelector('.CodeMirror').CodeMirror.setValue(c), long);
+      await p.waitForTimeout(700);
+      const more = '#blocksview .bv-note-long .bv-note-more';
+      check((await p.innerText(more)).includes('4 more lines') && (await p.getAttribute(more, 'aria-expanded')) === 'false' && !(await p.isVisible('#blocksview .bv-note-rest')), `${theme}: a five-line comment folds to its first line and "… 4 more lines"`);
+      await p.focus(more);
+      await p.keyboard.press('Enter');
+      await p.waitForTimeout(150);
+      check((await p.getAttribute(more, 'aria-expanded')) === 'true' && (await p.isVisible('#blocksview .bv-note-rest')), `${theme}: Enter on "… 4 more lines" unfolds the comment`);
+      // Moving a step: focus and its open row go with it; each move is its own Ctrl+Z, from Blocks too.
+      const steps = 'Game.GUID = "Demo";\nGame.GameName = "Demo";\nGame.ExecutableName = "demo.exe";\nGame.Play = function () {\n    Context.Wait(1);\n    var a = 2;\n    if (a > 1) {\n        Context.Wait(5);\n    }\n    Context.StartArguments = "-d";\n};\n';
+      await p.evaluate((c) => document.querySelector('.CodeMirror').CodeMirror.setValue(c), steps);
+      await p.waitForTimeout(700);
+      const playLines = async () => (await p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue())).split('\n').slice(4, 10).map((l) => l.trim()).join(' ');
+      const where = () => p.evaluate(() => [document.activeElement?.getAttribute('data-bv'), [...document.querySelectorAll('#blocksview .bv-open')].map((e) => e.getAttribute('data-key')).join()]);
+      await p.click('[data-bv="Play/0:more"]');
+      await p.click('[data-bv="Play/0:down"]');
+      await p.waitForTimeout(250);
+      await p.keyboard.press('Enter');
+      await p.waitForTimeout(250);
+      const [f1, o1] = await where();
+      const moved = await playLines();
+      check(f1 === 'Play/2:down' && o1 === 'Play/2' && /^var a = 2; if .* Context\.Wait\(1\); Context\.StartArguments/.test(moved), `${theme}: Move down twice in Blocks moves one step two places, focus and its open row with it (${f1}, ${o1})`);
+      await p.keyboard.press('ControlOrMeta+z');
+      await p.waitForTimeout(250);
+      const undone = await playLines();
+      await p.keyboard.press('ControlOrMeta+y');
+      await p.waitForTimeout(250);
+      check(/^var a = 2; Context\.Wait\(1\); if/.test(undone) && (await playLines()) === moved, `${theme}: Ctrl+Z in Blocks undoes one move, Ctrl+Y redoes it`);
+      await p.evaluate((c) => document.querySelector('.CodeMirror').CodeMirror.setValue(c), before);
+      await p.waitForTimeout(600);
+    }
     // Form: a long Game.Description is readable in full, and expands (Alt+Enter) with its docs; Esc goes back.
     await p.click('[data-view-mode=form]');
     await p.waitForTimeout(600);
     const desc = '#formview .fv-row[data-key^="Game.Description"] textarea';
+    // Plain names (#24): the plain label and the API name both in the label.
+    const lab = await p.innerText('#formview .fv-row[data-key^="Game.GameName"] .fv-label');
+    check(/Game name/.test(lab) && /Game\.GameName/.test(lab), `${theme}: Form names an option in plain words and keeps its API name (${lab.replace(/\s+/g, ' ')})`);
     const full = await p.$eval(desc, (t) => t.value.length > 100 && t.scrollHeight <= t.clientHeight + 2 && t.getBoundingClientRect().height > 40);
     check(full && (await p.isVisible('#formview .fv-row[data-key^="Game.Description"] .xf-btn')), `${theme}: a long Game.Description wraps in Form and shows in full, with an expand button`);
     check((await p.$$('#formview .fv-row[data-key^="Game.HandlerInterval"] .fv-src.hl .cm-number')).length > 0, `${theme}: a code value in Form is coloured like the code`);
@@ -639,7 +797,7 @@ for (const theme of ['light', 'dark']) {
   await s.p.focus('.ba-range');
   for (let i = 0; i < 5; i++) await s.p.keyboard.press('ArrowLeft');
   check((await s.p.$eval('.ba-frame', (e) => e.style.getPropertyValue('--pos'))) === '45%', `${theme}: start page gallery: the arrow keys move the slider`);
-  check((await s.p.getAttribute('.ctas a.btn.primary', 'href')) .replace(/\?ref=[\w.-]+$/, '').replace(/index\.html$/, '') === '../', `${theme}: the start page links to its own workbench (by its file in a preview: some hosts don't serve ../)`);
+  check((await s.p.getAttribute('.ctas a.btn.primary', 'href')) .replace(/\?ref=[\w.-]+(#[\w-]+)?$/, '').replace(/index\.html$/, '') === '../', `${theme}: the start page links to its own workbench (by its file in a preview: some hosts don't serve ../)`);
   await axe(s.p, `${theme}, start page`);
   check(!s.errors.length, `${theme}: start page has no page errors`);
   // The tools page: the downloads, a language-server editor's setup on a click, and old start-page links forwarded.
@@ -760,6 +918,7 @@ await m.ctx.close();
     const s = await page(theme);
     await s.p.goto(BASE + 'docs/Context.ModifySaveFile/');
     check(await s.p.isVisible('.site-nav a[aria-current="page"]') && /Context\.ModifySaveFile/.test(await s.p.textContent('main h1')), `docs page ${theme}: header and the name`);
+    check(/By engine: [^.]*Source games/.test(await s.p.textContent('main')), `docs page ${theme}: "By engine" under "In practice"`);
     await s.p.click('.doc-fb [data-vote=down]');
     check((await s.p.getAttribute('.doc-fb [data-vote=down]', 'aria-pressed')) === 'true' && /Thanks/.test(await s.p.textContent('.doc-fb-thanks')), `docs page ${theme}: a vote shows as pressed, with thanks`);
     check(/doc-review/.test(await s.p.getAttribute('.doc-fb a', 'href')), `docs page ${theme}: the report link opens the doc review form`);
@@ -783,24 +942,154 @@ await m.ctx.close();
   await ph.ctx.close();
 }
 {
-  // Every handler can be closed, the last one too: the work area says nothing is open, with ways on; Reopen brings
-  // it back, and opening anything fills the empty place (no extra blank tab).
+  // Linking the game's folder shows progress: listing, then the program files (n of m), and "Reading your game's
+  // files…" in Check until their hints are in; all gone when done. A folder picker that answers slowly stands in.
+  const s = await page('light');
+  await s.ctx.addInitScript(() => {
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const file = (name, size, ms) => ({ kind: 'file', name, getFile: async () => (await wait(ms), { name, size, arrayBuffer: async () => (await wait(400), new ArrayBuffer(64)) }) });
+    window.showDirectoryPicker = async () => ({
+      kind: 'directory', name: 'SlowGame',
+      async *values() { yield file('game.exe', 3e6, 500); yield file('a.dll', 2e6, 500); yield file('b.dll', 1e6, 500); yield file('readme.txt', 10, 500); },
+    });
+  });
+  await s.p.goto(BASE + '#example-mistakes');
+  await s.p.waitForTimeout(900);
+  await s.p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
+  if (await s.p.$eval('#files-panel', (e) => e.hidden)) await s.p.click('#files-toggle');
+  await s.p.waitForTimeout(300);
+  await s.p.click('#files-panel [data-gf=pick]');
+  await s.p.waitForTimeout(200);
+  const listing = await s.p.evaluate(() => ({ text: document.getElementById('gf-prog-text')?.textContent ?? '', bar: !!document.querySelector('#files-panel .fp-prog progress') }));
+  check(/Reading SlowGame/.test(listing.text) && listing.bar, `game folder: reading shows progress while listing (${listing.text})`);
+  await s.p.waitForTimeout(900);
+  const bins = await s.p.evaluate(() => ({ n: document.getElementById('gf-prog-n')?.textContent ?? '', check: document.querySelector('#status .st-reading')?.textContent ?? '' }));
+  check(/of 3/.test(bins.n) && /Reading your game/.test(bins.check), `game folder: the program files show n of m, and Check says it's reading them (${bins.n} | ${bins.check})`);
+  await s.p.waitForTimeout(2200);
+  const done = await s.p.evaluate(() => ({ prog: !!document.querySelector('.fp-prog'), check: !!document.querySelector('#status .st-reading') }));
+  check(!done.prog && !done.check, `game folder: the progress is gone when done (${JSON.stringify(done)})`);
+  check(!s.errors.length, `game folder progress: no page errors ${s.errors.join(' ')}`);
+  await s.ctx.close();
+}
+{
+  // Two reads at once (a second folder picked while the first's program files are still being read): the label names
+  // the newest read, the one Cancel stops; after Cancel the first read shows again and runs to its end.
+  const s = await page('light');
+  await s.ctx.addInitScript(() => {
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const file = (name, size) => ({ kind: 'file', name, getFile: async () => ({ name, size, arrayBuffer: async () => (await wait(500), new ArrayBuffer(64)) }) });
+    const dir = (name) => ({ kind: 'directory', name, async *values() { for (let i = 0; i < 16; i++) yield file(`m${i}.dll`, 1e6); } });
+    let n = 0;
+    window.showDirectoryPicker = async () => dir(n++ ? 'SecondGame' : 'FirstGame');
+  });
+  await s.p.goto(BASE + '#example-mistakes');
+  await s.p.waitForTimeout(900);
+  await s.p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
+  if (await s.p.$eval('#files-panel', (e) => e.hidden)) await s.p.click('#files-toggle');
+  await s.p.waitForTimeout(300);
+  await s.p.click('#files-panel [data-gf=pick]');
+  await s.p.waitForTimeout(1300);
+  const first = await s.p.evaluate(() => document.getElementById('gf-prog-text')?.textContent ?? '');
+  await s.p.click('#files-panel [data-gf=pick]');
+  await s.p.waitForTimeout(1300);
+  const second = await s.p.evaluate(() => document.getElementById('gf-prog-text')?.textContent ?? '');
+  check(/FirstGame/.test(first) && /SecondGame/.test(second), `game folder: with two reads the label names the newest (${first} | ${second})`);
+  await s.p.click('#files-panel [data-gf=cancel]');
+  await s.p.waitForTimeout(1300);
+  const after = await s.p.evaluate(() => document.getElementById('gf-prog-text')?.textContent ?? '');
+  check(/FirstGame/.test(after), `game folder: after Cancel the other read shows again (${after})`);
+  check(!s.errors.length, `game folder, two reads: no page errors ${s.errors.join(' ')}`);
+  await s.ctx.close();
+}
+{
+  // Two tabs with the same code but different package files (pluginsInfo.txt in one): a Check still running when the
+  // tab changes is dropped, so each tab shows its own result (the plugin known in one tab, flagged in the other).
+  const s = await page('light');
+  // Check runs in a worker that answers in order: hold back the answer to the next request (window.__holdNext) so it
+  // arrives after the later tab's own, as a slow Check would.
+  await s.ctx.addInitScript(() => {
+    const W = window.Worker;
+    if (!W) return;
+    window.Worker = class extends W {
+      constructor(...a) {
+        super(...a);
+        this.__held = new Set();
+      }
+      postMessage(m, ...r) {
+        if (window.__holdNext && m && typeof m.id === 'number') { window.__holdNext = false; this.__held.add(m.id); }
+        return super.postMessage(m, ...r);
+      }
+      set onmessage(f) {
+        super.onmessage = (e) => (e.data && this.__held.has(e.data.id) ? setTimeout(() => f.call(this, e), 700) : f.call(this, e));
+      }
+      get onmessage() { return super.onmessage; }
+    };
+  });
+  await s.p.goto(BASE + '#example-mistakes');
+  await s.p.waitForTimeout(900);
+  const otherHub = await s.p.evaluate(() => window.HUB_EXAMPLES?.handlers?.[0]?.id ?? null);
+  if (otherHub) {
+    const CODE = 'Game.GUID = "Plug";\nGame.GameName = "Plug";\nGame.ExecutableName = "plug.exe";\nGame.Play = function () {\n  MyPlug.Run();\n};\n';
+    const prep = async () => {
+      await s.p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
+      await s.p.evaluate((c) => document.querySelector('.CodeMirror').CodeMirror.setValue(c), CODE);
+      await s.p.waitForTimeout(900);
+    };
+    const flagged = async () => /MyPlug/.test(await s.p.innerText('#panel-problems'));
+    // Tab A: a Hub handler, with pluginsInfo.txt added to its package.
+    await s.p.evaluate((id) => { location.hash = 'hub-' + id; }, otherHub);
+    await s.p.waitForTimeout(1500);
+    await prep();
+    if (await s.p.$eval('#files-panel', (e) => e.hidden)) await s.p.click('#files-toggle');
+    await s.p.waitForTimeout(300);
+    await s.p.evaluate(() => {
+      const dt = new DataTransfer();
+      dt.items.add(new File(['#MyPlug#MyPlug.dll#MyPlug.Main\n'], 'pluginsInfo.txt', { type: 'text/plain' }));
+      document.querySelector('#files-panel').dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+    });
+    await s.p.waitForTimeout(900);
+    const inA = await flagged();
+    // Tab B: the common-mistakes example (no package files), the same code.
+    await s.p.evaluate(() => { location.hash = 'example-mistakes'; });
+    await s.p.waitForTimeout(900);
+    await prep();
+    const inB = await flagged();
+    check(!inA && inB, `tabs: the same code, pluginsInfo.txt in one tab only: only the other flags the plugin (${inA}, ${inB})`);
+    // Start a Check in tab A, and change to tab B before its result is in: tab B keeps its own.
+    await s.p.evaluate(() => {
+      const ts = [...document.querySelectorAll('#htabs [role=tab]')];
+      const on = ts.findIndex((t) => t.getAttribute('aria-selected') === 'true');
+      const a = ts.find((t) => /other file/.test(t.title)); // tab A: the one with pluginsInfo.txt
+      const bId = (window.__tabB = ts[on].dataset.tabId);
+      a.click();
+      window.__holdNext = true;
+      document.querySelector('.CodeMirror').CodeMirror.performLint();
+      // The tabs are drawn anew on a switch: tab B's element by its id.
+      document.querySelector(`#htabs [data-tab-id="${bId}"]`).click();
+    });
+    await s.p.waitForTimeout(1500);
+    const backOnB = await s.p.evaluate(() => document.querySelector('#htabs [aria-selected=true]')?.dataset.tabId === window.__tabB);
+    check(backOnB && await flagged(), "tabs: a Check started in the other tab and finished after the switch doesn't replace this tab's result");
+  } else console.log('skip: no Hub handler in this build for the two-tab Check test');
+  check(!s.errors.length, `tabs with package files: no page errors ${s.errors.join(' ')}`);
+  await s.ctx.close();
+}
+{
+  // Every handler can be closed, the last one too: a new one from the template takes its place (no empty page); Undo
+  // brings the closed one back and the untouched template goes.
   const s = await page('light');
   await s.p.goto(BASE + '#example-mistakes');
   await s.p.waitForTimeout(900);
   await s.p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
   const tabsNow = () => s.p.$$eval('#htabs [role=tab]', (l) => l.length);
-  for (let n = await tabsNow(); n > 0; n--) { await s.p.click('#htabs [aria-selected=true] .ht-x'); await s.p.waitForTimeout(250); }
-  check((await tabsNow()) === 0 && (await s.p.isVisible('#no-handler')) && !(await s.p.isVisible('#main')), 'tabs: the last handler closes too, and the page says nothing is open');
-  await axe(s.p, 'light, no handler open');
-  await s.p.click('[data-nh=undo]');
-  await s.p.waitForTimeout(400);
-  check((await tabsNow()) === 1 && !(await s.p.isVisible('#no-handler')), 'tabs: Reopen brings the last one back, with no blank tab left over');
+  for (let n = await tabsNow(); n > 1; n--) { await s.p.click('#htabs [aria-selected=true] .ht-x'); await s.p.waitForTimeout(250); }
+  const lastName = await s.p.textContent('#doc-name');
   await s.p.click('#htabs [aria-selected=true] .ht-x');
-  await s.p.waitForTimeout(250);
-  await s.p.goto(BASE + '#example-mistakes');
-  await s.p.waitForTimeout(900);
-  check((await tabsNow()) === 1 && (await s.p.isVisible('#main')), 'tabs: opening a handler from nothing open fills the place');
+  await s.p.waitForTimeout(300);
+  check((await tabsNow()) === 1 && (await s.p.isVisible('#main')) && (await s.p.textContent('#doc-name')) === 'My Game.js', 'tabs: closing the last handler opens a new one from the template');
+  await s.p.click('#notice .notice-action');
+  await s.p.waitForTimeout(400);
+  check((await tabsNow()) === 1 && (await s.p.textContent('#doc-name')) === lastName, `tabs: Undo brings the last one back, with the untouched template gone (${lastName})`);
   check(!s.errors.length, `tabs: no page errors ${s.errors.join(' ')}`);
   await s.ctx.close();
 }
@@ -808,10 +1097,15 @@ await m.ctx.close();
   // Learn (learn/): the intro scene step by step; a lesson ticks when its code is done; Solve; Try it; the test
   // lesson's download; the lesson list; axe in light and dark; nothing cut off on a phone. #learn in the workbench
   // leads there.
+  // Chapter 2's id, from the lesson list (it's written once, in lessons.ts' CHAPTERS).
+  let CH2 = '';
   for (const theme of ['light', 'dark']) {
     const s = await page(theme, { viewport: { width: 1366, height: 800 } });
     await s.p.goto(BASE + 'learn/#first-handler/why');
     await s.p.waitForTimeout(500);
+    const ch2Here = await s.p.evaluate(() => document.querySelectorAll('#drawer-list .d-chapter')[1]?.querySelector('a')?.getAttribute('href')?.replace(/^#/, '').split('/')[0] ?? '');
+    check(!!ch2Here && (!CH2 || ch2Here === CH2), `learn ${theme}: chapter 2 is in the lesson list`);
+    CH2 ||= ch2Here;
     check(await s.p.isVisible('#scene [data-scene=next]'), `learn ${theme}: the intro starts with one step`);
     for (let i = 0; i < 3; i++) { await s.p.click('#scene [data-scene=next]'); await s.p.waitForTimeout(150); }
     await s.p.waitForTimeout(1200); // the list's fade-in
@@ -845,7 +1139,7 @@ await m.ctx.close();
     await s.p.click('#checkpoint summary');
     const [cpd] = await Promise.all([s.p.waitForEvent('download'), s.p.click('#cp-download')]);
     check(cpd.suggestedFilename() === 'Boring Man Tutorial.zip', `learn ${theme}: the checkpoint downloads the handler so far, zipped for Nucleus`);
-    await s.p.goto(BASE + 'learn/#first-handler/fullscreen');
+    await s.p.goto(BASE + 'learn/#first-handler/settings-file');
     await s.p.waitForTimeout(500);
     check(!(await s.p.isVisible('#task.ok')), `learn ${theme}: a lesson starts from its own code, unfinished`);
     await s.p.click('#show');
@@ -861,7 +1155,7 @@ await m.ctx.close();
     check((await s.p.$$('#try-out .player')).length === 4, `learn ${theme}: Try it with the players you pick`);
     await s.p.click('#back');
     await s.p.waitForTimeout(300);
-    check(/#first-handler\/test$/.test(s.p.url()), `learn ${theme}: Back`);
+    check(/#first-handler\/fullscreen$/.test(s.p.url()), `learn ${theme}: Back`);
     await s.p.goto(BASE + 'learn/#first-handler/test');
     await s.p.waitForTimeout(400);
     const [dl] = await Promise.all([s.p.waitForEvent('download'), s.p.click('#download')]);
@@ -873,6 +1167,42 @@ await m.ctx.close();
     await s.p.waitForTimeout(300);
     check(!(await s.p.isVisible('#drawer-list a[aria-current]')), `learn ${theme}: the lesson list closes`);
     await s.p.click('#drawer-toggle');
+    // Hint: none in a lesson that shows the code to copy (the lesson is the hint), Show me still there; chapter 2's Try
+    // it draws each player's window, and its quiz counts the mistakes left apart from the problems.
+    await s.p.goto(BASE + `learn/#${CH2}/window-size`);
+    await s.p.waitForTimeout(500);
+    check(!(await s.p.isVisible('#hint')) && (await s.p.isVisible('#show')), `learn ${theme}: no Hint where the lesson shows the code to copy, Show me still there`);
+    await s.p.click('#show');
+    await s.p.waitForTimeout(700);
+    check((await s.p.$$('#try-out .screen .swin')).length === Number(await s.p.inputValue('#try-players')) && /-w 960 -h (1080|540)/.test(await s.p.textContent('#try-out')) && /Task done/.test(await s.p.textContent('#pane')), `learn ${theme}: chapter 2's Try it shows each window and its arguments`);
+    await axe(s.p, `${theme}, learn chapter 2 Try it`);
+    await s.p.goto(BASE + `learn/#${CH2}/fix-it`);
+    await s.p.waitForTimeout(500);
+    check(/0 of 3 mistakes/.test(await s.p.textContent('#pane')), `learn ${theme}: the quiz's task line counts the mistakes`);
+    // A fix-it keeps its Hint: folded until asked for, then what's still to do.
+    check(!(await s.p.isVisible('.hint-box')) && (await s.p.isVisible('#hint')), `learn ${theme}: Hint is a button in a fix-it, its text hidden until asked for`);
+    await s.p.click('#hint');
+    await s.p.waitForTimeout(400);
+    check((await s.p.textContent('.hint-box')).length > 20 && (await s.p.getAttribute('#hint', 'aria-expanded')) === 'true', `learn ${theme}: Hint says what's missing`);
+    await s.p.goto(BASE + `learn/#${CH2}/overview`);
+    await s.p.waitForTimeout(400);
+    check((await s.p.$$('.ov-list li')).length >= 8 && (await s.p.isVisible('.steps .trouble summary')), `learn ${theme}: chapter 2's overview lists its lessons, and steps say what to do if it doesn't work`);
+    await axe(s.p, `${theme}, learn overview`);
+    // Optional lessons: tagged in the overview, and skipped in one click. Unverified tips: a quiet report button.
+    check((await s.p.$$('.ov-list .opt-tag')).length >= 1 && /optional/.test(await s.p.textContent('.ov-h .muted')), `learn ${theme}: the overview marks the optional lesson and counts its minutes apart`);
+    await s.p.click('.steps .trouble summary >> nth=0');
+    check(await s.p.isVisible('.rep-btn.unverified'), `learn ${theme}: an unverified tip has "Different for you? Tell us"`);
+    await s.p.click('.rep-btn.unverified >> nth=0');
+    await s.p.waitForTimeout(300);
+    check(await s.p.isVisible('#report-dialog[open]'), `learn ${theme}: "Different for you?" opens the report`);
+    await s.p.keyboard.press('Escape');
+    await s.p.goto(BASE + `learn/#${CH2}/keyboard-or-controller`);
+    await s.p.waitForTimeout(500);
+    check(await s.p.isVisible('.optional-note #skip'), `learn ${theme}: the optional lesson invites, with a Skip`);
+    await axe(s.p, `${theme}, learn optional lesson`);
+    await s.p.click('#skip');
+    await s.p.waitForTimeout(400);
+    check(/\/fix-it$/.test(s.p.url()), `learn ${theme}: Skip goes past the optional lesson (${s.p.url()})`);
     check(!s.errors.length, `learn ${theme}: no page errors ${s.errors.join(' ')}`);
     await s.ctx.close();
   }
@@ -880,8 +1210,8 @@ await m.ctx.close();
     const s = await page('light', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
     for (const width of [390, 360]) {
       await s.p.setViewportSize({ width, height: 844 });
-      for (const l of ['why', 'name', 'settings', 'test']) {
-        await s.p.goto(BASE + `learn/#first-handler/${l}`);
+      for (const l of ['first-handler/why', 'first-handler/name', 'first-handler/settings-file', 'first-handler/test', `${CH2}/overview`, `${CH2}/keyboard-or-controller`, `${CH2}/fix-it`]) {
+        await s.p.goto(BASE + `learn/#${l}`);
         await s.p.waitForTimeout(400);
         const wide = await s.p.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
         check(wide <= 0, `learn phone ${width}px ${l}: no sideways scrolling (${wide}px)`);

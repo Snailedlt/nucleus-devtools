@@ -18,11 +18,15 @@ self.onmessage = (e: MessageEvent<any>) => {
   }
   const { id, text, plugins, published } = e.data as { id: number; text: string; plugins?: string[]; published?: { version?: number; guid?: string } };
   const diagnostics = lint(text, { plugins, published });
+  // Fix all leaves harmless cleanups (lines that do nothing) for you to choose: counted apart.
   let fixable = 0;
+  let cleanups = 0;
   try {
-    fixable = fixAll(text, { plugins, published }).applied.length;
+    const r = fixAll(text, { plugins, published, cleanups: false });
+    fixable = r.applied.length;
+    cleanups = r.cleanups;
   } catch {
     fixable = 0;
   }
-  (self as any).postMessage({ id, diagnostics, fixable });
+  (self as any).postMessage({ id, diagnostics, fixable, cleanups });
 };

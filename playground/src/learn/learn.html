@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Learn: making your first Nucleus Co-op handler</title>
-<meta name="description" content="Learn to write a Nucleus Co-op handler step by step, in your browser: a few lines at a time, checked as you type, ending with a handler for the free Steam game “Boring Man”, that you test in Nucleus Co-op.">
+<title>Learn: making Nucleus Co-op handlers</title>
+<meta name="description" content="Learn to write Nucleus Co-op handlers step by step, in your browser: a few lines at a time, checked as you type, for the free Steam games “Boring Man” and “Codename CURE”, then tested in Nucleus Co-op.">
 <meta name="color-scheme" content="light dark">
 <meta name="theme-color" content="#10a3e8">
 <link rel="icon" type="image/png" href="../icon.png">
@@ -34,6 +34,8 @@ button.link { background: none; border: 0; padding: 0; font: inherit; color: var
 .cm-s-default .cm-comment, .hl .cm-comment { color: var(--hl-c); font-style: italic; }
 .cm-s-default .cm-number, .hl .cm-number { color: var(--hl-s); }
 .cm-s-default .cm-def, .hl .cm-def { color: var(--accent); }
+/* A function's own variables (lines, autoexec): the code's text colour, as in the workbench (CodeMirror's #05a is unreadable on dark). */
+.cm-s-default .cm-variable-2, .hl .cm-variable-2 { color: var(--code-fg, var(--fg)); }
 
 /* The bar: back to the workbench, the chapter, where you are, the lesson list. */
 .top { flex: none; display: flex; align-items: center; gap: 12px; padding: 8px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
@@ -65,7 +67,20 @@ button.link { background: none; border: 0; padding: 0; font: inherit; color: var
 @media (prefers-reduced-motion: reduce) { #drawer { transition: none; } }
 #drawer-list { list-style: none; margin: 0; padding: 12px 8px 24px; font-size: 14px; }
 #drawer-list ul, #drawer-list ol { list-style: none; margin: 0; padding: 0; }
-.d-chapter-title { display: block; padding: 4px 8px 8px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+/* Each chapter its own group: a header (number, title, lessons done) that opens and closes it, a divider between them,
+   its sections indented under it. */
+.d-chapter + .d-chapter { margin-top: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
+.d-chapter-head { display: flex; align-items: center; gap: 8px; width: 100%; padding: 6px 8px; border: 0; border-radius: var(--r-sm); background: none; color: var(--fg); font: inherit; font-weight: 700; text-align: left; cursor: pointer; }
+.d-chapter-head:hover { background: color-mix(in srgb, var(--fg) 6%, transparent); }
+.d-chapter-head:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.d-ch-no { flex: none; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 50%; border: 1.5px solid var(--muted); color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.d-chapter.current .d-ch-no { border-color: var(--accent); background: var(--accent); color: var(--accent-fg, #fff); }
+.d-ch-title { flex: 1; min-width: 0; font-size: 15px; line-height: 1.3; }
+.d-ch-prog { flex: none; font-size: 12px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.d-chapter-head::after { content: ""; flex: none; width: 6px; height: 6px; border: solid var(--muted); border-width: 0 1.5px 1.5px 0; transform: rotate(45deg); transition: transform .15s; margin: 0 2px 3px 0; }
+.d-chapter-head[aria-expanded="false"]::after { transform: rotate(-45deg); margin: 0 3px 0 0; }
+@media (prefers-reduced-motion: reduce) { .d-chapter-head::after { transition: none; } }
+#drawer-list .d-ch-body { margin: 4px 0 2px 19px; padding-left: 6px; border-left: 1px solid var(--line); }
 .d-section > summary { cursor: pointer; padding: 5px 8px; border-radius: var(--r-sm); font-weight: 600; color: var(--fg); list-style: none; display: flex; align-items: center; gap: 6px; }
 .d-section > summary::-webkit-details-marker { display: none; }
 .d-section > summary::before { content: ""; width: 6px; height: 6px; border: solid var(--muted); border-width: 0 1.5px 1.5px 0; transform: rotate(-45deg); transition: transform .15s; flex: none; }
@@ -106,19 +121,49 @@ button.link { background: none; border: 0; padding: 0; font: inherit; color: var
 .task { margin: 16px 0; padding: 12px 14px; border-radius: var(--r-pane); border: 1px solid color-mix(in srgb, var(--accent) 45%, var(--line)); background: color-mix(in srgb, var(--accent) 7%, var(--surface)); }
 .task.ok { border-color: #2e8540; background: color-mix(in srgb, #2e8540 10%, var(--surface)); }
 .task .hint { display: block; margin-top: 6px; font-size: 14px; color: var(--muted); }
+.task .hint-box { display: block; margin-top: 8px; padding-top: 8px; border-top: 1px dashed color-mix(in srgb, var(--accent) 45%, var(--line)); font-size: 15px; }
+.help-btns { display: inline-flex; gap: 8px; }
 .note { margin: 12px 0; padding: 10px 14px; border-left: 4px solid var(--line); background: var(--bg); border-radius: 0 var(--r-ctl) var(--r-ctl) 0; font-size: 15px; }
 .note strong:first-child { display: block; font-size: 13px; text-transform: uppercase; letter-spacing: .03em; color: var(--muted); margin-bottom: 2px; }
 .note.pitfall { border-left-color: #c47a00; } .note.odd { border-left-color: #8a5cd0; } .note.why { border-left-color: var(--accent); } .note.alt { border-left-color: #2e8540; } .note.check { border-left-color: var(--muted); }
 .note.try { border-left-color: #2e8540; }
 .note .answer { margin-top: 8px; }
+details.note.long > summary { cursor: pointer; list-style: none; }
+details.note.long > summary::-webkit-details-marker { display: none; }
+details.note.long > summary .more { color: var(--accent); font-weight: 600; font-size: 14px; white-space: nowrap; }
+details.note.long[open] > summary .more { display: none; }
+details.note.long > p { margin: 6px 0 0; }
 .note .answer summary { cursor: pointer; color: var(--accent); font-weight: 600; }
 .note .answer p { margin: 6px 0 0; }
 .steps { padding-left: 0; list-style: none; counter-reset: step; margin: 14px 0; }
-.steps li { counter-increment: step; margin: 0 0 8px; }
+.steps > li { counter-increment: step; margin: 0 0 8px; }
 .steps label { display: flex; gap: 10px; align-items: flex-start; cursor: pointer; }
 .steps input { margin-top: 5px; width: 18px; height: 18px; flex: none; }
 .steps label > span::before { content: counter(step) ". "; font-weight: 700; }
 .steps input:checked + span { color: var(--muted); text-decoration: line-through; }
+.steps .see, .steps .trouble { margin: 4px 0 0 28px !important; font-size: 15px; }
+.steps .see strong { font-weight: 600; }
+.steps .trouble summary { cursor: pointer; color: var(--accent); font-weight: 600; font-size: 14px; }
+.steps .trouble ul { margin: 4px 0 0; padding-left: 18px; }
+.steps .trouble li { margin: 0 0 4px; }
+/* A chapter's overview: what you'll build, what you need, the lessons with their minutes. */
+.ov-h { font-size: 17px; margin: 20px 0 8px; }
+.ov-list { list-style: none; padding: 0; margin: 0 0 12px; max-width: 62ch; border-top: 1px solid var(--line); }
+.ov-list a { display: flex; gap: 10px; align-items: baseline; padding: 6px 4px; border-bottom: 1px solid var(--line); color: var(--fg); text-decoration: none; font-size: 15px; }
+.ov-list a:hover .ov-title { text-decoration: underline; }
+.ov-list a[aria-current] { font-weight: 600; }
+.ov-no { flex: none; width: 1.6em; text-align: right; color: var(--muted); font-size: 13px; }
+.ov-title { flex: 1; min-width: 0; }
+.ov-pc { flex: none; font-size: 12px; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); }
+/* Optional lessons and steps (Lesson.optional, Step.optional): a quiet tag, and the lesson's invitation with its Skip. */
+.opt-tag { flex: none; display: inline-block; font-size: 12px; font-weight: 600; padding: 0 7px; border-radius: 999px; border: 1px dashed var(--muted); color: var(--muted); line-height: 1.6; }
+.d-section a .opt-tag { font-size: 11px; font-weight: 400; }
+.optional-note { margin: 0 0 14px; font-size: 15px; }
+.optional-note .btn { margin-left: 4px; white-space: nowrap; }
+/* "Different for you? Tell us" after a tip nobody has checked on a real PC (Tip.unverified): small and quiet. */
+.rep-btn.unverified { font-size: 13px; color: var(--muted); padding: 0 4px; vertical-align: baseline; }
+.rep-btn.unverified:hover, .rep-btn.unverified:focus-visible { color: var(--accent); }
+.ov-min { flex: none; color: var(--muted); font-size: 13px; white-space: nowrap; }
 .ask { margin: 16px 0; border: 1px solid var(--line); border-radius: var(--r-pane); padding: 10px 14px; }
 .ask legend { font-weight: 700; padding: 0 4px; }
 .ask label { display: flex; gap: 8px; align-items: center; margin: 4px 0; cursor: pointer; }
@@ -144,13 +189,34 @@ button.link { background: none; border: 0; padding: 0; font: inherit; color: var
 .prob.info .sev { color: #0b5cad; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .prob.info .sev { color: #6cb6ff; } }
 :root[data-theme="dark"] .prob.info .sev { color: #6cb6ff; }
-#pane { flex: none; max-height: 42%; overflow: auto; border-top: 1px solid var(--line); background: var(--surface); padding: 10px 16px 14px; font-size: 15px; }
+#pane { flex: none; max-height: 48%; overflow: auto; border-top: 1px solid var(--line); background: var(--surface); padding: 10px 16px 14px; font-size: 15px; }
 .pane-title { font-size: 15px; margin: 0 0 8px; }
 .probs { list-style: none; padding: 0; margin: 0; }
 .prob { padding: 6px 0; border-bottom: 1px solid var(--line); }
 .prob .sev { font-weight: 700; } .prob.error .sev { color: #d32f2f; } .prob.warning .sev { color: #8a5000; }
 .prob .about { font-size: 13px; margin-left: 6px; }
 .ok-line { color: #2e8540; font-weight: 600; margin: 0; }
+/* The task line, apart from the problems: the task can be unfinished while nothing is wrong. */
+.task-line { margin: 0 0 6px; display: flex; flex-wrap: wrap; gap: 0 6px; align-items: baseline; }
+.task-line .tl-dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--accent); align-self: center; flex: none; }
+.task-line.done { color: #2e8540; font-weight: 600; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .task-line.done { color: #7ee787; } }
+:root[data-theme="dark"] .task-line.done { color: #7ee787; }
+/* Try it's screen: each player's window where Nucleus puts it, like a tutorial's output pane. */
+.try-res { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
+.try-res .players { flex: 1 1 260px; min-width: 0; }
+.screen { flex: 0 1 300px; display: grid; grid-template-columns: repeat(var(--cols), 1fr); grid-auto-rows: 1fr; gap: 2px; width: 300px; max-width: 100%; aspect-ratio: 16 / 9; margin: 0; border: 6px solid #2b2f36; border-radius: 8px; background: #0f1720; overflow: hidden; }
+.swin { display: flex; flex-direction: column; min-width: 0; min-height: 0; color: #fff; background: linear-gradient(160deg, #1e5fbf, #2aa0e8); }
+.swin.p2 { background: linear-gradient(160deg, #b8380e, #f08a1c); } .swin.p3 { background: linear-gradient(160deg, #1d7a3a, #3fb565); } .swin.p4 { background: linear-gradient(160deg, #5b2fa8, #9364e0); }
+.swin.bad { filter: grayscale(.85) brightness(.75); }
+.swin .wt { flex: none; font: 11px/1.4 var(--mono); padding: 1px 6px; background: rgba(0, 0, 0, .35); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.swin .wb { flex: 1; display: flex; flex-wrap: wrap; gap: 0 6px; align-items: center; justify-content: center; align-content: center; text-align: center; font-size: 13px; padding: 2px 4px; }
+.swin .wb small { flex-basis: 100%; font: 11px var(--mono); background: rgba(0, 0, 0, .5); border-radius: 3px; } /* backed, so the size reads on every window colour (WCAG AA) */
+.player .args code, .player .file-name code { overflow-wrap: anywhere; }
+/* A long name in a sentence (Context.GetFolder(Nucleus.Folder.InstancedGameFolder)) wraps on a phone. */
+#lesson-body :not(pre) > code { overflow-wrap: anywhere; }
+.player .args, .player .file-name { margin: 0 0 4px; }
+.file-lines { margin: 0 0 6px; padding: 4px 8px; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-sm); font: 12.5px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
 .bad-line { color: #d32f2f; font-weight: 600; }
 .players { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 10px; }
 .player { border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 8px 12px; }
@@ -161,13 +227,18 @@ button.link { background: none; border: 0; padding: 0; font: inherit; color: var
 :root[data-theme="dark"] .bad-line, :root[data-theme="dark"] .prob.error .sev { color: #ff7b72; } :root[data-theme="dark"] .ok-line { color: #7ee787; } :root[data-theme="dark"] .prob.warning .sev { color: #e3b341; }
 
 /* Code blocks in the lessons: the lines to add highlighted (Svelte's diff), and the same lines in the editor after Show me. */
-.lesson-code { margin: 0 0 14px; padding: 10px 0; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-ctl); font: 13px/1.55 var(--mono); overflow-x: auto; white-space: pre; }
-.lesson-code { display: grid; grid-template-columns: minmax(100%, max-content); }
-.lesson-code .ln { display: block; padding: 0 12px; min-height: 1.55em; }
+/* Long lines wrap, the rest of the line indented under its start, so nothing is cut off at the right. */
+.lesson-code { margin: 0 0 14px; padding: 10px 0; background: var(--bg); border: 1px solid var(--line); border-radius: var(--r-ctl); font: 13px/1.55 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.lesson-code .ln { display: block; padding: 0 12px 0 calc(12px + 4ch); text-indent: -4ch; min-height: 1.55em; }
+.code-wrap { position: relative; }
+.code-wrap > .lesson-code { padding-right: 56px; }
+.copy-code { position: absolute; top: 6px; right: 6px; font: 600 12px/1 var(--font); padding: 5px 8px; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); color: var(--fg); cursor: pointer; min-height: 26px; }
+.copy-code:hover, .copy-code:focus-visible { border-color: var(--accent); }
+.lesson-list { margin: 0 0 12px; padding-left: 20px; max-width: 62ch; }
+.lesson-list li { margin: 0 0 8px; }
 .lesson-code .ln.add { background: color-mix(in srgb, #2e8540 16%, transparent); box-shadow: inset 3px 0 #2e8540; }
+.lesson-code .ln.add .cm-comment { color: color-mix(in srgb, var(--cmt) 70%, var(--code-fg, var(--fg))); } /* AA on the green "add" tint */
 .lesson-code .ln.gap { color: var(--muted); }
-/* The site-wide Copy button (site-chrome.mjs) sits in the top right corner: a row of its own here, so it covers no code. */
-.copy-wrap > .lesson-code { padding-top: 34px; padding-right: 0; }
 .lesson-code .ln.del { background: color-mix(in srgb, #d32f2f 14%, transparent); box-shadow: inset 3px 0 #d32f2f; text-decoration: line-through; text-decoration-color: color-mix(in srgb, #d32f2f 60%, transparent); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .diff-add { background: color-mix(in srgb, #2e8540 18%, transparent); }
@@ -261,6 +332,9 @@ li.CodeMirror-hint-active .h-detail { color: inherit; opacity: .85; }
   .top .progress { display: none; }
   #scene { padding: 16px; }
 }
+/* Reports (reportflow.ts has the buttons' look): in the lesson list, and "I'm stuck here" under a task's hint. */
+.drawer-report { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 10px; border-top: 1px solid var(--line); font-size: 13px; }
+.task .stuck { display: flex; margin-top: 6px; font-size: 13px; }
 </style>
 </head>
 <body>
@@ -271,12 +345,13 @@ li.CodeMirror-hint-active .h-detail { color: inherit; opacity: .85; }
   <nav class="top-links" aria-label="Site"><a href="../">Workbench</a><a href="../learn/" aria-current="page">Learn</a><a href="../docs/">Docs</a><a href="../tools/">Get the tools</a></nav>
 </header>
 <main class="learn">
-  <nav id="drawer" aria-label="All lessons"><ul id="drawer-list"></ul><!--COMMUNITY--></nav>
+  <nav id="drawer" aria-label="All lessons"><ul id="drawer-list"></ul><div id="drawer-report" class="drawer-report"></div><!--COMMUNITY--></nav>
   <section class="lesson" aria-labelledby="lesson-title">
     <div id="lesson"><div id="lesson-body"></div></div>
     <nav class="lesson-nav" aria-label="Lessons">
       <button type="button" class="btn" id="back">‹ Back</button>
-      <button type="button" class="btn show" id="show" data-act="show" hidden>Show me</button>
+      <span class="help-btns"><button type="button" class="btn" id="hint" aria-expanded="false" aria-controls="task" hidden>Hint</button>
+      <button type="button" class="btn show" id="show" data-act="show" hidden>Show me</button><button type="button" class="btn" id="redo" title="Back to how this lesson started, to do it yourself" hidden>Start over</button></span>
       <button type="button" class="btn" id="next">Next ›</button>
     </nav>
   </section>
@@ -290,6 +365,7 @@ li.CodeMirror-hint-active .h-detail { color: inherit; opacity: .85; }
   </section>
 </main>
 <div id="tip" role="tooltip" hidden></div>
+<span id="copy-live" class="sr-only" role="status"></span>
 <noscript><p style="padding:16px">The lessons run in your browser and need JavaScript.</p></noscript>
 <script>/*LEARN_JS*/</script>
 </body>

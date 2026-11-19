@@ -1,13 +1,14 @@
 // Docs: every option, Context member, enum and .NET call, searchable, with the groups to browse and a path to go
 // back along. The address follows it (#docs, #docs-Context, #docs-Context.ModifySaveFile, #docs-mutex: links.ts).
-import { api } from '@core/api';
+import { reportButton } from '@core/reporticons';
+import { api, type Member } from '@core/api';
 import { allEntries, lookup, search, type Entry } from '@core/lookup';
 import { apiPathOf } from '@core/features';
 import USAGE from './usage.json';
 import { $, esc, md } from './dom';
 import { API_GROUPS, API_GROUP_KEYS, groupOf, unchecked } from './docsgroups';
 import { docsHashOf, docsView } from './links';
-import { memberCard } from './doccard';
+import { memberCard, memberSummary } from './doccard';
 import { mascot } from './mascots';
 
 // API names in hovers, parameter hints and suggestion docs are links: a click (or Enter) opens that name in the
@@ -20,7 +21,7 @@ export function linkApiNames(root: HTMLElement) {
     if (path) markApiLink(c, path);
   });
   // The signature on top of a doc card: the name is the link.
-  root.querySelectorAll<HTMLElement>('.dc-sig .sg-n').forEach((n) => {
+  root.querySelectorAll<HTMLElement>('.dc-sig:not(.nolink) .sg-n').forEach((n) => {
     const owner = n.previousElementSibling?.classList.contains('sg-o') ? n.previousElementSibling.textContent ?? '' : '';
     markApiLink(n, owner + (n.textContent ?? ''));
   });
@@ -54,6 +55,13 @@ export interface DocsDeps {
   used: (what: string) => void;
   /** The address of a name's own docs page (docs/<name>/ on the site), to link to and share. */
   pageUrl: (path: string) => string;
+  /** What "Insert into handler" would do with a member's example in the open handler now: 'insert', 'update' (the
+   *  option is set: its value changes), 'callback' (added with its callback), 'same' (it's there), or undefined when the
+   *  handler doesn't parse. */
+  exampleAction?: (path: string, m: Member) => string | undefined;
+  /** Puts a member's example into the open handler (app.ts, lines.ts placeExample). When the handler sets the option
+   *  already, `replace` false only shows that line; true replaces its value with the example's. */
+  insertExample?: (path: string, m: Member, replace?: boolean) => void;
 }
 
 export interface DocsUI {
@@ -84,7 +92,7 @@ export function initDocs(deps: DocsDeps): DocsUI {
     const enums = Object.keys(api.enums).sort();
     el.innerHTML = `<div class="api-home">
       <p class="muted">Every option, Context member, enum and .NET call a handler can use, with what Nucleus does with it. Type above, or start here. <a href="${esc(deps.pageUrl('').replace(/\/\/$/, '/'))}" target="_blank" rel="noopener">All the docs as pages ↗</a></p>
-      ${unchecked().size ? `<button type="button" class="api-ai" data-group="AI"><span class="ai-spark" aria-hidden="true"></span><span><span class="t">Help check AI-written docs <span class="count">${unchecked().size}</span></span><span class="d">AI wrote these from the Nucleus source; no person has checked them yet. Know how one really works? Tell us with 👍 or 👎.</span></span></button>` : ''}
+      ${unchecked().size ? `<button type="button" class="api-ai slim" data-group="AI" title="Written by AI; no person has checked these yet. Know how one really works? Vote 👍 or 👎 at the bottom of its page."><span class="ai-spark" aria-hidden="true"></span><span class="t">Help check ${unchecked().size} AI-written docs</span><span class="d">Know how one really works? 👍 or 👎</span><span aria-hidden="true">→</span></button>` : ''}
       <h3 class="api-h">Browse</h3>
       <div class="api-groups">${API_GROUPS.filter((g) => g.key !== 'AI').map((g) => `<button type="button" class="api-group" data-group="${g.key}"><span class="t">${esc(g.title)} <span class="count">${all.filter((e) => g.match(e.path)).length}</span></span><span class="s">${esc(g.doc)}</span></button>`).join('')}</div>
       <h3 class="api-h">Every handler has</h3>
@@ -108,8 +116,62 @@ export function initDocs(deps: DocsDeps): DocsUI {
     wireApiLinks(el);
     el.scrollTop = 0;
   }
+  /** "Insert into handler" says what it will do. When the handler sets the option already it becomes "Show in handler"
+   *  (goes to that line, changes nothing), with a quieter "Replace with the example's value" next to it: people usually
+   *  want to keep their own value. "Show in handler" too when it has exactly this. */
+  const insertLabel: Record<string, [string, string]> = {
+    insert: ['Insert into handler', 'Adds this example where it belongs in the open handler. Ctrl+Z undoes it.'],
+    callback: ['Insert into handler', 'Adds this example to the open handler, with the callback it goes in. Ctrl+Z undoes it.'],
+    update: ['Show in handler', 'The handler sets this already: shows where, and keeps your value.'],
+    same: ['Show in handler', 'The handler has exactly this already: shows where.'],
+  };
+  const REPLACE = ['Replace with the example\'s value', 'Changes the value the handler sets to the example\'s. Ctrl+Z undoes it.'];
+  const memberOf = (p: string) => { const r = lookup(p); return r.kind === 'entries' && r.entries.length === 1 ? r.entries[0].member : undefined; };
+  function labelInserts(el: HTMLElement) {
+    el.querySelectorAll<HTMLButtonElement>('[data-insert]').forEach((b) => {
+      const m = memberOf(b.dataset.insert!);
+      const action = m && deps.exampleAction?.(b.dataset.insert!, m);
+      const [text, title] = action ? insertLabel[action] ?? insertLabel.insert : ['Insert into handler', "The handler doesn't parse yet, so there's no telling where this goes. Fix it first."];
+      b.textContent = text;
+      b.title = title;
+      b.setAttribute('aria-disabled', String(!action));
+      // The secondary "Replace" only while the handler sets the option to another value.
+      let r = b.nextElementSibling?.matches('[data-replace]') ? b.nextElementSibling as HTMLButtonElement : null;
+      if (action === 'update' && !r) {
+        r = document.createElement('button');
+        r.type = 'button';
+        r.className = 'link dc-replace';
+        r.dataset.replace = b.dataset.insert!;
+        [r.textContent, r.title] = REPLACE;
+        b.after(r);
+      } else if (action !== 'update') r?.remove();
+    });
+  }
+  // One listener: the buttons are drawn again with each view.
+  $('#api-results').addEventListener('click', (e) => {
+    const b = (e.target as HTMLElement).closest<HTMLButtonElement>('[data-insert], [data-replace]');
+    if (!b) return;
+    const p = b.dataset.insert ?? b.dataset.replace!;
+    const m = memberOf(p);
+    if (m) deps.insertExample?.(p, m, 'replace' in b.dataset);
+    labelInserts($('#api-results'));
+  });
+  // The handler may change while Docs is open: the labels catch up when you come back to them.
+  $('#api-results').addEventListener('pointerenter', () => labelInserts($('#api-results')));
+  $('#api-results').addEventListener('focusin', () => labelInserts($('#api-results')));
+
   function wireApiLinks(el: HTMLElement) {
+    labelInserts(el);
     el.querySelectorAll<HTMLButtonElement>('[data-q]').forEach((b) => b.addEventListener('click', () => refGo(`q:${b.dataset.q}`)));
+    // A search result's "Open full doc ›": a real #docs-<name> link (to copy or open in a new tab), opened in place.
+    el.querySelectorAll<HTMLAnchorElement>('a[data-open]').forEach((a) => a.addEventListener('click', (e) => {
+      if (e.ctrlKey || e.metaKey || e.shiftKey || e.button) return;
+      e.preventDefault();
+      refGo(`q:${a.dataset.open}`);
+      // The link that had focus is gone: the full entry's heading takes it, so the keyboard keeps its place.
+      const h = $('#api-results').querySelector<HTMLElement>('article.api:not(.api-hit) > h3');
+      if (h) { h.tabIndex = -1; h.focus({ preventScroll: true }); }
+    }));
     el.querySelectorAll<HTMLButtonElement>('[data-group]').forEach((b) => b.addEventListener('click', () => refGo(`group:${b.dataset.group}`)));
     el.querySelectorAll<HTMLButtonElement>('[data-home]').forEach((b) => b.addEventListener('click', () => refGo('home')));
     el.querySelectorAll<HTMLButtonElement>('[data-back]').forEach((b) => b.addEventListener('click', () => refBack()));
@@ -177,7 +239,11 @@ export function initDocs(deps: DocsDeps): DocsUI {
     const el = $('#api-results');
     if (!q.trim()) return renderApiHome(el);
     const exact = lookup(q);
-    const card = (e: Entry) => `<article class="api"><h3>${esc(e.path)}${e.member.deprecated ? ' <span class="chip hint">deprecated</span>' : ''}${e.member.required ? ' <span class="chip error">required</span>' : ''}${e.owner.startsWith('Hub') ? ' <span class="chip info">written by the Hub</span>' : ''}</h3>${memberCard(e.owner, e.name, e.member)}</article>`;
+    // One name: the whole entry. A search: short results (the signature, the first sentence, the tags), each with
+    // "Open full doc ›" to its entry (#docs-<name>; Enter opens it).
+    const card = (e: Entry) => `<article class="api"><h3>${esc(e.path)}</h3>${memberCard(e.owner, e.name, e.member, { insert: !!deps.insertExample })}</article>`;
+    const hit = (e: Entry) => `<article class="api api-hit" aria-label="${esc(e.path)}"><h3>${esc(e.path)}</h3>${memberSummary(e.owner, e.name, e.member)}`
+      + `<p class="api-open"><a href="#${esc(docsHashOf(`q:${e.path}`))}" data-open="${esc(e.path)}" aria-label="Open the full doc of ${esc(e.path)}">Open full doc <span aria-hidden="true">›</span></a></p></article>`;
     // One name: its card, and where it sits (Reference / group / name; the group lists the names next to it).
     const one = exact.kind === 'entries' && exact.entries.length === 1 ? exact.entries[0] : undefined;
     if (one) {
@@ -203,7 +269,7 @@ export function initDocs(deps: DocsDeps): DocsUI {
     if (exact.kind === 'none' && exact.didYouMean) head = `<p class="muted">"${esc(q)}" isn't part of the handler API. Did you mean <button class="link" data-q="${esc(exact.didYouMean)}">${esc(exact.didYouMean)}</button>?</p>`;
     entries = entries.slice(0, 30);
     el.innerHTML = refBar(crumbs) + head
-      + (entries.length || head ? entries.map(card).join('') : `<p class="empty masc-empty">${mascot('n-calc', { size: 64, zoom: 1.2 })}<span>Nothing matches "${esc(q)}".</span></p>`);
+      + (entries.length || head ? entries.map(hit).join('') : `<p class="empty masc-empty">${mascot('n-calc', { size: 64, zoom: 1.2 })}<span>Nothing matches "${esc(q)}". ${reportButton('idea', { text: 'Ask for this to be documented', tip: 'Ask for this to be documented: opens a request with your search filled in', attrs: `data-report-docs="${esc(q)}"` })}</span></p>`);
     wireApiLinks(el);
   }
   $('#api-q').addEventListener('input', (e) => {

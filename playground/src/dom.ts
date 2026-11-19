@@ -2,6 +2,7 @@
 // whether the screen is narrow (a phone: the code or the results, with a switch).
 import { hlHtml } from './codehl';
 import { withCodeSpans } from './codespans';
+import { kbdify } from './kbd';
 
 export const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
 export const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
@@ -18,7 +19,7 @@ export function onNarrowChange(fn: () => void) {
   (narrowQuery ??= matchMedia(NARROW)).addEventListener('change', fn);
 }
 
-/** Tiny Markdown for API docs: fenced code, inline code, bold, links, paragraphs. */
+/** Tiny Markdown for API docs: fenced code, inline code, bold, links, paragraphs, shortcuts as keys. */
 export function md(src: string): string {
   const out: string[] = [];
   const parts = src.split(/```(\w*)\n?([\s\S]*?)```/g);
@@ -43,5 +44,6 @@ export function md(src: string): string {
       }
     } else if (i % 3 === 2) out.push(`<pre class="doc-code">${esc(parts[i].trim())}</pre>`);
   }
-  return hlHtml(out.join(''));
+  // Shortcuts as keys (kbd.ts): `Ctrl+Space`, Alt+Enter in a sentence.
+  return kbdify(hlHtml(out.join('')));
 }

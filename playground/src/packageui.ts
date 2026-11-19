@@ -53,7 +53,10 @@ import { BADGE, bytesOf, checkFileText, checkPackage, gameFolderName, installPat
 type CM = any;
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
 const $ = (s: string) => document.querySelector(s) as HTMLElement;
+declare const BUILD: { logo?: string | null };
 export const fileIcon = (name: string) => { const k = kindOf(name); return `<span class="fi-badge fi-${k}" aria-hidden="true">${BADGE[k]}</span>`; };
+/** The handler itself: Nucleus Co-op's logo, as VS Code shows it (the JS badge when the build has no logo). */
+export const handlerIcon = () => (typeof BUILD !== 'undefined' && BUILD.logo ? `<img class="fi-logo" src="${BUILD.logo}" alt="" aria-hidden="true">` : fileIcon('handler.js'));
 
 export interface PkgHost {
   editor: CM;
@@ -238,7 +241,7 @@ export function initPackageUI(host: PkgHost) {
     open = open.filter((n) => fs.some((f) => f.name === n));
     const strip = $('#file-strip');
     strip.hidden = !open.length;
-    strip.innerHTML = [`<button type="button" class="fs-tab" role="tab" data-fs="" aria-selected="${active === null}">${fileIcon('handler.js')}handler.js</button>`,
+    strip.innerHTML = [`<button type="button" class="fs-tab" role="tab" data-fs="" aria-selected="${active === null}">${handlerIcon()}handler.js</button>`,
       ...open.map((n) => `<button type="button" class="fs-tab" role="tab" data-fs="${esc(n)}" aria-selected="${active === n}" title="${esc(n)}">${fileIcon(n)}${esc(n.split('/').pop()!)}<span class="fs-x" data-fs-close="${esc(n)}" aria-hidden="true">×</span></button>`)].join('');
     // The Files panel: the package as installed.
     const panel = $('#files-panel');
@@ -246,7 +249,7 @@ export function initPackageUI(host: PkgHost) {
     const game = gameFolderName(handler());
     const sorted = [...fs].sort((a, b) => (a.name.includes('/') === b.name.includes('/') ? a.name.localeCompare(b.name) : a.name.includes('/') ? 1 : -1));
     const seenDirs = new Set<string>();
-    const rows: string[] = [`<li class="fp-item"><button type="button" class="fp-open" data-fp="" aria-current="${active === null}">${fileIcon('handler.js')}<span class="fp-name">handler.js</span></button></li>`];
+    const rows: string[] = [`<li class="fp-item"><button type="button" class="fp-open" data-fp="" aria-current="${active === null}">${handlerIcon()}<span class="fp-name">handler.js</span></button></li>`];
     for (const f of sorted) {
       const parts = f.name.split('/');
       for (let i = 1; i < parts.length; i++) {

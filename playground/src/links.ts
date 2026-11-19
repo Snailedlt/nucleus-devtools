@@ -10,6 +10,8 @@ export interface MovedLink {
   from: RegExp;
   to: (m: RegExpExecArray) => string;
   why: string;
+  /** The old place is gone: the link opens what replaced it, not the same thing. */
+  gone?: true;
 }
 
 export const MOVED_LINKS: MovedLink[] = [
@@ -18,19 +20,22 @@ export const MOVED_LINKS: MovedLink[] = [
   { from: /^(?:reference|api|ref)-(.+)$/i, to: (m) => `docs-${m[1]}`, why: 'Reference is now called Docs' },
   // The Fallout New Vegas Multiplayer example package: Hub handlers open with their files now (2026-11).
   { from: /^package-nvmp$/i, to: () => 'hub-vnPXYhWMJJ3FNuQuS', why: 'the Fallout New Vegas Multiplayer example is the Hub handler now, which opens with its files' },
+  // The welcome page (Getting started) is gone (2026-11): the tour (Take the tour in the menu) replaces it.
+  { from: /^(?:welcome|getting-started)$/i, to: () => 'tour', why: 'the Getting started page is gone; the tour (Take the tour in the menu) replaces it', gone: true },
 ];
 
 /** The link's current address (`why`: it moved, and why), else the link as it is. `h` is the hash without "#", decoded. */
-export function followMoved(h: string): { to: string; why?: string } {
+export function followMoved(h: string): { to: string; why?: string; gone?: true } {
   for (const m of MOVED_LINKS) {
     const r = m.from.exec(h);
-    if (r) return { to: m.to(r), why: m.why };
+    if (r) return m.gone ? { to: m.to(r), why: m.why, gone: true } : { to: m.to(r), why: m.why };
   }
   return { to: h };
 }
 
 /** The note a moved link shows once. */
-export const movedNote = (why: string) => `This is an older link: ${why}. It opened the same thing; the new link is in the address bar.`;
+export const movedNote = (why: string, gone?: boolean) =>
+  gone ? `This is an older link: ${why}. It opens that instead.` : `This is an older link: ${why}. It opened the same thing; the new link is in the address bar.`;
 
 /** What the page has that links can name. */
 export interface LinkCatalog {
@@ -50,6 +55,8 @@ export type LinkTarget =
   | { kind: 'whats-new' }
   | { kind: 'docs'; hash: string }
   | { kind: 'dev' }
+  | { kind: 'tour' }
+  | { kind: 'home' }
   | { kind: 'learn'; lesson?: string }
   | { kind: 'hub'; index: number }
   | { kind: 'probe'; index: number }
@@ -73,6 +80,9 @@ export function routeLink(h: string, cat: LinkCatalog): LinkTarget {
   if (h === 'whats-new') return { kind: 'whats-new' };
   if (h === 'docs' || h.startsWith('docs-')) return { kind: 'docs', hash: h };
   if (h === 'dev') return { kind: 'dev' };
+  if (h === 'tour') return { kind: 'tour' };
+  // #home, #start: the workbench as usual (#welcome and #getting-started lead to the tour, MOVED_LINKS).
+  if (/^(?:welcome|getting-started|home|start)$/i.test(h)) return { kind: 'home' };
   // #learn: the lessons (learn/ now); #learn-<chapter>/<lesson> keeps its place.
   if (h === 'learn' || h.startsWith('learn-')) return { kind: 'learn', lesson: h.slice(6) || undefined };
   if (h === 'example-mistakes') return { kind: 'example-mistakes' };

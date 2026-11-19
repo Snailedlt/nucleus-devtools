@@ -4,6 +4,9 @@ import { simulate, sessionSummary, groupIgnored } from '@core/sim';
 import { MATRIX_RESOLUTIONS, planMatrix, failureOf, jobOptions } from '@core/matrix';
 import { $, esc } from './dom';
 import { mascot } from './mascots';
+import { reportButton } from '@core/reporticons';
+import { simSummary } from '@core/report';
+import { openReportFlow } from './reportflow';
 import { hlCode } from './codehl';
 import { installMap } from './pkgcheck';
 import { fileIcon } from './packageui';
@@ -55,17 +58,19 @@ export function initTryIt(deps: TryItDeps): { run: () => void; options: () => Si
     }
     const out: string[] = [];
     const simple = deps.simple();
+    // "Nucleus did something different": an icon on the result's banner (its words in the tooltip), on request only.
+    const differs = reportButton('flag', { label: 'Nucleus did something different', tip: 'Nucleus did something different: report what Try it showed, next to what really happened', className: 'sim-differs', attrs: 'id="sim-differs"' });
     // Test all needs a handler that loads: until then the banner below says what to fix.
     const all = $('#sim-all') as HTMLButtonElement;
     all.disabled = !r.loaded;
     all.title = r.loaded ? 'Every player count, input setup and monitor size' : 'Fix the problems first: the handler has to load before it can be tried';
     if (!r.loaded) {
       out.push(
-        `<div class="banner error masc-banner">${mascot('n-bad', { size: 44 })}<div><strong>${esc(sessionSummary(r))}</strong> Fix the problems first.${r.loadError ? `<details class="small"><summary>Technical details</summary><div class="mono">${esc(r.loadError)}</div></details>` : ''}<div class="banner-actions">${($('#fix-all') as HTMLButtonElement).hidden ? '' : `<button class="btn primary" type="button" id="sim-fix">${esc(($('#fix-all') as HTMLButtonElement).textContent ?? 'Fix problems')}</button>`}<button class="btn" type="button" id="sim-check">Show the problems</button></div></div>`,
+        `<div class="banner error masc-banner">${mascot('n-bad', { size: 44 })}<div><strong>${esc(sessionSummary(r))}</strong> Fix the problems first.${r.loadError ? `<details class="small"><summary>Technical details</summary><div class="mono">${esc(r.loadError)}</div></details>` : ''}<div class="banner-actions">${($('#fix-all') as HTMLButtonElement).hidden ? '' : `<button class="btn primary" type="button" id="sim-fix">${esc(($('#fix-all') as HTMLButtonElement).textContent ?? 'Fix problems')}</button>`}<button class="btn" type="button" id="sim-check">Show the problems</button></div></div>${differs}</div>`,
       );
     } else {
       // Nucli, pleased when every player starts; worried when the session ends.
-      out.push(`<div class="banner ${r.sessionEnded ? 'error' : 'ok'} masc-banner">${mascot(r.sessionEnded ? 'n-bad' : 'n-ok', { size: 44 })}<div><strong>${esc(sessionSummary(r))}</strong></div></div>`);
+      out.push(`<div class="banner ${r.sessionEnded ? 'error' : 'ok'} masc-banner">${mascot(r.sessionEnded ? 'n-bad' : 'n-ok', { size: 44 })}<div><strong>${esc(sessionSummary(r))}</strong></div>${differs}</div>`);
       if (r.inputNote) out.push(`<p class="note">${esc(r.inputNote)}</p>`);
     }
     if (r.ignored.length) {
@@ -99,6 +104,10 @@ export function initTryIt(deps: TryItDeps): { run: () => void; options: () => Si
     }
     $('#sim-out').innerHTML = out.join('');
     $('#sim-out').querySelector('#sim-check')?.addEventListener('click', () => deps.selectTab('problems'));
+    $('#sim-out').querySelector('#sim-differs')?.addEventListener('click', () => {
+      const keyboard = kb === -2 ? 'each player their own' : kb < 0 ? 'nobody' : `player ${kb + 1}`;
+      openReportFlow({ kind: 'tryit', sim: simSummary(r, { players: o.players, resolution: `${o.width}×${o.height}`, keyboard }), handlerCode: editor.getValue() });
+    });
     $('#sim-out').querySelector('#sim-fix')?.addEventListener('click', () => {
       deps.selectTab('problems');
       ($('#fix-all') as HTMLButtonElement).click();

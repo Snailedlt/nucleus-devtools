@@ -7,6 +7,7 @@
 // nothing runs again. The recording runs in a Web Worker of its own (worker.ts), so the page stays
 // responsive and a run that takes too long can be cut off; without workers it runs here.
 import { hlCode } from './codehl';
+import { keysText } from './kbd';
 import { traceHandler, nextStop, evaluateWatch, describeStep, describePhase, callsBefore, unpackTrace } from '@core/debug';
 import type { Trace, Step, ValueView, Breakpoint, StepMode, Stop, TraceOptions, Phase } from '@core/debug';
 import { sessionSummary } from '@core/sim';
@@ -474,7 +475,7 @@ export function mountDebugger(host: DebugHost): Debugger {
               `<li class="dbg-bp"><button class="link" type="button" data-line="${b.line}">Line ${b.line}</button><span class="muted">${b.condition ? `when <code class="hl cm-s-default">${hlCode(b.condition)}</code>` : 'always'}</span><button class="btn small" type="button" data-cond="${b.line}">Condition…</button><button class="btn icon" type="button" data-unbp="${b.line}" aria-label="Remove the breakpoint on line ${b.line}" title="Remove">✕</button></li>`,
           )
           .join('')
-      : '<li class="muted dbg-empty">None. Click beside a line number (or press F9 on a line) to stop there.</li>';
+      : `<li class="muted dbg-empty">${keysText('None. Click beside a line number (or press `F9` on a line) to stop there.')}</li>`;
   }
   function renderTrack(trace: Trace) {
     const steps = trace.steps;
@@ -508,7 +509,7 @@ export function mountDebugger(host: DebugHost): Debugger {
       banner.innerHTML = busy
         ? '<p><strong>Recording the run…</strong> Every statement, for every player.</p>'
         : note
-          ? `<p>${note.kind === 'stale' ? '<strong>Code changed.</strong> ' : '<strong>The debugger couldn\'t record this run.</strong> '}${esc(note.text)}</p>`
+          ? `<p>${note.kind === 'stale' ? '<strong>Code changed.</strong> ' : '<strong>The debugger couldn\'t record this run.</strong> '}${keysText(note.text)}</p>`
           : '';
       fixFocus(hadFocus);
       return;

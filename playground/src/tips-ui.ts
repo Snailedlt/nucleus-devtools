@@ -1,12 +1,15 @@
 // The tip bar under the code. One general tip at a time (Next shows another), and Clippy-style
 // tips that pop up once when the code or the cursor makes them relevant. Off with one click.
 import { voteButtons } from './feedback';
-import { CONTEXT_TIPS, GENERAL_TIPS, Tip, TipContext } from './tips';
+import { CONTEXT_TIPS, GENERAL_TIPS, Tip, TipContext, TipShow, tipShown } from './tips';
 import { scanHandler, inCallback, Scan } from './lines';
 import { narrow } from './dom';
+import { keysText } from './kbd';
+import { BETA } from './testplan';
 
 const ON_KEY = 'nucleus-workbench-tips';
 const SEEN_KEY = 'nucleus-workbench-tips-seen';
+const SHOW_KEY = 'nucleus-workbench-tips-show';
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
 const get = (k: string) => {
   try {
@@ -27,9 +30,15 @@ interface Deps {
   actions: Record<NonNullable<Tip['action']>['run'], () => void>;
   /** The control each action stands for: highlighted while its tip shows, so you learn where it lives. */
   targets?: Partial<Record<NonNullable<Tip['action']>['run'], () => HTMLElement | null>>;
+  /** Who is using the workbench now: only tips for them (or for everyone) show. */
+  audience?: () => 'newcomer' | 'developer';
 }
 
-export function initTips({ editor, actions, toast, targets }: Deps) {
+export function initTips({ editor, actions, toast, targets, audience }: Deps) {
+  // Settings › Testing's choice: beta only (after the full release tips follow the mode; the choice stays saved).
+  const saved = BETA ? get(SHOW_KEY) : null;
+  let show: TipShow = saved === 'all' || saved === 'newcomer' || saved === 'developer' || saved === 'everyone' ? saved : 'mode';
+  const forNow = (t: Tip) => tipShown(t, show, audience?.() ?? 'newcomer');
   let on = get(ON_KEY) !== '0';
   const seen = new Set<string>(JSON.parse(get(SEEN_KEY) || '[]'));
   let general = Math.floor(Math.random() * GENERAL_TIPS.length);
@@ -41,18 +50,15 @@ export function initTips({ editor, actions, toast, targets }: Deps) {
   const label = $('#tip-label');
   let currentAction: (() => void) | undefined;
 
+  let shown: Tip | undefined;
   function render(tip: Tip, contextual: boolean) {
+    shown = tip;
     bar.classList.toggle('contextual', contextual);
-    label.textContent = contextual ? 'Heads up' : tip.topic ?? 'Tip';
-    body.textContent = '';
-    // `code` spans
-    tip.text.split(/(`[^`]+`)/).forEach((part) => {
-      if (part.startsWith('`') && part.endsWith('`') && part.length > 2) {
-        const c = document.createElement('code');
-        c.textContent = part.slice(1, -1);
-        body.append(c);
-      } else body.append(document.createTextNode(part));
-    });
+    // Testers looking at other audiences' tips see whom each is for.
+    const whom = show === 'mode' ? '' : ` · for ${tip.for === 'newcomer' ? 'newcomers' : tip.for === 'developer' ? 'developers' : 'everyone'}`;
+    label.textContent = (contextual ? 'Heads up' : tip.topic ?? 'Tip') + whom;
+    // `code` spans; shortcuts as keys (kbd.ts: with a modifier in plain text, a lone key such as `F8` in backticks).
+    body.innerHTML = keysText(tip.text);
     $('#tip-votes').innerHTML = voteButtons('tip', tip.id, { up: 'Useful tip', down: 'Not useful' });
     document.querySelectorAll('.tip-target').forEach((e) => e.classList.remove('tip-target'));
     if (tip.action && on) {
@@ -73,8 +79,13 @@ export function initTips({ editor, actions, toast, targets }: Deps) {
     }
     bar.hidden = !on;
   }
+  // Next and Back go round the tips for this mode only (Guided or Advanced), skipping the others.
   const showGeneral = (step = 1) => {
-    general = (general + step + GENERAL_TIPS.length) % GENERAL_TIPS.length;
+    const n = GENERAL_TIPS.length;
+    for (let i = 0; i < n; i++) {
+      general = (general + step + n) % n;
+      if (forNow(GENERAL_TIPS[general])) break;
+    }
     render(GENERAL_TIPS[general], false);
   };
 
@@ -87,7 +98,7 @@ export function initTips({ editor, actions, toast, targets }: Deps) {
     const ctx: TipContext = { text, lineText: editor.getLine(cur.line) ?? '', inCallback: scan ? inCallback(scan, editor.indexFromPos(cur)) : false };
     // At most one heads-up every 20 s, each only once.
     if (Date.now() - lastContextAt < 20000) return;
-    const tip = CONTEXT_TIPS.find((t) => !seen.has(t.id) && t.when!(ctx));
+    const tip = CONTEXT_TIPS.find((t) => !seen.has(t.id) && forNow(t) && t.when!(ctx));
     if (!tip) return;
     seen.add(tip.id);
     set(SEEN_KEY, JSON.stringify([...seen]));
@@ -135,6 +146,17 @@ export function initTips({ editor, actions, toast, targets }: Deps) {
     toggle: () => setOn(!on),
     set: (v: boolean) => setOn(v),
     isOn: () => on,
+    /** Which tips show (Settings › Testing). */
+    show: () => show,
+    setShow: (v: TipShow) => {
+      show = v;
+      set(SHOW_KEY, v);
+      if (on) showGeneral(1);
+    },
+    /** The mode changed (Guided / Advanced): swap the shown tip if it isn't for this mode. */
+    refresh: () => {
+      if (on && shown && !forNow(shown)) showGeneral(1); // a heads-up or tip not for this mode any more
+    },
     /** Show the heads-up tips again (they are shown once each). */
     reset: () => {
       seen.clear();

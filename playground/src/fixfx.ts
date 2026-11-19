@@ -11,12 +11,13 @@ type CM = any; // CodeMirror 5
 // Off unless chosen (Settings → Theme → Motion → Nucli edits the code): the ghost text briefly covers the code.
 const calm = () => !motion().editFx || motion().mascots === 'off';
 
-/** Applies `apply` (which turns the editor's text into `after`) and animates what changed. */
-export function fixWithNucli(editor: CM, after: string, apply: () => void) {
+/** Applies `apply` (which turns the editor's text into `after`) and animates what changed. With `keep`, the changed
+ *  lines keep their green bar until the returned function is called (the caller decides: the next edit, its note gone). */
+export function fixWithNucli(editor: CM, after: string, apply: () => void, opts: { keep?: boolean } = {}): () => void {
   const before: string = editor.getValue();
   const diff = diffLines(before, after);
   const firstOld = diff.find((l) => l.kind !== ' ');
-  if (!firstOld) return apply();
+  if (!firstOld) { apply(); return () => {}; }
   // Bring the first change into view before anything moves.
   const at = (firstOld.a ?? firstOld.b ?? 1) - 1;
   editor.scrollIntoView({ line: Math.max(0, Math.min(at, editor.lineCount() - 1)), ch: 0 }, 90);
@@ -40,9 +41,13 @@ export function fixWithNucli(editor: CM, after: string, apply: () => void) {
   // The lines that are new or changed now.
   const added = diff.filter((l) => l.kind === '+' && l.b).map((l) => l.b! - 1).filter((n) => n < editor.lineCount());
   const marked = added.length ? added : [Math.min(at, editor.lineCount() - 1)];
-  marked.forEach((n) => editor.addLineClass(n, 'background', calm() ? 'fx-new-still' : 'fx-new'));
-  setTimeout(() => marked.forEach((n) => { editor.removeLineClass(n, 'background', 'fx-new'); editor.removeLineClass(n, 'background', 'fx-new-still'); }), 1600);
-  if (calm()) return;
+  // Line handles, so the marks follow their lines when others are added or removed above them.
+  const handles = marked.map((n) => editor.addLineClass(n, 'background', calm() ? 'fx-new-still' : 'fx-new'));
+  if (opts.keep) handles.forEach((h) => editor.addLineClass(h, 'background', 'fx-new-still'));
+  const unmark = (cls: string) => handles.forEach((h) => editor.removeLineClass(h, 'background', cls));
+  setTimeout(() => { unmark('fx-new'); if (!opts.keep) unmark('fx-new-still'); }, 1600);
+  const clearKept = opts.keep ? () => unmark('fx-new-still') : () => {};
+  if (calm()) return clearKept;
 
   const layer = document.createElement('div');
   layer.className = 'fx-layer';
@@ -64,7 +69,7 @@ export function fixWithNucli(editor: CM, after: string, apply: () => void) {
     const x = Math.min(box.right - 52, Math.max(end.right + 18, box.left + 120));
     return { x, y: Math.max(box.top + 2, Math.min(box.bottom - 46, (c.top + c.bottom) / 2 - 22)), lineX: end.right + 4, lineY: (c.top + c.bottom) / 2 };
   }).filter((s) => s.lineY > box.top && s.lineY < box.bottom);
-  if (!stops.length) return setTimeout(() => layer.remove(), 900);
+  if (!stops.length) { setTimeout(() => layer.remove(), 900); return clearKept; }
   const n = document.createElement('div');
   n.className = 'fx-nucli';
   n.innerHTML = mascot('n-idle', { size: 44, zoom: 1.7 });
@@ -86,6 +91,7 @@ export function fixWithNucli(editor: CM, after: string, apply: () => void) {
     beam.animate([{ transform: 'scaleX(0)', opacity: 1 }, { transform: 'scaleX(1)', opacity: 1, offset: 0.4 }, { transform: 'scaleX(1)', opacity: 0 }], { duration: 380, delay: i * step + 200, easing: 'ease-out', fill: 'both' });
   });
   setTimeout(() => layer.remove(), stops.length * step + 900);
+  return clearKept;
 }
 
 /** The text after a set of edits, for a quick fix. */

@@ -5,6 +5,9 @@ export interface MenuItem {
   /** A short hint on the right: a shortcut, a count. */
   hint?: string;
   run?: () => void;
+  /** A small icon before the label (trusted markup: an emoji or an SVG), hidden from screen readers. When any item of a
+   *  menu has one, every item gets the column (so the labels line up) and a switch shows its ✓ at the end. */
+  icon?: string;
   /** A switch item (role menuitemcheckbox). */
   checked?: boolean;
   /** A group heading or a separator (no run). */
@@ -13,31 +16,36 @@ export interface MenuItem {
 }
 
 const esc = (s: string) => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
-let open: { el: HTMLElement; anchor: HTMLElement; off: () => void } | null = null;
+let open: { el: HTMLElement; anchor: HTMLElement; back?: HTMLElement; off: () => void } | null = null;
 
 export function closeMenu(focusBack = false) {
   if (!open) return;
-  const { el, anchor, off } = open;
+  const { el, anchor, back, off } = open;
   open = null;
   off();
   (el.parentElement ?? el).remove();
   anchor.setAttribute('aria-expanded', 'false');
-  if (focusBack) anchor.focus();
+  // Back to `back` when given (an anchor that can't take focus, like a pointer position) and still shown.
+  if (focusBack) (back?.isConnected && back.getClientRects().length ? back : anchor).focus();
 }
 
 /** Opens a menu for `anchor`; `side` puts it to the right of the anchor (the side rail) instead of under it. */
-export function openMenu(anchor: HTMLElement, label: string, items: MenuItem[], side: 'below' | 'right' = 'below') {
+export function openMenu(anchor: HTMLElement, label: string, items: MenuItem[], side: 'below' | 'right' = 'below', back?: HTMLElement) {
   const was = open?.anchor;
   closeMenu();
   if (was === anchor) return; // a second click on the same button closes it
   const el = document.createElement('div');
-  el.className = 'app-menu';
+  const icons = items.some((it) => it.icon);
+  el.className = icons ? 'app-menu am-icons' : 'app-menu';
   el.setAttribute('role', 'menu');
   el.setAttribute('aria-label', label);
   el.innerHTML = items.map((it, i) =>
     it.kind === 'separator' ? '<div class="am-sep" role="separator"></div>'
     : it.kind === 'heading' ? `<div class="am-h" role="presentation">${esc(it.label)}</div>`
-    : `<button type="button" role="${it.checked === undefined ? 'menuitem' : 'menuitemcheckbox'}" data-i="${i}"${it.checked !== undefined ? ` aria-checked="${it.checked}"` : ''}${it.disabled ? ' disabled' : ''}>${it.checked !== undefined ? `<span class="am-check" aria-hidden="true">${it.checked ? '✓' : ''}</span>` : ''}<span class="am-l">${esc(it.label)}</span>${it.hint ? `<kbd class="am-k">${esc(it.hint)}</kbd>` : ''}</button>`).join('');
+    : (() => {
+      const check = it.checked !== undefined ? `<span class="am-check" aria-hidden="true">${it.checked ? '✓' : ''}</span>` : '';
+      return `<button type="button" role="${it.checked === undefined ? 'menuitem' : 'menuitemcheckbox'}" data-i="${i}"${it.checked !== undefined ? ` aria-checked="${it.checked}"` : ''}${it.disabled ? ' disabled' : ''}>${icons ? `<span class="am-ico" aria-hidden="true">${it.icon ?? ''}</span>` : check}<span class="am-l">${esc(it.label)}</span>${it.hint ? `<kbd class="am-k">${esc(it.hint)}</kbd>` : ''}${icons ? check : ''}</button>`;
+    })()).join('');
   // In its own labelled region (a landmark), so screen readers find it in the page structure; on <body>, so a
   // header with a backdrop filter doesn't become its containing block.
   const region = document.createElement('div');
@@ -58,7 +66,8 @@ export function openMenu(anchor: HTMLElement, label: string, items: MenuItem[], 
     const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-i]');
     if (!b) return;
     const it = items[Number(b.dataset.i)];
-    closeMenu(it.checked !== undefined);
+    // Focus goes back to the menu's button first, so a dialog the item opens gives it back there when it closes.
+    closeMenu(true);
     it.run?.();
   });
   el.addEventListener('keydown', (e) => {
@@ -73,5 +82,5 @@ export function openMenu(anchor: HTMLElement, label: string, items: MenuItem[], 
   const away = () => closeMenu();
   document.addEventListener('pointerdown', outside, true);
   addEventListener('resize', away);
-  open = { el, anchor, off: () => { document.removeEventListener('pointerdown', outside, true); removeEventListener('resize', away); } };
+  open = { el, anchor, back, off: () => { document.removeEventListener('pointerdown', outside, true); removeEventListener('resize', away); } };
 }

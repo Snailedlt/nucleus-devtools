@@ -9,6 +9,9 @@
 import { allLines, KINDS, Kind, Line, matches, scanHandler, inCallback, Scan, USAGE_TOTAL } from './lines';
 import { BEFORE_SESSION } from '@core/lifecycle';
 import { narrow } from './dom';
+import { aiMeta } from '@core/aimark';
+
+let aiIds = 0;
 
 interface Deps {
   editor: any; // CodeMirror 5
@@ -91,8 +94,7 @@ export function initLines({ editor, openReference, previewReference }: Deps) {
       info.append(text('div', 'muted', 'Its docs are on the right, in Docs.'));
       return;
     }
-    if (l.doc) info.append(text('div', '', l.doc));
-    if (l.aiDoc) info.append(text('div', 'ai-doc', 'AI-written, not from the official docs.'));
+    if (l.doc) info.append(docDiv(l));
     const facts: string[] = [];
     if (l.default !== undefined) facts.push(`Default: ${l.default}`);
     if (l.used && prefs.usage) facts.push(`Used by ${l.used} of ${l.of} Hub handlers`);
@@ -108,12 +110,22 @@ export function initLines({ editor, openReference, previewReference }: Deps) {
     docs.addEventListener('click', () => openReference(l.path.replace(/^new /, '')));
     info.append(docs);
   }
+  /** A name's doc; an AI-written one in the AI frame with the sparkle (and a hidden "AI-written"), as in Docs. */
+  function docDiv(l: Line): HTMLElement {
+    const d = text('div', l.aiDoc ? 'ai-box ln-ai' : '', l.doc ?? '');
+    if (l.aiDoc && l.member) {
+      // Docs' corner (core aimark): the sparkle focusable, its tooltip on hover and focus with the sources it's based on.
+      const t = document.createElement('template');
+      t.innerHTML = aiMeta(l.member, 'doc', '<span class="ai-spark" aria-hidden="true"></span>', `ln-ai-${++aiIds}`, { path: l.path });
+      d.prepend(t.content);
+    }
+    return d;
+  }
   /** The docs of one name, shown under its row by the (i) button. */
   function details(l: Line): HTMLElement {
     const d = text('div', 'ln-doc', '');
     d.append(text('code', '', l.sig));
-    if (l.doc) d.append(text('div', '', l.doc));
-    if (l.aiDoc) d.append(text('div', 'ai-doc', 'AI-written, not from the official docs.'));
+    if (l.doc) d.append(docDiv(l));
     const facts: string[] = [];
     if (l.default !== undefined) facts.push(`Default: ${l.default}`);
     if (l.used && prefs.usage) facts.push(`Used by ${l.used} of ${l.of} Hub handlers`);

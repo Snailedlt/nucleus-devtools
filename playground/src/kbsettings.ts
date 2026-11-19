@@ -13,7 +13,16 @@ export function initKeySettings(root: HTMLElement) {
       <div class="kb-tools"><input type="search" class="kb-q" placeholder="Search shortcuts or keys" aria-label="Search shortcuts"><button class="btn" type="button" data-kb-reset-all>Reset all</button></div>
       <p class="kb-msg small" role="status" aria-live="polite"></p>
       <table class="kb-table"><tbody></tbody></table>
+    </div>
+    <div class="set-sec">
+      <label class="set-check"><input type="checkbox" class="kb-dshift"> <span>Double Shift opens Open<small>Press Shift twice to search examples, Hub handlers and commands, as in JetBrains editors</small></span></label>
     </div>`;
+  {
+    const box = root.querySelector<HTMLInputElement>('.kb-dshift')!;
+    try { box.checked = localStorage.getItem('nucleus-workbench-double-shift') !== '0'; } catch { box.checked = true; }
+    // Not saved (storage unavailable): the box goes back, so it shows what Double Shift really does.
+    box.addEventListener('change', () => { try { localStorage.setItem('nucleus-workbench-double-shift', box.checked ? '1' : '0'); } catch { box.checked = !box.checked; } });
+  }
   const body = root.querySelector('tbody')!;
   const q = root.querySelector<HTMLInputElement>('.kb-q')!;
   const msg = root.querySelector<HTMLElement>('.kb-msg')!;
@@ -101,6 +110,8 @@ export function initKeySettings(root: HTMLElement) {
       render();
     } else if (t.closest('[data-kb-reset-all]')) {
       resetAll();
+      const dshift = root.querySelector<HTMLInputElement>('.kb-dshift')!;
+      try { localStorage.removeItem('nucleus-workbench-double-shift'); dshift.checked = true; } catch { /* not kept */ }
       msg.textContent = 'Every shortcut is back to its default.';
       render();
     }

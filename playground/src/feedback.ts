@@ -1,4 +1,4 @@
-// Anonymous feedback: 👍/👎 on tips and on the docs Claude wrote, and how often a few features are used, so we
+// Anonymous feedback: 👍/👎 on tips and on the docs (each doc's own text and its AI-written "In practice" part, apart), and how often a few features are used, so we
 // can tell what helps and what doesn't. Private by design:
 // - only counts are sent, each a short path such as "vote/tip/f-swipe/up" or "use/try-it": no code, no handler
 //   names, no cookies, no IDs, nothing that tells one person from another; with each, the screen size (as
@@ -36,8 +36,12 @@ try {
   }
 } catch { /* no location (tests) */ }
 
-/** Whether counts are sent: a site is set, the browser doesn't object, and it isn't switched off. */
-export const feedbackOn = () => !!BUILD.feedback && !browserSaysNo() && get(OFF_KEY) !== '1' && get(SKIP_KEY) !== 't';
+// A browser driven by a program (Playwright, Selenium, an AI agent's browser tool: navigator.webdriver) never sends:
+// votes from people must come from people. AI agents vote as AIs instead (`ncdev docs vote`, the MCP tool
+// nucleus_vote_doc), counted apart.
+const automated = () => { try { return navigator.webdriver === true; } catch { return false; } };
+/** Whether counts are sent: a site is set, the browser doesn't object, it isn't driven by a program, and it isn't switched off. */
+export const feedbackOn = () => !!BUILD.feedback && !browserSaysNo() && !automated() && get(OFF_KEY) !== '1' && get(SKIP_KEY) !== 't';
 export const feedbackAvailable = () => !!BUILD.feedback;
 /** The public dashboard with the totals (GoatCounter's, made public by the maintainer). */
 export const totalsUrl = () => (BUILD.feedback ? `https://${BUILD.feedback}.goatcounter.com/` : null);
@@ -95,15 +99,20 @@ function beacon(url: string) {
 }
 
 type Vote = 'up' | 'down';
+/** tip/<id>; doc/<name>: a member's doc (human or AI-written); practice/<name>: its AI-written "In practice" part. */
+export type VoteKind = 'tip' | 'doc' | 'practice';
 const votes = (): Record<string, Vote> => { try { return JSON.parse(get(KEY) || '{}'); } catch { return {}; } };
 export const myVote = (kind: string, id: string): Vote | undefined => votes()[`${kind}/${id}`];
 /** Records a vote (or takes it back with the same button). Returns the vote now in place. */
-export function vote(kind: 'tip' | 'doc', id: string, v: Vote): Vote | undefined {
+export function vote(kind: VoteKind, id: string, v: Vote): Vote | undefined {
   const all = votes();
   const k = `${kind}/${id}`;
-  const now = all[k] === v ? undefined : v;
+  if (automated()) return all[k]; // never sent, so not saved as a person's vote either
+  const was = all[k], now = was === v ? undefined : v;
   if (now) all[k] = now; else delete all[k];
   set(KEY, JSON.stringify(all));
+  // Changing 👍 to 👎 (or back) takes the old vote back first, so each browser counts once.
+  if (was && was !== v) send(`vote/${k}/undo-${was}`);
   send(`vote/${k}/${now ?? 'undo-' + v}`);
   return now;
 }
@@ -140,7 +149,7 @@ export function use(feature: string) {
 }
 
 /** 👍/👎 buttons (HTML) for an item; wire them with wireVotes. */
-export function voteButtons(kind: 'tip' | 'doc', id: string, labels: { up: string; down: string }): string {
+export function voteButtons(kind: VoteKind, id: string, labels: { up: string; down: string }): string {
   const mine = myVote(kind, id);
   const b = (v: Vote, icon: string, label: string) => `<button type="button" class="vote-btn" data-vote="${v}" data-vkind="${kind}" data-vid="${id}" aria-pressed="${mine === v}" title="${label}" aria-label="${label}">${icon}</button>`;
   return `<span class="votes">${b('up', '👍', labels.up)}${b('down', '👎', labels.down)}</span>`;
@@ -150,7 +159,7 @@ export function wireVotes(onVote?: (kind: string, id: string, v: Vote | undefine
   document.addEventListener('click', (e) => {
     const b = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-vote]');
     if (!b) return;
-    const kind = b.dataset.vkind as 'tip' | 'doc', id = b.dataset.vid!;
+    const kind = b.dataset.vkind as VoteKind, id = b.dataset.vid!;
     const now = vote(kind, id, b.dataset.vote as Vote);
     b.parentElement!.querySelectorAll<HTMLButtonElement>('button[data-vote]').forEach((x) => x.setAttribute('aria-pressed', String(x.dataset.vote === now)));
     onVote?.(kind, id, now, b);

@@ -1,5 +1,5 @@
 import { RULE_DOCS, ruleUrl } from '@core/ruledocs';
-import { inProblemList } from './checklist';
+import { inProblemList, quietInCheck, shownInCheck, countProblems } from './checklist';
 import { initKeySettings } from './kbsettings';
 import { openFind } from './findwidget';
 import { hasCredit, withCredit, withoutCredit } from './credit';
@@ -9,7 +9,7 @@ import { applyTheme, initDevBar } from './devbar';
 import { applyCodeTheme, applyCustomTheme } from './customtheme';
 import { watchPictures } from './themed';
 import { announce, clearNotice, confirmOn, initToasts, notice, toast as showToast, type ToastOptions } from './toast';
-import { decodeShare, DISCORD_LIMIT, encodeShare, isNamedLink, missingFilesText, shareAdvice, shareFileMessage } from './share';
+import { decodeShare, DISCORD_LIMIT, encodeShare, isNamedLink, missingFilesText, SHARE_PREFIX, shareAdvice, shareFileMessage } from './share';
 import CodeMirror from 'codemirror';
 import 'codemirror/mode/javascript/javascript';
 import 'codemirror/addon/lint/lint';
@@ -18,9 +18,9 @@ import 'codemirror/addon/edit/matchbrackets';
 import 'codemirror/addon/edit/closebrackets';
 import { semanticMarks } from './semmarks';
 import { codeHandlers, fixedCodeKeys, foldRange, keysByPosition, lineCommentFold, selectReferences, vscodeMouse } from './keys';
-import { ACTIONS, appActionFor, codeKeyMap, keyLabel, labelOf, binding, onBindingsChange, type Group } from './keybindings';
+import { ACTIONS, appActionFor, codeKeyMap, keyLabel, labelOf, binding, onBindingsChange, stepOf, type Group } from './keybindings';
 import { lint, Diagnostic, RULES, lineOf, pluginGlobals, type TextEdit } from '@core/lint';
-import { api, ownerLabel, Resolved } from '@core/api';
+import { api, ownerLabel, Resolved, type Member } from '@core/api';
 import { resolveAt } from '@core/complete';
 import { completionsAt, explainLine, hoverAt, signatureHelpAt, type CompletionKind, type CompletionEntry } from '@core/features';
 import { currentRunner } from './aiproviders';
@@ -37,26 +37,35 @@ import { initTips } from './tips-ui';
 import { initSettings } from './settings-ui';
 import { announceLine, hoverDelay, initA11y } from './a11y';
 import { initNews } from './news';
-import { initPanels } from './panels-ui';
+import { initPanels, type PanelEdge } from './panels-ui';
 import { initTouchTitles } from './touch-titles';
 import { mascot } from './mascots';
 import { fixWithNucli, applyEditsToText } from './fixfx';
+import { placeExample } from './lines';
+import { prettyCode } from '@core/pretty';
 import { codeNote } from './codenote';
 import { initMessageHints } from './wmhints';
 import { initValuePicker } from './valuepick';
-import { memberCard } from './doccard';
+import { memberCard, syncVoteLinks } from './doccard';
 import { initKeyHints } from './keyhints';
 import { mountFormView, type FormView } from './formview';
 import { mountBlocksView, type BlocksView } from './blocksview';
+import { VISUAL, VISUAL_HIDDEN_NOTE } from './visual';
 import { initPackageUI, fileIcon } from './packageui';
 import type { PkgProblem } from './pkgcheck';
-import { pickGameFolder, checkAgainstFolder, initFolderPickers, folderSummaryHtml, type GameFolder, type FolderProblem } from './gamefolder';
-import { openMenu, type MenuItem } from './menus';
+import { pickGameFolder, checkAgainstFolder, initFolderPickers, folderSummaryHtml, gameBinariesNow, gameBinariesPending, importProblems, onFolderProgress, cancelFolderRead, type GameFolder, type FolderProblem, type FolderProgress } from './gamefolder';
+import { closeMenu, openMenu, type MenuItem } from './menus';
 import { initTestGuide } from './testguide';
 import { initTestPins } from './testpins';
 import { exportSettings, importSettings } from './settingsio';
 import { BETA } from './testplan';
+import { isDone as testDone, setDone as setTestDone } from './testprogress';
 import { feedbackUrl, openReport, setReportState } from './report';
+import { openReportFlow, ensureReportStyles } from './reportflow';
+import { initErrorReports } from './errorcatch';
+import { reportButton, reportIcon, REPORT_ACTIONS } from '@core/reporticons';
+import { fillIcons, icon, type IconName } from './icons';
+import { revealHistoryChanges } from './undoreveal';
 import { firstRunDone, initFirstRun } from './firstrun';
 import { countVisit, feedbackAvailable, feedbackBlockedByBrowser, feedbackOn, setFeedback, totalsUrl, use, wireVotes } from './feedback';
 import { blockedItemAt, messageMarkdown } from '@core/wm';
@@ -66,6 +75,7 @@ import { mountDebugger } from './debugui';
 import { hlCode, hlHtml, modeFor } from './codehl';
 import { setCodeFieldSupport } from './codefield';
 import { $, esc, md, narrow, onNarrowChange } from './dom';
+import { initTour } from './tour';
 import { initDocs, linkApiNames, wireApiLinkClicks } from './docs-ui';
 import { initTryIt } from './tryit-ui';
 import { initFixes } from './aifix-ui';
@@ -84,6 +94,14 @@ interface HubExample { id: string; title: string; game: string; owner: string; v
 declare const HUB_EXAMPLES: { takenAt: string | null; handlers: HubExample[]; base: string | null; /** every handler on the Hub (our mirror), not only the most downloaded */ all?: boolean };
 declare const EXAMPLE_PACKAGES: { id: string; title: string; sub: string; name: string; hubId: string; handler: string; files: { name: string; b64: string }[] }[];
 declare const BOT_TEMPLATES: { commit: string | null; templates: { id: string; name: string; source: string }[] };
+// The workbench's own errors: a quiet "Something went wrong. Report it?" instead of nothing (errorcatch.ts).
+initErrorReports();
+ensureReportStyles();
+// A Docs search that finds nothing offers "Ask for this to be documented" (docs-ui.ts).
+document.addEventListener('click', (e) => {
+  const b = (e.target as HTMLElement).closest?.<HTMLElement>('[data-report-docs]');
+  if (b) openReportFlow({ kind: 'docs', query: b.dataset.reportDocs ?? '' });
+});
 
 // The address as the page was opened (start-up loads the last draft, which can rewrite it): a #docs-… link from an
 // editor's hover opens Docs there, over whatever handler is open.
@@ -137,10 +155,12 @@ const PLAIN: Record<string, { title: string; why: string }> = {
   'guid-characters': { title: 'Special characters in the GUID', why: 'The GUID becomes a folder name. Letters, digits and spaces are safest.' },
   'protoinput-legacy-hooks': { title: 'Old input settings are still on', why: 'With Proto Input they should be turned off, or two input systems run at once.' },
   'protoinput-inactive': { title: "Proto Input never starts", why: "None of its start options (InjectStartup or an InjectRuntime method) is on, so Nucleus ignores every Proto Input setting here." },
+  'protoinput-needs-raw-input': { title: "Keyboard and mouse players won't get keys or the cursor", why: "These Proto Input hooks answer from each player's own keyboard and mouse, which Proto Input only reads with its raw input hook (Game.ProtoInput.RegisterRawInputHook). Without it the game sees no key pressed and a cursor that doesn't move. Turn it on." },
   'protoinput-needs-hook': { title: 'Blocked messages and filters do nothing yet', why: "They only work inside Proto Input's message filter hook, which isn't turned on." },
   'needs-option': { title: 'A setting that needs another one turned on', why: "Nucleus only reads it when the other setting is on, so on its own it does nothing." },
   'blocked-message': { title: "A window message Proto Input can't block as written", why: "It isn't in Proto Input's message list (it blocks something else, or nothing), or it's in the list twice." },
   'missing-builtin': { title: "A JavaScript function Nucleus doesn't have", why: "Nucleus uses an older JavaScript engine that lacks this function, so the handler stops with an error when it reaches this line." },
+  'unused-option': { title: 'An option nothing reads', why: 'Players can pick a value, but nothing in the handler reads it (Context.Options["key"]), so the choice changes nothing. Read it in Game.Play, or remove the option.' },
   deprecated: { title: 'An outdated setting', why: 'It still works, but it has been replaced.' },
 };
 
@@ -166,7 +186,8 @@ function plainFor(d: Diagnostic): { title: string; why: string } {
   }
   // General JavaScript mistakes (ESLint's rules, core/jsrules.ts) carry their own plain title and why.
   const js = (JS_RULES as Record<string, { title: string; why: string }>)[d.rule];
-  return PLAIN[d.rule] ?? (js ? { title: js.title, why: js.why } : { title: d.rule, why: '' });
+  // A rule without a plain entry yet (new in the core): its own description, so the why is never empty.
+  return PLAIN[d.rule] ?? (js ? { title: js.title, why: js.why } : { title: d.rule, why: (RULES as Record<string, { description?: string }>)[d.rule]?.description ?? '' });
 }
 
 const STORE_KEY = 'nucleus-workbench-draft';
@@ -191,12 +212,9 @@ const simPlugins = () => {
   const t = pluginsText();
   return t ? parsePluginsInfo(t) : undefined;
 };
-// A first visit (nothing kept in this browser, no link to a handler) starts on the home page: what a handler is, and
-// the ways on (New, Open, Learn). The template is one click away (New handler…).
-let firstVisit = false;
+// The draft kept in this browser, else the template (what New handler… makes): the editor is always there.
 try {
-  firstVisit = !localStorage.getItem(STORE_KEY) && !localStorage.getItem('nucleus-workbench-tabs') && !location.hash;
-  initial = firstVisit ? '' : localStorage.getItem(STORE_KEY) || STARTER;
+  initial = localStorage.getItem(STORE_KEY) || STARTER;
 } catch {
   /* storage unavailable */
 }
@@ -213,6 +231,8 @@ let pkgUI: ReturnType<typeof initPackageUI> | null = null;
 let filter: 'all' | 'error' | 'warning' | 'info' | 'hint' = 'all';
 let problemIndex = -1;
 let shownProblems: Diagnostic[] = [];
+/** For each of shownProblems, the row (grouped problems share one) it is shown in. */
+let shownRowOf: number[] = [];
 
 // Advanced mode (off by default) only ADDS detail to the same screens: exact positions, rule ids,
 // severity filters and suggestions, technical messages expanded, recorded calls, engine probes.
@@ -227,7 +247,7 @@ try {
 document.documentElement.dataset.mode = mode;
 
 // Lint in a Web Worker so typing never waits; fall back to the main thread if workers are unavailable.
-type Analysis = { diagnostics: Diagnostic[]; fixable: number };
+type Analysis = { diagnostics: Diagnostic[]; fixable: number; cleanups?: number };
 let worker: Worker | null = null;
 let reqId = 0;
 type Ctx = { plugins?: string[]; published?: { version?: number; guid?: string } };
@@ -242,7 +262,10 @@ function lintCtx(): Ctx {
   return { plugins: lintPlugins(), published };
 }
 const pending = new Map<number, { text: string; ctx: Ctx; resolve: (a: Analysis) => void }>();
-const analyzeHere = (text: string, ctx: Ctx): Analysis => ({ diagnostics: lint(text, ctx), fixable: fixAll(text, ctx).applied.length });
+const analyzeHere = (text: string, ctx: Ctx): Analysis => {
+  const r = fixAll(text, { ...ctx, cleanups: false });
+  return { diagnostics: lint(text, ctx), fixable: r.applied.length, cleanups: r.cleanups };
+};
 /** Game.GUID's string value in a handler source. */
 const guidOf = (src: string): string | undefined => {
   const m = src.match(/^\s*Game\.GUID\s*=\s*("(?:[^"\\\r\n]|\\.)*")/m);
@@ -279,6 +302,8 @@ function analyze(text: string): Promise<Analysis> {
   });
 }
 const sevClass: Record<string, string> = { error: 'error', warning: 'warning', info: 'info', hint: 'hint' };
+/** The editor's faded ranges (unused code), redrawn with each Check. */
+let fadeMarks: { clear(): void }[] = [];
 
 const editor = CodeMirror($('#editor'), {
   value: initial,
@@ -296,19 +321,33 @@ const editor = CodeMirror($('#editor'), {
   // drawn: draw them all (handlers are small), so the phone's Select all, copy and delete see every line.
   viewportMargin: window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0 ? Infinity : 10,
   lint: {
-    getAnnotations: (text: string) =>
-      analyze(text).then((r) => {
+    getAnnotations: (text: string, _options: unknown, cm: any) => {
+      // The tab (CodeMirror document) this Check is for: two tabs with the same text can still differ in what the
+      // result depends on (package files, the published GUID). From `cm`: the first Check can start before `editor` is set.
+      const doc = cm.getDoc();
+      return analyze(text).then((r) => {
+        // An older result (the text changed or another tab opened meanwhile): its offsets are for other text, and a
+        // newer Check is already on its way.
+        if (text !== editor.getValue() || doc !== editor.getDoc()) return [];
         current = r.diagnostics;
         currentText = text;
-        folderProblems = gameFolder ? checkAgainstFolder(text, gameFolder) : [];
+        if (gameFolder) {
+          // The game's .exe and DLLs are read in the background; their hints join once read (then Check runs again).
+          const folder = gameFolder;
+          const bins = gameBinariesNow(folder, () => { if (gameFolder === folder) (editor as any).performLint(); });
+          folderProblems = [...checkAgainstFolder(text, gameFolder), ...(bins ? importProblems(text, bins) : [])];
+        } else folderProblems = [];
         pkgProblems = pkgUI ? pkgUI.problems() : [];
-        setFixCount(r.fixable);
+        setFixCount(r.fixable, r.cleanups ?? 0);
         renderProblems(text);
+        // Unused code (tagged unnecessary) is faded, as VS Code fades it; hints among it get no squiggle.
+        for (const m of fadeMarks) m.clear();
+        fadeMarks = current.filter((d) => d.tags?.includes('unnecessary') && d.end > d.start).map((d) => editor.markText(posAt(text, d.start), posAt(text, d.end), { className: 'cm-unnecessary' }));
         if (formView && viewMode === 'form') formView.refresh();
         if (blocksView && viewMode === 'blocks') blocksView.refresh();
         return [
           ...current
-            .filter((d) => d.severity !== 'hint' || (mode === 'dev' && filter === 'hint'))
+            .filter((d) => (d.severity !== 'hint' || (mode === 'dev' && filter === 'hint')) && !quietInCheck(d))
             .map((d) => ({
               from: posAt(text, d.start),
               to: posAt(text, Math.max(d.end, d.start + 1)),
@@ -318,7 +357,8 @@ const editor = CodeMirror($('#editor'), {
           ...folderProblems.map((f) => ({ from: posAt(text, f.start), to: posAt(text, Math.max(f.end, f.start + 1)), message: `${f.title}. ${f.why}`, severity: f.severity })),
           ...pkgProblems.filter((f) => f.start !== undefined).map((f) => ({ from: posAt(text, f.start!), to: posAt(text, Math.max(f.end!, f.start! + 1)), message: `${f.title}. ${f.why}`, severity: f.severity })),
         ];
-      }),
+      });
+    },
     delay: 250,
     tooltips: false, // our own hover card (showHoverCard)
   },
@@ -341,6 +381,7 @@ const editorHandlers: Record<string, (cm: any) => void> = {
   },
   explainLine: () => explainAtCursor(),
   suggest: (cm: any) => cm.showHint({ hint: hinter, completeSingle: false, explicit: true }),
+  parameterHints: () => showSignature(),
   goToLine: () => showOpen('line'),
   definition: () => goToDefinition(),
   rename: () => renameSymbol(),
@@ -381,6 +422,10 @@ editor.on('change', () => {
     /* ignore */
   }
 });
+// Undo and redo put the cursor at the change and scroll only if it's off screen, as VS Code does (undoreveal.ts).
+revealHistoryChanges(editor);
+// The page's static icons (<span data-icon>), from the one icon set.
+fillIcons();
 // The hidden textarea CodeMirror types into is what screen readers see: name it.
 editor.getInputField().setAttribute("aria-label", "Handler code");
 // CodeMirror scrolls the code in a div of its own, which keyboard users reach through the editor: one
@@ -496,7 +541,10 @@ editor.on('inputRead', (cm: any, change: any) => {
 editor.on('keyHandled', (cm: any, name: string) => {
   if (/^'["'[]'$/.test(name) && !cm.state.completionActive) cm.showHint({ hint: hinter, completeSingle: false });
 });
-editor.on('cursorActivity', () => showSignature());
+// Parameter hints open as in VS Code: on typing `(` or `,`, on choosing a call from the suggestions, or on
+// Ctrl+Shift+Space; never because the cursor moved into a call. Once open they follow the cursor and close when it
+// leaves the call. Touch screens have no hover, so there a tap still shows what's under it.
+editor.on('cursorActivity', () => { if (!sig.hidden || coarse.matches) showSignature(); });
 // Settings › Accessibility: read out the problems on the line the cursor moves to (once per line).
 let spokenLine = -1;
 editor.on('cursorActivity', () => {
@@ -514,6 +562,8 @@ initValuePicker(editor);
 const folderPickers = initFolderPickers(editor, () => gameFolder, () => void pickFolder());
 async function pickFolder() {
   const f = await pickGameFolder(editor.getValue());
+  // Listed (or cancelled): the bar goes until the program files are read (Check starts that, below).
+  if (folderProg?.phase === 'listing') { folderProg = null; pkgUI?.render(); }
   if (!f) return;
   gameFolder = f;
   if (tabsReady) activeT().folder = f;
@@ -528,12 +578,39 @@ function afterFolderChange() {
 }
 // "Your game on this PC" (the game's install folder, read on this device only): a section of the Files panel, since
 // it is about files too: which ones the handler's paths point at, and file pickers for the symlink options.
+// While a folder is read: "Reading <folder>…" with a bar (no total while listing, then the program files n of m).
+let folderProg: FolderProgress | null = null;
+const mb = (n: number) => `${(n / 1e6).toFixed(n < 1e7 ? 1 : 0)} MB`;
+function folderProgText(p: FolderProgress): string {
+  if (p.phase === 'listing') return `Reading ${p.name}… ${p.files} file${p.files === 1 ? '' : 's'} listed`;
+  if (p.phase === 'binaries') return `Reading ${p.name}'s program files for hook hints… ${p.done} of ${p.total} (${mb(p.bytes)} of ${mb(p.totalBytes)})`;
+  return '';
+}
+function folderProgHtml(): string {
+  const p = folderProg;
+  if (!p || p.phase === 'done') return '';
+  const bar = p.phase === 'binaries' ? `<progress id="gf-prog-bar" max="${Math.max(1, p.totalBytes)}" value="${p.bytes}" aria-label="Reading the game's program files"></progress>` : '<progress id="gf-prog-bar" aria-label="Listing the game\'s files"></progress>';
+  // The status text is read out when the step changes (aria-live), not at every file.
+  return `<div class="fp-prog"><div class="fp-prog-row"><span id="gf-prog-text" role="status" aria-live="polite">${esc(p.phase === 'listing' ? `Reading ${p.name}…` : `Reading ${p.name}'s program files…`)}</span><button class="link" type="button" data-gf="cancel">Cancel</button></div>${bar}<div class="fp-prog-n muted" id="gf-prog-n">${esc(folderProgText(p))}</div></div>`;
+}
+onFolderProgress((p) => {
+  const prev = folderProg;
+  // A new step or another folder (the label names it): draw the section again; else only the numbers move.
+  const changed = (prev?.phase ?? 'done') !== p.phase || (p.phase !== 'done' && prev?.phase !== 'done' && prev?.name !== p.name);
+  folderProg = p;
+  const bar = document.getElementById('gf-prog-bar') as HTMLProgressElement | null;
+  if (changed || !bar) { pkgUI?.render(); if (p.phase === 'done') (editor as any).performLint(); return; }
+  if (p.phase === 'binaries') { bar.max = Math.max(1, p.totalBytes); bar.value = p.bytes; }
+  const n = document.getElementById('gf-prog-n');
+  if (n) n.textContent = folderProgText(p);
+});
 function gameSection(): string {
-  return `<section class="fp-game" aria-label="Your game on this PC"><div class="fp-head">Your game on this PC</div>${gameFolder
+  return `<section class="fp-game" aria-label="Your game on this PC"><div class="fp-head">Your game on this PC</div>${folderProgHtml()}${gameFolder
     ? `<div class="fp-gname"><span class="fi-badge fi-dir" aria-hidden="true">▸</span>${esc(gameFolder.name)}</div><p>Check compares the handler's paths and file names with this folder, and the symlink options get a file picker. Nothing is uploaded.</p><div class="fp-gacts"><button class="btn" type="button" data-gf="show">What's in it</button><button class="btn" type="button" data-gf="pick">Pick another</button><button class="btn" type="button" data-gf="forget">Unlink</button></div>`
-    : `<p>Link the folder your game is installed in, and Check tells you when <code>ExecutableName</code>, <code>BinariesFolder</code> or a symlink option names a file that isn't there. Only names and sizes are read, on this device.</p><div class="fp-gacts"><button class="btn" type="button" data-gf="pick">Link the game's folder…</button></div>`}</section>`;
+    : `<p>Link the folder your game is installed in, and Check tells you when <code>ExecutableName</code>, <code>BinariesFolder</code> or a symlink option names a file that isn't there. Only names and sizes are read, and the game's .exe and DLLs for hints about hooks, on this device.</p><div class="fp-gacts"><button class="btn" type="button" data-gf="pick">Link the game's folder…</button></div>`}</section>`;
 }
 async function onGameAction(act: string) {
+  if (act === 'cancel') { cancelFolderRead(); announce('Stopped reading the game folder.'); return; }
   if (act === 'pick') return void (await pickFolder());
   if (act === 'forget') { gameFolder = null; if (tabsReady) activeT().folder = null; afterFolderChange(); announce('Unlinked the game folder.'); return; }
   if (act === 'show' && gameFolder) showGameFolder();
@@ -586,11 +663,13 @@ function placeTip(from: { left: number; top: number; bottom: number }) {
 }
 function showHoverCard(text: string, at: number, list: Diagnostic[], doc: string, anchorFrom: number) {
   if (!list.length && !doc) return void (tip.hidden = true);
-  // Explain this line: on request, a link at the bottom of the card (as in VS Code); not on a gutter marker (at -1).
+  // Explain this line isn't here: the line's popup (Ctrl+.), Ctrl+Alt+E and the menus have it.
   tip.classList.remove('explain');
-  const explain = at >= 0 ? `<div class="hv-bar"><button class="hv-link" type="button" data-hc-explain="${at}">Explain this line</button><span class="hv-key">${esc(labelOf('explainLine'))}</span></div>` : '';
-  tip.innerHTML = (list.length ? problemCard(list) : '') + (doc ? `<div class="hv-sec hv-doc">${doc}</div>` : '') + fixBar(list) + explain;
-  tip.querySelector<HTMLButtonElement>('[data-hc-explain]')?.addEventListener('click', () => showExplanation(at));
+  // "This check is wrong": the flag at the end of the bottom bar, an icon with its tooltip (one per check here).
+  const wrong = [...new Map(list.map((d) => [d.rule, d])).values()].map((d) => reportButton('flag', { label: `${REPORT_ACTIONS.flag.label}: ${d.rule}`, tip: `This check is wrong (${d.rule}): tell us, with the check and the line filled in`, className: 'hv-wrong', attrs: `data-hc-wrong="${list.indexOf(d)}"` })).join('');
+  const bar = wrong ? `<div class="hv-bar">${wrong}</div>` : '';
+  tip.innerHTML = (list.length ? problemCard(list) : '') + (doc ? `<div class="hv-sec hv-doc">${doc}</div>` : '') + fixBar(list) + bar;
+  tip.querySelectorAll<HTMLButtonElement>('[data-hc-wrong]').forEach((b) => b.addEventListener('click', () => ((tip.hidden = true), reportWrongCheck([list[Number(b.dataset.hcWrong)]]))));
   tip.classList.toggle('has-problems', list.length > 0);
   linkApiNames(tip);
   tip.hidden = false;
@@ -693,6 +772,18 @@ editor.getWrapperElement().addEventListener('mousemove', (e: MouseEvent) => {
     showHoverCard(text, at, list, doc, from);
   }, hoverDelay(280));
 });
+/** The hover card for a place in the handler, as hovering it would show (Check's "Show me" opens it at the problem). */
+function showTipAt(at: number) {
+  const text = editor.getValue();
+  const list = problemsAt(at);
+  const msg = blockedItemAt(text, at);
+  const r = msg ? undefined : resolveAt(text, at);
+  let doc = msg ? md(messageMarkdown(msg.id)) : r ? describeResolved(r.resolved, text.slice(r.start, r.end)) : '';
+  const own = !doc && !msg ? hoverAt(text, at, { own: true }) : undefined;
+  if (own) doc = md(own.markdown);
+  if (!list.length && !doc) return;
+  showHoverCard(text, at, list, doc, list.length ? Math.min(...list.map((d) => d.start)) : at);
+}
 document.addEventListener('pointerdown', (e) => { if (!tip.hidden && tip.classList.contains('explain') && !tip.contains(e.target as Node)) tip.hidden = true; }, true);
 const hideTipSoon = () => { if (tip.classList.contains('explain')) return; clearTimeout(tipHideTimer); tipHideTimer = window.setTimeout(() => (tip.hidden = true), 250); };
 editor.getWrapperElement().addEventListener('mouseleave', (e: MouseEvent) => {
@@ -845,58 +936,94 @@ editor.on('scroll', () => { if (!sig.hidden) placeSig(); });
 
 
 // Problems that aren't the linter's: the code against the picked game folder (and the package's files).
+let extraFocus: { at: number; text: string } | undefined;
 function renderExtraProblems(text: string) {
   const box = $('#extra-problems');
+  // The same severity filter as the code's problems (Advanced mode's Errors / Warnings / Info chips).
+  const vis = (x: { severity: FolderProblem['severity'] }) => shownInCheck(x.severity, mode === 'simple', filter);
   const list = folderProblems;
   const pk = pkgProblems;
-  box.hidden = !list.length && !pk.length;
-  if (!list.length && !pk.length) return void (box.innerHTML = '');
-  const pkHtml = pk.length ? `<li class="xp-h" role="presentation">In the package <span class="muted">· ${packageFiles.length} file${packageFiles.length === 1 ? '' : 's'} besides handler.js</span></li>` + pk.map((f, i) => {
+  const anyShown = list.some(vis) || pk.some(vis);
+  box.hidden = !anyShown;
+  // After a fix here, once both lists are drawn (the main list renders after this): the keyboard stays on the item
+  // now where the fixed one was, else on Check's first problem, else the Check tab.
+  if (extraFocus && extraFocus.text === text) {
+    const want = extraFocus;
+    extraFocus = undefined;
+    queueMicrotask(() => {
+      const rows = box.querySelectorAll<HTMLElement>('.xp');
+      const row = rows[Math.min(want.at, rows.length - 1)] as HTMLElement | undefined;
+      (row?.querySelector<HTMLElement>('.fix') ?? row?.querySelector<HTMLElement>('.loc') ?? document.querySelector<HTMLElement>('#problems .problem .fix, #problems .problem .loc, #status button, [data-tab=problems]'))?.focus();
+    });
+  }
+  if (!anyShown) return void (box.innerHTML = '');
+  // Two groups, each a list of its own under its heading (the heading is no list item).
+  const group = (id: string, head: string, items: string) => `<li class="xp-g"><div class="xp-h" id="${id}">${head}</div><ul class="xp-list" aria-labelledby="${id}">${items}</ul></li>`;
+  const pkHtml = pk.some(vis) ? group('xp-h-pkg', `In the package <span class="muted">· ${packageFiles.length} file${packageFiles.length === 1 ? '' : 's'} besides handler.js</span>`, pk.map((f, i) => {
+    if (!vis(f)) return '';
     const where = f.file ? `<button class="loc" type="button" data-xopen="${esc(f.file)}"${f.line ? ` data-xline="${f.line}"` : ''}>${fileIcon(f.file)}${esc(f.file.split('/').pop()!)}${f.line ? `:${f.line}` : ''}</button>` : f.start !== undefined ? `<button class="loc" type="button" data-xjump="${f.start}">Line ${lineOf(text, f.start) + 1}</button>` : '';
     return `<li class="xp ${f.severity}"><span class="sev-ico" aria-hidden="true">${SEV_ICON[f.severity]}</span><div class="xp-b">${where} <strong>${esc(f.title)}</strong><p class="xp-why">${esc(f.why)}</p>${f.fix ? `<div class="xp-act"><button class="fix primary" type="button" data-pfix="${i}">${esc(f.fix.title)}</button></div>` : ''}</div></li>`;
-  }).join('') : '';
-  box.innerHTML = pkHtml + (!list.length ? '' : `<li class="xp-h" role="presentation">Against your game <span class="muted">· ${esc(gameFolder?.name ?? '')}</span></li>` + list.map((f, i) => {
+  }).join('')) : '';
+  box.innerHTML = pkHtml + (!list.some(vis) ? '' : group('xp-h-game', `Against your game <span class="muted">· ${esc(gameFolder?.name ?? '')}</span>`, list.map((f, i) => {
+    if (!vis(f)) return '';
     const line = lineOf(text, f.start) + 1;
     return `<li class="xp ${f.severity}"><span class="sev-ico" aria-hidden="true">${SEV_ICON[f.severity]}</span><div class="xp-b"><button class="loc" type="button" data-xjump="${f.start}">Line ${line}</button> <strong>${esc(f.title)}</strong><p class="xp-why">${esc(f.why)}</p>${f.fix ? `<div class="xp-act"><button class="fix primary" type="button" data-xfix="${i}">${esc(f.fix.title)}</button></div>` : ''}</div></li>`;
-  }).join(''));
+  }).join('')));
   box.querySelectorAll<HTMLButtonElement>('[data-xjump]').forEach((b) => b.addEventListener('click', () => jumpTo(Number(b.dataset.xjump))));
   box.querySelectorAll<HTMLButtonElement>('[data-xopen]').forEach((b) => b.addEventListener('click', () => pkgUI?.openFile(b.dataset.xopen!, b.dataset.xline ? Number(b.dataset.xline) : undefined)));
+  const keepFocus = (at: number) => {
+    const mine = (extraFocus = { at, text: editor.getValue() });
+    setTimeout(() => { if (extraFocus === mine) extraFocus = undefined; }, 5000);
+  };
   box.querySelectorAll<HTMLButtonElement>('[data-pfix]').forEach((b) => b.addEventListener('click', () => {
     const fx = pk[Number(b.dataset.pfix)].fix!;
     if (fx.kind === 'move') pkgUI?.moveFile(fx.from, fx.to);
+    keepFocus(Number(b.dataset.pfix));
   }));
   box.querySelectorAll<HTMLButtonElement>('[data-xfix]').forEach((b) => b.addEventListener('click', () => {
-    const fx = list[Number(b.dataset.xfix)].fix!;
-    editor.replaceRange(fx.text, editor.posFromIndex(fx.start), editor.posFromIndex(fx.end));
+    if (editor.getValue() !== text) return void (editor as any).performLint(); // made for other text: Check again
+    const f = list[Number(b.dataset.xfix)];
+    const fx = f.fix!;
+    const edits = [{ start: fx.start, end: fx.end, text: fx.text }];
+    fixWithNucli(editor, applyEditsToText(editor.getValue(), edits), () => editor.replaceRange(fx.text, editor.posFromIndex(fx.start), editor.posFromIndex(fx.end)));
+    codeNote(editor, editor.posFromIndex(fx.start).line, `Fixed: ${fx.title.replace(/`/g, '')}.`, { action: undoAction });
+    keepFocus(pk.length + Number(b.dataset.xfix));
   }));
 }
 function renderProblems(text: string) {
   renderExtraProblems(text);
-  const counts = { error: 0, warning: 0, info: 0, hint: 0 } as Record<string, number>;
-  for (const d of current) counts[d.severity]++;
+  // Counted with the package's and the game folder's problems (listed under the code's), so the tab, the chips and the
+  // summary never say 0 while those lists show something.
+  const counts = countProblems([current, folderProblems, pkgProblems]) as Record<string, number>;
   const simple = mode === 'simple';
+  const extraShown = [...pkgProblems, ...folderProblems].filter((x) => shownInCheck(x.severity, simple, filter));
   const rank = { error: 0, warning: 1, info: 2, hint: 3 } as Record<string, number>;
   // Errors first (they stop Nucleus), then in line order.
-  const list = (simple ? current.filter(inProblemList) : current.filter((d) => (filter === 'all' ? d.severity !== 'hint' : d.severity === filter)))
+  // Unused code (quietInCheck) is listed too, quietly and last, but not counted.
+  const list = (simple ? current.filter(inProblemList) : current.filter((d) => (filter === 'all' ? inProblemList(d) : d.severity === filter)))
     .slice()
     .sort((a, b) => rank[a.severity] - rank[b.severity] || a.start - b.start);
   shownProblems = list;
   problemIndex = -1;
   queueMicrotask(renderStrip);
-  const serious = counts.error + counts.warning;
-  $('#count-problems').textContent = String(serious);
-  $('#count-switch').textContent = String(serious);
-  $('#f-all').textContent = String(counts.error + counts.warning + counts.info);
+  // One count everywhere (tab, phone switch, filter, summary, phone strip): every problem the list shows,
+  // errors, warnings and info. Hints (outdated options) are counted on their own.
+  const total = counts.total;
+  $('#count-problems').textContent = String(total);
+  $('#count-switch').textContent = String(total);
+  $('#f-all').textContent = String(total);
   for (const k of ['error', 'warning', 'info', 'hint']) $(`#f-${k}`).textContent = String(counts[k]);
   const plural = (n: number, w: string) => `${n} ${w}${n === 1 ? '' : 's'}`;
-  const tally = simple ? '' : ` <span class="muted">(${plural(counts.error, 'error')}, ${plural(counts.warning, 'warning')}, ${counts.info} info)</span>`;
+  const tally = simple ? '' : ` <span class="muted">(${[counts.error && plural(counts.error, 'error'), counts.warning && plural(counts.warning, 'warning'), counts.info && `${counts.info} info`].filter(Boolean).join(', ')})</span>`;
   $('#status').innerHTML = !editor.getValue().trim()
     ? `<span class="pill">No code yet</span>`
     : counts.error
-    ? `<span class="pill error">Nucleus can't use this handler yet</span><span>${plural(serious, 'thing')} to fix${tally}</span>`
+    ? `<span class="pill error">Nucleus can't use this handler yet</span><span>${plural(total, 'problem')}${tally}</span>`
     : counts.warning
       ? `<span class="pill ok">Nucleus can use this handler</span><span>but ${plural(counts.warning, 'setting')} may not work as intended${tally}</span>`
       : `<span class="pill ok">Ready for Nucleus</span><span>Next: <button class="link" type="button" id="v-try">try it</button>${tally}</span>`;
+  // The game's program files are still being read: their hook hints join Check when they are.
+  if (gameFolder && gameBinariesPending(gameFolder)) $('#status').insertAdjacentHTML('beforeend', '<span class="muted st-reading">Reading your game\'s files…</span>');
   $('#status').querySelector('#v-try')?.addEventListener('click', () => selectTab('simulate'));
   const el = $('#problems');
   if (!list.length) {
@@ -906,7 +1033,12 @@ function renderProblems(text: string) {
       el.querySelector('#go-open')?.addEventListener('click', () => showOpen());
       return;
     }
-    el.innerHTML =
+    // Only the package's or the game folder's lists have something: say so, not "Nothing to fix".
+    const xn = extraShown.length;
+    const about = !folderProblems.some((x) => extraShown.includes(x)) ? 'the package' : !pkgProblems.some((x) => extraShown.includes(x)) ? 'your game' : 'the package and your game';
+    const what = extraShown.every((x) => x.severity === 'info') ? (xn === 1 ? 'note' : 'notes') : xn === 1 ? 'problem' : 'problems';
+    if (xn) el.innerHTML = `<li class="empty">Nothing in the code to fix; ${xn} ${what} about ${about} below.</li>`;
+    else el.innerHTML =
       simple || filter === 'all'
         ? `<li class="empty masc-empty">${mascot('n-ok', { size: 72, zoom: 1.2 })}<span>Nothing to fix. <button class="link" type="button" id="go-sim">Try it</button> to see what each player gets.${
             simple ? '' : counts.hint ? ` There ${counts.hint === 1 ? 'is' : 'are'} also <button class="link" type="button" id="go-hints">${plural(counts.hint, 'hint')}</button> about outdated options.` : ''
@@ -919,27 +1051,34 @@ function renderProblems(text: string) {
   // Settings › General › Check: compact (one row each, open for more), comfortable, detailed (everything open).
   const density = checkDensity();
   el.dataset.density = density;
-  el.innerHTML = list
-    .map((d, i) => {
+  // The same problem on many lines (12 copies of a ProtoController line) is one row: "×12, lines 197–208",
+  // with one fix for all of them, as Try it already groups them.
+  const groups = groupProblems(list);
+  const shownDoc = editor.getDoc();
+  shownRowOf = groups.flatMap((g, i) => g.map(() => i));
+  el.innerHTML = groups
+    .map((g, i) => {
+      const d = g[0];
       const line = lineOf(text, d.start) + 1;
+      const lastLine = lineOf(text, g[g.length - 1].start) + 1;
       const col = d.start - (text.lastIndexOf('\n', d.start - 1) + 1) + 1;
       const plain = plainFor(d);
       const about = d.message.match(/`([^`]+)`/)?.[1];
       const ordered = (d.fixes ?? []).map((f, j) => ({ f, j })).sort((a, z) => Number(!!z.f.preferred) - Number(!!a.f.preferred));
       const fixBtn = ({ f, j }: { f: NonNullable<Diagnostic['fixes']>[number]; j: number }, main: boolean) =>
-        `<button class="fix${main ? ' primary' : ''}" data-d="${i}" data-f="${j}" type="button" title="${esc(f.title.replace(/`/g, ''))}">${main && f.preferred ? 'Fix this' : esc(f.title.replace(/`/g, ''))}</button>`;
+        `<button class="fix${main ? ' primary' : ''}" data-d="${i}" data-f="${j}" type="button" title="${esc(f.title.replace(/`/g, ''))}${g.length > 1 ? ` (all ${g.length})` : ''}">${main && f.preferred ? (g.length > 1 ? `Fix all ${g.length}` : 'Fix this') : esc(f.title.replace(/`/g, ''))}</button>`;
       const key = `${d.rule}:${line}:${about ?? ''}`;
       const open = density !== 'compact' || openProblems.has(key);
       // Advanced adds (never replaces): the column, severity, rule id and the technical message expanded.
       const extra = simple ? '' : `<span class="chip ${sevClass[d.severity]}">${d.severity}</span><span class="rule" title="${esc(RULES[d.rule].description)}">${d.rule}</span>`;
       const bodyId = `pb-${i}`;
-      return `<li class="problem ${sevClass[d.severity]}" data-i="${i}"><div class="pcard${open ? ' open' : ''}" data-key="${esc(key)}">
-        <div class="prow"><span class="sev-ico" aria-hidden="true">${SEV_ICON[d.severity]}</span><button class="loc" data-jump="${d.start}" type="button" title="Show this line">Line ${line}${simple ? '' : `:${col}`}</button>
-          <span class="plain-title">${esc(plain.title)}${about ? `: <code>${esc(about)}</code>` : ''}</span>
-          <span class="row-fix">${ordered[0] ? fixBtn(ordered[0], true) : ''}</span>
+      return `<li class="problem ${sevClass[d.severity]}${quietInCheck(d) ? ' quiet' : ''}" data-i="${i}"><div class="pcard${open ? ' open' : ''}" data-key="${esc(key)}">
+        <div class="prow"><span class="sev-ico" aria-hidden="true">${SEV_ICON[d.severity]}</span><button class="loc" data-jump="${d.start}" type="button" title="Show this line">${g.length > 1 ? `Lines ${line}–${lastLine}` : `Line ${line}${simple ? '' : `:${col}`}`}</button>
+          <span class="plain-title">${esc(plain.title)}${about ? `: <code>${esc(g.length > 1 ? rangeOfNames(g) : about)}</code>` : ''}${g.length > 1 ? ` <span class="times" title="${g.length} times">×${g.length}</span>` : ''}</span>
+          <span class="row-fix">${ordered[0] ? fixBtn(ordered[0], !quietInCheck(d)) : ''}</span>
           <button class="ptoggle" type="button" aria-expanded="${open}" aria-controls="${bodyId}" aria-label="More about line ${line}: ${esc(plain.title)}"></button></div>
         <div class="body" id="${bodyId}"${open ? '' : ' hidden'}><p class="plain-why">${esc(plain.why)}</p>
-        <div class="meta">${ordered.slice(1).map((o) => fixBtn(o, false)).join('')}<button class="link" type="button" data-jump="${d.start}">Show me</button>${RULE_DOCS[d.rule] ? `<a class="link" href="${esc(ruleHref(d.rule))}" target="_blank" rel="noopener">About this check</a>` : ''}${extra}</div>
+        <div class="meta">${ordered.slice(1).map((o) => fixBtn(o, false)).join('')}<button class="link" type="button" data-jump="${d.start}" data-jump-end="${d.end}" data-tip="1">Show me</button>${RULE_DOCS[d.rule] ? `<a class="link" href="${esc(ruleHref(d.rule))}" target="_blank" rel="noopener">About this check</a>` : ''}${extra}${reportButton('flag', { text: true, className: 'pwrong', attrs: `data-wrong="${i}"` })}</div>
         <details class="tech"${density === 'detailed' ? ' open' : ''}><summary>Technical details</summary>${md(d.message).replace(/^<p>|<\/p>$/g, '')}</details></div></div></li>`;
     })
     .join('');
@@ -957,18 +1096,89 @@ function renderProblems(text: string) {
   });
   el.querySelectorAll<HTMLButtonElement>('.fix').forEach((b) =>
     b.addEventListener('click', () => {
-      const fix = list[Number(b.dataset.d)].fixes![Number(b.dataset.f)];
-      fixWithNucli(editor, applyEditsToText(editor.getValue(), fix.edits), () =>
+      // A grouped row fixes every problem in it: the same fix (by position) of each.
+      const g = groups[Number(b.dataset.d)], j = Number(b.dataset.f);
+      const fix = g[0].fixes![j];
+      // Made for other text (typed in, or another tab, before Check ran again): its offsets point elsewhere now.
+      if (editor.getDoc() !== shownDoc || editor.getValue() !== text) return void (editor as any).performLint();
+      // Fixes whose edits overlap (`2 ** 3 ** 2`: the inner one's text is inside the outer one's) can't go in one
+      // batch: the ones that don't touch an earlier one now, the rest when Check has run again.
+      const edits: TextEdit[] = [];
+      let fixed = 0;
+      for (const x of g) {
+        const es = x.fixes?.[j]?.edits ?? [];
+        if (es.some((e) => edits.some((o) => e.start < Math.max(o.end, o.start + 1) && o.start < Math.max(e.end, e.start + 1)))) continue;
+        edits.push(...es);
+        fixed++;
+      }
+      fixWithNucli(editor, applyEditsToText(editor.getValue(), edits), () =>
         editor.operation(() => {
-          for (const e of [...fix.edits].sort((a, z) => z.start - a.start)) editor.replaceRange(e.text, editor.posFromIndex(e.start), editor.posFromIndex(e.end));
+          for (const e of [...edits].sort((a, z) => z.start - a.start)) editor.replaceRange(e.text, editor.posFromIndex(e.start), editor.posFromIndex(e.end));
         }),
       );
-      codeNote(editor, editor.posFromIndex(Math.min(...fix.edits.map((e) => e.start))).line, `Fixed: ${fix.title.replace(/`/g, '')}.`, { action: undoAction });
+      codeNote(editor, editor.posFromIndex(Math.min(...edits.map((e) => e.start))).line, `Fixed${fixed > 1 ? ` ${fixed}×` : ''}${fixed < g.length ? ` (${g.length - fixed} more once Check has run again)` : ''}: ${fix.title.replace(/`/g, '')}.`, { action: undoAction });
+      // Keep the keyboard in the list: focus the problem that is now where this one was (the list re-renders).
+      const at = Number(b.dataset.d);
+      setTimeout(() => {
+        const rows = [...el.querySelectorAll<HTMLElement>('.problem')];
+        (rows[Math.min(at, rows.length - 1)]?.querySelector<HTMLElement>('.fix, .loc') ?? document.querySelector<HTMLElement>('#status button, #problems button'))?.focus();
+      }, 60);
     }),
   );
-  el.querySelectorAll<HTMLButtonElement>('[data-jump]').forEach((b) => b.addEventListener('click', () => jumpTo(Number(b.dataset.jump))));
+  el.querySelectorAll<HTMLButtonElement>('[data-jump]').forEach((b) => b.addEventListener('click', () => {
+    const at = Number(b.dataset.jump);
+    jumpTo(at);
+    if (!b.dataset.tip) return;
+    // Show me: the problem's code selected and its hover card open, after the scroll (which closes cards) settles.
+    const end = Number(b.dataset.jumpEnd);
+    if (end > at) editor.setSelection(editor.posFromIndex(at), editor.posFromIndex(end));
+    setTimeout(() => showTipAt(at), 160);
+  }));
+  el.querySelectorAll<HTMLButtonElement>('[data-wrong]').forEach((b) => b.addEventListener('click', () => reportWrongCheck(groups[Number(b.dataset.wrong)])));
 }
 const openProblems = new Set<string>();
+/** Groups problems that say the same thing (same rule, severity and message with the numbers ignored, same
+ *  fixes) and are next to each other in the sorted list. */
+function groupProblems(list: Diagnostic[]): Diagnostic[][] {
+  const sig = (d: Diagnostic) => `${d.rule}|${d.severity}|${d.message.replace(/\d+/g, '#')}|${(d.fixes ?? []).map((f) => `${f.preferred ? '*' : ''}${f.title.replace(/\d+/g, '#')}`).join('|')}`;
+  const out: Diagnostic[][] = [];
+  for (const d of list) {
+    const last = out[out.length - 1];
+    if (last && sig(last[0]) === sig(d)) last.push(d);
+    else out.push([d]);
+  }
+  return out;
+}
+/** "This check is wrong" for a problem (or a group of the same one): the flagged lines only, at most 20, shown in
+ *  the report dialog with a box to leave them out. */
+function reportWrongCheck(g: Diagnostic[]) {
+  const text = editor.getValue();
+  const d = g[0];
+  const first = lineOf(text, d.start);
+  // Each problem's own lines, never the ones between them (a comment there may be private), with `…` for a gap.
+  const ranges = g.map((x) => [lineOf(text, x.start), lineOf(text, Math.max(x.start, x.end - 1))]).sort((a, z) => a[0] - z[0]);
+  const all = text.split('\n');
+  const out: string[] = [];
+  let upTo = -1;
+  for (const [a, z] of ranges) {
+    if (upTo >= 0 && a > upTo + 1) out.push('// …');
+    for (let n = Math.max(a, upTo + 1); n <= z && out.length < 20; n++) out.push(all[n]);
+    upTo = Math.max(upTo, z);
+    if (out.length >= 20) break;
+  }
+  const code = out.join('\n');
+  openReportFlow({ kind: 'check', rule: d.rule, message: d.message, line: first + 1, code, handlerCode: text });
+}
+/** `Player.ProtoController5–16` for a group whose names differ only in a number. */
+function rangeOfNames(g: Diagnostic[]): string {
+  const names = g.map((d) => d.message.match(/`([^`]+)`/)?.[1] ?? '');
+  const m = names.map((n) => /^(.*?)(\d+)$/.exec(n));
+  if (m.every((x) => x && x[1] === m[0]![1])) {
+    const nums = m.map((x) => Number(x![2])).sort((a, b) => a - b);
+    return `${m[0]![1]}${nums[0]}–${nums[nums.length - 1]}`;
+  }
+  return names[0];
+}
 type Density = 'compact' | 'comfortable' | 'detailed';
 const DENSITY_KEY = 'nucleus-workbench-check-density';
 function checkDensity(): Density {
@@ -984,7 +1194,7 @@ const linePop = $('#line-pop');
 function lineProblems(line: number, all = false): Diagnostic[] {
   const text = editor.getValue();
   const simple = mode === 'simple' && !all;
-  return current.filter((d) => lineOf(text, d.start) === line && (simple ? d.severity === 'error' || d.severity === 'warning' : d.severity !== 'hint'));
+  return current.filter((d) => lineOf(text, d.start) === line && (simple ? d.severity === 'error' || d.severity === 'warning' : inProblemList(d)));
 }
 /** The problems on a line, or with `at`, only those covering that spot plus the docs of the name
  *  there (touch screens: tap a marked word, or hold any name). */
@@ -1005,7 +1215,7 @@ function showLineProblems(line: number, at?: number) {
         const plain = plainFor(d);
         const about = d.message.match(/`([^`]+)`/)?.[1];
         const fixes = [...(d.fixes ?? [])].sort((a, z) => Number(!!z.preferred) - Number(!!a.preferred));
-        return `<div class="lp-item ${sevClass[d.severity]}"><div class="lp-title">Line ${line + 1}: ${esc(plain.title)}${about ? `: <code>${esc(about)}</code>` : ''}</div><div class="lp-why">${esc(plain.why)}</div><div class="lp-actions">${fixes.map((f, k) => `<button class="btn${k === 0 ? ' primary' : ''}" type="button" data-lp-fix="${i}:${d.fixes!.indexOf(f)}">${f.preferred && fixes.length === 1 ? 'Fix this' : esc(f.title.replace(/`/g, ''))}</button>`).join('')}<button class="link" type="button" data-lp-more>More in Check</button></div></div>`;
+        return `<div class="lp-item ${sevClass[d.severity]}"><div class="lp-title">Line ${line + 1}: ${esc(plain.title)}${about ? `: <code>${esc(about)}</code>` : ''}</div><div class="lp-why">${esc(plain.why)}</div><div class="lp-actions">${fixes.map((f, k) => `<button class="btn${k === 0 ? ' primary' : ''}" type="button" data-lp-fix="${i}:${d.fixes!.indexOf(f)}">${f.preferred && fixes.length === 1 ? 'Fix this' : esc(f.title.replace(/`/g, ''))}</button>`).join('')}<button class="link" type="button" data-lp-more>More in Check</button>${reportButton('flag', { attrs: `data-lp-wrong="${i}"` })}</div></div>`;
       })
       .join('');
   // Under the line, or above it near the bottom of the editor.
@@ -1028,6 +1238,7 @@ function showLineProblems(line: number, at?: number) {
       codeNote(editor, editor.posFromIndex(Math.min(...fix.edits.map((e) => e.start))).line, `Fixed: ${fix.title.replace(/`/g, '')}.`, { action: undoAction });
     }),
   );
+  linePop.querySelectorAll<HTMLButtonElement>('[data-lp-wrong]').forEach((b) => b.addEventListener('click', () => (hideLinePop(), reportWrongCheck([list[Number(b.dataset.lpWrong)]]))));
   linePop.querySelectorAll('[data-lp-more]').forEach((b) =>
     b.addEventListener('click', () => {
       hideLinePop();
@@ -1098,9 +1309,12 @@ function renderStrip() {
   if (!list.length) return;
   stripIndex = Math.min(stripIndex, list.length - 1);
   const d = list[stripIndex];
-  const errors = list.filter((x) => x.severity === 'error').length;
+  // The counts include the package's and the game folder's problems shown under the list (one count everywhere).
+  const extra = [...pkgProblems, ...folderProblems].filter((x) => shownInCheck(x.severity, mode === 'simple', filter));
+  const n = (sev: string) => list.filter((x) => x.severity === sev).length + extra.filter((x) => x.severity === sev).length;
+  const errors = n('error'), warnings = n('warning'), infos = n('info');
   const line = lineOf(editor.getValue(), d.start) + 1;
-  $('#ps-text').innerHTML = `<span class="ps-count">${errors ? `<span class="e">✖ ${errors}</span>` : ''}${list.length - errors ? `<span class="w">⚠ ${list.length - errors}</span>` : ''}</span><span class="ps-msg">Line ${line}: ${esc(plainFor(d).title)}</span>`;
+  $('#ps-text').innerHTML = `<span class="ps-count">${errors ? `<span class="e" title="Errors">✖ ${errors}</span>` : ''}${warnings ? `<span class="w" title="Warnings">⚠ ${warnings}</span>` : ''}${infos ? `<span class="i" title="Info">ℹ ${infos}</span>` : ''}</span><span class="ps-msg">Line ${line}: ${esc(plainFor(d).title)}</span>`;
 }
 function stripStep(dir: number) {
   if (!shownProblems.length) return;
@@ -1130,7 +1344,7 @@ function renameSymbol(justFind = false) {
   const at = editor.getCursor();
   const n = selectReferences(editor);
   if (!n) codeNote(editor, at.line, 'Not a variable or function of this handler. (Nucleus\'s own names can\'t be renamed.)', { mood: 'info' });
-  else codeNote(editor, at.line, justFind ? `${n} use${n === 1 ? '' : 's'}, all selected.` : `${n} use${n === 1 ? '' : 's'} selected: type the new name, Esc when done.`, { mood: 'info' });
+  else codeNote(editor, at.line, justFind ? `${n} use${n === 1 ? '' : 's'}, all selected.` : `${n} use${n === 1 ? '' : 's'} selected: type the new name, \`Esc\` when done.`, { mood: 'info' });
   editor.focus();
 }
 
@@ -1156,7 +1370,7 @@ function stepProblem(dir: 1 | -1) {
   selectTab('problems');
   problemIndex = (problemIndex + dir + shownProblems.length) % shownProblems.length;
   document.querySelectorAll('.problem.current').forEach((e) => e.classList.remove('current'));
-  const li = document.querySelector(`.problem[data-i="${problemIndex}"]`);
+  const li = document.querySelector(`.problem[data-i="${shownRowOf[problemIndex] ?? problemIndex}"]`);
   li?.classList.add('current');
   li?.scrollIntoView({ block: 'nearest' });
   jumpTo(shownProblems[problemIndex].start);
@@ -1170,11 +1384,15 @@ function setFilter(f: typeof filter) {
 document.querySelectorAll<HTMLButtonElement>('.filter').forEach((b) => b.addEventListener('click', () => setFilter(b.dataset.filter as typeof filter)));
 
 // "Fix problems" shows how many it can fix (counted in the worker along with the lint).
-function setFixCount(n: number) {
+// Harmless warnings (lines that do nothing, tagged unnecessary) aren't counted: Fix all offers them afterwards, and when
+// they are all that's left the button offers just them.
+function setFixCount(n: number, cleanups = 0) {
   const btn = $('#fix-all') as HTMLButtonElement;
   // Nothing to fix: no button (the bar goes too unless Fix with AI is there; CSS :has).
-  btn.hidden = n === 0;
-  btn.textContent = `Fix ${n} problem${n === 1 ? '' : 's'} automatically`;
+  btn.hidden = n === 0 && cleanups === 0;
+  btn.dataset.cleanupsOnly = n === 0 && cleanups > 0 ? '1' : '';
+  btn.textContent = n ? `Fix ${n} problem${n === 1 ? '' : 's'} automatically` : `Fix ${cleanups} harmless warning${cleanups === 1 ? '' : 's'}`;
+  btn.title = n ? '' : 'Lines that do nothing, such as Player.ProtoController5 and up: removing them is safe';
 }
 
 // ---------------------------------------------------------------------------
@@ -1213,7 +1431,45 @@ $('#sim-debug').addEventListener('click', () => debug.start());
 // ---------------------------------------------------------------------------
 // Docs (docs-ui.ts)
 
-const docs = initDocs({ selectTab, handlerHash: () => doc.hash, used: use, pageUrl: (p) => siteUrl(`docs/${p}/`) });
+// What Insert would do, per handler text (Docs asks again for each card when you come back to it).
+const exampleActions = { text: '', map: new Map<string, string | undefined>() };
+function exampleAction(p: string, m: Member) {
+  const t = editor.getValue();
+  if (t !== exampleActions.text) Object.assign(exampleActions, { text: t, map: new Map() });
+  if (!exampleActions.map.has(p)) exampleActions.map.set(p, placeDocExample(p, m)?.action);
+  return exampleActions.map.get(p);
+}
+const docs = initDocs({ selectTab, handlerHash: () => doc.hash, used: use, pageUrl: (p) => siteUrl(`docs/${p}/`), exampleAction, insertExample });
+
+// Docs' "Insert into handler": the example goes where it belongs (lines.ts placeExample: an option at the top level, or
+// its value updated when the handler sets it already; a call at the end of Game.Play or the callback Hub handlers use),
+// as one edit (one Ctrl+Z), and the changed lines light up as after a fix.
+function placeDocExample(path: string, m: Member) {
+  return m.example ? placeExample(editor.getValue(), path, prettyCode(m.example), m.exampleIn ?? 'top') : undefined;
+}
+function insertExample(path: string, m: Member, replace = false) {
+  const r = placeDocExample(path, m);
+  if (!r) return toast("There's no telling where the example goes: the handler doesn't parse (Check lists what's wrong), or its callback is set to a function made elsewhere. Add it by hand.");
+  // Set already: "Show in handler" goes to that line and keeps the value; only "Replace with the example's value" changes it.
+  if (r.action === 'same' || (r.action === 'update' && !replace)) {
+    // Shown in the Code view (Form or Blocks would leave it hidden), as Check's "Show me" does.
+    if (viewMode !== 'code') setViewMode('code');
+    jumpTo(editor.indexFromPos({ line: r.line, ch: 0 }));
+    editor.setSelection({ line: r.line, ch: 0 }, { line: r.line, ch: editor.getLine(r.line).length }); // the line, highlighted
+    codeNote(editor, r.line, r.action === 'same' ? `The handler has this already (line ${r.line + 1}).` : `The handler sets ${path} here (line ${r.line + 1}). Your value stays.`, { mood: 'info' });
+    return;
+  }
+  const before: string = editor.getValue();
+  // The smallest edit that turns the handler into the result: the cursor, marks and the rest stay where they are.
+  let a = 0;
+  while (a < before.length && a < r.text.length && before[a] === r.text[a]) a++;
+  let b = 0;
+  while (b < before.length - a && b < r.text.length - a && before[before.length - 1 - b] === r.text[r.text.length - 1 - b]) b++;
+  // The green bar on the new lines stays as long as the Undo note does: until the code is edited or the note is closed.
+  const unmark = fixWithNucli(editor, r.text, () => editor.replaceRange(r.text.slice(a, r.text.length - b), editor.posFromIndex(a), editor.posFromIndex(before.length - b), 'docs-example'), { keep: true });
+  use('docs-insert-example');
+  codeNote(editor, r.line, r.action === 'update' ? `Updated ${path} to the example's value.` : r.action === 'callback' ? `Added ${r.where} with the example in it.` : `Added the example to ${r.where}.`, { action: undoAction, sticky: true, onClear: unmark });
+}
 
 // ---------------------------------------------------------------------------
 // Probes: real Jint results vs the linter
@@ -1366,7 +1622,8 @@ function versionOf(text: string): string {
   return `${text.length}:${(h >>> 0).toString(36)}`;
 }
 const CREDIT_OFF = 'nucleus-workbench-credit-off';
-const creditOn = () => { try { return localStorage.getItem(CREDIT_OFF) !== '1'; } catch { return true; } };
+// '1' off, '0' on (chosen in Settings); not chosen: on in Guided mode, off for people who write code (Advanced).
+const creditOn = () => { try { const v = localStorage.getItem(CREDIT_OFF); return v === '1' ? false : v === '0' ? true : mode !== 'dev'; } catch { return mode !== 'dev'; } };
 /** The handler as it leaves the workbench: with the credit lines when it was made or changed here (credit.ts). */
 function exportText(): string {
   const text = editor.getValue();
@@ -1400,7 +1657,6 @@ function loadSource(src: string, meta: DocMeta, opts: { fresh?: boolean } = {}) 
   }
   clearNotice(); // it was about the handler before
   document.documentElement.classList.remove('busy'); // a Test all of the last handler no longer runs
-  setNoneOpen(false);
   packageFiles = [];
   storeFiles([]);
   pkgUI?.reset();
@@ -1436,43 +1692,8 @@ let tabs: Tab[] = [];
 let activeTab = '';
 let tabsReady = false;
 let lastClosed: { tab: Tab; index: number } | null = null;
-// Every handler closed: the tab strip is empty and the work area says so, with ways on (New, Open, Learn, Undo).
-// Underneath there is still one blank tab, which the next handler opened fills (loadSource reuses an empty tab).
-const NONE_KEY = 'nucleus-workbench-none-open';
-let noneOpen = false;
-// Getting started shows the home page over open handlers too (they stay in their tabs): Esc, a tab or any of its
-// buttons goes back.
-let homeOver = false;
-function showHome(v: boolean) {
-  if (homeOver === v || (v && noneOpen)) return;
-  homeOver = v;
-  document.documentElement.classList.toggle('no-handler', v || noneOpen);
-  const box = document.getElementById('no-handler')!;
-  box.hidden = !(v || noneOpen);
-  box.querySelector<HTMLElement>('[data-nh=back]')!.hidden = !v;
-  $('#nh-title').textContent = v ? 'Getting started' : 'No handler open';
-  if (v) box.querySelector<HTMLElement>('[data-nh=new]')?.focus();
-  else editor.refresh();
-}
-function setNoneOpen(v: boolean) {
-  if (noneOpen === v) return;
-  if (homeOver) showHome(false);
-  noneOpen = v;
-  document.documentElement.classList.toggle('no-handler', v);
-  $('#nh-title').textContent = firstVisit ? 'Welcome to the workbench' : 'No handler open';
-  try { if (v) localStorage.setItem(NONE_KEY, '1'); else localStorage.removeItem(NONE_KEY); } catch { /* ignore */ }
-  const box = document.getElementById('no-handler');
-  if (box) {
-    box.hidden = !v;
-    const undo = box.querySelector<HTMLElement>('[data-nh=undo]');
-    if (undo) { undo.hidden = !lastClosed; undo.textContent = lastClosed ? `Reopen ${lastClosed.tab.meta.name}` : 'Reopen'; }
-    // The Open key as it is now (Settings › Keyboard can change it).
-    const kbd = box.querySelector<HTMLElement>('[data-nh=open] kbd');
-    if (kbd) kbd.textContent = labelOf('open');
-  }
-  if (tabsReady) renderTabs();
-  if (v) box?.querySelector<HTMLElement>('[data-nh=new]')?.focus();
-}
+// Closing the last handler opens a new one from the template in its place: the editor is always there.
+let starterTab: string | null = null;
 const newTabId = () => Math.random().toString(36).slice(2, 9);
 const activeT = () => tabs.find((x) => x.id === activeTab)!;
 const countsOf = (list: Diagnostic[]) => ({ e: list.filter((d) => d.severity === 'error').length, w: list.filter((d) => d.severity === 'warning').length });
@@ -1522,17 +1743,18 @@ function switchTab(id: string) {
 }
 /** A new, empty tab (the caller fills it, e.g. loadSource). */
 function openTab() {
-  if (noneOpen) { setNoneOpen(false); return; }
   stashTab();
   const x: Tab = { id: newTabId(), meta: { name: 'Untitled handler', kind: 'new' }, base: '', text: '', files: [] };
   tabs.splice(tabs.findIndex((y) => y.id === activeTab) + 1, 0, x);
   switchTab(x.id);
 }
 function closeTab(id: string) {
-  if (noneOpen) return;
-  // The last handler: a blank tab takes its place underneath, and the work area shows that nothing is open.
-  const last = tabs.length < 2;
-  if (last) openTab();
+  // The last handler: a new one from the template takes its place (Undo brings the closed one back).
+  if (tabs.length < 2) {
+    openTab();
+    loadSource(STARTER, { name: 'My Game.js', kind: 'new' });
+    starterTab = activeTab;
+  }
   const i = tabs.findIndex((x) => x.id === id);
   if (id === activeTab) {
     stashTab();
@@ -1543,16 +1765,19 @@ function closeTab(id: string) {
   try { localStorage.removeItem(textKey(gone.id)); localStorage.removeItem(filesKey(gone.id)); } catch { /* ignore */ }
   saveTabs();
   renderTabs();
-  if (last) { setNoneOpen(true); return; }
   notice(`Closed ${gone.meta.name}.`, { kind: 'info', action: { label: 'Undo', run: reopenClosed } });
 }
 function reopenClosed() {
   if (!lastClosed) return;
   const { tab, index } = lastClosed;
   lastClosed = null;
-  // From "nothing open": the blank tab underneath goes.
-  const blank = noneOpen ? activeTab : null;
-  if (blank) setNoneOpen(false);
+  // The template that took the last one's place goes again, if it's untouched: its code, its package files (edits
+  // still in the Files panel too) and no game folder linked.
+  pkgUI?.flush();
+  const st = tabs.find((x) => x.id === starterTab);
+  const on = st?.id === activeTab;
+  const blank = st && tabs.length === 1 && (on ? editor.getValue() : st.text) === STARTER && !(on ? packageFiles : st.files).length && !(on ? gameFolder : st.folder) ? st.id : null;
+  starterTab = null;
   tabs.splice(Math.min(index, tabs.length), 0, tab);
   try { localStorage.setItem(textKey(tab.id), tab.text); } catch { /* ignore */ }
   storeFiles(tab.files, filesKey(tab.id));
@@ -1572,7 +1797,7 @@ function renderTabs() {
   requestAnimationFrame(() => document.querySelector(`#tab-${activeTab}`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
   const dot = (c?: { e: number; w: number }) => (!c ? '' : c.e ? ' e' : c.w ? ' w' : ' ok');
   const state = (c?: { e: number; w: number }) => (!c ? '' : c.e ? `, ${c.e} error${c.e === 1 ? '' : 's'}` : c.w ? `, ${c.w} warning${c.w === 1 ? '' : 's'}` : ', ready for Nucleus');
-  $('#htabs').innerHTML = noneOpen ? '' : tabs.map((x) => {
+  $('#htabs').innerHTML = tabs.map((x) => {
     const on = x.id === activeTab, c = on ? live : x.counts, name = on ? doc.name : x.meta.name, files = on ? packageFiles.length : x.files.length;
     // Changed since it was opened (as VS Code shows it: a dot where the close button is, the × on hover).
     const meta = on ? doc : x.meta;
@@ -1595,23 +1820,9 @@ function initTabs() {
   Object.assign(activeT(), { meta: doc, base: loadedText, files: packageFiles, cm: editor.getDoc() });
   tabsReady = true;
   saveTabs();
-  // Nothing was open last time (and nothing is asked for now): keep it that way.
-  try { if ((firstVisit || localStorage.getItem(NONE_KEY)) && tabs.length === 1 && !editor.getValue().trim() && !INITIAL_HASH) setNoneOpen(true); else localStorage.removeItem(NONE_KEY); } catch { /* ignore */ }
-  // The page guessed before first paint (<head>); when something is open after all, show it.
-  if (!noneOpen) document.documentElement.classList.remove('no-handler');
-  document.getElementById('no-handler')?.addEventListener('click', (e) => {
-    const b = (e.target as HTMLElement).closest<HTMLElement>('[data-nh]');
-    if (!b) return;
-    const what = b.dataset.nh;
-    showHome(false);
-    if (what === 'new') ($('#new-open') as HTMLButtonElement).click();
-    else if (what === 'open') showOpen();
-    else if (what === 'learn') openLearn();
-    else if (what === 'undo') reopenClosed();
-  });
+  // Left from the old "nothing open" page (removed): never read now.
+  try { localStorage.removeItem('nucleus-workbench-none-open'); } catch { /* ignore */ }
   const strip = $('#htabs');
-  strip.addEventListener('click', () => showHome(false), true);
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && homeOver && !document.querySelector('dialog[open]')) { e.preventDefault(); showHome(false); editor.focus(); } });
   const all = document.createElement('button');
   all.type = 'button';
   all.id = 'tab-all';
@@ -1854,7 +2065,7 @@ function commandList(): OpenEntry[] {
     c('Reset panel sizes', '', 'layout resize panels reset width', () => panels.reset()),
     c("What's new", '', 'changelog changes news updates release notes', () => news.open()),
     c('Keyboard shortcuts', '?', 'help keys shortcuts keybindings', () => helpDialog.showModal()),
-    c('Getting started', '', 'new help start intro welcome first', () => ($('#welcome-open') as HTMLButtonElement).click()),
+    c('Take the tour', '', 'tour guided getting started intro welcome first walkthrough help show around', () => tour.take()),
     c('Learn: making your first handler', '', 'tutorial learn lesson course beginner how to start guide teach', () => openLearn()),
     c('Start-up questions: guided or developer, and the layout', '', 'first run beginner developer advanced guided layout rail bar nucli', () => document.dispatchEvent(new CustomEvent('open-firstrun'))),
     c('Help test this beta', '', 'test testing beta feedback checklist tester', () => testGuide.open()),
@@ -1863,7 +2074,8 @@ function commandList(): OpenEntry[] {
     c('Compare: open this handler in the previous version', '', 'previous old version compare before beta', () => void hasPrevious().then((ok) => (ok ? openInPrevious() : notice('The previous version is only on the published site (GitHub Pages).', { kind: 'info' })))),
     c('Save into Nucleus Co-op (its handlers folder)', 'Ctrl+Alt+S', 'save install nucleus handlers folder copy into', () => void saveToNucleus()),
     c("Link your game's folder (check paths against it)", '', 'game folder install directory exe path link pick', () => void pickFolder()),
-    c('Send feedback or report a problem', '', 'feedback bug report issue github wrong problem', () => openReport(feedbackUrl())),
+    c('Report a problem…', '', 'send feedback bug report issue github wrong problem broken error', () => openReportFlow({ kind: 'problem', handlerCode: editor.getValue() })),
+    c('Request a feature… (I want to do…)', '', 'feature request idea suggest wish want missing enhancement', () => openReportFlow({ kind: 'feature' })),
     c('About these tools (start page)', '', 'start page about install vscode extension download home site', () => ((document.querySelector('a.start-link') as HTMLAnchorElement).click())),
     c('Show or hide the dev bar', 'Ctrl+Alt+D', 'dev developer contrast colour', () => devBar.toggle()),
   ];
@@ -2127,6 +2339,8 @@ $('#open-q').addEventListener('keydown', (e: KeyboardEvent) => {
   else if (e.key === 'Home' && browsing) { e.preventDefault(); setActive(0); }
   else if (e.key === 'End' && browsing) { e.preventDefault(); setActive(shownEntries.length - 1); }
   else if (e.key === 'Enter') { e.preventDefault(); runEntry(activeEntry); }
+  // A search field's first Escape only clears it (the ">" too): one Escape closes, as in VS Code.
+  else if (e.key === 'Escape') { e.preventDefault(); openDialog.close(); }
 });
 openDialog.addEventListener('click', (e) => {
   if (e.target === openDialog) openDialog.close(); // click on the backdrop
@@ -2246,6 +2460,8 @@ const lines = initLines({
 const tips = initTips({
   editor,
   toast,
+  // Advanced mode gets the tips for experienced authors, Guided the newcomer ones (both get the rest).
+  audience: () => (mode === 'dev' ? 'developer' : 'newcomer'),
   actions: {
     lines: () => lines.show(),
     new: () => ($('#new-open') as HTMLButtonElement).click(),
@@ -2279,7 +2495,35 @@ const settings = initSettings({
   toast,
 });
 const news = initNews();
-const panels = initPanels({ refresh: () => editor.refresh(), toast });
+const panels = initPanels({ refresh: () => editor.refresh(), toast, menu: (edge, at) => edgeMenu(edge, at) });
+/** The right-click menu of a resize handle (panels-ui.ts): reset it, move or hide its panel, the layout. Opens where
+ *  the pointer is, from a small anchor (menus.ts places a menu by its anchor). */
+function edgeMenu(edge: PanelEdge, at: { x: number; y: number }) {
+  let anchor = document.getElementById('edge-anchor');
+  if (!anchor) {
+    anchor = document.createElement('span');
+    anchor.id = 'edge-anchor';
+    anchor.style.cssText = 'position:fixed;width:1px;height:1px;pointer-events:none';
+    document.body.append(anchor);
+  }
+  anchor.style.left = `${at.x}px`;
+  anchor.style.top = `${at.y}px`;
+  const side = (w: 'files' | 'lines') => (panels.side(w) === 'left' ? 'right' : 'left');
+  const items: MenuItem[] = edge === 'main'
+    ? [{ label: 'Reset to the default split', hint: 'Double-click', run: () => panels.resetOne('main') }]
+    : [
+        { label: `Reset the ${edge === 'lines' ? 'Lines' : 'Files'} width`, hint: 'Double-click', run: () => panels.resetOne(edge) },
+        { label: `Move ${edge === 'lines' ? 'Lines' : 'Files'} to the ${side(edge)}`, run: () => { panels.flip(edge); requestAnimationFrame(() => editor.refresh()); } },
+        { label: `Hide ${edge === 'lines' ? 'Lines' : 'Files'}`, hint: edge === 'lines' ? keyLabel(binding('lines')) : undefined, run: () => (edge === 'lines' ? lines.toggle() : ($('#files-toggle') as HTMLButtonElement).click()) },
+      ];
+  openMenu(anchor, 'Layout', [
+    ...items,
+    { kind: 'separator', label: '' },
+    { label: 'Reset all panel sizes', run: () => panels.reset() },
+    { label: 'Tools in a side rail', checked: layout() === 'rail', run: () => setLayout(layout() === 'rail' ? 'bar' : 'rail') },
+    { label: 'Layout settings…', run: () => settings.open('layout') },
+  ], 'right', document.getElementById(`split-${edge}`) ?? undefined); // focus back to the edge, not the position marker
+}
 $('#set-reset-sizes').addEventListener('click', () => (panels.reset(), confirmOn($('#set-reset-sizes'), 'Back to defaults ✓', 'Panel sizes are back to their defaults.')));
 const moreDialog = $('#more-dialog') as HTMLDialogElement;
 $('#more-open').addEventListener('click', () => moreDialog.showModal());
@@ -2305,6 +2549,8 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
   // The workbench's shortcuts (keybindings.ts), whatever they're set to.
   const id = appActionFor(e);
   if (!id) return;
+  // F6 bound to an editor command too (Settings › Keyboard): the editor already ran it, so don't also move pane.
+  if ((id === 'nextPane' || id === 'prevPane') && inCode && e.defaultPrevented) return;
   e.preventDefault();
   if (id === 'pending') return;
   const run: Record<string, () => void> = {
@@ -2321,9 +2567,69 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
     format: () => formatDocument(),
     nextProblem: () => stepProblem(1),
     prevProblem: () => stepProblem(-1),
+    nextPane: () => cyclePane(1),
+    prevPane: () => cyclePane(-1),
+    goToCheck: () => goToCheck(),
   };
   run[id]?.();
 });
+
+// F6 / Shift+F6, as in VS Code: the header, the Files panel, the code (or Form/Blocks), Lines and the results, in turn.
+const FOCUSABLE = 'button:not([disabled]), a[href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
+function cyclePane(dir: 1 | -1) {
+  const panes = ['header', '#files-panel', '.main > .pane:not(.side)', '#lines', '.main > .pane.side']
+    .map((sel) => document.querySelector<HTMLElement>(sel))
+    .filter((p): p is HTMLElement => !!p && !p.hidden && p.offsetParent !== null && p.getClientRects().length > 0);
+  if (!panes.length) return;
+  // The innermost pane with the focus (Lines can sit inside the code pane, which comes first in the order).
+  const holding = panes.filter((p) => p.contains(document.activeElement));
+  const inner = holding.find((p) => !holding.some((q) => q !== p && p.contains(q)));
+  const at = inner ? panes.indexOf(inner) : -1;
+  const next = panes[at < 0 ? 0 : (at + dir + panes.length) % panes.length];
+  // The code: handler.js's editor, or the package file open in its place (its own editor or its card).
+  const shown = (el: HTMLElement) => el.offsetParent !== null && el.getClientRects().length > 0;
+  if (next.matches('.pane:not(.side)') && viewMode === 'code' && shown(editor.getWrapperElement())) editor.focus();
+  else if (next.matches('.pane:not(.side)') && viewMode === 'code') [...next.querySelectorAll<HTMLElement>(`.CodeMirror textarea, ${FOCUSABLE}`)].find(shown)?.focus();
+  else if (next.matches('.pane.side')) (next.querySelector<HTMLElement>('[role=tab][aria-selected=true]') ?? [...next.querySelectorAll<HTMLElement>(FOCUSABLE)].find(shown))?.focus();
+  else {
+    // Form or Blocks: a control of the view that shows (the pane's first match can be a hidden one).
+    const view = next.matches('.pane:not(.side)') ? next.querySelector<HTMLElement>(viewMode === 'form' ? '#formview' : '#blocksview') : null;
+    [...(view ?? next).querySelectorAll<HTMLElement>(FOCUSABLE)].find(shown)?.focus();
+  }
+  announce(next.getAttribute('aria-label') ?? (next.tagName === 'HEADER' ? 'Header' : 'Panel'));
+}
+/** Ctrl+Shift+M (VS Code's Problems) and the "Skip to Check" link: the problem list, its first problem focused. */
+function goToCheck() {
+  selectTab('problems');
+  // The first problem's line button (a list item can't take the focus), else the Check tab.
+  requestAnimationFrame(() => (document.querySelector<HTMLElement>('#problems .problem .loc') ?? document.querySelector<HTMLElement>('[data-tab=problems]'))?.focus());
+}
+document.querySelectorAll<HTMLElement>('[data-skip]').forEach((a) => a.addEventListener('click', (e) => {
+  e.preventDefault();
+  if (a.dataset.skip === 'check') goToCheck();
+  else if (viewMode === 'code') editor.focus();
+  else {
+    const pane = document.querySelector<HTMLElement>('.main > .pane:not(.side)');
+    const view = pane?.querySelector<HTMLElement>(viewMode === 'form' ? '#formview' : '#blocksview') ?? pane;
+    [...(view?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])].find((el) => el.offsetParent !== null && el.getClientRects().length > 0)?.focus();
+  }
+}));
+// Double Shift, as in JetBrains: Open (examples, Hub handlers, commands). Settings › Keyboard shortcuts turns it off.
+{
+  const KEY = 'nucleus-workbench-double-shift';
+  let last = 0;
+  let clean = false;
+  document.addEventListener('keydown', (e) => { clean = e.key === 'Shift' && !e.repeat && !e.ctrlKey && !e.altKey && !e.metaKey; if (e.key !== 'Shift') last = 0; }, true);
+  document.addEventListener('keyup', (e) => {
+    if (e.key !== 'Shift' || !clean) return;
+    let on = true;
+    try { on = localStorage.getItem(KEY) !== '0'; } catch { /* default */ }
+    if (!on || (document.querySelector('dialog[open]') && !openDialog.open)) return void (last = 0);
+    const now = Date.now();
+    if (now - last < 400) { last = 0; togglePalette(false); }
+    else last = now;
+  }, true);
+}
 /** The shortcut list (?): from keybindings.ts, so it shows the keys as they're set now. */
 function renderHelpKeys() {
   const body = document.querySelector('#help-dialog table.keys tbody');
@@ -2396,12 +2702,29 @@ function openLearn() {
 // two-way with the code (the code stays the one source).
 type ViewMode = 'code' | 'form' | 'blocks';
 const VIEW_KEY = 'nucleus-workbench-view';
-let viewMode: ViewMode = (() => { try { const v = localStorage.getItem(VIEW_KEY); return v === 'form' || v === 'blocks' ? v : 'code'; } catch { return 'code'; } })();
+// Form and Blocks are hidden for now (visual.ts: ?visual=1 brings them back): a saved Form or Blocks view opens Code,
+// and says so once.
+let viewMode: ViewMode = (() => {
+  try {
+    const v = localStorage.getItem(VIEW_KEY);
+    if ((v === 'form' || v === 'blocks') && !VISUAL) {
+      localStorage.setItem(VIEW_KEY, 'code');
+      setTimeout(() => notice(VISUAL_HIDDEN_NOTE, { kind: 'info' }), 0);
+      return 'code';
+    }
+    return v === 'form' || v === 'blocks' ? v : 'code';
+  } catch { return 'code'; }
+})();
+document.documentElement.classList.toggle('visual', VISUAL);
+// Only Code is left without them: no switcher at all.
+if (!VISUAL) document.querySelector('.view-switch')?.remove();
 let formView: FormView | null = null;
 let blocksView: BlocksView | null = null;
 const viewHost = (origin: string) => ({
   getText: () => editor.getValue(),
-  applyEdits: (edits: TextEdit[]) => editor.operation(() => { for (const e of [...edits].sort((a, z) => z.start - a.start)) editor.replaceRange(e.text, editor.posFromIndex(e.start), editor.posFromIndex(e.end), origin); }),
+  // CodeMirror merges changes of the same "+" origin made within a second into one undo step. A view that says what
+  // was typed in (`typing`: a field, or '' for an action) gets merges per field only; actions get no "+".
+  applyEdits: (edits: TextEdit[], typing?: string) => editor.operation(() => { for (const e of [...edits].sort((a, z) => z.start - a.start)) editor.replaceRange(e.text, editor.posFromIndex(e.start), editor.posFromIndex(e.end), typing === undefined ? origin : typing ? `${origin}:${typing}` : origin.replace(/^\+/, '')); }),
   jumpTo: (offset: number) => { setViewMode('code'); const pos = editor.posFromIndex(offset); editor.setCursor(pos); editor.scrollIntoView(pos, 80); editor.focus(); },
   diagnostics: () => current,
   diagnosticsText: () => currentText,
@@ -2409,6 +2732,7 @@ const viewHost = (origin: string) => ({
   density: checkDensity,
 });
 function setViewMode(m: ViewMode) {
+  if (!VISUAL && m !== 'code') m = 'code';
   viewMode = m;
   pkgUI?.deselect();
   try { localStorage.setItem(VIEW_KEY, m); } catch { /* ignore */ }
@@ -2430,6 +2754,20 @@ function setViewMode(m: ViewMode) {
 }
 document.querySelectorAll<HTMLButtonElement>('[data-view-mode]').forEach((b) => b.addEventListener('click', () => setViewMode(b.dataset.viewMode as ViewMode)));
 editor.on('swapDoc', () => { formView?.refresh(); blocksView?.refresh(); });
+// Ctrl+Z / Ctrl+Y (Ctrl+Shift+Z, Cmd on a Mac) in Blocks undo and redo the handler's code, as in the Code view. A
+// small code field keeps its own undo while it has changes of its own.
+$('#blocksview').addEventListener('keydown', (ev) => {
+  if (!(ev.ctrlKey || ev.metaKey) || ev.altKey) return;
+  const k = ev.key.toLowerCase();
+  const redo = k === 'y' && !ev.shiftKey || k === 'z' && ev.shiftKey;
+  if (k !== 'z' && !redo) return;
+  const cm = (ev.target as HTMLElement).closest?.('.CodeMirror') as (HTMLElement & { CodeMirror?: { historySize(): { undo: number; redo: number } } }) | null;
+  if (cm?.CodeMirror && cm.CodeMirror.historySize()[redo ? 'redo' : 'undo'] > 0) return;
+  ev.preventDefault();
+  ev.stopPropagation();
+  if (redo) editor.redo(); else editor.undo();
+  blocksView?.refresh({ undo: true });
+}, true);
 setViewMode(viewMode);
 pkgUI = initPackageUI({
   editor,
@@ -2462,19 +2800,22 @@ const addItems = (): MenuItem[] => [
   { label: 'Examples and Hub handlers', hint: 'Ctrl K', run: () => showOpen() },
   ...(lastClosed ? [{ kind: 'separator' as const, label: '' }, { label: `Reopen ${lastClosed.tab.meta.name}`, run: reopenClosed }] : []),
 ];
+// The Menu's icons (aria-hidden; the labels are the names): one set (icons.ts, Lucide), the shared report icons for reports.
+const MI = (name: IconName) => icon(name, 16);
 const appItems = (): MenuItem[] => [
-  { label: 'Advanced mode', checked: mode === 'dev', run: () => ($('#advanced') as HTMLInputElement).click() },
-  { label: 'Tools in a side rail', checked: layout() === 'rail', run: () => setLayout(layout() === 'rail' ? 'bar' : 'rail') },
+  { label: 'Advanced mode', icon: MI('wrench'), checked: mode === 'dev', run: () => ($('#advanced') as HTMLInputElement).click() },
+  { label: 'Tools in a side rail', icon: MI('panel-left'), checked: layout() === 'rail', run: () => setLayout(layout() === 'rail' ? 'bar' : 'rail') },
   { kind: 'separator', label: '' },
-  { label: 'Settings…', hint: 'Ctrl ,', run: () => settings.open() },
-  { label: 'Keyboard shortcuts', hint: '?', run: () => helpDialog.showModal() },
-  { label: "What's new", run: () => ($('#news-open-2') as HTMLButtonElement).click() },
-  { label: 'Getting started', run: () => ($('#welcome-open') as HTMLButtonElement).click() },
-  { label: 'Send feedback…', run: () => openReport(feedbackUrl()) },
+  { label: 'Settings…', icon: MI('settings'), hint: 'Ctrl ,', run: () => settings.open() },
+  { label: 'Keyboard shortcuts', icon: MI('keyboard'), hint: '?', run: () => helpDialog.showModal() },
+  { label: "What's new", icon: MI('sparkles'), run: () => ($('#news-open-2') as HTMLButtonElement).click() },
+  { label: 'Take the tour', icon: MI('compass'), run: () => tour.take() },
+  { label: 'Report a problem…', icon: reportIcon('flag'), run: () => openReportFlow({ kind: 'problem', handlerCode: editor.getValue() }) },
+  { label: 'Request a feature…', icon: reportIcon('idea'), run: () => openReportFlow({ kind: 'feature' }) },
   { kind: 'separator', label: '' },
-  { label: '⌂ Home: about these tools', run: () => (location.href = homeHref()) },
-  { label: '📘 Learn: making your first handler', run: () => openLearn() },
-  ...(document.getElementById('test-open') ? [{ label: '🧪 Help test this beta', run: () => testGuide.open() }] : []),
+  { label: 'Home: about these tools', icon: MI('house'), run: () => (location.href = homeHref()) },
+  { label: 'Learn: making your first handler', icon: MI('book-open'), run: () => openLearn() },
+  ...(document.getElementById('test-open') ? [{ label: 'Help test this beta', icon: MI('flask-conical'), run: () => testGuide.open() }] : []),
 ];
 $('#tab-add').addEventListener('click', () => openMenu($('#tab-add'), 'New or open', addItems()));
 $('#app-menu-open').addEventListener('click', () => openMenu($('#app-menu-open'), 'Menu', appItems()));
@@ -2482,7 +2823,7 @@ $('#code-menu-phone').addEventListener('click', () => openMenu($('#code-menu-pho
 $('#doc-switch').addEventListener('click', () => openMenu($('#doc-switch'), 'Open handlers', [
   { kind: 'heading', label: 'Open handlers' },
   ...tabs.map((x) => ({ label: x.id === activeTab ? doc.name : x.meta.name, checked: x.id === activeTab, run: () => switchTab(x.id) })),
-  ...(!noneOpen ? [{ label: `Close ${doc.name}`, run: () => closeTab(activeTab) }] : []),
+  { label: `Close ${doc.name}`, run: () => closeTab(activeTab) },
   { kind: 'separator', label: '' },
   ...addItems(),
 ]));
@@ -2531,7 +2872,7 @@ document.addEventListener('keydown', (e) => {
     e.preventDefault();
     const i = tabs.findIndex((x) => x.id === activeTab);
     switchTab(tabs[(i + (e.code === 'BracketRight' ? 1 : -1) + tabs.length) % tabs.length].id);
-  } else if (e.altKey && !e.ctrlKey && e.code === 'KeyW' && !noneOpen) {
+  } else if (e.altKey && !e.ctrlKey && e.code === 'KeyW') {
     e.preventDefault();
     closeTab(activeTab);
   }
@@ -2560,7 +2901,9 @@ initKeyHints([
 // Feedback (feedback.ts): votes on tips and Claude's docs, anonymous counts. A 👎 on a doc points at the issue link.
 countVisit(); // this page view, anonymous; the visit's first page also gives the site and ?ref= it came from (when sharing counts is on)
 wireVotes((kind, _id, v, el) => {
-  if (kind === 'doc' && v === 'down') el.closest('.dc-check')?.querySelector<HTMLElement>('a')?.focus();
+  // The link that fits the vote shows now (doccard.ts); after a 👎 the keyboard goes to "Tell us what's wrong".
+  syncVoteLinks(el.closest('.dc-check'));
+  if ((kind === 'doc' || kind === 'practice') && v === 'down') el.closest('.dc-check')?.querySelector<HTMLElement>('a.dc-wrong')?.focus();
   announce(v ? (v === 'up' ? 'Thanks: counted as helpful.' : 'Thanks: counted as not helpful.') : 'Vote taken back.');
 });
 {
@@ -2580,7 +2923,7 @@ wireVotes((kind, _id, v, el) => {
 {
   const box = $('#set-credit') as HTMLInputElement;
   box.checked = creditOn();
-  box.addEventListener('change', () => { try { box.checked ? localStorage.removeItem(CREDIT_OFF) : localStorage.setItem(CREDIT_OFF, '1'); } catch { /* not kept */ } });
+  box.addEventListener('change', () => { try { localStorage.setItem(CREDIT_OFF, box.checked ? '0' : '1'); } catch { /* not kept */ } });
 }
 
 $('#set-build').textContent = `Build ${BUILD.bench ?? '?'}`;
@@ -2605,9 +2948,10 @@ $('#set-import-file').addEventListener('change', async () => {
   if (!file) return;
   const msg = $('#set-io-msg');
   try {
-    const n = importSettings(await file.text());
-    msg.textContent = n ? `Imported ${n} setting${n === 1 ? '' : 's'}. Reloading to apply them…` : 'Nothing to import: the file has no settings this version knows.';
-    if (n) setTimeout(() => location.reload(), 900);
+    const { set, reset } = importSettings(await file.text());
+    const parts = [set ? `Imported ${set} setting${set === 1 ? '' : 's'}` : '', reset ? `put ${reset} back to the default, as in the file` : ''].filter(Boolean).join(' and ');
+    msg.textContent = parts ? `${parts[0].toUpperCase()}${parts.slice(1)}. Reloading to apply them…` : 'Nothing to change: your settings are at their defaults, as in the file.';
+    if (set || reset) setTimeout(() => location.reload(), 900);
   } catch (e: any) {
     msg.textContent = e?.message ?? "Couldn't read that file.";
   }
@@ -2645,6 +2989,14 @@ function setMode(m: Mode) {
   if (m === 'simple' && active === 'probes') selectTab('problems');
   (editor as any).performLint();
   if (active === 'simulate') runSim();
+  // The credit's default follows the mode (on in Guided); a choice of one's own stays.
+  const credit = document.querySelector<HTMLInputElement>('#set-credit');
+  if (credit) credit.checked = creditOn();
+  try {
+    tips.refresh();
+  } catch {
+    /* the tip bar isn't set up yet (page start) */
+  }
 }
 const advanced = $('#advanced') as HTMLInputElement;
 advanced.checked = mode === 'dev';
@@ -2681,19 +3033,19 @@ const handlerFileName = () => saveFileName(editor.getValue(), doc.name);
 $('#save').addEventListener('click', () => void saveAs());
 
 // ---------------------------------------------------------------------------
-// Start-up: #links, first-visit welcome, last tab
+// Start-up: #links, the first-visit questions and tour, last tab
 
 // What a #link opens is links.ts (pure, tested in tools/links.test.mjs); here it's done. A moved link opens the new
 // place, puts the new address in the address bar and says so once.
 function followMoved(h: string): string {
-  const { to, why } = followMovedLink(h);
+  const { to, why, gone } = followMovedLink(h);
   if (why === undefined) return h;
   try {
     history.replaceState(history.state, '', `${location.pathname}${location.search}#${to}`);
   } catch {
     /* ignore */
   }
-  setTimeout(() => notice(movedNote(why), { kind: 'info' }), 0);
+  setTimeout(() => notice(movedNote(why, gone), { kind: 'info' }), 0);
   return to;
 }
 const linkCatalog = (): LinkCatalog => ({
@@ -2735,6 +3087,15 @@ function openFromHash(): boolean {
       // #learn: the lessons moved to their own page (learn/); old links lead there.
       location.replace(learnUrl(t.lesson));
       return true;
+    case 'tour':
+      // #tour: the workbench with the tour started (as Take the tour).
+      dropHash();
+      setTimeout(() => tour.take(), 300);
+      return false;
+    case 'home':
+      // #home, #start: the workbench opens as usual (#welcome, #getting-started lead to the tour: MOVED_LINKS).
+      dropHash();
+      return false;
     case 'dev':
       // #dev shows the dev bar for this page load (like ?env=dev in lonnsinnplassering) and opens nothing.
       devBar.show();
@@ -2763,6 +3124,7 @@ window.addEventListener('hashchange', () => {
   if (location.hash.slice(1) !== doc.hash && openFromHash() && narrow()) setView('code');
 });
 
+// Set by the old welcome page: someone who has used the workbench before (no first-visit questions or tour).
 const WELCOME_KEY = 'nucleus-workbench-welcomed';
 let welcomed = false;
 try {
@@ -2773,9 +3135,60 @@ try {
 // What feedback forms say about the open handler: its name and where it came from, a link only to an unedited example
 // or Hub handler, never the code itself.
 setReportState(() => ({
-  handler: { name: doc.name, kind: doc.kind === 'draft' || doc.kind === 'new' ? 'own code, not included' : doc.kind, link: doc.hash && editor.getValue() === loadedText ? `${location.origin}${location.pathname}#${doc.hash}` : undefined },
+  handler: {
+    name: doc.name,
+    kind: doc.kind === 'draft' || doc.kind === 'new' ? 'own code, not included' : doc.kind,
+    // A #share-… link carries the code itself: never in a report (only named links such as #hub-… are sent).
+    link: doc.hash && !doc.hash.startsWith(SHARE_PREFIX) && editor.getValue() === loadedText ? `${location.origin}${location.pathname}#${doc.hash}` : undefined,
+    // From the saved #hub-<id> and version, not the catalogue index (a newer catalogue may have moved it).
+    ...(doc.kind === 'hub' && doc.hash?.startsWith('hub-') ? { hubId: doc.hash.slice(4), hubVersion: doc.published?.version !== undefined ? String(doc.published.version) : undefined } : {}),
+  },
   view: viewMode,
 }));
+// The guided tour of the workbench (tour.ts). Each step points at the first of its parts that's shown in this layout
+// (bar or rail, wide or phone); a step with none shown is left out. Parts that are always on screen (the code, Check)
+// are "look" steps; parts that open something are done by doing it: click the part (or press its key), see what it
+// opens, then Next. The tour puts back what it opened when the step is left. Nothing in it saves a file or changes a
+// setting: Save opens the Save as list, the menu step only opens the menu.
+const visibleTab = () => document.querySelector<HTMLElement>('.pane-head [role=tab][aria-selected=true]')?.dataset.tab ?? 'problems';
+/** A tour step's toggle (Lines, Files): note its state at the start, put it back when the step is left. */
+const tourToggle = (isOn: () => boolean, flip: () => void) => {
+  let was = false;
+  return { start: () => { was = isOn(); }, undo: () => { if (isOn() !== was) flip(); } };
+};
+const filesOn = () => !$('#files-panel').hidden;
+const tour = initTour({
+  narrow,
+  getView: () => ($('#main').dataset.view === 'code' ? 'code' : 'results'),
+  setView,
+  getTab: visibleTab,
+  selectTab,
+  // Finishing the tour ticks its task in Help test this beta.
+  finished: () => { if (BETA && !testDone('tour')) setTestDone('tour', true); },
+  steps: [
+    { title: 'Your handlers', text: 'Each open handler has a tab. The + starts a new one or opens yours: a file, an example or a Hub handler.', targets: ['.htabs-wrap', '.rail [data-rail=add]', '#doc-switch'], view: 'code',
+      act: { text: 'Click + to see what you can open.', click: '#tab-add, .rail [data-rail=add], #doc-switch', show: '.app-menu', undo: () => closeMenu() } },
+    // Always on screen: look steps.
+    { title: 'The code', text: `Write the handler here. Squiggles mark problems; hover a name for its docs. \`${labelOf('suggest')}\` suggests names, \`Alt+Enter\` fixes.`, targets: ['#editor', '#formview', '#blocksview'], view: 'code' },
+    { title: 'Check', text: 'What Nucleus would reject or get wrong, each with why and a fix. It checks as you type. `F8` jumps to the next problem.', targets: ['.pane.side', '.pane-head [data-tab=problems]'], view: 'results', tab: 'problems' },
+    { title: 'Try it', text: 'Runs the handler once per player, as Nucleus would, and shows what each one gets.', targets: ['.pane-head [data-tab=simulate]'], view: 'results', tab: 'simulate', act: { text: 'Click Try it to run the handler.', click: '.pane-head [data-tab=simulate]', show: '.pane.side' } },
+    { title: 'Docs', text: 'Every option and function a handler can use, searchable. Insert into handler puts an example in your code.', targets: ['.pane-head [data-tab=api]'], view: 'results', tab: 'api', act: { text: 'Click Docs to open it.', click: '.pane-head [data-tab=api]', show: '.pane.side' } },
+    { title: 'Lines', text: 'Every name a handler can use, in a list beside the code. Click one to insert it. `Ctrl+B` opens and closes it.', targets: ['#lines-toggle', '.rail [data-rail=lines]'], view: 'code',
+      act: { text: 'Click Lines to open it.', click: '#lines-toggle, .rail [data-rail=lines]', key: (e) => stepOf(e) === binding('lines'), run: () => lines.toggle(), show: '#lines', ...tourToggle(() => lines.isOpen(), () => lines.toggle()) } },
+    { title: 'Files', text: "The files that go with the handler. Your game on this PC links the game's folder, so Check compares paths with the real files.", targets: ['#files-toggle'], view: 'code',
+      act: { text: 'Click Files to open it.', click: '#files-toggle', show: '#files-panel', ...tourToggle(filesOn, () => ($('#files-toggle') as HTMLButtonElement).click()) } },
+    // The arrow (Save as), not Save itself: the tour never downloads a file. Where there's no arrow (the side rail,
+    // a phone), a look-only step.
+    { title: 'Save', text: "Saves the handler for Nucleus: as a .zip, .js or .nc file, or straight into Nucleus Co-op's handlers folder. `Ctrl+S` saves.", targets: ['#save-more', '.rail [data-rail=save]', '#code-menu-phone'], view: 'code',
+      act: { text: 'Click the arrow to see the ways to save.', click: '#save-more', show: '.app-menu', undo: () => closeMenu() } },
+    { title: 'Settings and help', text: "Settings, Advanced mode, keyboard shortcuts and What's new. Take the tour is here too, to see this again.", targets: ['#app-menu-open', '.rail [data-rail=menu]'],
+      act: { text: 'Click the menu to open it.', click: '#app-menu-open, .rail [data-rail=menu]', show: '.app-menu', undo: () => closeMenu() } },
+    // During the beta: how to help, and the guide one click away (its "Take the tour" task is ticked by Finish).
+    ...(BETA ? [{ title: 'Help test the beta', text: "Try new things and tell us what works and what doesn't. The guide picks tasks that fit you, each with a Report button; a tick marks what you've tried.", targets: ['.rail [data-rail=test]', '#test-open'],
+      act: { text: 'Click Help test this beta to open the guide.', click: '.rail [data-rail=test], #test-open', end: true },
+      button: { label: '🧪 Open the guide', run: () => testGuide.open() } }] : []),
+  ],
+});
 // The very first visit (not someone who has used the workbench before): Nucli's two questions.
 const firstRun = initFirstRun($('#firstrun-dialog') as HTMLDialogElement, {
   mode: () => mode,
@@ -2789,33 +3202,28 @@ const firstRun = initFirstRun($('#firstrun-dialog') as HTMLDialogElement, {
       use(`firstrun/${exp ?? 'skipped'}`);
       if (exp && lay) use(`firstrun/layout-${lay}`);
     }
-    if (exp === 'developer') {
-      // "I write code" starts compact: no tip bar (a click away in Settings), and a home page without the intro.
-      tips.set(false);
-      try {
-        localStorage.setItem(WELCOME_KEY, '1');
-      } catch {
-        /* ignore */
-      }
-      editor.refresh();
-    }
-    if (exp) announce(exp === 'developer' ? 'Advanced mode is on: tips are off (Settings › Tips and help).' : 'Guided: tips and plain words. Getting started, at the bottom, shows the way round.');
+    // "I write code": tips stay on, but only the ones for experienced authors show in Advanced mode (tips.ts: Tip.for).
+    if (exp === 'developer') editor.refresh();
+    if (exp) announce(exp === 'developer' ? 'Advanced mode is on: tips are the ones for people who write code (Settings › Tips and help turns them off).' : 'Guided: tips and plain words. Take the tour, at the bottom, shows the way round.');
     editor.focus();
+    // The first visit's questions answered (or skipped): the tour, once.
+    if (first) tour.auto();
   },
 });
-// A new visitor: during the beta, the tester questions first (they also pick guided or Advanced); else Nucli's.
+// A new visitor: during the beta, the tester questions first (they also pick guided or Advanced); else Nucli's. Then
+// the tour, once (tour.ts: never for an automated browser, never after Skip or Finish). A link to something specific
+// (a shared handler, Docs, an example) opens that instead: no questions, no tour.
 if (!welcomed && !firstRunDone() && !INITIAL_HASH) {
-  if (testGuide.needed()) testGuide.open(); else firstRun.open();
+  if (testGuide.needed()) {
+    testGuide.open();
+    $('#test-dialog').addEventListener('close', () => setTimeout(() => tour.auto(), 0), { once: true });
+  } else firstRun.open();
 }
 $('#fr-again').addEventListener('click', () => { ($('#settings-dialog') as HTMLDialogElement).close(); firstRun.open(); });
-// Getting started: the home page (what a handler is, the four steps, New / Open / Learn), over the open handlers.
-$('#welcome-open').addEventListener('click', () => {
-  if (noneOpen) {
-    const box = $('#no-handler');
-    box.classList.remove('welcome-in'); void box.offsetWidth; box.classList.add('welcome-in');
-    box.querySelector<HTMLElement>('[data-nh=new]')?.focus();
-  } else showHome(true);
-});
+// Take the tour: the footer, the ? dialog, Settings (and Menu and the command palette above).
+$('#tour-open').addEventListener('click', () => tour.take());
+$('#help-tour').addEventListener('click', () => { helpDialog.close(); tour.take(); });
+$('#set-tour').addEventListener('click', () => { ($('#settings-dialog') as HTMLDialogElement).close(); tour.take(); });
 
 let startTab = 'problems';
 try {

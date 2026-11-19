@@ -35,8 +35,11 @@ export const ACTIONS: Action[] = [
   { id: 'saveNucleus', label: "Save into Nucleus Co-op's handlers folder", group: 'Workbench', keys: 'Ctrl+Alt+S', where: 'app' },
   { id: 'lines', label: 'Show or hide the Lines list', group: 'Workbench', keys: 'Ctrl+B', where: 'app' },
   { id: 'settings', label: 'Settings', group: 'Workbench', keys: 'Ctrl+,', where: 'app' },
+  { id: 'nextPane', label: 'Next part of the page (header, files, code, results)', group: 'Workbench', keys: 'F6', where: 'app' },
+  { id: 'prevPane', label: 'Previous part of the page', group: 'Workbench', keys: 'Shift+F6', where: 'app' },
   { id: 'wordWrap', label: 'Word wrap: wrap long lines or scroll sideways', group: 'Workbench', keys: 'Alt+Z', where: 'app' },
   { id: 'format', label: 'Format the code', group: 'Problems', keys: 'Shift+Alt+F', where: 'app' },
+  { id: 'goToCheck', label: 'Go to Check (the problem list)', group: 'Problems', keys: 'Ctrl+Shift+M', where: 'app' },
   { id: 'nextProblem', label: 'Next problem', group: 'Problems', keys: 'F8', where: 'app' },
   { id: 'prevProblem', label: 'Previous problem', group: 'Problems', keys: 'Shift+F8', where: 'app' },
   // In the code
@@ -59,6 +62,7 @@ export const ACTIONS: Action[] = [
   { id: 'scrollUp', label: 'Scroll up a line', group: 'Find and navigate', keys: 'Ctrl+Up', mac: 'Ctrl+PageUp', where: 'code' },
   { id: 'scrollDown', label: 'Scroll down a line', group: 'Find and navigate', keys: 'Ctrl+Down', mac: 'Ctrl+PageDown', where: 'code' },
   { id: 'suggest', label: 'Suggestions', group: 'Editing', keys: 'Ctrl+Space', mac: 'Ctrl+Space', where: 'code' },
+  { id: 'parameterHints', label: 'Parameter hints (inside a call)', group: 'Editing', keys: 'Ctrl+Shift+Space', mac: 'Cmd+Shift+Space', where: 'code' },
   { id: 'comment', label: 'Comment or uncomment the line', group: 'Editing', keys: 'Ctrl+/', where: 'code', cm: 'toggleCommentIndented' },
   { id: 'addComment', label: 'Add a line comment', group: 'Editing', keys: 'Ctrl+K Ctrl+C', where: 'code' },
   { id: 'removeComment', label: 'Remove a line comment', group: 'Editing', keys: 'Ctrl+K Ctrl+U', where: 'code' },
@@ -183,12 +187,15 @@ export function appActionFor(e: KeyboardEvent): string | 'pending' | undefined {
   const now = Date.now();
   const first = pending && now - pending.at < 2000 ? pending.step : null;
   pending = null;
-  for (const a of ACTIONS) {
+  // A key someone set themselves wins over a default that uses it too (a default added later, like F6 for Next pane),
+  // also as the first step of their own two-step binding (F6 A): then a default's F6 waits for the second key.
+  const ownPrefix = !first && ACTIONS.some((a) => a.where === 'app' && isCustom(a.id) && steps(binding(a.id)).length === 2 && steps(binding(a.id))[0] === s);
+  for (const a of [...ACTIONS].sort((x, y) => Number(isCustom(y.id)) - Number(isCustom(x.id)))) {
     if (a.where !== 'app') continue;
     const b = steps(binding(a.id));
     if (!b.length) continue;
     if (first && b.length === 2 && b[0] === first && b[1] === s) return a.id;
-    if (!first && b.length === 1 && b[0] === s) return a.id;
+    if (!first && b.length === 1 && b[0] === s && (isCustom(a.id) || !ownPrefix)) return a.id;
   }
   if (!first && ACTIONS.some((a) => a.where === 'app' && steps(binding(a.id)).length === 2 && steps(binding(a.id))[0] === s)) {
     pending = { step: s, at: now };

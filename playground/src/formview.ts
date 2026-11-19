@@ -19,14 +19,18 @@ import { allLines, matches, USAGE_TOTAL, type Line } from './lines';
 import { memberCard } from './doccard';
 import { CodeField, codeFieldOf } from './codefield';
 import { hlCode } from './codehl';
+import { keysText } from './kbd';
 import { fit, growField } from './growfield';
+import { optionLabel, UNIT_TEXT } from './formlabels';
 
 export interface FormHost {
   /** The handler text, as it is now. */
   getText(): string;
   /** Apply edits in the coordinates of the current text. They never overlap and are sorted by start; apply
-   *  them as one change (from the last to the first, or with CodeMirror's `operation`). Must be synchronous. */
-  applyEdits(edits: TextEdit[]): void;
+   *  them as one change (from the last to the first, or with CodeMirror's `operation`). Must be synchronous.
+   *  `typing` (optional) names the text field the edit was typed in, or is '' for an action: edits typed in one
+   *  field may share an undo step, every action is an undo step of its own. */
+  applyEdits(edits: TextEdit[], typing?: string): void;
   /** Show this offset in the Code view. */
   jumpTo(offset: number): void;
   /** The linter's diagnostics. */
@@ -372,6 +376,18 @@ export function mountFormView(container: HTMLElement, host: FormHost): FormView 
   /** Code values being typed in: they stay code (and keep their editor) until left, even when they read as text. */
   const codeEditing = new Set<string>();
   const docOf = (e: Entry) => () => (e.member ? memberCard(e.owner, e.name, e.member, { head: false }) : '');
+  /** The unit after a number (`100 ms`), when the docs make it certain; read with the field (aria-describedby). */
+  const unitEl = (e: Entry) => {
+    const u = e.member && optionLabel(e.path, e.member).unit;
+    if (!u) return undefined;
+    return h('abbr', 'fv-unit', { id: idOf(`${e.key}:unit`), title: UNIT_TEXT[u].long }, UNIT_TEXT[u].short);
+  };
+
+  /** The unit in words for a field's name (the code editor has no unit beside it): ", in milliseconds". */
+  const unitName = (e: Entry) => {
+    const u = e.member && optionLabel(e.path, e.member).unit;
+    return u ? `, in ${UNIT_TEXT[u].long}` : '';
+  };
 
   function makeRow(e: Entry): Row {
     const el = h('div', 'fv-row', { 'data-key': e.key });
@@ -379,7 +395,14 @@ export function mountFormView(container: HTMLElement, host: FormHost): FormView 
     const head = h('div', 'fv-head');
     const labelId = idOf(`${e.key}:label`);
     const label = h('label', 'fv-label', { id: labelId, for: idOf(`${e.key}:value`) });
-    label.innerHTML = `<span class="fv-owner">${esc(e.ownerLabel)}.</span><span class="fv-name">${esc(e.name)}</span>`;
+    // The plain name and the API name, both in the label (Guided shows the plain one first, Advanced the API name;
+    // page.html). Unknown options keep only the name as written: a plain label would hide the typo.
+    const api = `<span class="fv-api"><span class="fv-owner">${esc(e.ownerLabel)}.</span><span class="fv-name">${esc(e.name)}</span></span>`;
+    if (e.member) {
+      const pl = optionLabel(e.path, e.member).label;
+      label.innerHTML = `<span class="fv-plain">${esc(pl)}</span><span class="fv-sep" aria-hidden="true"> </span>${api}`;
+      label.title = `${pl}\n${e.path}`;
+    } else label.innerHTML = api;
     head.append(label);
     const doc = h('div', 'fv-doc', { id: idOf(`${e.key}:doc`) });
     head.append(doc);
@@ -498,6 +521,11 @@ export function mountFormView(container: HTMLElement, host: FormHost): FormView 
           if (ok && cur.kind === 'number' && v !== cur.num) edit([{ ...cur.value, text: v }]);
         });
         c.append(inp);
+        const u = unitEl(e);
+        if (u) {
+          inp.setAttribute('aria-describedby', `${u.id} ${describedBy}`);
+          c.append(u);
+        }
         break;
       }
       case 'string': {
@@ -562,7 +590,7 @@ export function mountFormView(container: HTMLElement, host: FormHost): FormView 
         const src = e.source ?? '';
         const shown = h('code', 'fv-src hl cm-s-default', { 'data-fv': `${e.key}:src` });
         shown.innerHTML = hlCode(src);
-        const f = new CodeField({ attrs: { 'data-fv': `${e.key}:code`, id: idOf(`${e.key}:code`) }, label: `${e.path} (code)`, value: src, multiline: src.includes('\n'), baseIndent: () => indentAt(text, row.entry.value.start), unit: () => (/^\t/m.test(text) ? '\t' : /^ {2}\S/m.test(text) ? '  ' : '    ') });
+        const f = new CodeField({ attrs: { 'data-fv': `${e.key}:code`, id: idOf(`${e.key}:code`) }, label: `${e.path} (code${unitName(e)})`, value: src, multiline: src.includes('\n'), baseIndent: () => indentAt(text, row.entry.value.start), unit: () => (/^\t/m.test(text) ? '\t' : /^ {2}\S/m.test(text) ? '  ' : '    ') });
         f.el.classList.add('fv-code');
         f.oninput = () => {
           const cur = row.entry;
@@ -576,14 +604,19 @@ export function mountFormView(container: HTMLElement, host: FormHost): FormView 
           if (codeEditing.delete(row.entry.key)) setTimeout(update);
         };
         const ed = h('div', 'fv-code-ed');
-        ed.append(f.el, h('p', 'fv-code-keys', {}, 'Suggestions after . and =, Shift+Alt+F formats, Esc then Tab leaves.'));
+        const keys = h('p', 'fv-code-keys');
+        keys.innerHTML = keysText('Suggestions after `.` and `=`, Shift+Alt+F formats, `Esc` then `Tab` leaves.');
+        ed.append(f.el, keys);
         row.moreCtl.append(ed);
         const b = h('button', 'btn fv-jump', { type: 'button', id: vid, 'data-fv': `${e.key}:value`, 'aria-describedby': idOf(`${e.key}:label`), 'aria-controls': idOf(`${e.key}:more`) }, 'Edit');
         b.addEventListener('click', () => {
           if (row.more.hidden) row.toggle.click();
           f.focus();
         });
-        c.append(shown, b);
+        c.append(shown);
+        const u = unitEl(e);
+        if (u) c.append(u);
+        c.append(b);
         break;
       }
       case 'function':
@@ -865,7 +898,7 @@ export function mountFormView(container: HTMLElement, host: FormHost): FormView 
     let count = 0;
     for (const [path, o] of optionIndex()) {
       if (set.has(path) || o.member.deprecated) continue;
-      if (q && !(o.line ? matches(o.line, q) : path.toLowerCase().includes(q))) continue;
+      if (q && !(o.line ? matches(o.line, q) : path.toLowerCase().includes(q)) && !q.split(/\s+/).every((w) => optionLabel(path, o.member).label.toLowerCase().includes(w))) continue;
       const topic = o.member.type === 'function' ? G_CODE : o.line?.topic ?? 'Other options';
       if (!groups.has(topic)) groups.set(topic, []);
       groups.get(topic)!.push({ path, m: o.member, line: o.line });
@@ -885,7 +918,7 @@ export function mountFormView(container: HTMLElement, host: FormHost): FormView 
         const b = h('button', 'fv-pick', { type: 'button', 'data-path': path });
         const t = m.type?.startsWith('enum:') ? m.type.slice(5) : m.type === 'boolean' ? 'bool' : m.type ?? '';
         const u = used(line);
-        b.innerHTML = `<span class="fv-pick-name"><span class="fv-owner">${esc(path.slice(0, path.lastIndexOf('.') + 1))}</span>${esc(path.slice(path.lastIndexOf('.') + 1))}</span>`
+        b.innerHTML = `<span class="fv-pick-name"><span class="fv-pick-plain">${esc(optionLabel(path, m).label)}</span><span class="fv-sep" aria-hidden="true"> </span><span class="fv-api"><span class="fv-owner">${esc(path.slice(0, path.lastIndexOf('.') + 1))}</span>${esc(path.slice(path.lastIndexOf('.') + 1))}</span></span>`
           + `<span class="fv-pick-meta">${esc(t)}${u ? ` \u00b7 in ${u} of ${USAGE_TOTAL} Hub handlers` : ''}</span>`
           + `<span class="fv-pick-doc">${inline(firstSentence(m.doc || ''))}</span>`;
         b.addEventListener('click', () => addOption(path));

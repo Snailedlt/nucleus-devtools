@@ -3,12 +3,8 @@
 <script>/* the dev bar's theme choice, applied before first paint (see src/devbar.ts) */
 try { if (localStorage.getItem('nucleus-workbench-dev-site') === 'v3') document.documentElement.dataset.site = 'v3';
   var m = localStorage.getItem('nucleus-workbench-dev-mode'); if (m === 'light' || m === 'dark') document.documentElement.dataset.theme = m; } catch (e) {}</script>
-<script>/* Before first paint, the same screen the app will show (app.ts: firstVisit, NONE_KEY, MODE_KEY): the home page when
-   nothing is open, so a first visit never flashes the editor before the questions and the home page. */
-try { var d = document.documentElement, ls = localStorage;
-  if (ls.getItem('nucleus-workbench-advanced') === '1') d.dataset.mode = 'dev';
-  if (!location.hash && ((!ls.getItem('nucleus-workbench-draft') && !ls.getItem('nucleus-workbench-tabs')) || ls.getItem('nucleus-workbench-none-open'))) d.classList.add('no-handler');
-} catch (e) {}</script>
+<script>/* Before first paint, Advanced mode as the app will set it (app.ts MODE_KEY). */
+try { if (localStorage.getItem('nucleus-workbench-advanced') === '1') document.documentElement.dataset.mode = 'dev'; } catch (e) {}</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..800&family=JetBrains+Mono:wght@400;500&display=swap">
 <style>/*CODEMIRROR_CSS*/
@@ -36,6 +32,7 @@ try { var d = document.documentElement, ls = localStorage;
 /*THEMES*/
 
 html, body { height: 100%; }
+body { margin: 0; }
 
 /* Dev bar (src/devbar.ts): its own fixed colours, so it reads the same in every theme. */
 .devbar { position: fixed; left: calc(12px + env(safe-area-inset-left, 0px)); bottom: calc(12px + env(safe-area-inset-bottom, 0px)); z-index: 80; max-width: calc(100vw - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px));
@@ -82,7 +79,7 @@ header { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
 /* v3: colour means a player. Player cards in Try it carry their player's colour. */
 .player.p1 { --pc: var(--p1); } .player.p2 { --pc: var(--p2); } .player.p3 { --pc: var(--p3); } .player.p4 { --pc: var(--p4); }
 .player.p5 { --pc: var(--p5); } .player.p6 { --pc: var(--p6); } .player.p7 { --pc: var(--p7); } .player.p8 { --pc: var(--p8); }
-.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: -1px; }
 h1 { font: var(--display-weight) 19px/1.1 var(--font-display); font-stretch: var(--display-stretch); letter-spacing: -.01em; margin: 0; text-wrap: balance; }
 .sub { color: var(--muted); font-size: 12.5px; }
 .toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; align-items: center; }
@@ -96,20 +93,6 @@ a.btn { text-decoration: none; color: var(--fg); display: inline-block; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 :root { accent-color: var(--accent); }
 
-html.no-handler #main { display: none; }
-.no-handler { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; padding: 24px 16px; text-align: center; }
-.no-handler[hidden] { display: none; }
-html.no-handler #no-handler[hidden] { display: flex !important; } /* set before first paint (see <head>) */
-.no-handler h2 { margin: 0; font-size: 20px; }
-.no-handler .nh-drop { margin: 10px 0 0; font-size: var(--fs-sm); }
-.no-handler .nh-acts { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; margin-top: 12px; }
-.no-handler .nh-intro { max-width: 920px; }
-.no-handler .nh-intro p { max-width: 640px; margin-left: auto; margin-right: auto; }
-.no-handler .nh-intro p { margin: 8px 0 0; }
-.nh-steps { list-style: none; display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 18px; margin: 12px 0 0; padding: 0; font-size: 14px; }
-.nh-steps b { display: inline-grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--surface-2); color: var(--muted); font-size: 12px; margin-right: 4px; }
-/* Advanced mode starts compact: just the ways on. */
-:root[data-mode="dev"] .no-handler .nh-intro { display: none; }
 .main { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.15fr) 12px minmax(0, 1fr); gap: 0; }
 @media (min-width: 861px) { .main:has(#lines:not([hidden])) { grid-template-columns: minmax(0, 1.5fr) 12px minmax(0, 1fr); } }
 /* Resizable panes: a size set by dragging wins over the defaults above (double-click resets) */
@@ -135,6 +118,7 @@ body.resizing-v, body.resizing-v * { cursor: row-resize !important; user-select:
 #lines[hidden] { display: none; }
 #lines { position: relative; }
 #lines.wide { width: 520px; }
+#lines .ai-tip { max-width: min(240px, 70vw); } /* the AI sparkle's tooltip stays inside the 310px list */
 @media (min-width: 861px) {
   :root[data-files-side="left"] #files-panel, :root[data-lines-side="left"] #lines { order: -1; border-left: 0; border-right: 1px solid var(--line); }
   :root[data-files-side="left"][data-lines-side="left"] #files-panel { order: -2; }
@@ -396,7 +380,7 @@ body.resizing-v, body.resizing-v * { cursor: row-resize !important; user-select:
 .phone-only { display: none !important; }
 #settings-open { display: inline-flex; align-items: center; justify-content: center; }
 #settings-dialog { width: min(820px, 96vw); }
-#settings-dialog[open] { display: flex; flex-direction: column; height: min(640px, 88vh); }
+#settings-dialog[open] { display: flex; flex-direction: column; height: min(800px, 90vh); }
 .set-layout-wrap { flex: 1; min-height: 0; display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 0 18px; }
 .set-nav { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow: auto; border-right: 1px solid var(--line); padding: 3px 12px 3px 3px; }
 .set-search input { width: 100%; box-sizing: border-box; font: inherit; font-size: 13px; padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--surface); color: var(--fg); }
@@ -438,6 +422,8 @@ body.resizing-v, body.resizing-v * { cursor: row-resize !important; user-select:
 .set-fields[hidden] { display: none; }
 .set-field { display: flex; flex-direction: column; gap: 3px; font-size: 13px; }
 .set-field small { color: var(--muted); font-size: 12px; }
+.set-field:has(> select) { min-width: 0; max-width: 100%; }
+.set-field select { max-width: 100%; min-width: 0; box-sizing: border-box; } /* long options don't widen it past a phone's width */
 .set-field input { font: 13px var(--font-mono); color: var(--fg); background: var(--code-bg); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 6px 8px; width: 100%; box-sizing: border-box; }
 .set-waka-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
 #settings-dialog h2 { margin: 0 0 6px; }
@@ -622,6 +608,8 @@ ul.hl { padding: 4px 8px; border-radius: var(--r-ctl); }
 .CodeMirror-lint-mark-error { --sq: var(--err); }
 .CodeMirror-lint-mark-warning { --sq: var(--warn); }
 .CodeMirror-lint-mark-info { --sq: var(--info); }
+/* Unused code (an option nothing reads), faded as VS Code fades it; a hint gets no squiggle. */
+.cm-unnecessary, .cm-unnecessary * { color: var(--muted) !important; } /* muted, not opacity: keeps 4.5:1 contrast */
 .CodeMirror-lint-mark-info::after { height: 2px; --sq-mask: radial-gradient(circle, #000 0.7px, transparent 1px); -webkit-mask-size: 4px 2px; mask-size: 4px 2px; }
 .CodeMirror-lint-tooltip { background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: var(--r-ctl); font: 12.5px/1.45 var(--font-body); max-width: 460px; box-shadow: 0 6px 20px rgba(0,0,0,.18); z-index: 50; }
 /* Suggestions, as VS Code: dense rows, an icon per kind, the typed letters highlighted, the type dim on the right. */
@@ -692,8 +680,6 @@ li.CodeMirror-hint-active .hint-type { color: var(--muted); opacity: 1; }
 #tip .dc.compact .dc-text { padding: 4px 8px 2px; }
 #tip .dc.compact .dc-fact { color: var(--muted); font-size: 12px; }
 #tip .dc.compact .dc-fact .req { color: var(--err); }
-#tip .dc.compact .dc-ai { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 0 0 4px; padding: 0; border: 0; font-size: 11.5px; }
-#tip .dc.compact .dc-ai a { font-size: 11.5px; }
 #tip pre { margin: 0 0 6px; }
 #tip p, .api p { margin: 0 0 6px; }
 /* API docs card (doccard.ts): signature, description, facts, and who wrote it. */
@@ -706,11 +692,9 @@ li.CodeMirror-hint-active .hint-type { color: var(--muted); opacity: 1; }
 .dc p { margin: 0 0 6px; line-height: 1.5; }
 .dc-dep { color: var(--warn); font-weight: 600; }
 .dc-facts { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 2px; }
-.dc-chip { font-size: 11.5px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; }
+.dc-chip { font-size: 11.5px; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; max-width: 100%; box-sizing: border-box; overflow-wrap: anywhere; }
 .dc-chip.req { color: var(--err); border-color: currentColor; }
 .dc-chip code { font-size: 11px; padding: 0 3px; }
-.dc-ai { display: flex; gap: 6px; align-items: flex-start; margin-top: 10px; padding-top: 8px; border-top: 1px solid var(--line); font-size: 11.5px; line-height: 1.45; color: var(--muted); }
-.dc-ai .ai-spark { margin-top: 1px; }
 /* The AI mark: two four-point sparkles with a purple-to-cyan gradient, wherever something was written by AI. */
 .ai-spark, .ai-doc::before { content: ''; display: inline-block; flex: none; width: 1.1em; height: 1.1em; vertical-align: -0.18em; background: linear-gradient(135deg, #a855f7 10%, #22d3ee 90%);
   -webkit-mask: var(--spark) center / contain no-repeat; mask: var(--spark) center / contain no-repeat;
@@ -723,15 +707,78 @@ li.CodeMirror-hint-active .hint-type { color: var(--muted); opacity: 1; }
 .api-ai .ai-spark { width: 26px; height: 26px; margin-top: 2px; }
 .api-ai .t { font-weight: 600; display: flex; gap: 8px; align-items: center; }
 .api-ai .d { color: var(--muted); font-size: 12.5px; line-height: 1.45; }
-.dc-check { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 6px; font-size: 12px; color: var(--muted); }
+/* Docs home: the AI-docs call to action on one line (still in the AI colours), the why in its tooltip */
+.api-ai.slim { align-items: center; gap: 8px; padding: 6px 12px; width: fit-content; max-width: 100%; flex-wrap: wrap; }
+.api-ai.slim .ai-spark { width: 16px; height: 16px; margin: 0; }
+.api-ai.slim .d { font-size: 12px; }
+.dc-check { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 10px; font-size: 12px; color: var(--muted); }
 .dc-check a { font-size: 12px; }
+.dc-check .dc-wrong .rep-ico { vertical-align: -2px; margin-right: 4px; }
+/* AI-written parts: a frame with a light violet tint and the sparkle in its corner; where the part comes from is the
+   sparkle's tooltip (core/aimark.ts aiMeta; the same as aiFrameCss there, which the docs pages and VS Code use). */
+.ai-box { display: flow-root; margin: 8px 0 10px; padding: 8px 12px; border: 1px solid color-mix(in srgb, #a855f7 45%, var(--line)); border-radius: 8px; background: color-mix(in srgb, #a855f7 7%, transparent); }
+.ai-box > :last-child { margin-bottom: 0; }
+.ai-meta { float: right; display: inline-flex; align-items: center; gap: 6px; margin: 0 -4px 2px 10px; font-size: 12px; color: var(--muted); }
+.ai-checked { white-space: nowrap; }
+.ai-badge { position: relative; display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 6px; cursor: help; }
+.ai-badge:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.ai-badge > .ai-spark { width: 16px; height: 16px; }
+.ai-tip { position: absolute; z-index: 5; right: 0; top: 100%; margin-top: 4px; width: max-content; max-width: min(340px, 80vw); padding: 6px 10px; border: 1px solid var(--line); border-radius: var(--r-ctl, 6px); background: var(--surface); color: var(--fg); font-size: 12.5px; font-weight: 400; line-height: 1.45; text-align: left; white-space: normal; box-shadow: 0 4px 14px rgb(0 0 0 / .18); visibility: hidden; }
+.ai-tip::before { content: ''; position: absolute; left: 0; right: 0; top: -6px; height: 6px; }
+/* It has links (where each source lives): it stays open while the pointer is on it or focus is in it. */
+.ai-badge:hover .ai-tip, .ai-badge:focus-within .ai-tip { visibility: visible; }
+.ai-badge.tip-off .ai-tip { visibility: hidden; }
+.dc-example.ai-box { padding-top: 6px; }
+/* "How handlers use it": the frame holds the sparkle beside the fold, not in its summary (a toggle can't hold links). */
+.dc-practice-box.ai-box { margin-top: 12px; padding: 0 10px; }
+.dc-practice-box > .ai-meta { margin-top: 8px; }
+.dc-practice-box > .dc-practice { margin: 0; padding: 0; }
+.dc-hit-ai { width: 1em; height: 1em; }
+.dc-chip.kind { color: var(--fg); }
+/* "How handlers use it": the AI-written "In practice" part, folded, set apart from the doc. */
+.dc-practice { margin-top: 12px; padding: 0 10px; }
+.dc-practice[open] { padding-bottom: 8px; }
+.dc-practice > summary.dc-pr-h { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 8px; margin: 0; padding: 8px 0; min-height: 24px; font-size: 13px; font-weight: 600; color: var(--fg); list-style: none; }
+.dc-practice > summary.dc-pr-h::-webkit-details-marker { display: none; }
+.dc-practice > summary.dc-pr-h::before { content: '›'; display: inline-block; width: 1ch; font-size: 15px; line-height: 1; transition: transform .15s; }
+.dc-practice[open] > summary.dc-pr-h::before { transform: rotate(90deg); }
+.dc-practice > summary.dc-pr-h:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.dc-practice .dc-check { margin-top: 4px; }
+/* The engines whose handlers use it notably more or less: one quiet line, no numbers. */
+.dc .dc-engine { font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+/* A search result: short, with "Open full doc ›". */
+.dc.hit p { margin: 0 0 4px; }
+.api-open { margin: 6px 0 0; font-size: 13px; }
+.api-open a { display: inline-flex; align-items: center; gap: 4px; min-height: 24px; font-weight: 600; }
+#tip .dc.compact .dc-pr-h { margin: 6px 0 2px; font-size: 12px; }
+.dc-example { margin-top: 10px; }
+.dc-ex-head { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; margin: 0 0 4px; font-size: 12px; }
+.dc-ex-t { font-weight: 600; }
+.dc-ex-src { color: var(--muted); }
+.dc-insert { margin-left: auto; }
+.dc-replace { font-size: 12px; }
 .gh-app-note { flex-basis: 100%; font-size: 12px; color: var(--muted); }
 .votes { display: inline-flex; gap: 2px; }
 .vote-btn { font: 13px/1 var(--font-body); background: none; border: 1px solid transparent; border-radius: 6px; padding: 3px 5px; cursor: pointer; filter: grayscale(1); opacity: .7; }
 .vote-btn:hover, .vote-btn:focus-visible { opacity: 1; filter: none; border-color: var(--line); }
 .vote-btn[aria-pressed="true"] { opacity: 1; filter: none; background: color-mix(in srgb, var(--accent) 16%, transparent); border-color: color-mix(in srgb, var(--accent) 50%, transparent); }
 #tip-votes .votes { margin-right: 2px; }
+/* The doc votes: one compact control, as the docs pages' [👍] score [👎] (site-chrome.mjs DOC_FEEDBACK_CSS). */
+/* Quiet until used: small grey emoji in a light pill, close together; in colour on hover, focus or once pressed. */
+.dc-check .vote-ctl { position: relative; display: inline-flex; align-items: center; gap: 0; padding: 0; border: 1px solid color-mix(in srgb, var(--line) 75%, transparent); border-radius: 999px; background: none; }
+.dc-check .vote-btn { font-size: 11px; filter: grayscale(1); opacity: .8; border: 0; border-radius: 999px; padding: 2px 4px; }
+.dc-check .vote-btn:hover, .dc-check .vote-btn:focus-visible, .dc-check .vote-btn[aria-pressed="true"] { filter: none; opacity: 1; }
+.dc-check .vote-btn:hover { background: var(--surface); }
+.dc-check .vote-btn[aria-pressed="true"] { background: color-mix(in srgb, var(--accent) 14%, transparent); }
+.dc-check .vote-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.dc-check .vote-score { min-width: 1.2em; text-align: center; font-size: 11px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; }
+.dc-check:has(.vote-btn[aria-pressed="true"]) .vote-score { color: var(--fg); font-weight: 700; }
+.dc-check .vote-tip { position: absolute; left: 0; top: calc(100% + 6px); z-index: 30; width: max-content; max-width: min(340px, 80vw); padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--fg); box-shadow: 0 4px 14px rgba(0,0,0,.25); font-size: 12px; line-height: 1.5; white-space: pre-line; visibility: hidden; opacity: 0; transition: opacity .12s; pointer-events: none; }
+.dc-check .vote-ctl:hover .vote-tip, .dc-check .vote-ctl:focus-within .vote-tip { visibility: visible; opacity: 1; }
+.dc-check .vote-ctl.tip-off .vote-tip { visibility: hidden; opacity: 0; }
+@media (prefers-reduced-motion: reduce) { .dc-check .vote-tip { transition: none; } }
 .ai-doc { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+.ai-box.ln-ai { margin: 4px 0; padding: 4px 8px; }
 
 /* Shortcut hints (keyhints.ts). */
 .keyhint { position: fixed; z-index: 90; display: flex; align-items: center; gap: 8px; padding: 5px 8px; background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: var(--r-ctl); box-shadow: 0 6px 18px rgba(0,0,0,.2); font-size: 12px; pointer-events: none; white-space: nowrap; }
@@ -859,11 +906,22 @@ a { color: var(--accent); }
 .masc-empty .masc { margin: -6px 0; }
 .masc-banner { display: flex; align-items: center; gap: 10px; }
 .masc-banner { overflow: visible; }
+/* Report buttons (core/reporticons.ts; base look in reportflow.ts): Try it's "Nucleus did something different" in the
+   banner's corner, the hover's flag at the end of its bar, "This check is wrong" with a problem's other links. */
+.masc-banner .sim-differs { margin-left: auto; align-self: flex-start; }
+.hv-bar .hv-wrong { margin-left: auto; }
+.hv-bar .hv-key + .hv-wrong { margin-left: 8px; }
+.problem .meta .pwrong { margin-left: auto; font-size: 12px; }
+.lp-actions .rep-btn { margin-left: auto; }
 /* Game.ProtoInput.BlockedMessages: names after the numbers, and a + to add one (src/wmhints.ts) */
 .CodeMirror .wm-hint { margin: 0 2px 0 6px; padding: 0 5px; border-radius: 4px; font-size: .82em; color: var(--muted); background: var(--surface-2); font-family: var(--font, system-ui), sans-serif; user-select: none; }
 .CodeMirror .wm-hint.bad { color: var(--warning-fg, #b45309); }
 .CodeMirror .wm-add { margin: 0 2px; padding: 0 6px; height: 1.35em; line-height: 1.2; border: 1px dashed var(--line); border-radius: 4px; background: transparent; color: var(--accent); font: inherit; font-weight: 700; cursor: pointer; vertical-align: baseline; }
 .CodeMirror .wm-add:hover, .CodeMirror .wm-add:focus-visible { border-style: solid; background: var(--surface-2); }
+/* Help on request: only on the cursor's list (.near), on hover of its line, or with a menu open */
+.CodeMirror .wm-hint:not(.near), .CodeMirror .wm-add:not(.near) { display: none; }
+.CodeMirror .CodeMirror-line:hover .wm-hint, .CodeMirror .CodeMirror-line:hover .wm-add { display: inline; }
+.CodeMirror .CodeMirror-line:hover .wm-add, .CodeMirror .wm-add.near, .CodeMirror .wm-add.open { display: inline-block; }
 .wm-menu { position: fixed; z-index: 40; width: min(420px, calc(100vw - 16px)); max-height: 60vh; overflow: auto; padding: 6px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: var(--sh-3, 0 10px 30px rgba(0,0,0,.25)); }
 .wm-menu-h { padding: 6px 8px; font-weight: 700; font-size: 13px; }
 .wm-menu button { display: grid; grid-template-columns: auto auto 1fr; gap: 2px 8px; align-items: baseline; width: 100%; text-align: left; padding: 8px; border: 0; border-radius: 8px; background: transparent; color: var(--fg); cursor: pointer; font: inherit; font-size: 13.5px; }
@@ -922,6 +980,7 @@ a { color: var(--accent); }
 .meta { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 4px; }
 .rule { font: 11.5px var(--font-mono); color: var(--muted); cursor: help; }
 .fix { font-size: 12px; background: var(--surface); border: 1px solid var(--accent); color: var(--accent); border-radius: 5px; padding: 1px 8px; cursor: pointer; }
+.problem .fix { max-width: 100%; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } /* a long fix title ends in … (its tooltip has all of it) */
 .fix:hover { background: var(--accent); color: var(--accent-fg); }
 
 .banner { border-radius: var(--r-ctl); padding: 8px 12px; margin-bottom: 12px; overflow-wrap: anywhere; }
@@ -1028,12 +1087,12 @@ kbd { font: 11px var(--font-mono); border: 1px solid var(--line); border-bottom-
 .filter { border: 1px solid var(--line); background: var(--surface); border-radius: 999px; padding: 2px 10px; font-size: 12px; cursor: pointer; }
 .filter[aria-pressed=true] { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 .filter span { opacity: .8; font-variant-numeric: tabular-nums; }
+.filter[aria-pressed=true] span { opacity: 1; } /* white on the accent: .8 fell under 4.5:1 */
 .tip-line { font-size: 11.5px; margin-left: auto; }
+.problem.quiet { background: transparent; box-shadow: none; } .problem.quiet .plain-title { color: var(--muted); }
 .problem.current { outline: 2px solid var(--accent); outline-offset: 1px; }
 .fixable { font-size: 11px; color: var(--ok); font-weight: 600; }
 /* Getting started on the home page: its intro unfolds where it lives. */
-@keyframes welcome-in { from { opacity: 0; transform: scaleY(.6); } }
-:root:not([data-motion-ui="off"]) .no-handler.welcome-in .nh-intro { animation: welcome-in .35s cubic-bezier(.2, .8, .2, 1); transform-origin: top; }
 .banner-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 /* A notice at the top of the code pane (src/toast.ts notice()): problems that need reading stay there until dismissed. */
 #notice { display: flex; align-items: flex-start; gap: 10px; margin: 8px 10px 0; padding: 8px 8px 8px 12px; border: 1px solid var(--line); border-left: 3px solid var(--tk); border-radius: var(--r-pane); background: var(--surface-2); font-size: 13.5px; line-height: 1.4; }
@@ -1333,7 +1392,7 @@ kbd { font: 11px var(--font-mono); border: 1px solid var(--line); border-bottom-
 .ptoggle:hover { background: var(--surface-2); color: var(--fg); }
 .pcard .plain-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .pcard.open .plain-title { white-space: normal; }
-.pcard .row-fix { flex: none; }
+.pcard .row-fix { flex: 0 1 auto; min-width: 0; max-width: 45%; display: flex; } /* a long fix title shrinks and ends in … */
 .pcard .row-fix .fix { white-space: nowrap; }
 .pcard .loc { flex: none; }
 .pcard .body { padding: 4px 0 6px 26px; }
@@ -1386,6 +1445,16 @@ kbd { font: 11px var(--font-mono); border: 1px solid var(--line); border-bottom-
 #files-panel.drop-add { outline: 2px dashed var(--accent); outline-offset: -4px; }
 #files-panel.drop-add::after { content: "Drop to add it to this handler's files"; position: absolute; inset: 4px; display: grid; place-items: center; padding: 16px; text-align: center; font-weight: 600; background: color-mix(in srgb, var(--accent) 14%, var(--surface)); pointer-events: none; z-index: 5; }
 #drop-hint[hidden] { display: none; }
+/* Try it: "How this works", closed until asked */
+/* Footer: only the draft note, the beta guide, where to ask and who made it; the rest is in the ⋯ menu and the palette (kept for them) */
+footer .foot-dup { display: none !important; }
+/* Skip links: shown only when focused (the first Tab on the page) */
+.skip-links a { position: absolute; left: 8px; top: 8px; z-index: 100; padding: 8px 12px; background: var(--surface); color: var(--fg); border: 2px solid var(--accent); border-radius: var(--r-ctl); transform: translateY(-200%); }
+.skip-links a:focus { transform: none; }
+.how-works { margin: 0 0 10px; font-size: var(--fs-sm); }
+.how-works > summary { cursor: pointer; color: var(--muted); width: fit-content; border-radius: var(--r-ctl); }
+.how-works > summary:hover { color: var(--fg); }
+.how-works > p { margin: 6px 0 0; max-width: 65ch; }
 .pane { position: relative; }
 /* --- phone / tablet: one pane at a time --- */
 .switch { display: none; }
@@ -1443,6 +1512,7 @@ kbd { font: 11px var(--font-mono); border: 1px solid var(--line); border-bottom-
   #probstrip .ps-count { display: flex; gap: 6px; flex: none; font-weight: 700; }
   #probstrip .ps-count .e { color: var(--err); }
   #probstrip .ps-count .w { color: var(--warn); }
+  #probstrip .ps-count .i { color: var(--info, var(--muted)); }
   #probstrip .ps-msg { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .pane:has(#probstrip:not([hidden])) #tipbar { display: none; }
   #line-pop { left: 8px; right: 8px; }
@@ -1611,6 +1681,17 @@ header #app-menu-open { width: var(--hdr-ctl); }
 .app-menu .am-check { width: 14px; color: var(--accent); font-weight: 700; }
 /* in a menu with ticks, every label starts in the same column */
 .app-menu:has(.am-check) button:not(:has(.am-check))::before { content: ""; width: 14px; flex: none; }
+.app-menu .am-ico { flex: none; width: 18px; display: inline-flex; align-items: center; justify-content: center; font-size: 14px; line-height: 1; }
+.app-menu .am-ico svg { display: block; }
+/* UI icons (icons.ts): drawn in the text colour, sized to the text, beside a label */
+[data-icon] { display: inline-flex; vertical-align: -.125em; }
+[data-icon] svg, .ui-ico { flex: none; }
+/* A shortcut as keys (kbd.ts keysHtml / kbdify): each key a keycap, the combination around them plain */
+kbd.keys { border: 0; background: none; padding: 0; font: inherit; color: inherit; white-space: nowrap; }
+kbd.keys > kbd { color: var(--fg); }
+kbd.keys .kplus { color: var(--muted); padding: 0 1px; }
+.app-menu.am-icons button::before { content: none !important; }
+.app-menu.am-icons .am-check { text-align: right; }
 .app-menu .am-sep { height: 1px; background: var(--line); margin: 5px 4px; }
 .app-menu .am-h { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; padding: 6px 10px 2px; }
 /* Side rail */
@@ -1638,6 +1719,13 @@ header #app-menu-open { width: var(--hdr-ctl); }
   :root[data-layout="rail"] header .brand, :root[data-layout="rail"] header .toolbar { display: flex; }
   .htabs-wrap { display: none; }
   .phone-name { display: inline-flex !important; }
+  /* Too narrow for the name and the view buttons in one row: the name gets its own, the buttons wrap under it. */
+  .doc-title { flex-wrap: wrap; row-gap: 4px; }
+  #doc-switch { flex: 1 1 calc(100% - 60px); justify-content: flex-start; }
+  #doc-switch #doc-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .doc-title > * { order: 2; }
+  .doc-title > #doc-switch, .doc-title > #doc-edited { order: 0; }
+  .doc-title > #code-menu-phone { order: 1; margin-left: auto; }
   #doc-edited:not([hidden]) { display: inline !important; }
   #app-menu-open svg { display: none; }
   #app-menu-open .phone-dots { display: inline; font-size: 18px; }
@@ -1676,6 +1764,15 @@ details[open] > .fv-group-title::before { transform: rotate(45deg); }
 .fv-head { min-width: 0; }
 .fv-label { display: block; font: 600 13.5px/1.35 var(--font-mono); overflow-wrap: anywhere; min-width: 0; }
 .fv-owner { color: var(--muted); font-weight: 400; font-size: .86em; }
+/* Plain names (formlabels.ts): Guided shows the plain name with the API name under it, Advanced the API name (the plain
+   one in the tooltip and for screen readers). */
+.fv-sep { display: none; }
+.fv-plain, .fv-pick-plain { font: 600 13.5px/1.3 var(--font-body); overflow-wrap: anywhere; }
+:root:not([data-mode=dev]) .fv-label:has(.fv-plain) .fv-api, :root:not([data-mode=dev]) .fv-pick-name:has(.fv-pick-plain) .fv-api { display: block; font-size: 11.5px; font-weight: 400; color: var(--muted); }
+:root:not([data-mode=dev]) .fv-label:has(.fv-plain) .fv-owner { font-size: 1em; }
+:root[data-mode=dev] .fv-plain, :root[data-mode=dev] .fv-pick-plain { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.fv-label { position: relative; }
+.fv-unit { flex: none; font-size: 12.5px; color: var(--muted); text-decoration: none; cursor: help; margin-left: -2px; }
 .fv-doc { display: none; font-size: 12px; line-height: 1.35; color: var(--muted); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .fv[data-density=comfortable] .fv-row:not(.fv-open) .fv-doc { display: block; }
 .fv-doc .fv-ai, .fv-doc-full .fv-ai { width: .95em; height: .95em; vertical-align: -0.12em; }
@@ -1793,7 +1890,7 @@ details[open] > .fv-group-title::before { transform: rotate(45deg); }
 .fv-pick-group ul { list-style: none; margin: 0; padding: 0; }
 .fv-pick { display: grid; grid-template-columns: 1fr auto; gap: 0 12px; width: 100%; text-align: left; padding: 6px 8px; border: 1px solid transparent; border-radius: var(--r-ctl); background: transparent; cursor: pointer; }
 .fv-pick:hover, .fv-pick:focus-visible { background: var(--surface-2); border-color: var(--line); }
-.fv-pick-name { font: 600 13px var(--font-mono); overflow-wrap: anywhere; }
+.fv-pick-name { position: relative; font: 600 13px var(--font-mono); overflow-wrap: anywhere; }
 .fv-pick-meta { font-size: 11.5px; color: var(--muted); white-space: nowrap; }
 .fv-pick-doc { grid-column: 1 / -1; font-size: 12px; color: var(--muted); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
@@ -1844,6 +1941,8 @@ details[open] > .fv-group-title::before { transform: rotate(45deg); }
 .gf-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 
 /* Code | Form switch, the game folder button, and Check's extra groups (game folder, package) */
+/* Form and Blocks are hidden unless ?visual=1 (visual.ts sets html.visual). */
+html:not(.visual) .visual-only { display: none !important; }
 .view-switch { display: inline-flex; align-self: stretch; border: 1px solid var(--line); border-radius: var(--r-ctl); overflow: hidden; flex: none; }
 .view-switch button { border: 0; background: var(--surface); color: var(--muted); font: inherit; font-size: 12.5px; padding: 3px 10px; cursor: pointer; }
 .view-switch button[aria-pressed="true"] { background: var(--surface-2); color: var(--fg); font-weight: 600; }
@@ -1905,21 +2004,19 @@ details[open] > .fv-group-title::before { transform: rotate(45deg); }
 /* Branches: a list of rows; nested ones are indented with a rail on the left */
 .bv-branch { position: relative; }
 .bv-clauses > .bv-branch { margin: 0 0 4px 14px; padding-left: 12px; border-left: 3px solid var(--line); }
-.bv-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.bv-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .bv-branch.bv-empty > .bv-list { display: none; }
-.bv-add { margin-top: 6px; font-size: 13px; color: color-mix(in srgb, var(--accent) 78%, var(--fg)); background: transparent; border: 1px dashed var(--line); border-radius: var(--r-ctl); padding: 4px 10px; cursor: pointer; min-height: 30px; }
+.bv-add { margin-top: 4px; font-size: 13px; color: color-mix(in srgb, var(--accent) 78%, var(--fg)); background: transparent; border: 1px dashed var(--line); border-radius: var(--r-ctl); padding: 2px 10px; cursor: pointer; min-height: 28px; }
 .bv-add:hover, .bv-add[aria-expanded="true"] { background: var(--surface-2); border-style: solid; }
 
 /* A row: tag, sentence, tools; the docs line under it */
-.bv-row { border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--surface); padding: 6px 8px; min-width: 0; }
+.bv-row { border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--surface); padding: 3px 6px 3px 8px; min-width: 0; }
 .bv-row.bv-k-if { padding: 0; border-color: transparent; background: transparent; }
 .bv-row.bv-k-code { background: var(--surface-2); }
 .bv-row.bv-has-err, .bv-clause.bv-has-err { box-shadow: inset 3px 0 0 var(--err); }
 .bv-row.bv-has-warn, .bv-clause.bv-has-warn { box-shadow: inset 3px 0 0 var(--warn); }
 .bv-line { display: flex; align-items: flex-start; gap: 8px; min-width: 0; }
 .bv-tag { flex: none; font: 600 10.5px/1 var(--font-body); letter-spacing: .05em; text-transform: uppercase; color: var(--muted); border: 1px solid var(--line); border-radius: 999px; padding: 4px 7px; margin-top: 5px; }
-.bv-k-action .bv-tag { color: var(--accent); border-color: currentColor; }
-.bv-tag-if { color: var(--info); border-color: currentColor; }
 .bv-sentence { flex: 1 1 auto; min-width: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; }
 .bv-word { color: var(--muted); }
 .bv-kw { font-weight: 600; }
@@ -1935,7 +2032,7 @@ details[open] > .fv-group-title::before { transform: rotate(45deg); }
 .bv-hint { flex-basis: 100%; font-size: 12px; color: var(--warn); }
 
 /* Condition parts: If … then / Otherwise, if … / Otherwise */
-.bv-clause { border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--surface); padding: 6px 8px; margin: 0 0 4px; }
+.bv-clause { border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--surface); padding: 3px 6px 3px 8px; margin: 0 0 4px; }
 .bv-cond { border-left: 3px solid var(--info); }
 .bv-else { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; border-left: 3px solid var(--info); }
 .bv-else .bv-tools { margin-left: auto; }
@@ -1944,15 +2041,21 @@ details[open] > .fv-group-title::before { transform: rotate(45deg); }
 /* Value slots: a kind picker and the value */
 .bv-val { display: inline-flex; align-items: flex-start; min-width: 0; max-width: 100%; flex-wrap: nowrap; }
 .bv-v-opt, .bv-v-enum { flex-wrap: wrap; align-items: center; gap: 4px; }
-.bv-kind { height: 30px; align-self: flex-start; font-size: 11.5px !important; color: var(--muted) !important; background: var(--surface-2); border: 1px solid var(--line); border-right: 0; border-radius: var(--r-ctl) 0 0 var(--r-ctl); padding: 0 2px 0 4px; min-height: 30px; cursor: pointer; max-width: 6.5em; }
-.bv-kind + .bv-input, .bv-kind + .bv-select, .bv-kind + .xf > .bv-input, .bv-kind + .cf .cf-ta, .bv-kind + .cf .CodeMirror { border-radius: 0 var(--r-ctl) var(--r-ctl) 0; }
-.bv-v-join > .bv-kind { border-right: 1px solid var(--line); border-radius: var(--r-ctl); margin-right: 4px; }
-.bv-v-opt .bv-kind + .bv-word, .bv-v-enum .bv-kind + .bv-word { margin-left: 4px; }
+/* The kind picker (Text, Number, Property, …) shows only for the value that has the focus, below it like a suggestion
+   list (above it, .bv-kind-up, when there isn't room below in the view: blocksview.ts placeKind), so it takes no room in
+   the row and never covers the value; it stays in the tab order (Shift+Tab from a value reaches it) and appears when it
+   gets the focus. */
+.bv-val { position: relative; }
+.bv-val.bv-kind-up > .bv-kind { top: auto; bottom: calc(100% + 2px); }
+.bv-kind { position: absolute; left: 0; top: calc(100% + 2px); z-index: 3; height: 26px; min-height: 26px; font-size: 12px !important; color: var(--fg) !important; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 0 2px 0 6px; cursor: pointer; box-shadow: 0 2px 8px rgb(0 0 0 / .16); opacity: 0; pointer-events: none; }
+.bv-val:focus-within:not(:has(.bv-val:focus-within)) > .bv-kind { opacity: 1; pointer-events: auto; }
 .bv-input, .bv-select { font: 13px var(--font-mono) !important; background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 4px 7px; min-height: 30px; min-width: 0; }
 .bv-input { width: 16em; max-width: 100%; }
 @supports (field-sizing: content) {
   .bv-val > .bv-input { field-sizing: content; width: auto; min-width: 5em; max-width: min(36em, 100%); }
   .bv-val > .bv-num { min-width: 4em; }
+  /* Pickers as wide as their value, not their longest choice */
+  .bv-val > .bv-select, .bv-op { field-sizing: content; }
 }
 .bv-num { width: 6em; }
 .bv-v-code .bv-input { width: 20em; }
@@ -1961,6 +2064,30 @@ details[open] > .fv-group-title::before { transform: rotate(45deg); }
 .bv-op { font-family: var(--font-body) !important; color: var(--info) !important; font-weight: 600; }
 .bv-input[aria-invalid="true"] { border-color: var(--err); }
 .bv-codeblock { display: block; width: 100%; }
+
+/* Repeated steps (blockgroups.ts): a title with the count, then a line per step; the steps themselves open with it. */
+.bv-group { border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--surface); padding: 0 6px 4px 8px; min-width: 0; }
+.bv-group.bv-g-open { padding-bottom: 6px; }
+.bv-group.bv-has-err { box-shadow: inset 3px 0 0 var(--err); }
+.bv-group.bv-has-warn { box-shadow: inset 3px 0 0 var(--warn); }
+.bv-g-toggle { display: flex; align-items: center; flex-wrap: wrap; gap: 2px 8px; width: 100%; min-height: 32px; padding: 3px 2px; text-align: left; background: transparent; border: 0; border-radius: var(--r-ctl); cursor: pointer; }
+.bv-g-toggle:hover { background: var(--surface-2); }
+.bv-g-toggle::before { content: ""; flex: none; width: 7px; height: 7px; margin: 0 4px 0 2px; border: solid currentColor; border-width: 0 1.6px 1.6px 0; color: var(--muted); transform: rotate(-45deg); transition: transform .15s; }
+.bv-g-toggle[aria-expanded=true]::before { transform: rotate(45deg); }
+.bv-g-title { font: 600 13.5px/1.35 var(--font-mono); overflow-wrap: anywhere; min-width: 0; }
+.bv-g-title .bv-word { font-family: var(--font-body); font-weight: 400; }
+.bv-g-count { font-size: 12px; color: var(--muted); white-space: nowrap; }
+.bv-g-title:has(.bv-g-names) { flex: 1 1 0; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
+.bv-g-names { font-weight: 400; color: var(--muted); } /* TEMPORARY: the step names in the title (blocksview.ts groupStart/groupRule) */
+.bv-g-probs { font-size: 12px; color: var(--muted); }
+.bv-g-digest { list-style: none; margin: 0 0 2px 7px; padding: 3px 4px 3px 8px; border-left: 2px solid var(--line); border-radius: 0 var(--r-ctl) var(--r-ctl) 0; }
+.bv-g-line { display: flex; align-items: flex-start; gap: 6px; padding: 1px 4px; border-radius: 4px; cursor: pointer; min-width: 0; }
+.bv-g-line:hover { background: color-mix(in srgb, var(--fg) 7%, transparent); }
+.bv-g-line > code { font: 12.5px/1.45 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; background: none; padding: 0; }
+.bv-g-line .bv-sev { width: 14px; height: 14px; margin-top: 2px; font-size: 10px; }
+.bv-g-rep { margin-top: 5px; }
+.bv-g-list { margin: 4px 0 0; }
+@media (prefers-reduced-motion: reduce) { .bv-g-toggle::before { transition: none; } }
 
 /* Small square buttons and links */
 .bv-tools { display: inline-flex; align-items: center; gap: 2px; flex: none; margin-left: auto; }
@@ -2044,8 +2171,21 @@ details[open] > .fv-group-title::before { transform: rotate(45deg); }
 .bv-note { font: italic 12.5px/1.4 var(--font-body); color: var(--muted); white-space: pre-wrap; overflow-wrap: anywhere; margin: 0 0 4px 2px; }
 .bv-note::before { content: "// "; font-style: normal; font-family: var(--font-mono); }
 .bv-k-if > .bv-note { margin: 0 0 4px 4px; }
+/* A long comment folds to its first line and "… N more lines" (a button that unfolds it); hovering shows it in full. */
+.bv-note-long { position: relative; }
+.bv-note-long:not(.bv-note-open) { display: flex; align-items: baseline; gap: 6px; white-space: nowrap; }
+.bv-note-long:not(.bv-note-open)::before { flex: none; }
+.bv-note-long:not(.bv-note-open) > .bv-note-first { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.bv-note-more { flex: none; font: 12px var(--font-body); font-style: normal; color: color-mix(in srgb, var(--accent) 78%, var(--fg)); background: transparent; border: 0; border-radius: var(--r-ctl); padding: 1px 4px; margin-left: 2px; cursor: pointer; text-decoration: underline; text-underline-offset: 2px; min-height: 24px; }
+.bv-note-more:hover { background: var(--surface-2); }
+.bv-note-open > .bv-note-more { display: inline-block; margin: 2px 0 0 8px; }
+.bv-note-pop { position: absolute; left: 0; top: calc(100% + 2px); z-index: 4; width: max-content; max-width: min(48em, 100%); max-height: 40vh; overflow: auto; white-space: pre-wrap; font: 12.5px/1.45 var(--font-body); font-style: normal; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 8px 10px; box-shadow: 0 4px 16px rgb(0 0 0 / .18); visibility: hidden; opacity: 0; transition: opacity .12s, visibility 0s .12s; }
+.bv-note.bv-pop-up > .bv-note-pop { top: auto; bottom: calc(100% + 2px); }
+.bv-note-long:not(.bv-note-open):not(.bv-pop-off):hover > .bv-note-pop { visibility: visible; opacity: 1; transition: opacity .12s .35s, visibility 0s .35s; }
+@media (hover: none) { .bv-note-pop { display: none; } }
 
 #extra-problems { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+#extra-problems .xp-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 #extra-problems .xp-h { font-size: 12px; font-weight: 700; color: var(--muted); margin: 8px 2px 2px; display: flex; gap: 6px; align-items: center; }
 #extra-problems .xp { display: flex; gap: 8px; align-items: flex-start; padding: 7px 10px; border: 1px solid var(--line); border-radius: var(--r-pane); background: var(--surface); font-size: 13px; }
 #extra-problems .xp .xp-b { flex: 1; min-width: 0; }
@@ -2055,6 +2195,8 @@ details[open] > .fv-group-title::before { transform: rotate(45deg); }
 #gf-dialog { width: min(560px, calc(100vw - 32px)); }
 
 /* ---- Packages: the Files panel, the file tabs, file icons, the second editor ---- */
+.problem .times { font-size: .85em; font-weight: 700; padding: 0 5px; border-radius: 8px; background: var(--chip-bg, rgba(127,127,127,.15)); margin-left: 4px; white-space: nowrap; }
+.fi-logo { width: 18px; height: 18px; flex: none; margin-right: 5px; vertical-align: -3px; }
 .fi-badge { display: inline-grid; place-items: center; min-width: 22px; height: 16px; padding: 0 3px; border-radius: 4px; font: 700 9px/1 var(--font-mono); color: #fff; background: #64748b; flex: none; letter-spacing: -.2px; margin-right: 5px; }
 .fi-js { background: #e0b100; color: #1b1f2a; } .fi-ini, .fi-cfg { background: #57657a; } .fi-json { background: #0f766e; } .fi-xml, .fi-toml, .fi-yaml { background: #9a3412; } .fi-txt { background: #6b7280; } .fi-bat { background: #166534; } .fi-ps1 { background: #1e3a8a; } .fi-lua { background: #1e40af; } .fi-reg { background: #57657a; } .fi-vdf { background: #374151; } .fi-dll { background: #6d28d9; } .fi-exe { background: #b91c1c; } .fi-img { background: #be185d; } .fi-bin { background: #475569; }
 .fi-dir { background: none; color: var(--muted); font-size: 12px; min-width: 14px; }
@@ -2086,7 +2228,7 @@ details[open] > .fv-group-title::before { transform: rotate(45deg); }
 .fp-item { display: flex; align-items: center; gap: 2px; }
 .fp-open { flex: 1; min-width: 0; display: flex; align-items: center; padding: 4px 6px; border: 0; border-radius: 6px; background: none; color: var(--fg); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
 .fp-open:hover { background: var(--surface-2); } .fp-open[aria-current="true"] { background: color-mix(in srgb, var(--accent) 16%, transparent); font-weight: 600; }
-.fp-open .fp-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fp-open .fp-name { overflow: hidden; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; } /* long names wrap to a second line, then the tooltip has all of it */
 .fp-open .fp-size { margin-left: auto; padding-left: 8px; font-size: 11px; color: var(--muted); flex: none; }
 .fp-item.dropped .fp-name { color: var(--warn); }
 .fp-open .fp-hub { margin-left: auto; padding: 0 5px; border-radius: 999px; font-size: 10.5px; font-weight: 600; line-height: 16px; background: var(--info-bg); color: var(--info); flex: none; }
@@ -2100,6 +2242,14 @@ details[open] > .fv-group-title::before { transform: rotate(45deg); }
 .fp-game p { margin: 0 4px 8px; font-size: 12.5px; color: var(--muted); line-height: 1.45; }
 .fp-game .fp-gname { display: flex; align-items: center; gap: 6px; margin: 0 4px 8px; font: 600 13px var(--font-body); color: var(--fg); overflow-wrap: anywhere; }
 .fp-game .fp-gacts { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 4px; }
+.fp-game .fp-prog { margin: 0 4px 10px; font-size: 12.5px; }
+.fp-game .fp-prog-row { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; overflow-wrap: anywhere; }
+.fp-game .fp-prog progress { display: block; width: 100%; height: 6px; margin: 4px 0 2px; accent-color: var(--accent); }
+.fp-game .fp-prog-n { font-size: 11.5px; min-height: 1.4em; }
+/* No moving bar without a total when motion is reduced: the count below says it's working. */
+@media (prefers-reduced-motion: reduce) { .fp-game .fp-prog progress:indeterminate { visibility: hidden; } }
+:root[data-motion-ui="off"] .fp-game .fp-prog progress:indeterminate { visibility: hidden; }
+#status .st-reading { font-size: 12px; }
 .files-game { margin-left: 4px; font-size: 11.5px; font-weight: 600; color: var(--accent); }
 .fp-drop { margin: 10px 4px 0; padding: 10px; border: 1px dashed var(--line); border-radius: 8px; color: var(--muted); font-size: 12px; text-align: center; }
 @media (max-width: 860px) { #files-panel { position: fixed; left: 0; right: 0; bottom: calc(60px + env(safe-area-inset-bottom, 0px)); width: auto; height: min(58vh, 520px); z-index: 30; border-left: 0; border-top: 1px solid var(--line); box-shadow: 0 -8px 24px rgba(0,0,0,.2); } }
@@ -2109,10 +2259,44 @@ details[open] > .fv-group-title::before { transform: rotate(45deg); }
 footer { color: var(--muted); font-size: 11.5px; display: flex; flex-wrap: wrap; gap: 4px 14px; }
 footer .made-by { margin-left: auto; }
 
+/* The guided tour (tour.ts): a full-page modal dialog that dims everything but a cut-out, with a card beside it. */
+dialog.tour { position: fixed; inset: 0; width: 100vw; height: 100%; max-width: none; max-height: none; margin: 0; padding: 0; border: 0; border-radius: 0; background: transparent; box-shadow: none; overflow: hidden; }
+dialog.tour::backdrop { background: transparent; backdrop-filter: none; }
+.tour-hole { position: fixed; border-radius: var(--r-ctl); box-shadow: 0 0 0 200vmax rgba(10, 15, 22, .55); outline: 2px solid var(--accent); outline-offset: 0; pointer-events: none; }
+.tour-hole.none { left: 50% !important; top: 50% !important; width: 0 !important; height: 0 !important; outline: 0; }
+/* A step with an action (tour.ts act): a non-modal dialog over the page; only the cut-out lets clicks through. */
+dialog.tour.free { z-index: 1000; pointer-events: none; }
+dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
+.tour-block { position: fixed; inset: 0; }
+.tour-card .tour-act { margin-top: 8px; font-weight: 600; }
+.tour-card .tour-act.done { color: var(--ok); }
+.tour-card .tour-ico { font-size: 1.05em; }
+.tour-card kbd.keys { border: 0; background: none; padding: 0; font: inherit; color: inherit; }
+.tour-card kbd.keys .kplus { color: var(--muted); padding: 0 1px; }
+.tour-card kbd { color: var(--fg); }
+.tour-card { position: fixed; box-sizing: border-box; width: min(340px, calc(100vw - 24px)); padding: 14px 16px 12px; background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: var(--r-lg); box-shadow: var(--sh-2); }
+.tour-card.center { left: 50% !important; top: 50% !important; transform: translate(-50%, -50%); width: min(400px, calc(100vw - 24px)); }
+.tour-card[data-sheet] { left: 8px !important; right: 8px; width: auto; transform: none; }
+.tour-card[data-sheet=bottom] { top: auto !important; bottom: max(8px, env(safe-area-inset-bottom)); }
+.tour-card[data-sheet=top] { top: max(8px, env(safe-area-inset-top)) !important; }
+.tour-card h2 { font: 600 var(--fs-lg) var(--font-display); margin: 0 0 6px; }
+.tour-card h2:focus { outline: none; }
+.tour-card p { margin: 0; font-size: var(--fs-md); line-height: 1.45; }
+.tour-card .tour-count { font-size: var(--fs-sm); color: var(--muted); margin-bottom: 2px; }
+.tour-acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 12px; }
+.tour-acts .tour-sp { flex: 1; }
+.tour-acts .tour-skip { background: transparent; border-color: transparent; color: var(--muted); padding-left: 4px; padding-right: 4px; }
+.tour-acts .tour-skip:hover { color: var(--fg); }
+:root:not([data-motion-ui="off"]) .tour-hole { transition: left .25s var(--ease, ease), top .25s var(--ease, ease), width .25s var(--ease, ease), height .25s var(--ease, ease); }
+:root:not([data-motion-ui="off"]) .tour-card:not([data-sheet]):not(.center) { transition: left .25s var(--ease, ease), top .25s var(--ease, ease); }
+@media (prefers-reduced-motion: reduce) { .tour-hole, .tour-card { transition: none !important; } }
+@media (forced-colors: active) { .tour-hole { outline: 3px solid Highlight; } .tour-card { border: 2px solid CanvasText; } }
+
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
 </style>
 
 <div class="app">
+  <nav class="skip-links" aria-label="Skip links"><a href="#main" data-skip="code">Skip to the code</a><a href="#main" data-skip="check">Skip to Check</a></nav>
   <header>
     <div class="brand">
       <div class="brand-top"><a class="brand-link" href="./" aria-label="Nucleus Handler Workbench">
@@ -2145,22 +2329,13 @@ footer .made-by { margin-left: auto; }
       <button class="rail-btn" type="button" data-rail="lines" aria-label="Lines"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="rail-label" aria-hidden="true">Lines</span></button>
       <button class="rail-btn" type="button" data-rail="share" aria-label="Share: a link, the code, or a post for Discord"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="rail-label" aria-hidden="true">Share</span></button><button class="rail-btn" type="button" data-rail="save" aria-label="Save the handler"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="rail-label" aria-hidden="true">Save</span></button>
       <span class="rail-sp"></span>
-      <button class="rail-btn" type="button" data-rail="test" aria-label="Help test this beta">🧪<span class="rail-label" aria-hidden="true">Help test this beta</span></button>
+      <button class="rail-btn" type="button" data-rail="test" aria-label="Help test this beta"><span data-icon="flask-conical" data-icon-size="18"></span><span class="rail-label" aria-hidden="true">Help test this beta</span></button>
       <button class="rail-btn" type="button" data-rail="menu" aria-label="Menu: settings, Advanced mode, help" aria-haspopup="menu"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="rail-label" aria-hidden="true">Settings and menu</span></button>
       <button class="rail-btn rail-toggle" type="button" id="rail-toggle" aria-expanded="false" aria-label="Show labels in the sidebar" title="Show labels"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M9 6l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="rail-label" aria-hidden="true">Hide labels</span></button>
     </nav>
   </header>
 
   <div id="updated" role="status" hidden><span id="updated-text"></span> <button class="link" type="button" id="updated-open">What's new</button><button class="btn icon" type="button" id="updated-close" aria-label="Dismiss">×</button></div>
-  <section id="no-handler" class="no-handler" role="main" aria-labelledby="nh-title" hidden>
-    <h2 id="nh-title">Welcome to the workbench</h2>
-    <div class="nh-intro">
-      <p class="muted">A handler is the file that tells Nucleus Co-op how to run a game split-screen (it goes in Nucleus' <code>handlers</code> folder). Here you write one, check it and try it, then save it for Nucleus.</p>
-      <ol class="nh-steps"><li><b>1</b> Start one, or open yours</li><li><b>2</b> Fix what Nucleus would reject</li><li><b>3</b> Try it per player</li><li><b>4</b> Save it for Nucleus</li></ol>
-    </div>
-    <div class="nh-acts"><button type="button" class="btn primary" data-nh="new">New handler…</button><button type="button" class="btn" data-nh="open" title="Your own handler (.js, .zip, .nc), an example, or one from the Hub">Open a handler or example… <kbd>Ctrl+P</kbd></button><button type="button" class="btn" data-nh="learn">Learn: make your first one</button><button type="button" class="btn" data-nh="undo" hidden>Reopen</button><button type="button" class="btn" data-nh="back" hidden>Back to the code <kbd>Esc</kbd></button></div>
-    <p class="muted nh-drop">Or drop a .js, .zip or .nc file anywhere on this page.</p>
-  </section>
   <main class="main" id="main" data-view="results">
     <section class="pane" aria-label="Handler source">
       <div class="pane-head doc-head">
@@ -2176,9 +2351,9 @@ footer .made-by { margin-left: auto; }
         <div id="blocksview" hidden></div>
         <div id="file-editor" hidden></div>
         <div id="file-card" hidden></div>
-        <section id="files-panel" aria-label="Files in this package" hidden><div class="splitter" id="split-files" role="separator" aria-orientation="vertical" aria-label="Resize the Files panel (double-click to reset)" title="Drag to resize · double-click to reset" tabindex="0"></div><div id="files-list"></div></section>
+        <section id="files-panel" aria-label="Files in this package" hidden><div class="splitter" id="split-files" role="separator" aria-orientation="vertical" aria-label="Resize the Files panel (double-click to reset, menu key for layout)" title="Drag to resize · double-click to reset · right-click for layout" tabindex="0"></div><div id="files-list"></div></section>
         <section id="lines" aria-label="Names a handler can use" hidden>
-          <div class="splitter" id="split-lines" role="separator" aria-orientation="vertical" aria-label="Resize the Lines list (double-click to reset)" title="Drag to resize · double-click to reset" tabindex="0"></div>
+          <div class="splitter" id="split-lines" role="separator" aria-orientation="vertical" aria-label="Resize the Lines list (double-click to reset, menu key for layout)" title="Drag to resize · double-click to reset · right-click for layout" tabindex="0"></div>
           <div class="sheet-grip" id="split-sheet" role="separator" aria-orientation="horizontal" aria-label="Resize the list (double-click to reset)" title="Drag to resize · double-tap to reset" tabindex="0"></div>
           <div class="lines-head">
             <input id="lines-q" type="search" placeholder="Filter: mutex, Width…" aria-label="Filter the names" autocomplete="off" data-1p-ignore data-lpignore="true" data-form-type="other">
@@ -2214,7 +2389,7 @@ footer .made-by { margin-left: auto; }
       </div>
     </section>
 
-    <div class="splitter" id="split-main" role="separator" aria-orientation="vertical" aria-label="Resize the code and results panes (double-click to reset)" title="Drag to resize · double-click to reset" tabindex="0"></div>
+    <div class="splitter" id="split-main" role="separator" aria-orientation="vertical" aria-label="Resize the code and results panes (double-click to reset, menu key for layout)" title="Drag to resize · double-click to reset · right-click for layout" tabindex="0"></div>
     <section class="pane side" aria-label="Analysis">
       <div class="pane-head" role="tablist">
         <button role="tab" data-tab="problems" type="button">Check <span class="count" id="count-problems">0</span></button>
@@ -2238,7 +2413,7 @@ footer .made-by { margin-left: auto; }
           <button class="filter" type="button" data-filter="warning" aria-pressed="false">Warnings <span id="f-warning"></span></button>
           <button class="filter" type="button" data-filter="info" aria-pressed="false">Info <span id="f-info"></span></button>
           <button class="filter" type="button" data-filter="hint" aria-pressed="false">Hints <span id="f-hint"></span></button>
-          <span class="muted tip-line">F8 next problem · hover code for docs · <kbd>.</kbd> or <kbd>Ctrl Space</kbd> completes</span>
+          <span class="muted tip-line"><kbd>F8</kbd> next problem · hover code for docs · <kbd>.</kbd> or <kbd>Ctrl</kbd> <kbd>Space</kbd> completes</span>
         </div>
         <ul id="problems"></ul>
         <ul id="extra-problems" aria-label="More problems: the game folder and the package" hidden></ul>
@@ -2252,7 +2427,7 @@ footer .made-by { margin-left: auto; }
           <button class="btn" id="sim-all" type="button" title="Every player count, input setup and monitor size">Test all combinations</button>
         </div>
           <button class="btn" id="sim-debug" type="button" title="Debug (F5): run the handler step by step, pause on breakpoints, and see every value"><span aria-hidden="true">▶ </span>Step through</button>
-        <p class="muted" style="margin:0 0 12px;max-width:65ch">Each player's window, launch arguments and file changes, as Nucleus would set them up. Simulated: nothing on your computer is touched, and the game itself still needs a test in Nucleus.<span class="dev-only"> How: the handler is loaded and <code>Game.Play</code> runs once per player in this browser, following the Jint 2.11.58 rules Nucleus uses (checked against the real engine on every probe). File, registry and process calls are recorded, not performed.</span></p>
+        <details class="how-works"><summary>How this works <span aria-hidden="true">ⓘ</span></summary><p class="muted">Each player's window, launch arguments and file changes, as Nucleus would set them up. Simulated: nothing on your computer is touched, and the game itself still needs a test in Nucleus.<span class="dev-only"> How: the handler is loaded and <code>Game.Play</code> runs once per player in this browser, following the Jint 2.11.58 rules Nucleus uses (checked against the real engine on every probe). File, registry and process calls are recorded, not performed.</span></p></details>
         <div id="dbg" class="dbg" hidden></div>
         <div id="sim-matrix" hidden></div>
         <div id="sim-out"></div>
@@ -2264,7 +2439,7 @@ footer .made-by { margin-left: auto; }
       <div role="tabpanel" id="panel-probes" hidden><div id="probes"></div></div>
     </section>
   </main>
-  <footer><span id="build-info" class="dev-only"></span><span>Your draft is kept in this browser only.</span><button class="link" id="welcome-open" type="button">Getting started</button><button class="link tg-open" id="test-open" type="button">🧪 Help test this beta</button><button class="link" id="help-open-2" type="button">Keyboard shortcuts</button><button class="link" type="button" data-tips-toggle aria-pressed="true">Tips: on</button><button class="link" type="button" id="news-open-2">What's new</button><a class="link start-link" href="https://snailedlt.github.io/nucleuscoop-handler-testbench/start/" title="What the workbench and the VS Code extension do, and how to install them">About these tools</a><span class="comm-foot">Questions? <a class="link" href="__DISCORD_INVITE__" target="_blank" rel="noopener">Discord</a> · <a class="link" href="__REDDIT__" target="_blank" rel="noopener">r/nucleuscoop</a></span><span class="made-by">Made by <a class="link" href="https://github.com/Snailedlt" rel="author" target="_blank">Snailedlt</a> (Jørgen KH)</span></footer>
+  <footer><span id="build-info" class="dev-only"></span><span>Your draft is kept in this browser only.</span><button class="link foot-dup" id="tour-open" type="button"><span data-icon="compass"></span> Take the tour</button><button class="link tg-open" id="test-open" type="button"><span data-icon="flask-conical"></span> Help test this beta</button><button class="link foot-dup" id="help-open-2" type="button">Keyboard shortcuts</button><button class="link foot-dup" type="button" data-tips-toggle aria-pressed="true">Tips: on</button><button class="link foot-dup" type="button" id="news-open-2">What's new</button><a class="link start-link foot-dup" href="https://snailedlt.github.io/nucleuscoop-handler-testbench/start/" title="What the workbench and the VS Code extension do, and how to install them">About these tools</a><span class="comm-foot">Questions? <a class="link" href="__DISCORD_INVITE__" target="_blank" rel="noopener">Discord</a> · <a class="link" href="__REDDIT__" target="_blank" rel="noopener">r/nucleuscoop</a></span><span class="made-by">Made by <a class="link" href="https://github.com/Snailedlt" rel="author" target="_blank">Snailedlt</a> (Jørgen KH)</span></footer>
 </div>
 
 <div id="tip" hidden></div>
@@ -2302,6 +2477,7 @@ footer .made-by { margin-left: auto; }
       <span class="set-g" role="presentation">More</span>
       <button type="button" role="tab" id="st-general" data-st="general" aria-controls="sp-general">Updates and backup</button>
       <button type="button" role="tab" id="st-advanced" data-st="advanced" aria-controls="sp-advanced">Advanced</button>
+      <button type="button" role="tab" id="st-testing" data-st="testing" aria-controls="sp-testing" data-beta>Testing</button>
     </div>
   </nav>
   <div class="set-panels">
@@ -2360,7 +2536,7 @@ footer .made-by { margin-left: auto; }
  <div class="set-panel" role="tabpanel" id="sp-keys" aria-labelledby="st-keys" data-label="Keyboard shortcuts" hidden></div>
   <div class="set-panel" role="tabpanel" id="sp-check" aria-labelledby="st-check" data-label="Check" hidden>
     <div class="set-sec"><h3>Check</h3>
-      <label class="set-row">How much each problem, and each option in Form, shows <select id="set-density"><option value="compact">Compact: one line, open for more</option><option value="comfortable">Comfortable: what and why</option><option value="detailed">Detailed: everything open</option></select></label></div>
+      <label class="set-row">How much each problem<span class="visual-only">, and each option in Form,</span> shows <select id="set-density"><option value="compact">Compact: one line, open for more</option><option value="comfortable">Comfortable: what and why</option><option value="detailed">Detailed: everything open</option></select></label></div>
   </div>
   <div class="set-panel" role="tabpanel" id="sp-lines" aria-labelledby="st-lines" data-label="Lines" hidden>
 
@@ -2389,6 +2565,7 @@ footer .made-by { margin-left: auto; }
   <div class="set-panel" role="tabpanel" id="sp-help" aria-labelledby="st-help" data-label="Tips and help" hidden>
 
     <div class="set-sec"><h3>Start-up questions</h3><p class="muted small" style="margin:0 0 6px">Nucli's two questions from your first visit: how much guidance, and where the tools go.</p><button class="btn" type="button" id="fr-again">Ask me again</button></div>
+    <div class="set-sec"><h3>Guided tour</h3><p class="muted small" style="margin:0 0 6px">A short walk past the parts of the workbench: tabs, code, Check, Try it, Docs and the rest.</p><button class="btn" type="button" id="set-tour"><span data-icon="compass"></span> Take the tour</button></div>
     <div class="set-sec">
       <label class="set-check"><input type="checkbox" id="set-tips"> <span>Tips under the code<small>General tips, and a heads-up when the code makes one relevant</small></span></label>
       <button class="link" type="button" id="set-heads">Show heads-ups again</button></div>
@@ -2430,6 +2607,18 @@ footer .made-by { margin-left: auto; }
       </div>
       <p class="muted small" id="ai-help"></p>
     </div>
+  </div>
+  <div class="set-panel" role="tabpanel" id="sp-testing" aria-labelledby="st-testing" data-label="Testing" data-beta hidden>
+    <p class="muted small" style="margin:0 0 10px">For testers of this beta: ways to see parts of the workbench you wouldn't otherwise. Gone at the full release.</p>
+    <div class="set-sec"><h3>Tips</h3>
+      <label class="set-field">Tips to show <small>Normally only the tips for your mode show (Guided: for newcomers, Advanced: for people who write code), plus the ones for everyone. Pick another to read them; each tip then says whom it's for.</small>
+        <select id="set-tips-show">
+          <option value="mode">For my mode (normal)</option>
+          <option value="all">Every tip</option>
+          <option value="newcomer">Only tips for newcomers</option>
+          <option value="developer">Only tips for developers</option>
+          <option value="everyone">Only tips for everyone</option>
+        </select></label></div>
   </div>
   <div class="set-panel" role="tabpanel" id="sp-advanced" aria-labelledby="st-advanced" data-label="Advanced" hidden>
 
@@ -2480,8 +2669,8 @@ footer .made-by { margin-left: auto; }
   <div class="more-list">
     <button class="btn no-touch" type="button" data-proxy="#help-open">Keyboard shortcuts</button>
     <button class="btn" type="button" data-proxy="#news-open-2">What's new</button>
-    <button class="btn" type="button" data-proxy="#test-open">🧪 Help test this beta</button>
-    <button class="btn" type="button" data-proxy="a.home-link">⌂ Home: about these tools</button>
+    <button class="btn" type="button" data-proxy="#test-open"><span data-icon="flask-conical"></span> Help test this beta</button>
+    <button class="btn" type="button" data-proxy="a.home-link"><span data-icon="house"></span> Home: about these tools</button>
   </div>
   <div class="actions"><button class="btn" type="button" id="more-close">Close</button></div>
 </dialog>
@@ -2518,7 +2707,7 @@ footer .made-by { margin-left: auto; }
 
 <dialog id="help-dialog" aria-label="Keyboard shortcuts">
   <h2 tabindex="-1" autofocus>Keyboard shortcuts</h2>
-  <p class="muted" style="margin:0 0 8px">The editor uses VS Code's keys. On a Mac, ⌘ instead of Ctrl. Keys with <kbd>[</kbd> <kbd>]</kbd> <kbd>/</kbd> <kbd>\</kbd> <kbd>;</kbd> go by position, as in VS Code: on a German, Spanish or Nordic keyboard, press the key where a US keyboard has that one (e.g. <kbd>Ü</kbd> for <kbd>[</kbd>). <button class="link" type="button" id="help-rebind">Change shortcuts</button></p>
+  <p class="muted" style="margin:0 0 8px">The editor uses VS Code's keys. On a Mac, ⌘ instead of Ctrl. Keys with <kbd>[</kbd> <kbd>]</kbd> <kbd>/</kbd> <kbd>\</kbd> <kbd>;</kbd> go by position, as in VS Code: on a German, Spanish or Nordic keyboard, press the key where a US keyboard has that one (e.g. <kbd>Ü</kbd> for <kbd>[</kbd>). <button class="link" type="button" id="help-rebind">Change shortcuts</button> · <button class="link" type="button" id="help-tour"><span data-icon="compass"></span> Take the tour</button></p>
   <table class="keys"><tbody>
     <tr class="kh"><th colspan="2">Workbench</th></tr>
     <tr><td><kbd>Ctrl</kbd> <kbd>Shift</kbd> <kbd>P</kbd> · <kbd>F1</kbd></td><td>Command palette: every command (format, fix, try it, theme…)</td></tr>

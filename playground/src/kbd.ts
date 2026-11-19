@@ -4,7 +4,7 @@
 // pages (build.mjs) and at runtime by Learn, so every page shows keys the same way. No DOM, no Node.
 
 const MOD = '(?:Ctrl|Shift|Alt|AltGr|Cmd|Option|Win)';
-const NAMED = '(?:F(?:1[0-2]|[1-9])|Esc|Enter|Tab|Space|Backspace|Delete|Del|Home|End|PageUp|PageDown|Up|Down|Left|Right|[↑↓←→])';
+const NAMED = '(?:F(?:1[0-2]|[1-9])|Escape|Esc|Enter|Tab|Space|Backspace|Delete|Del|Home|End|PageUp|PageDown|Up|Down|Left|Right|[↑↓←→])';
 const KEY = `(?:${NAMED}|[A-Z0-9]|[.,;/\\\\\\[\\]\`'=+-])`;
 /** One stroke: modifiers, then a key (`Ctrl+Shift+P`, `F8`, `Esc`). */
 const STROKE = `(?:${MOD}\\+)*${KEY}`;
@@ -61,7 +61,13 @@ export function kbdify(html: string): string {
   }).join('');
 }
 
+/** A plain-text sentence as HTML: `code` spans, and its shortcuts as keys. The convention for UI text: a shortcut
+ *  with a modifier is found as written ("Ctrl+Z"), a lone key goes in backticks ("press `F8`", "`Esc` closes it"). */
+export function keysText(text: string): string {
+  return kbdify(esc(text).replace(/`([^`]+)`/g, '<code>$1</code>'));
+}
+
 /** The keys' look, for pages with the site's tokens (--line, --surface, --fg, --muted). */
-export const KEYS_CSS = `kbd.keys { background: none; padding: 0; font: inherit; white-space: nowrap; }
+export const KEYS_CSS = `kbd.keys { background: none; border: 0; padding: 0; font: inherit; white-space: nowrap; }
 kbd.keys > kbd { display: inline-block; min-width: 1.6em; text-align: center; font: 600 .8em/1.55 var(--mono, ui-monospace, monospace); padding: 0 .45em; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; background: var(--surface); color: var(--fg); vertical-align: .1em; }
 kbd.keys .kplus { color: var(--muted); font-size: .8em; padding: 0 1px; }`;

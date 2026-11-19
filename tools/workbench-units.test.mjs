@@ -149,10 +149,16 @@ test('key bindings: defaults, own bindings, two-step keys, conflicts and keys th
   assert.deepEqual(keys.conflicts('palette', 'Ctrl+B'), [], 'the old binding is free now');
   keys.setBinding('save', '');
   assert.equal(keys.binding('save'), '');
+  // An own two-step binding that starts with a default's key (F6, Next pane) waits for its second key.
+  keys.setBinding('settings', 'F6 A');
+  assert.equal(keys.appActionFor(ev({ key: 'F6', code: 'F6' })), 'pending');
+  assert.equal(keys.appActionFor(ev({ key: 'a', code: 'KeyA' })), 'settings');
+  keys.setBinding('settings', null);
+  assert.equal(keys.appActionFor(ev({ key: 'F6', code: 'F6' })), 'nextPane');
   keys.resetAll();
   assert.equal(keys.binding('lines'), 'Ctrl+B');
   assert.equal(localStorage.getItem('nucleus-workbench-keys'), null);
-  assert.equal(changed, 3);
+  assert.equal(changed, 5);
   // The code editor's keymap: CodeMirror's notation, two steps with a space.
   const map = keys.codeKeyMap({ find: () => {} });
   assert.equal(typeof map['Ctrl-F'], 'function');
@@ -177,7 +183,7 @@ test("the saved file's name: the folder a Hub install makes (Game.GameName), els
 // are what people copy (no errors); the finished handler has no warnings either; what the notes claim Check says,
 // it says.
 test('learn: every lesson starts unfinished, its solution passes, with no errors', async () => {
-  const { CHAPTERS, FINAL, solutionErrors, findLesson } = await load('playground/src/learn/lessons.ts');
+  const { CHAPTERS, FINAL, solutionErrors, findLesson, hintFor, hasHint } = await load('playground/src/learn/lessons.ts');
   const { lint } = await load(path.join(coreDir, 'src', 'core', 'lint.ts'));
   const first = CHAPTERS.find((c) => c.id === 'first-handler');
   assert.ok(first && first.lessons.length >= 10, 'the first chapter');
@@ -189,13 +195,30 @@ test('learn: every lesson starts unfinished, its solution passes, with no errors
       assert.ok(l.title && l.text.length, l.id);
       assert.ok((l.notes ?? []).length <= 3, `${l.id}: at most 3 notes`);
       assert.deepEqual(solutionErrors(l), [], `${l.id}: errors in the solution`);
+      assert.ok(Number.isInteger(l.minutes) && l.minutes >= 1 && l.minutes <= 30, `${ch.id}/${l.id}: minutes for the overview`);
+      for (const st of l.steps ?? []) assert.ok(typeof st === 'string' || (st.text && (st.trouble ?? []).length <= 4), `${l.id}: a step with its text and at most 4 fixes`);
       if (l.kind !== 'code') continue;
       assert.ok(l.task && l.check && l.pane, `${l.id}: a task, a check and a pane`);
       assert.notEqual(l.check(l.start), null, `${l.id}: the starting code is already done`);
       assert.equal(l.check(l.solution), null, `${l.id}: the solution doesn't pass: ${l.check(l.solution)}`);
+      // The Hint button: something to say at the start of every code lesson, and nothing once it's done.
+      assert.ok(hintFor(l, l.start).length > 20, `${ch.id}/${l.id}: a hint at the start`);
+      assert.equal(hintFor(l, l.solution), '', `${ch.id}/${l.id}: no hint once done`);
+      // The task line counts goals: not all met at the start, all met in the solution.
+      assert.ok(l.goals?.length, `${ch.id}/${l.id}: goals for the task line`);
+      assert.ok(l.goals.some((g) => !g.ok(l.start)), `${ch.id}/${l.id}: every goal already met at the start`);
+      assert.deepEqual(l.goals.filter((g) => !g.ok(l.solution)).map((g) => g.label), [], `${ch.id}/${l.id}: goals the solution misses`);
     }
     assert.equal(findLesson(`#${ch.id}/${ch.lessons[2].id}`).index, 2);
+    assert.ok(ch.fileName && ch.build && ch.end?.title, `${ch.id}: file name, what you'll build, the end card`);
+    assert.equal(ch.lessons.filter((l) => l.overview).length, 1, `${ch.id}: one overview lesson`);
+    // Every lesson has a section, and a section's lessons sit together (the lesson list groups them).
+    const order = ch.lessons.map((l) => l.section).filter((s, i, a) => s !== a[i - 1]);
+    assert.equal(new Set(order).size, order.length, `${ch.id}: sections out of order: ${order.join(', ')}`);
   }
+  // Chapter ids are written once, in CHAPTERS (a rename is that line plus `formerIds`): tests read them from there.
+  const [, ch2] = CHAPTERS;
+  assert.equal(findLesson(`#${ch2.id}/window-size`).chapter, ch2, 'a link into chapter 2');
   assert.equal(findLesson('#nonsense').index, 0, 'an unknown link opens the start');
   const d = lint(FINAL).filter((x) => x.severity === 'error' || x.severity === 'warning');
   assert.deepEqual(d.map((x) => `${x.rule}: ${x.message}`), [], 'the finished handler: no errors or warnings');
@@ -206,9 +229,65 @@ test('learn: every lesson starts unfinished, its solution passes, with no errors
   // The first full test runs without Game.Play (full-screen windows: the bug the next lesson fixes).
   const test1 = first.lessons.find((l) => l.id === 'test'), fix = first.lessons.find((l) => l.id === 'fullscreen');
   assert.ok(!/Game\.Play/.test(test1.solution) && fix.check(test1.solution) !== null && /Game\.Play/.test(FINAL));
-  // Every lesson has a section, and a section's lessons sit together (the lesson list groups them).
-  const order = first.lessons.map((l) => l.section).filter((s, i, a) => s !== a[i - 1]);
-  assert.equal(new Set(order).size, order.length, `sections out of order: ${order.join(', ')}`);
+  // Chapter 2 (Codename CURE): the finished handler is clean, and the quiz starts with exactly the three mistakes
+  // its text names, each found by Check.
+  const { CURE_FINAL } = await load('playground/src/learn/lessons.ts');
+  const second = CHAPTERS[1];
+  assert.ok(second && second.lessons.length >= 8, 'the second chapter');
+  assert.deepEqual(lint(CURE_FINAL).filter((x) => x.severity === 'error' || x.severity === 'warning').map((x) => `${x.rule}: ${x.message}`), [], 'chapter 2\'s handler: no errors or warnings');
+  const quiz = second.lessons.find((l) => l.id === 'fix-it');
+  assert.deepEqual(lint(quiz.start).filter((x) => x.severity === 'error' || x.severity === 'warning').map((x) => x.rule).sort(), ['hub-install-parse', 'option-compare', 'unknown-member']);
+  assert.equal(quiz.goals.filter((g) => g.ok(quiz.start)).length, 0, 'no mistake fixed at the start');
+  // Applying Check's own first fix for each mistake finishes the quiz.
+  const applyEditsToText = (text, edits) => [...edits].sort((a, z) => z.start - a.start).reduce((out, e) => out.slice(0, e.start) + e.text + out.slice(e.end), text);
+  let fixed = quiz.start;
+  for (let i = 0; i < 3; i++) { const d = lint(fixed).find((x) => x.fixes?.length && (x.severity === 'error' || x.severity === 'warning')); if (d) fixed = applyEditsToText(fixed, d.fixes[0].edits); }
+  assert.equal(quiz.check(fixed), null, `Check's fixes finish the quiz: ${quiz.check(fixed)}`);
+  // Hint only where the learner works something out: not where the text shows the lines to copy (W29).
+  assert.ok(hasHint(quiz), 'the fix-it keeps its Hint');
+  assert.ok(!hasHint(CHAPTERS[0].lessons.find((l) => l.id === 'name')), 'a copy-the-lines lesson has no Hint');
+  assert.ok(!hasHint({ ...quiz, hint: false }) && hasHint({ ...CHAPTERS[0].lessons.find((l) => l.id === 'name'), hint: true }), 'hint: false / true override it');
+});
+
+test('learn: optional lessons are skippable in one click, and the chapter works without them', async () => {
+  const { CHAPTERS, chapterMinutes, skipTo, findLesson, problems, run, isUnverified, tipText } = await load('playground/src/learn/lessons.ts');
+  const ch2 = CHAPTERS[1];
+  const opt = ch2.lessons.findIndex((l) => l.id === 'keyboard-or-controller');
+  assert.ok(ch2.lessons[opt].optional?.skip && ch2.lessons[opt].optional.invite, 'chapter 2\'s controller lesson is optional, with a Skip and an invitation');
+  for (const ch of CHAPTERS) {
+    ch.lessons.forEach((l, i) => {
+      if (!l.optional) return;
+      assert.ok(!l.overview && i > 0, `${ch.id}/${l.id}: the overview is never optional`);
+      // Skipped: the lesson Skip leads to starts from code that loads and passes Check, without the learner's attempt.
+      const next = ch.lessons[skipTo(ch, i)];
+      if (!next) return;
+      // (A quiz starts with its mistakes on purpose: what it ends with is clean.)
+      if (next.start) {
+        assert.ok(run(next.start).loaded, `${ch.id}/${next.id}: loads after skipping ${l.id}`);
+        assert.deepEqual(problems(next.solution, next).map((d) => d.rule), [], `${ch.id}/${next.id}: ends clean after skipping ${l.id}`);
+        if (next.check) assert.equal(next.check(next.solution), null, `${ch.id}/${next.id}: can be finished after skipping ${l.id}`);
+      }
+      // Done: the optional lesson's solution is clean too (the learner who did it carries no problem forward).
+      assert.deepEqual(problems(l.solution, l).map((d) => d.rule), [], `${ch.id}/${l.id}: its solution is clean`);
+    });
+  }
+  // skipTo jumps over a run of optional lessons; past the end it's the chapter's length.
+  const fake = { lessons: [{}, { optional: {} }, { optional: {} }, {}] };
+  assert.equal(skipTo(fake, 0), 3);
+  assert.equal(skipTo(fake, 3), 4);
+  assert.equal(skipTo(ch2, opt), opt + 1);
+  // Minutes: the optional ones apart from the total.
+  const m = chapterMinutes(ch2);
+  assert.equal(m.optional, ch2.lessons.filter((l) => l.optional).reduce((n, l) => n + l.minutes, 0));
+  assert.equal(m.total + m.optional, ch2.lessons.reduce((n, l) => n + l.minutes, 0));
+  assert.ok(m.local > 0 && m.local < m.total);
+  // A chapter's former ids still open it (links live for ever).
+  assert.ok(ch2.formerIds?.includes('launch-options'));
+  assert.equal(findLesson('#launch-options/window-size').chapter, ch2);
+  assert.equal(findLesson('#launch-options/window-size').index, ch2.lessons.findIndex((l) => l.id === 'window-size'));
+  // Unverified tips: marked in the data, so Learn adds "Different for you? Tell us".
+  const tips = CHAPTERS.flatMap((c) => c.lessons.flatMap((l) => (l.steps ?? []).flatMap((st) => (typeof st === 'string' ? [] : st.trouble ?? []))));
+  assert.ok(tips.filter(isUnverified).map(tipText).some((t) => /firewall|network/.test(t)) && tips.filter(isUnverified).map(tipText).some((t) => /DirectX/.test(t)), 'the firewall and first-start tips are marked unverified');
 });
 
 test('Share: the link leads while it carries everything and fits Discord, else the file', async () => {
@@ -410,4 +489,314 @@ test('Nucleus colouring: every look gives its colours enough contrast, a theme f
   assert.equal(kit.resolve('b', looks, 'light').group, '#222222', 'a group follows Game\'s colour');
   const inherit = { base: looks.a, own: { name: 'Own', base: 'base', light: { obj: '#333333' }, dark: {} } };
   assert.equal(kit.resolve('own', inherit, 'light').group, '#333333', 'a theme that sets only Game\'s colour moves the groups with it');
+});
+
+test('Form labels: plain names for real options, the API name kept, units only where the docs say', async () => {
+  const fl = await load('playground/src/formlabels.ts');
+  const { api } = await load(path.join(coreDir, 'src/core/api.ts'));
+  const owners = { Game: 'Game', 'Game.Hook': 'GameHook', 'Game.ProtoInput': 'GameProtoInput' };
+  const memberOf = (p) => {
+    const i = p.lastIndexOf('.');
+    return api.objects[owners[p.slice(0, i)]]?.members[p.slice(i + 1)];
+  };
+  for (const p of Object.keys(fl.LABELS)) assert.ok(memberOf(p), `${p} is a real option`);
+  // Every option most Hub handlers set has a hand-written label (the ones Form shows most).
+  const usage = JSON.parse(fs.readFileSync(path.join(root, 'playground/src/usage.json'), 'utf8'));
+  const top = Object.entries(usage.counts)
+    .filter(([p]) => /^Game\.((Hook|ProtoInput)\.)?\w+$/.test(p) && memberOf(p) && !['object', 'method'].includes(memberOf(p).kind) && !memberOf(p).internal)
+    .sort((a, b) => b[1] - a[1]).slice(0, 100).map(([p]) => p);
+  const missing = top.filter((p) => !fl.LABELS[p]);
+  assert.ok(missing.length <= 5, `labels for the 100 most used options (missing: ${missing.join(', ')})`);
+  // Units: stated by the docs (or the source, for PauseBetweenStarts); none guessed.
+  const unit = (p) => fl.optionLabel(p, memberOf(p)).unit;
+  assert.equal(unit('Game.HandlerInterval'), 'ms');
+  assert.equal(unit('Game.FakeFocusInterval'), 'ms');
+  assert.equal(unit('Game.ProtoInput.FocusLoopIntervalMilliseconds'), 'ms');
+  assert.equal(unit('Game.PauseBetweenStarts'), 's');
+  assert.equal(unit('Game.PauseBetweenProcessGrab'), 's');
+  assert.equal(unit('Game.KillMutexDelay'), 's');
+  for (const p of ['Game.MaxPlayers', 'Game.LockInputToggleKey', 'Game.Hook.WindowX', 'Game.PlayersPerInstance', 'Game.SteamID', 'Game.GameName']) assert.equal(unit(p), undefined, `${p} has no unit`);
+  // Unknown ones read as words; the label is never the bare API name for a hand-written one.
+  assert.equal(fl.readableName('KillMutexDelayLauncher'), 'Kill mutex delay launcher');
+  assert.equal(fl.readableName('FocusLoop_WM_SETFOCUS'), 'Focus loop WM_SETFOCUS');
+  assert.equal(fl.readableName('UseDInputBlocker'), 'Use DirectInput blocker');
+  assert.equal(fl.readableName('XInputPlusDll'), 'XInput plus DLL');
+  assert.equal(fl.readableName('CreateSteamAppIdByExe'), 'Create Steam app ID by .exe');
+  assert.deepEqual(fl.optionLabel('Game.HandlerInterval', memberOf('Game.HandlerInterval')), { label: 'Handler update interval', written: true, unit: 'ms' });
+  assert.equal(fl.optionLabel('Game.KillMutexDelayLauncher', memberOf('Game.KillMutexDelayLauncher')).written, false);
+});
+
+test('Blocks: repeated steps group (the same call, values on one object, a short sequence again), others stay rows', async () => {
+  const bg = await load('playground/src/blockgroups.ts');
+  const call = (p) => ({ kind: 'call', path: p });
+  const set = (p) => ({ kind: 'set', path: p });
+  const v = (n) => ({ kind: 'var', varName: n });
+  assert.equal(bg.stepShape(call('Context.ModifySaveFile')), 'call Context.ModifySaveFile');
+  assert.equal(bg.stepShape(set('Game.HookGetKeyState')), bg.stepShape(set('Game.SendScrollWheel')), 'values set on Game group together');
+  assert.notEqual(bg.stepShape(set('Game.ProtoInput.XinputHook')), bg.stepShape(set('Game.HookFocus')));
+  assert.equal(bg.stepShape({ kind: 'if' }), undefined);
+  assert.equal(bg.stepShape({ kind: 'code' }), undefined);
+  const runs = (steps) => bg.findRuns(steps.map(bg.stepShape));
+  const msf = call('Context.ModifySaveFile');
+  // Three or more of one call: a group; two: not.
+  assert.deepEqual(runs([v('a'), msf, msf, msf, msf, { kind: 'if' }]), [{ start: 1, period: 1, reps: 4 }]);
+  assert.deepEqual(runs([msf, msf, { kind: 'code' }]), []);
+  // The copy-a-file sequence, three lines again and again.
+  const copy = [v('savePath'), v('savePkgOrigin'), call('System.IO.File.Copy')];
+  assert.deepEqual(runs([call('Context.CopyScriptFolder'), ...copy, ...copy, ...copy, v('x')]), [{ start: 1, period: 3, reps: 3 }]);
+  // A condition or code between breaks a run; runs never overlap.
+  assert.deepEqual(runs([msf, msf, { kind: 'if' }, msf, msf, msf, set('Game.A'), set('Game.B'), set('Game.C')]), [{ start: 3, period: 1, reps: 3 }, { start: 6, period: 1, reps: 3 }]);
+  assert.deepEqual(runs([]), []);
+  // TEMPORARY rules being compared (blockgroups.ts GroupRule): only the same call; values on one object from five on.
+  const sets = (k) => Array.from({ length: k }, (_, j) => set(`Game.O${j}`));
+  assert.deepEqual(bg.findRuns([...sets(4), ...copy, ...copy, msf, msf, msf].map(bg.stepShape), 'identical'), [{ start: 10, period: 1, reps: 3 }]);
+  assert.deepEqual(bg.findRuns(sets(4).map(bg.stepShape), 'objects5'), []);
+  assert.deepEqual(bg.findRuns([...sets(5), msf, msf, msf].map(bg.stepShape), 'objects5'), [{ start: 0, period: 1, reps: 5 }, { start: 5, period: 1, reps: 3 }]);
+});
+
+test('docs: "Insert into handler" puts an example where it belongs (lines.ts placeExample)', async () => {
+  const L = await load('playground/src/lines.ts');
+  const h = 'Game.GUID = "x";\nGame.ProtoInput.InjectStartup = false;\nGame.KillMutex = [];\n\nGame.Play = function () {\n  Context.StartArguments = "-w";\n};\n';
+  // An option: after the last one of the same object, before the callbacks.
+  let r = L.placeExample(h, 'Game.ProtoInput.BlockedMessages', 'Game.ProtoInput.BlockedMessages = [0x0008];');
+  assert.equal(r.action, 'insert');
+  assert.equal(r.text.split('\n')[2], 'Game.ProtoInput.BlockedMessages = [0x0008];');
+  // Set already: its value changes, nothing is added twice; the same value changes nothing.
+  r = L.placeExample(h, 'Game.KillMutex', 'Game.KillMutex = ["a"];');
+  assert.deepEqual([r.action, r.text.match(/KillMutex/g).length, r.line], ['update', 1, 2]);
+  assert.match(r.text, /Game\.KillMutex = \["a"\];/);
+  assert.equal(L.placeExample(h, 'Game.KillMutex', 'Game.KillMutex = [ ];').action, 'same');
+  // A call: at the end of Game.Play, indented like the code there; `player.` is `Player.` there.
+  r = L.placeExample(h, 'Context.Wait', 'Context.Wait(1500);', 'Game.Play');
+  assert.match(r.text, /  Context\.StartArguments = "-w";\n  Context\.Wait\(1500\);\n\};/);
+  // Proto Input callbacks are called once, with no arguments: the call goes in a loop over PlayerList (the one there, or a new one).
+  r = L.placeExample(h, 'ProtoInput.InstallHook', 'ProtoInput.InstallHook(player.ProtoInputInstanceHandle, 1);', 'Game.ProtoInput.OnInputLocked');
+  assert.equal(r.action, 'callback');
+  assert.match(r.text, /Game\.ProtoInput\.OnInputLocked = function \(\) \{\n  for \(var i = 0; i < PlayerList\.Count; i\+\+\) \{\n    var player = PlayerList\[i\];\n    ProtoInput\.InstallHook\(player\.ProtoInputInstanceHandle, 1\);\n  \}\n\};\n$/);
+  const looped = 'Game.ProtoInput.OnInputLocked = function() {\n    for (var i = 0; i < PlayerList.Count; i++) {\n        var p = PlayerList[i];\n        ProtoInput.X(p.ProtoInputInstanceHandle);\n    }\n};\n';
+  r = L.placeExample(looped, 'ProtoInput.InstallHook', 'ProtoInput.InstallHook(player.ProtoInputInstanceHandle, 1);', 'Game.ProtoInput.OnInputLocked');
+  assert.match(r.text, /        ProtoInput\.X\(p\.ProtoInputInstanceHandle\);\n        ProtoInput\.InstallHook\(p\.ProtoInputInstanceHandle, 1\);\n    \}/);
+  // Strings compare exactly; the last assignment is the one that counts; never inside a callback or after `return;`;
+  // a callback set by name is the function of that name; only a loop over the whole PlayerList is reused.
+  assert.equal(L.placeExample('Game.KillMutex = ["My Mutex"];\n', 'Game.KillMutex', 'Game.KillMutex = ["MyMutex"];').action, 'update');
+  assert.equal(L.placeExample('Game.MaxPlayers = 4;\nGame.MaxPlayers = 2;\n', 'Game.MaxPlayers', 'Game.MaxPlayers = 4;').action, 'update');
+  assert.match(L.placeExample('Game.GUID = "x"; Game.Play = function () {\n};\n', 'Game.MaxPlayers', 'Game.MaxPlayers = 4;').text, /^Game\.GUID = "x";\nGame\.MaxPlayers = 4; Game\.Play/);
+  assert.match(L.placeExample('Game.Play = function () {\n  a();\n  return;\n};\n', 'Context.Wait', 'Context.Wait(1);', 'Game.Play').text, /Context\.Wait\(1\);\n  return;/);
+  // A `return` sharing its line with the body, or with other code: the example still goes before it.
+  r = L.placeExample('Game.Play = function () { return; };\n', 'Context.Wait', 'Context.Wait(1);', 'Game.Play');
+  assert.equal(r.text, 'Game.Play = function () {\n  Context.Wait(1);\n  return;\n};\n');
+  assert.equal(r.text.split('\n')[r.line].trim(), 'Context.Wait(1);');
+  r = L.placeExample('Game.Play = function () { a(); return; };\n', 'Context.Wait', 'Context.Wait(1);', 'Game.Play');
+  assert.equal(r.text, 'Game.Play = function () {\n  a();\n  Context.Wait(1);\n  return;\n};\n');
+  assert.equal(r.text.split('\n')[r.line].trim(), 'Context.Wait(1);');
+  r = L.placeExample('Game.Play = function () {\n  a(); return;\n};\n', 'Context.Wait', 'Context.Wait(1);', 'Game.Play');
+  assert.equal(r.text, 'Game.Play = function () {\n  a();\n  Context.Wait(1);\n  return;\n};\n');
+  assert.equal(r.text.split('\n')[r.line].trim(), 'Context.Wait(1);');
+  // A new loop over PlayerList never reuses a name the callback uses (`return record(i);` after it, its own `player`).
+  r = L.placeExample('Game.ProtoInput.OnInputLocked = function () {\n  var i = 0, player = 1, j = 2;\n  return record(i, player, j);\n};\n', 'X', 'X(player.H);', 'Game.ProtoInput.OnInputLocked');
+  assert.match(r.text, /  for \(var k = 0; k < PlayerList\.Count; k\+\+\) \{\n    var pl = PlayerList\[k\];\n    X\(pl\.H\);\n  \}\n  return record\(i, player, j\);/);
+  assert.equal(r.text.split('\n')[r.line].trim(), 'X(pl.H);');
+  assert.match(L.placeExample('function play() {\n  a();\n}\nGame.Play = play;\n', 'Context.Wait', 'Context.Wait(1);', 'Game.Play').text, /a\(\);\n  Context\.Wait\(1\);\n\}\nGame\.Play = play;\n$/);
+  assert.equal(L.placeExample('Game.Play = other.fn;\n', 'Context.Wait', 'Context.Wait(1);', 'Game.Play'), undefined);
+  // Rebound (`play = other;`): Nucleus runs another function, so nothing is edited.
+  assert.equal(L.placeExample('function play() {\n}\nfunction other() {\n}\nplay = other;\nGame.Play = play;\n', 'Context.Wait', 'Context.Wait(1);', 'Game.Play'), undefined);
+  // Only real code counts: a comment that looks like a reassignment doesn't.
+  assert.match(L.placeExample('function play() {\n  a();\n}\n// play = other;\nGame.Play = play;\n', 'Context.Wait', 'Context.Wait(1);', 'Game.Play').text, /a\(\);\n  Context\.Wait\(1\);/);
+  // `j += 0` doesn't start at 0: not reused.
+  r = L.placeExample('var j = 1;\nGame.ProtoInput.OnInputLocked = function () {\n  for (j += 0; j < PlayerList.Count; j++) {\n    var p = PlayerList[j];\n  }\n};\n', 'X', 'X(player.H);', 'Game.ProtoInput.OnInputLocked');
+  assert.doesNotMatch(r.text, /var p = PlayerList\[j\];\n\s*X\(p\.H\)/);
+  // A one-line example loop: its body only, in one loop (it used to keep the header and lose the brace).
+  r = L.placeExample('Game.ProtoInput.OnInputLocked = function () {\n};\n', 'X', 'for (var i = 0; i < PlayerList.Count; i++) { var player = PlayerList[i]; X(player.H); }', 'Game.ProtoInput.OnInputLocked');
+  assert.equal(r.text.split('PlayerList.Count').length, 2);
+  assert.equal(r.text.split('X(').length, 2);
+  assert.doesNotThrow(() => new Function(r.text.replace(/Game\.ProtoInput\.OnInputLocked = /, 'var f = ')));
+  // A loop that skips players (`j += 2`) isn't reused: a new loop over every player.
+  r = L.placeExample('Game.ProtoInput.OnInputLocked = function () {\n  for (var j = 0; j < PlayerList.Count; j += 2) {\n    var p = PlayerList[j];\n  }\n};\n', 'X', 'X(player.H);', 'Game.ProtoInput.OnInputLocked');
+  assert.match(r.text, /i < PlayerList\.Count; i\+\+/);
+  r = L.placeExample('Game.ProtoInput.OnInputLocked = function () {\n  for (var j = 0; j < PlayerList.Count; j += 1) {\n    var p = PlayerList[j];\n  }\n};\n', 'X', 'X(player.H);', 'Game.ProtoInput.OnInputLocked');
+  assert.match(r.text, /var p = PlayerList\[j\];\n    X\(p\.H\);/);
+  // A loop whose player (or index) is set again inside isn't reused: the example would act on another player.
+  for (const again of ['p = PlayerList[0];', 'j = 0;', 'var p = PlayerList[0];']) {
+    r = L.placeExample(`Game.ProtoInput.OnInputLocked = function () {\n  for (var j = 0; j < PlayerList.Count; j++) {\n    var p = PlayerList[j];\n    ${again}\n  }\n};\n`, 'X', 'X(player.H);', 'Game.ProtoInput.OnInputLocked');
+    assert.doesNotMatch(r.text, /X\(p\.H\)/, again);
+    assert.match(r.text, /var player = PlayerList\[i\];\n\s*X\(player\.H\);/, again);
+  }
+  r = L.placeExample('Game.ProtoInput.OnInputLocked = function () {\n  for (var j = 0; j < 1; j++) {\n    var p = PlayerList[j];\n  }\n};\n', 'X', 'X(player.H);', 'Game.ProtoInput.OnInputLocked');
+  assert.match(r.text, /i < PlayerList\.Count/);
+  assert.equal(r.text.split('\n')[r.line].trim(), 'X(player.H);');
+  // An example that loops over PlayerList itself (GetCursorPosHookID's) isn't wrapped in a second loop: one
+  // InstallHook per player, in the callback's own loop or a new one.
+  const parseLikeJint0 = (t) => jsp0.parseLikeJint(t, { ecmaVersion: 'latest' });
+  const jsp0 = await load(path.join(coreDir, 'src/core/jsparse.ts'));
+  const hookEx = 'for (var i = 0; i < PlayerList.Count; i++) {\n  var player = PlayerList[i];\n  ProtoInput.InstallHook(\n    player.ProtoInputInstanceHandle,\n    ProtoInput.Values.GetCursorPosHookID\n  );\n}';
+  const loops = (t) => (t.match(/PlayerList\.Count/g) ?? []).length;
+  const hooks = (t) => (t.match(/InstallHook\(/g) ?? []).length;
+  for (const base of ['', 'Game.ProtoInput.OnInputLocked = function () {\n  Context.Wait(1);\n};\n', 'Game.ProtoInput.OnInputLocked = function () {\n  for (var j = 0; j < PlayerList.Count; j++) {\n    var p = PlayerList[j];\n    X(p.H);\n  }\n};\n']) {
+    r = L.placeExample(base, 'ProtoInput.Values.GetCursorPosHookID', hookEx, 'Game.ProtoInput.OnInputLocked');
+    assert.equal(loops(r.text), 1, r.text);
+    assert.equal(hooks(r.text), 1, r.text);
+    assert.doesNotThrow(() => parseLikeJint0(r.text), r.text);
+    assert.equal(L.placeExample(r.text, 'ProtoInput.Values.GetCursorPosHookID', hookEx, 'Game.ProtoInput.OnInputLocked').action, 'same', r.text);
+  }
+  // Merged into the callback's own loop, with its player's name.
+  assert.match(L.placeExample('Game.ProtoInput.OnInputLocked = function () {\n  for (var j = 0; j < PlayerList.Count; j++) {\n    var p = PlayerList[j];\n  }\n};\n', 'X', hookEx, 'Game.ProtoInput.OnInputLocked').text, /var p = PlayerList\[j\];\n    ProtoInput\.InstallHook\(\n      p\.ProtoInputInstanceHandle/);
+  // A loop that uses its index for more than the player goes in as it is (no second loop round it).
+  r = L.placeExample('', 'X', 'for (var i = 0; i < PlayerList.Count; i++) {\n  X(i, PlayerList[i].H);\n}', 'Game.ProtoInput.OnInputLocked');
+  assert.equal(loops(r.text), 1, r.text);
+  // A new loop's names: escaped identifiers count as their names (`\\u0069` is `i`), and when every name is taken the
+  // next free numbered one.
+  r = L.placeExample('Game.ProtoInput.OnInputLocked = function () {\n  var \\u0069 = 0;\n};\n', 'X', 'X(player.H);', 'Game.ProtoInput.OnInputLocked');
+  assert.match(r.text, /for \(var j = 0;/);
+  const taken = ['i', 'j', 'k', 'n', 'idx', 'index', 'i2', 'j2', 'k2', 'n2', 'idx2', 'index2', 'i3'].map((x) => `var ${x};`).join(' ');
+  r = L.placeExample(`Game.ProtoInput.OnInputLocked = function () {\n  ${taken}\n};\n`, 'X', 'X(player.H);', 'Game.ProtoInput.OnInputLocked');
+  assert.match(r.text, /for \(var i4 = 0;/);
+  // A handler that doesn't parse: no guessing.
+  assert.equal(L.placeExample('Game.Play = function( {', 'Context.Wait', 'Context.Wait(1);', 'Game.Play'), undefined);
+  // Every example in the docs goes somewhere in an empty handler and in a typical one, and the result still parses.
+  const { api } = await load(path.join(coreDir, 'src/core/api.ts'));
+  const { parseLikeJint } = await load(path.join(coreDir, 'src/core/jsparse.ts'));
+  const { prettyCode } = await load(path.join(coreDir, 'src/core/pretty.ts'));
+  const LABEL = { Game: 'Game', GameHook: 'Game.Hook', GameProtoInput: 'Game.ProtoInput', Context: 'Context', PlayerInfo: 'Player', ProtoInputRuntime: 'ProtoInput', ProtoInputValues: 'ProtoInput.Values' };
+  let n = 0;
+  for (const [o, label] of Object.entries(LABEL)) for (const [k, m] of Object.entries(api.objects[o].members)) {
+    if (!m.example || !m.exampleBy) continue;
+    for (const base of ['', h]) {
+      const p = L.placeExample(base, `${label}.${k}`, prettyCode(m.example), m.exampleIn ?? 'top');
+      assert.ok(p && p.action !== 'same', `${label}.${k}`);
+      assert.doesNotThrow(() => parseLikeJint(p.text, { ecmaVersion: 'latest' }), `${label}.${k}: ${p.text}`);
+      // Once in, the handler has it: Docs offers "Show in handler", not a second copy (several statements too).
+      assert.equal(L.placeExample(p.text, `${label}.${k}`, prettyCode(m.example), m.exampleIn ?? 'top')?.action, 'same', `${label}.${k} again: ${p.text}`);
+      n++;
+    }
+  }
+  assert.ok(n > 400, `${n} examples placed`);
+});
+
+test('Check counts the package and game folder problems too (checklist.ts)', async () => {
+  const C = await load('playground/src/checklist.ts');
+  const code = [{ severity: 'warning' }, { severity: 'hint' }];
+  const game = Array.from({ length: 5 }, () => ({ severity: 'info' }));
+  const pkg = [{ severity: 'error' }];
+  // A linked game folder with 5 notes and clean code: not 0.
+  assert.deepEqual(C.countProblems([[], game, []]), { error: 0, warning: 0, info: 5, hint: 0, total: 5 });
+  assert.deepEqual(C.countProblems([code, game, pkg]), { error: 1, warning: 1, info: 5, hint: 1, total: 7 });
+  // The filter chips filter every list alike; Guided and All leave hints out.
+  assert.equal(C.shownInCheck('info', true, 'error'), true);
+  assert.equal(C.shownInCheck('info', false, 'error'), false);
+  assert.equal(C.shownInCheck('info', false, 'info'), true);
+  assert.equal(C.shownInCheck('hint', false, 'all'), false);
+  assert.equal(C.shownInCheck('hint', false, 'hint'), true);
+});
+
+test('undo reveal: the region two texts differ in', async () => {
+  const U = await load('playground/src/undoreveal.ts');
+  assert.equal(U.changedRegion('abc', 'abc'), null);
+  assert.deepEqual(U.changedRegion('var a = 1;\nvar b = 2;\n', 'var a = 1;\nvar b = 3;\n'), { start: 19, endBefore: 20, endAfter: 20 });
+  assert.deepEqual(U.changedRegion('ab', 'aXb'), { start: 1, endBefore: 1, endAfter: 2 }, 'an insertion');
+  assert.deepEqual(U.changedRegion('aXb', 'ab'), { start: 1, endBefore: 2, endAfter: 1 }, 'a deletion');
+  assert.deepEqual(U.changedRegion('aa', 'aaa'), { start: 2, endBefore: 2, endAfter: 3 }, 'repeated text: the end never passes the start');
+});
+
+test('icons: one set, decorative, sized to the text', async () => {
+  const I = await load('playground/src/icons.ts');
+  for (const name of Object.keys(I.ICONS)) {
+    const svg = I.icon(name);
+    assert.match(svg, /aria-hidden="true"/);
+    assert.match(svg, /stroke="currentColor"/);
+    assert.match(svg, /width="1em"/);
+    assert.doesNotMatch(I.ICONS[name], /fill="#|stroke="#|style=/, `${name}: no colours of its own`);
+  }
+  const src = fs.readFileSync(path.join(root, 'playground/src/app.ts'), 'utf8');
+  const menu = src.slice(src.indexOf('const appItems'), src.indexOf("$('#tab-add')"));
+  assert.doesNotMatch(menu, /icon: '[^<']/, 'Menu icons come from icons.ts or reporticons.ts, not emoji');
+});
+
+test('shortcuts as keys: plain sentences and backticked keys', async () => {
+  const K = await load('playground/src/kbd.ts');
+  const h = K.keysText('Press Ctrl+Z, then `F8`; `Escape` closes it. `Game.Play` stays code & <safe>.');
+  assert.match(h, /<kbd class="keys"><kbd>Ctrl<\/kbd><span class="kplus">\+<\/span><kbd>Z<\/kbd><\/kbd>/);
+  assert.match(h, /<kbd class="keys"><kbd>F8<\/kbd><\/kbd>/);
+  assert.match(h, /<kbd class="keys"><kbd>Escape<\/kbd><\/kbd>/);
+  assert.match(h, /<code>Game\.Play<\/code>/);
+  assert.match(h, /&amp; &lt;safe&gt;/);
+  const T = await load('playground/src/codetext.ts');
+  assert.equal(T.looksLikeCodeText('Ctrl+.'), false, 'a shortcut in backticks is keys, not coloured code');
+  assert.equal(T.looksLikeCodeText('Game.Play'), true);
+});
+
+test('doc votes: live counts keep the snapshot on a counter error, and keep the vote they were read with', async () => {
+  const realFetch = globalThis.fetch;
+  globalThis.BUILD = { counts: 'example', docVotes: null };
+  try {
+    let status = 503;
+    globalThis.fetch = async () => ({ status, ok: status < 400, json: async () => ({ count: '2' }) });
+    const V = await load('playground/src/votecounts.ts');
+    assert.equal(await V.liveVotes('Game.X', 'doc', ''), null, 'a 503 is not zero votes: the snapshot stays');
+    status = 404; // (the same module: another name, as the first read is kept for the page)
+    assert.deepEqual(await V.liveVotes('Game.Y', 'doc', 'up'), { up: 0, down: 0, aiUp: 0, aiDown: 0, base: 'up' }, 'a 404: nobody voted that way yet');
+    // Cached for the page: a later card gets the vote the counts were read with, not its own.
+    assert.equal((await V.liveVotes('Game.Y', 'doc', '')).base, 'up');
+  } finally {
+    globalThis.fetch = realFetch;
+    delete globalThis.BUILD;
+  }
+});
+
+test('visual flag: storage that throws (blocked by the browser) leaves Form and Blocks off, without an error', async () => {
+  const ls = Object.getOwnPropertyDescriptor(globalThis, 'localStorage');
+  globalThis.location = { search: '?visual=1' };
+  Object.defineProperty(globalThis, 'localStorage', { configurable: true, get() { throw new DOMException('blocked', 'SecurityError'); } });
+  try {
+    const { VISUAL } = await load('playground/src/visual.ts');
+    assert.equal(VISUAL, false);
+  } finally {
+    Object.defineProperty(globalThis, 'localStorage', ls);
+    delete globalThis.location;
+  }
+});
+
+test("game folder: Cancel stops only the read the progress shows, not another tab's", async () => {
+  const G = await load('playground/src/gamefolder.ts');
+  const file = (name) => ({ kind: 'file', name, getFile: async () => ({ size: 10, arrayBuffer: async () => new ArrayBuffer(10) }) });
+  const dir = (name, n) => ({ kind: 'directory', name, async *values() { for (let i = 0; i < n; i++) yield file(`f${i}.dll`); } });
+  const seen = [];
+  G.onFolderProgress((p) => seen.push(p));
+  let next;
+  globalThis.window.showDirectoryPicker = async () => next;
+  try {
+    next = dir('A', 5);
+    const a = await G.pickGameFolder();
+    next = dir('B', 5);
+    const b = await G.pickGameFolder();
+    const done = (f) => new Promise((r) => { if (G.gameBinariesNow(f, r)) r(); });
+    const aDone = done(a);
+    await new Promise((r) => setTimeout(r, 0));
+    const bDone = done(b);
+    await new Promise((r) => setTimeout(r, 0));
+    G.cancelFolderRead(); // the progress shows B now
+    await Promise.all([aDone, bDone]);
+    const last = (name) => seen.filter((p) => p.phase === 'binaries' && p.name === name).map((p) => p.done).pop();
+    assert.equal(last('A'), 4, "A's read went on to its last file");
+    assert.ok(last('B') < 4, "B's read stopped");
+    // While B is shown, A's read goes on quietly: no A progress between B's first update and B's done, so Cancel
+    // always stops the read on screen. A shows again once B is gone.
+    const bFirst = seen.findIndex((p) => p.phase === 'binaries' && p.name === 'B');
+    const bEnd = seen.findIndex((p, i) => i > bFirst && p.phase === 'done');
+    assert.ok(bFirst >= 0 && bEnd > bFirst);
+    assert.ok(!seen.slice(bFirst, bEnd).some((p) => p.name === 'A'), 'no A progress while B is shown');
+  } finally {
+    delete globalThis.window.showDirectoryPicker;
+  }
+});
+
+test('doc votes: an "In practice" report says so in its title (core docReviewUrl/docFeedbackUrl, used by Docs and the docs pages)', async () => {
+  const A = await load(path.join(coreDir, 'src/core/api.ts'));
+  const t = (u) => new URL(u).searchParams.get('title');
+  assert.equal(t(A.docReviewUrl('Game.X', 'practice')), 'Doc review: Game.X (In practice)');
+  assert.equal(t(A.docFeedbackUrl('Game.X', 'practice')), 'Doc feedback: Game.X (In practice)');
+  assert.equal(t(A.docReviewUrl('Game.X', 'doc')), 'Doc review: Game.X');
+  assert.equal(new URL(A.docReviewUrl('Game.X', 'practice')).searchParams.get('member'), 'Game.X');
+  // The docs pages pass the part on (docs-pages.mjs), as the workbench's Docs does (doccard.ts).
+  const src = fs.readFileSync(path.join(root, 'playground/docs-pages.mjs'), 'utf8') + fs.readFileSync(path.join(root, 'playground/src/doccard.ts'), 'utf8');
+  for (const call of ['o.docReviewUrl(page.path, part)', 'feedbackUrl(page.path, part)', 'docReviewUrl(path, part)', 'docFeedbackUrl(path, part)']) assert.ok(src.includes(call), call);
 });

@@ -68,6 +68,16 @@ const folderOf = (v) => (/^[A-Za-z_$][\w$.]*$/.test(v) ? v : undefined);
  */
 /** The left-hand list of docs/ and rules/ (groups › names, a filter on top): its CSS, its markup, and nav.js fills it
  *  from docs/nav.json. `here`: the page's entry (a docs path, a check's id, or a group key) to mark. */
+// AI-written parts framed as in the workbench's Docs (doccard.ts) and VS Code's Docs panel: the core's placeAiFrames
+// (core/aimark.ts) turns memberMarkdown's slots into a lightly tinted box with the sparkle in its corner; where the
+// part comes from is the sparkle's tooltip. Its CSS comes from the core too (aiFrameCss), in the site's colours.
+const SPARK = '<span class="ai-spark" aria-hidden="true"></span>';
+const AI_SPARK_CSS = `.ai-spark { display: inline-block; flex: none; width: 1.1em; height: 1.1em; vertical-align: -0.18em; background: linear-gradient(135deg, #a855f7 10%, #22d3ee 90%);
+  -webkit-mask: var(--spark) center / contain no-repeat; mask: var(--spark) center / contain no-repeat;
+  --spark: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M14 1.5Q15 9.5 23 10.5Q15 11.5 14 19.5Q13 11.5 5 10.5Q13 9.5 14 1.5Z'/%3E%3Cpath d='M5.5 13.5Q6 17.5 10 18Q6 18.5 5.5 22.5Q5 18.5 1 18Q5 17.5 5.5 13.5Z'/%3E%3C/svg%3E"); }
+.ai-box.practice { margin: 18px 0; padding: 10px 14px; }
+.ai-box.practice > .ai-h { font-size: 1.05rem; }`;
+
 export const DRAWER_CSS = `/* The docs list: a drawer on the left (groups › names, a filter on top), over the page on a narrow screen. */
 .docs-wrap { max-width: 1280px; margin: 0 auto; display: grid; grid-template-columns: 270px minmax(0, 1fr); gap: 0 8px; }
 .docs-wrap > main { max-width: 900px; margin: 0; min-width: 0; }
@@ -132,10 +142,13 @@ ${themeScript}
 ${style}
 <style>
 .crumbs { font-size: 14px; color: var(--muted); margin: 0 0 14px; }
+main h1 { overflow-wrap: anywhere; } /* a long name (Game.ProtoInput.RegisterRawInputHook) wraps on a phone */
 .crumbs a { color: inherit; }
 .open-wb { margin: 0 0 18px; font-size: 14px; }
 pre.cfg { white-space: pre-wrap; overflow-wrap: anywhere; }
 .dlist { padding-left: 20px; } .dlist li { margin: 0 0 6px; }
+${AI_SPARK_CSS}
+${o.aiFrameCss ? o.aiFrameCss({ fg: 'var(--fg)', muted: 'var(--muted)', line: 'var(--line)', surface: 'var(--surface)', link: 'var(--accent)' }) : ''}
 ${SITE_HEADER_CSS}${DOC_FEEDBACK_CSS}
 ${DRAWER_CSS}
 table { border-collapse: collapse; margin: 0 0 16px; font-size: 14px; } th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
@@ -162,6 +175,35 @@ ${docsDrawer(up, here0, o.groups.map((g) => `<li><a href="${up}docs/${g.key}/">$
   for (const e of o.allEntries(true)) if (folderOf(e.path)) values.add(e.path);
   for (const n of o.enums ?? []) values.add(`Nucleus.${n}`);
   const written = [];
+  const members = new Map(o.allEntries(true).map((e) => [e.path, e.member]));
+  // A Hub example's source is "From Hub handlers", never the counts an older model's note has (they go stale).
+  for (const m of members.values()) if (m.exampleBy === 'hub') m.exampleNote = 'From Hub handlers';
+  // Each 👍/👎 where the workbench's Docs (doccard.ts) has it: the doc's at the bottom of the doc content, after the
+  // example and before "Handler API docs"; "In practice"'s inside its box. The follow-up link shows only
+  // after a vote (site-chrome.mjs docFeedback); the core's own "Is it wrong? Tell us" links are left out for it.
+  const feedbackUrl = (p, part) => o.docReviewUrl(p, part).replace(encodeURIComponent('Doc review: '), encodeURIComponent('Doc feedback: '));
+  const withVotes = (page, m, href) => {
+    let md = page.markdown.replace(/^## [^\n]*\n+/, '');
+    const votes = Boolean(page.path && o.docReviewUrl && m);
+    // The counts are in each part's vote control (its score and tooltip), so the core's "People: … · AIs: …" text goes;
+    // "Verified by people (N votes)" stays where it is.
+    if (votes) md = md.replace(/(^|\n\n)((?:\*\*✓ [^\n]*?\*\*)?)((?: · )?(?:People|AIs): \d+ 👍 \d+ 👎)+(?=\n\n|$)/g, (_, pre, ver) => (ver ? `${pre}${ver}` : pre ? '' : '')).replace(/\n{3,}/g, '\n\n');
+    let html = mdToHtml(md, href);
+    // The page was made with slots (memberMarkdown): frame the AI-written parts, then each part's 👍/👎 where its slot is.
+    if (m && o.placeAiFrames) html = o.placeAiFrames(html, m, { icon: SPARK, level: 2, path: page.path });
+    const line = (part, q) => docFeedback(page.path, o.docReviewUrl(page.path, part), esc, part, q, { inline: true, feedbackUrl: feedbackUrl(page.path, part), counts: o.partVotes ? o.partVotes(page.path, part) : undefined });
+    if (votes) {
+      html = html.replace('<p>@@slot:practice@@</p>', () => line('practice', 'Is "In practice" right?'));
+      if (m.practice && !html.includes('data-kind="practice"')) html += line('practice', 'Is "In practice" right?');
+      // The doc's own at the bottom of the doc content (after the example), before "Handler API docs", as in #docs.
+      if (m.doc) {
+        const api = /<p><a [^>]*>(?:Handler API docs|MDN: [^<]*)<\/a><\/p>/.exec(html);
+        html = api ? html.slice(0, api.index) + line('doc', 'Is the doc right?') + html.slice(api.index) : html + line('doc', 'Is the doc right?');
+      }
+    }
+    html = html.replace(/<p>@@slot:[\w-]+@@<\/p>\n?/g, '');
+    return votes ? html + docFeedbackScript(o.feedbackSite ?? null, o.countsSite ?? o.feedbackSite ?? null) + (o.aiTipScript ? `<script>${o.aiTipScript}</script>` : '') : html;
+  };
   for (const v of values) {
     if (v && !folderOf(v)) continue;
     const up = v ? '../../' : '../';
@@ -174,15 +216,15 @@ ${docsDrawer(up, here0, o.groups.map((g) => `<li><a href="${up}docs/${g.key}/">$
       if (!t) return `${here || './'}`;
       return folderOf(t) && values.has(t) ? `${here}${t}/` : `${up}#docs-${encodeURIComponent(t)}`;
     };
-    const page = o.docsPage(o.docsView(v), (x) => `@docs:${x}`);
+    // With slots: where each part's 👍/👎 goes and the AI-written parts' frames (no "Is it wrong? Tell us" links).
+    const page = o.docsPage(o.docsView(v), (x) => `@docs:${x}`, true);
     const crumbs = [`<a href="${up}start/">Nucleus handler tools</a>`, v ? `<a href="${here}">Docs</a>` : 'Docs', ...page.crumbs.map((c, i) => (i < page.crumbs.length - 1 && c.view ? `<a href="${href(`@docs:${o.docsValue ? o.docsValue(c.view) : c.view.replace(/^(group|q):/, '')}`)}">${esc(c.label)}</a>` : esc(c.label)))];
     const title = v ? (page.path ?? v) : 'Docs';
-    const first = (page.markdown.replace(/```[\s\S]*?```/g, '').split(/\n{2,}/).map((x) => x.trim()).find((x) => x && !x.startsWith('#') && !x.startsWith('-')) ?? '').replace(/[`*_\[\]]/g, '').replace(/\(@docs:[^)]*\)/g, '').slice(0, 200);
+    const first = (page.markdown.replace(/```[\s\S]*?```/g, '').replace(/@@slot:[\w-]+@@/g, '').split(/\n{2,}/).map((x) => x.trim()).find((x) => x && !x.startsWith('#') && !x.startsWith('-')) ?? '').replace(/[`*_\[\]]/g, '').replace(/\(@docs:[^)]*\)/g, '').slice(0, 200);
     const body = `<p class="crumbs">${crumbs.join(' › ')}</p>
 <h1>${esc(v ? title : 'Docs')}</h1>
 <p class="open-wb"><a href="${up}#docs${v ? `-${encodeURIComponent(v)}` : ''}">Open in the workbench</a> (search, and try it in a handler)</p>
-${mdToHtml(page.markdown.replace(/^## [^\n]*\n+/, ''), href)}
-${page.path && o.docReviewUrl ? docFeedback(page.path, o.docReviewUrl(page.path), esc) + docFeedbackScript(o.feedbackSite ?? null) : ''}
+${withVotes(page, members.get(page.path), href)}
 `;
     const dir = v ? path.join(o.outDir, v) : o.outDir;
     fs.mkdirSync(dir, { recursive: true });
