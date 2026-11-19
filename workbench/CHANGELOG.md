@@ -1,6 +1,6 @@
 # Changelog
 
-What changed in the browser workbench (<https://snailedlt.github.io/nucleuscoop-handler-testbench/>). It updates whenever `main` changes, so releases are dated. Newest first. The workbench shows this list itself under **What's new**.
+What changed in the browser workbench (<https://snailedlt.github.io/nucleus-devtools/>). It updates whenever `main` changes, so releases are dated. Newest first. The workbench shows this list itself under **What's new**.
 
 <!--
 How to write it (people and AI agents read this, and the workbench shows it):
@@ -11,6 +11,12 @@ How to write it (people and AI agents read this, and the workbench shows it):
 - A screenshot (or other media) for big, visible changes, folded away in a `<details><summary>Screenshot</summary>` block indented under its line, with a blank line before and after the image and the closing `  </details>`; the image line: `  ![What it shows](docs/images/changelog/<date>-<name>-light.png)` (≈700–1000 px wide), with `<date>-<name>-dark.png` beside it: What's new shows the one for the viewer's theme (`tools/screenshots.cjs` takes both). An animation is a `.gif` (or `.mp4`/`.webm`, smaller) with a `.png` still of the same name beside it (`x-light.gif` + `x-light.png`, and the dark pair): What's new shows the still until the item is opened, then plays it, unless the device asks for less motion. Keep each under ~300 KB; summary `Animation`.
 - When it goes live: rename "## Unreleased" to "## <yyyy-mm-dd>" (add " HH:MM", UTC, for a second release on the same day). A `---` line separates releases.
 -->
+
+## Unreleased
+### ⚠️ Changed
+- **A new address: https://snailedlt.github.io/nucleus-devtools/.** The workbench moved into the tools' repository, [nucleus-devtools](https://github.com/Snailedlt/nucleus-devtools), so it's built from the same commit as the checks it runs. Update your bookmarks; your drafts and settings come along (same site, new folder). Reports go to the same forms as the other tools'.
+
+---
 
 ## 2026-11-19
 ### ✨ New

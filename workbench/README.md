@@ -1,4 +1,6 @@
-# Nucleus handler testbench
+# Nucleus handler workbench and testbench
+
+This folder of [nucleus-devtools](../README.md) has the browser workbench and site (`playground/`) and the Jint testbench (`src/`, `probes/`). It was the repository `nucleuscoop-handler-testbench` until it moved in here.
 
 > **Beta, testers wanted.** Intro, screenshots and a 5-minute install: **https://snailedlt.github.io/nucleus-devtools/start/?ref=workbench-readme-md**
 
@@ -96,7 +98,7 @@ Handlers get .NET access through Jint (`System.IO`, `System.Diagnostics`, …), 
 
 ## Workbench (browser GUI)
 
-`playground/` builds a single self-contained page for testing by hand. It's published at **https://snailedlt.github.io/nucleus-devtools/?ref=workbench-readme-md** (`.github/workflows/pages.yml`: on every push and daily, against splitscreenme-vscode's `main`; one-time setup: Settings > Pages > Source: GitHub Actions). It has:
+`playground/` builds a single self-contained page for testing by hand. It's published at **https://snailedlt.github.io/nucleus-devtools/?ref=workbench-readme-md** (`.github/workflows/pages.yml` at the repository root: on every push to `main` and daily, with the core of the same commit; one-time setup: Settings > Pages > Source: GitHub Actions). It has:
 
 - a short guided tour of the workbench on a first visit (skip it, take it again from the menu), and **Learn** (`learn/`): lessons that walk you through a first handler, with Check beside the code;
 - a code editor with the same features as the VS Code extension: live squiggles and quick fixes, suggestions (API members, option values, your own functions and variables, `Context.Options` keys, snippets, the template in an empty file), hovers and parameter hints styled like VS Code's, F12, rename (F2), find and replace, folding, Format Document, and VS Code's shortcuts (all rebindable); its code colours, *Nucleus (follows the look)*, give `Game`/`Context`/`Nucleus`, option groups (`Game.Hook`), fixed choices (`Nucleus.Folder.InstancedGameFolder`) and callbacks (`Game.Play`) colours of their own, or pick VS Code's, Notepad++'s and other editors' colours in Settings;
@@ -138,20 +140,20 @@ In Advanced mode everything is keyboard-driven:
 
 Links like `#hub-<id>`, `#probe-17`, `#template-basic` or `#example-mistakes` open that example directly, and `#docs-<name>` opens a name in Docs (over the handler you have open). The page also remembers your draft, the active tab and the simulation settings in your browser.
 
-It uses the same core code as the extension, from a checkout of [splitscreenme-vscode](https://github.com/Snailedlt/nucleus-devtools). That checkout needs `npm ci` run in it first.
+It uses the same core code as the extension, from the repository root (`src/core`). Run `npm ci` there first.
 
 ```bash
-cd playground && npm install && node build.mjs --core ../../splitscreenme-vscode   # → dist/workbench.html
+cd workbench/playground && npm ci && node build.mjs   # → dist/workbench.html (--core <dir> for another checkout of the core)
 ```
 
 The simulation runs in the browser's JavaScript engine, not Jint. It emulates the Jint rules the probes confirmed, and it refuses code Jint can't parse. Before running a handler it rewrites the source so the browser behaves like Jint where they differ: ES2015+ built-ins Jint lacks (`.includes()`, `Object.assign`, `Map`, …) fail, `let`/`const` become `var`, and a top-level `"use strict"` applies to the whole handler.
 
-The simulation lives in splitscreenme-vscode (`src/core/sim.ts`), where it also powers the extension's **Try it** panel and `ncdev simulate`; this page bundles the same file.
+The simulation lives in the core (`src/core/sim.ts` at the repository root), where it also powers the extension's **Try it** panel and `ncdev simulate`; this page bundles the same file.
 
 `sim-parity.mjs` checks the simulation against the real engine: it runs every probe through it and compares the outcome, and the launch arguments it produces, with `probes/expected.txt`. It currently matches on all 121. `--isolated` does the same through `ncdev simulate`, the sandboxed path the CLI and VS Code use. Run it after changing `src/core/sim.ts`:
 
 ```bash
-cd playground && node sim-parity.mjs --core ../../splitscreenme-vscode              # and with --isolated
+cd workbench/playground && node sim-parity.mjs              # and with --isolated (npm run build at the root first)
 ```
 
 The page shows the same comparison live in Advanced mode → Engine probes.
@@ -189,7 +191,7 @@ test-probes.sh           engine behaviour regression check
 src/Harness.cs           loader + per-player Game.Play runner
 src/Globals.cs           stand-in for Nucleus' Globals paths
 tools/mkstubs.mjs        C# stubs from Nucleus' real declarations
-tools/csparse.mjs        C# member parser (from splitscreenme-vscode's scripts/generate-api.mjs)
+tools/csparse.mjs        C# member parser (from scripts/generate-api.mjs at the repository root)
 tools/fetch_verified.py  version-verified Hub downloads + manifest
 probes/                  engine behaviour probes + expected results
 playground/              browser workbench (build.mjs → dist/workbench.html)
@@ -197,4 +199,4 @@ playground/              browser workbench (build.mjs → dist/workbench.html)
 
 ## Contributing
 
-Want to help, with or without code? Start with [CONTRIBUTING.md](CONTRIBUTING.md).
+Want to help, with or without code? Start with [CONTRIBUTING.md](../CONTRIBUTING.md).

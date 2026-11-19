@@ -1,24 +1,25 @@
 # Setting up CodeRabbit
 
-CodeRabbit reviews pull requests in both repos: **splitscreenme-vscode** (this one) and **nucleuscoop-handler-testbench**. Most of the setup is already in the repos; this guide covers the steps that happen in CodeRabbit's web app, once.
+CodeRabbit reviews pull requests in **nucleus-devtools**: the tools at the root and the workbench and Jint testbench in `workbench/` (the workbench was the repository nucleuscoop-handler-testbench until it moved in here). Most of the setup is already in the repo; this guide covers the steps that happen in CodeRabbit's web app, once.
 
-## What the repos already do
+## What the repo already does
 
-Each repo has a `.coderabbit.yaml` (checked against CodeRabbit's schema). A repo's file wins over the web app's settings for that repo, so change review behaviour there, not in the web app.
+It has a `.coderabbit.yaml` (checked against CodeRabbit's schema). The repo's file wins over the web app's settings for that repo, so change review behaviour there, not in the web app.
 
-- **Guidelines:** `AGENTS.md` is read automatically. This repo also points CodeRabbit at the skill's docs (`SKILL.md`, workflow, troubleshooting), `PORTING.md` and `CONTRIBUTING.md`.
+- **Guidelines:** `AGENTS.md` is read automatically. The file also points CodeRabbit at the skill's docs (`SKILL.md`, workflow, troubleshooting), `PORTING.md`, `CONTRIBUTING.md` and the workbench's editor icons README.
 - **Rules per folder** (`path_instructions`): the rules from `AGENTS.md` for each part (core, checks, Format, the sandbox, the Hub, adapters, the workbench's UI, links, workflows). Change them together with `AGENTS.md`.
-- **Left out of reviews** (`path_filters`): generated, recorded and binary files (the API model, the skill bundle, `probes/expected.txt`, screenshots).
-- **The two repos are linked** (`linked_repositories`), so a change in one is reviewed with the other in view: the workbench imports this repo's `src/core`.
-- **MCP turned on** (`knowledge_base.mcp.usage: enabled`). The default, `auto`, turns MCP servers off for public repositories, which both repos are.
+- **Left out of reviews** (`path_filters`): generated, recorded and binary files (the API model, the skill bundle, `workbench/probes/expected.txt`, screenshots).
+- **One repository**: the workbench imports `src/core` from the root, so a change to the core is reviewed with the workbench that uses it in view (no `linked_repositories` needed any more).
+- **MCP turned on** (`knowledge_base.mcp.usage: enabled`). The default, `auto`, turns MCP servers off for public repositories, which this one is.
 - Quiet reviews: the `chill` profile, no poem, never blocks a merge (no "request changes").
 
-## 1. Install CodeRabbit on the repos
+## 1. Install CodeRabbit on the repo
 
 1. Go to [app.coderabbit.ai](https://app.coderabbit.ai) and sign in with GitHub.
 2. Install the CodeRabbit GitHub app, choose **Only select repositories**, and pick:
    - `Snailedlt/nucleus-devtools`
-   - `Snailedlt/nucleus-devtools`
+
+   (If the old `Snailedlt/nucleuscoop-handler-testbench` is still on the list, it can go: it's archived.)
 
    Leave your other repos out: their own reviews won't need any of this.
 
@@ -55,8 +56,7 @@ Current code (trust these first):
 - sebastienros/jint: the JavaScript engine. Nucleus uses Jint 2.11.58: ES5 plus let/const acting as var, no arrow functions or template literals.
 
 Our tools:
-- Snailedlt/nucleus-devtools: the linter, simulator and API model (VS Code, Notepad++, ncdev CLI, MCP, agent skill).
-- Snailedlt/nucleus-devtools: the browser workbench and site, and the Jint testbench whose probes record how the real engine behaves.
+- Snailedlt/nucleus-devtools: the linter, simulator and API model (VS Code, Notepad++, ncdev CLI, MCP, agent skill); in workbench/ the browser workbench and site, and the Jint testbench whose probes record how the real engine behaves.
 
 History (only for why something is the way it is, or old handlers; current code wins):
 - lucasassislar/nucleuscoop: the original Nucleus Co-op.
@@ -67,25 +67,25 @@ History (only for why something is the way it is, or old handlers; current code 
 Related projects (for ideas and comparison only; never describe Nucleus behaviour from them):
 - partydeck/partydeck: a split-screen launcher for Linux/SteamOS. Useful for how another tool solves instancing, windows and input.
 
-Facts in a repository's AGENTS.md are verified against Nucleus and Jint: prefer them. Use DeepWiki to confirm or fill gaps, and name the repository (and file, if known) an answer came from.
+Facts in the repository's AGENTS.md are verified against Nucleus and Jint: prefer them. Use DeepWiki to confirm or fill gaps, and name the repository (and file, if known) an answer came from.
 ```
 
-The same list is in both repos' `AGENTS.md` (*Related repositories*): keep the two in step.
+The same list is in `AGENTS.md` (*Related repositories*): keep the two in step.
 
 DeepWiki only knows public repos it has indexed. If a review says one isn't there, open `https://deepwiki.com/<owner>/<repo>` once in a browser to have it indexed.
 
-## 3. Use DeepWiki only in these two repos (scopes)
+## 3. Use DeepWiki only in this repo (scopes)
 
-Saved connections reach reviews through **scopes** ([Review scopes](https://docs.coderabbit.ai/connections/scopes-review.md)), and none is used until the **Base Scope** exists. The Base Scope covers every repository without a named scope of its own, so keep DeepWiki out of it and give these two repos their own:
+Saved connections reach reviews through **scopes** ([Review scopes](https://docs.coderabbit.ai/connections/scopes-review.md)), and none is used until the **Base Scope** exists. The Base Scope covers every repository without a named scope of its own, so keep DeepWiki out of it and give this repo its own:
 
 1. Open [Review › Scopes](https://app.coderabbit.ai/review/scopes).
 2. **Create the Base Scope.** It starts with every connection ticked: **untick DeepWiki** (and anything else your other repos shouldn't use), then save.
 3. **Create a named scope**, e.g. `Nucleus Co-op tools` ("PR reviews for the Nucleus Co-op handler tools").
-   - Repositories: `splitscreenme-vscode` and `nucleuscoop-handler-testbench` (a repo can be in only one named scope).
+   - Repositories: `nucleus-devtools` (a repo can be in only one named scope; a scope made before the rename follows the repository, and `nucleuscoop-handler-testbench` can leave it).
    - Connections: for DeepWiki choose **the DeepWiki connection** (not *Inherit from Base Scope*, which would leave it off); everything else can inherit.
    - Save.
 
-Scopes need organization-administrator access in CodeRabbit (you, on your own account) and a plan that includes them. If named scopes aren't offered on your plan, you can tick DeepWiki in the Base Scope instead, but know what that means: every repository CodeRabbit reviews (now or added later) can then use it. Its guidance only steers what it looks up; it doesn't restrict where it's available. Fine while CodeRabbit is installed on these two repos only; otherwise leave DeepWiki out until a named scope is possible.
+Scopes need organization-administrator access in CodeRabbit (you, on your own account) and a plan that includes them. If named scopes aren't offered on your plan, you can tick DeepWiki in the Base Scope instead, but know what that means: every repository CodeRabbit reviews (now or added later) can then use it. Its guidance only steers what it looks up; it doesn't restrict where it's available. Fine while CodeRabbit is installed on this repo only; otherwise leave DeepWiki out until a named scope is possible.
 
 ## 4. Check it on the first pull request
 
@@ -116,6 +116,6 @@ Write these as a comment on the pull request:
 
 ## Changing the setup later
 
-- Review behaviour, rules per folder, ignored files: edit `.coderabbit.yaml` in that repo (the editor validates it against the schema named on its first line).
+- Review behaviour, rules per folder, ignored files: edit `.coderabbit.yaml` (the editor validates it against the schema named on its first line).
 - A new verified fact about Nucleus: add it to `AGENTS.md`; CodeRabbit reads it from the next review.
-- A new related repo: add it to the DeepWiki prompt guidance (step 3) and to *Related repositories* in both `AGENTS.md` files.
+- A new related repo: add it to the DeepWiki prompt guidance (step 3) and to *Related repositories* in `AGENTS.md`.

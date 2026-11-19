@@ -488,7 +488,7 @@ src/core/lint.ts        the linter (acorn AST, no VS Code dependency)
 src/core/scopes.ts      the handler's own variables and what's assigned to them (option-compare)
 src/core/features.ts    hover, completion, quick fixes, formatting edits as plain data for every editor
 src/core/complete.ts    text-based resolution for completion/hover/signature help
-src/core/sim.ts         "Try it": runs a handler per player, emulating Jint (also used by the testbench workbench)
+src/core/sim.ts         "Try it": runs a handler per player, emulating Jint (also used by the browser workbench)
 src/sandbox.ts          runs sim.ts isolated in a vm context for Node hosts (CLI, extension)
 src/tryit.ts            the Try it panel
 src/core/templates.ts   New Handler templates
@@ -501,11 +501,21 @@ src/cli.ts              the ncdev CLI (nucleus is its old name, nucleus-lint an 
 src/lsp.ts              ncdev lsp: the Language Server for other editors
 src/mcp.ts              ncdev mcp: the tools as an MCP server
 scripts/generate-api.mjs
+workbench/              the browser workbench and site (playground/) and the Jint testbench (src/, probes/): workbench/README.md
+```
+
+## The browser workbench
+
+**https://snailedlt.github.io/nucleus-devtools/?ref=vscode-readme-md**: the same checks, Try it, docs and debugger in the browser, with Learn (lessons for a first handler), the docs and check pages, and nothing to install. It lives in [`workbench/`](workbench/README.md) and is built from this repository's core, so the workbench and the editors always run the same checks; its changes are in [workbench/CHANGELOG.md](workbench/CHANGELOG.md) (it updates whenever `main` changes). The same folder has the Jint testbench, which runs handlers in Nucleus' real script engine (Jint 2.11.58) and pins down its behaviour with probes that Try it is checked against.
+
+```bash
+npm ci && cd workbench/playground && npm ci
+node build.mjs --preview   # the site in dist/pages
 ```
 
 ## Reporting problems and asking for features
 
-Every tool knows where its report belongs, so you never pick a repository: the workbench and Learn open the workbench's forms; checks, Try it, the docs, VS Code, Notepad++, ncdev and other editors open this repository's. Each report is filled in with what the tool knows (versions, the check, where the handler came from: a Hub id and version, an example or your own code) and you see all of it before you submit. Code is only included when it's the flagged line(s) of a check, and you can leave it out.
+Every tool knows which form its report belongs in, so you never pick one: the workbench, Learn, checks, Try it, the docs, VS Code, Notepad++, ncdev and other editors all open this repository's forms, with the right one and its *Where* filled in. Each report is filled in with what the tool knows (versions, the check, where the handler came from: a Hub id and version, an example or your own code) and you see all of it before you submit. Code is only included when it's the flagged line(s) of a check, and you can leave it out.
 
 - **Report a problem**: VS Code's command palette or the language status (*Feedback*), Notepad++'s plugin menu, `ncdev report`, the workbench's menu.
 - **This check is wrong**: on every check's problem (not on the game folder's or package's): Ctrl+. in VS Code, Alt+Enter in Notepad++, the code actions of any LSP editor, `ncdev report --check <rule> <file>`, the problem's flag in the workbench.
