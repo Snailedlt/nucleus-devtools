@@ -788,8 +788,8 @@ const C_FILED = C_ARGS + C_OPT + C_PLAY + C_SIZE + C_FPS + C_FILE + C_WRITE + '}
 export const CURE_FINAL = C_ARGS + C_OPT + C_PLAY + C_SIZE + C_FPS + C_FILE + C_JOY + C_WRITE + '};\n';
 // The quiz: a friend's change (vsync off at 144) and three mistakes Check finds.
 const VSYNC = (v: string) => `  if (Context.Options["fps"] === ${v}) {\n    lines.push("mat_vsync 0");\n  }\n`;
-const C_QUIZ_FIXED = CURE_FINAL.replace(C_WRITE, VSYNC('144').replace('===', '==') + C_WRITE);
-const C_QUIZ = C_QUIZ_FIXED.replace(VSYNC('144').replace('===', '=='), VSYNC('144'))
+const C_QUIZ_FIXED = CURE_FINAL.replace(C_WRITE, VSYNC('"144"') + C_WRITE);
+const C_QUIZ = C_QUIZ_FIXED.replace(VSYNC('"144"'), VSYNC('144'))
   .replace('Game.GameName = "Codename CURE Tutorial";', 'Game.GameName = \'Codename CURE Tutorial\';')
   .replace('Context.StartArguments += " -w "', 'Context.StartArgument += " -w "');
 
@@ -1010,7 +1010,7 @@ const CURE: Lesson[] = [
     task: 'Fix the three mistakes Check finds.',
     hint: 'Press `F8` to jump to the first mistake Check marks, and open *Why?* on it to see what Nucleus would do. One is `Game.GameName` in single quotes (the Hub install fails on that line), one is a `Context` name missing its last letter, and one compares `Context.Options["fps"]` with `===`, though a saved choice comes back as text.',
     notes: [
-      { kind: 'why', text: 'Why `==`? A saved choice comes back as text, `"144"`. `===` compares the value and the type, and text is never a number, so it never matches. `==` compares only the value: it turns `"144"` into `144` first, so it matches. `=== "144"` (text with text) works too.' },
+      { kind: 'why', text: 'Why `"144"`? A saved choice comes back as text, and `===` compares the value and the type, so text never equals the number `144`. `=== "144"` compares text with text. `== 144` works too: `==` compares only the value, turning `"144"` into `144` first. Where an option\'s values are numbers, a fresh pick is a number and a saved one text: `== 144` (or `== "144"`) matches both.' },
       { kind: 'why', text: 'None of these stops the handler from loading: Nucleus would start every copy, and you\'d only find out by playing (or, for the Hub one, when someone installs it). That\'s what Check is for.' },
     ],
     start: C_QUIZ,
@@ -1076,7 +1076,7 @@ const ARGS = ['-windowed', '-noborder', '-game cure', '-novid', '-insecure'];
 const QUIZ: [string, (t: string) => boolean][] = [
   ['Game.GameName in double quotes', (t) => str(t, 'Game.GameName') === 'Codename CURE Tutorial' && !lint(t).some((d) => d.rule === 'hub-install-parse')],
   ['Context.StartArguments', (t) => /Context\s*\.\s*StartArguments\s*\+=\s*" -w "/.test(t) && !/StartArgument\b/.test(t)],
-  ['the option compared by its value', (t) => /Context\s*\.\s*Options\s*\[\s*"fps"\s*\]\s*===?\s*"?144"?/.test(t) && !lint(t).some((d) => d.rule === 'option-compare')],
+  ['the option compared as text', (t) => /Context\s*\.\s*Options\s*\[\s*"fps"\s*\]\s*===?\s*"?144"?/.test(t) && !lint(t).some((d) => d.rule === 'option-compare')],
 ];
 CURE.find((l) => l.id === 'fix-it')!.goals = QUIZ.map(([label, ok]) => ({ label, ok }));
 
