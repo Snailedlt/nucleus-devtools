@@ -21,7 +21,7 @@ on:
   push:
     branches: [preview-ux]
     paths: ['.github/workflows/test-build.yml']
-  # Hourly: the next release's tools stay current (the `next` site's tools page links them; its Vercel build is redone by the deploy hook below). Skipped
+  # Hourly: the next release's tools stay current (the `claude/next-release` preview's tools page links them). Skipped
   # when the published test build already is the branch's newest commit.
   schedule:
     - cron: '23 * * * *'
@@ -163,17 +163,9 @@ jobs:
 
           Built from commit \`$SHA\` by $AUTHOR, committed $DATE.
 
-          Get it the way users will: from the tools page of the next release's site, https://nucleus-workbench-next.vercel.app/tools/ (or build the site with \`node build.mjs --preview --test-build\` and serve \`dist/pages\`).
+          Get it the way users will: from the tools page of the next release's site, https://nucleus-workbench-preview-git-claude-fac588-snailedlts-projects.vercel.app/tools/ (or build the site with \`node build.mjs --preview --test-build\` and serve \`dist/pages\`).
           EOF
           gh release create test-build "out/splitscreenme-vscode-v$VER-test.vsix" out/ncdev.exe out/NcDev.zip --prerelease --target "$GITHUB_SHA" --title "Test build: v$VER (${SHA:0:7})" --notes-file notes.md
-      - name: Rebuild the next release's site (Vercel deploy hook)
-        # A Deploy Hook for claude/next-release (Vercel: project nucleus-workbench-preview, Settings, Git, Deploy Hooks),
-        # saved as the VERCEL_DEPLOY_HOOK_NEXT secret. Without it the next site waits for the next workbench push.
-        env:
-          HOOK: ${{ secrets.VERCEL_DEPLOY_HOOK_NEXT }}
-        run: |
-          if [ -z "$HOOK" ]; then echo "::notice::No VERCEL_DEPLOY_HOOK_NEXT secret: the next site rebuilds on the next push."; exit 0; fi
-          curl -fsS -X POST "$HOOK" >/dev/null && echo "Asked Vercel to rebuild the next release's site." || echo "::warning::The Vercel deploy hook failed."
       - name: Summary
         run: |
           {

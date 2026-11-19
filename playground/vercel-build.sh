@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Vercel's own build of the workbench preview (vercel.json at the repo root; the nucleus-workbench-preview project).
 # Every pushed branch gets a preview built with splitscreenme-vscode's branch of the same name when there is one,
-# else its main; claude/next-release (the next release, nucleus-workbench-next.vercel.app) links the `test-build`
+# else its main; claude/next-release (the next release, that branch's own preview) links the `test-build`
 # pre-release on its tools page. --preview: no search indexing, What's new shows Unreleased, no live-site counts.
 set -euo pipefail
 cd "$(dirname "$0")"
