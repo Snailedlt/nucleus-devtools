@@ -501,7 +501,7 @@ static void downloadTool() {
     std::wstring dest = localTool();
     CreateDirectoryW(dest.substr(0, dest.find_last_of(L'\\')).c_str(), nullptr);
     std::wstring part = dest + L".part";
-    if (URLDownloadToFileW(nullptr, L"https://api.github.com/repos/Snailedlt/nucleus-devtools/releases?per_page=20", list.c_str(), 0, nullptr) != S_OK) err = L"Couldn't reach GitHub.";
+    if (URLDownloadToFileW(nullptr, L"https://api.github.com/repos/Snailedlt/nucleus-devtools/releases?per_page=50", list.c_str(), 0, nullptr) != S_OK) err = L"Couldn't reach GitHub.";
     std::string exeUrl, sumsUrl;
     if (err.empty()) {
       Value releases;

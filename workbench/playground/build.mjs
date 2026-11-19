@@ -554,20 +554,22 @@ fs.writeFileSync(path.join(here, 'dist', 'pages', 'llms.txt'), PREVIEW ? llms.re
 // The intro page to share with testers and contributors: /start/ on the Pages site.
 const startDir = path.join(here, 'dist', 'pages', 'start');
 fs.mkdirSync(startDir, { recursive: true });
-// The newest extension release, pre-releases included (GitHub's /releases/latest skips those): the start page links
-// its .vsix and ncdev.exe. --test-build links the unreleased test build instead (this repo's `test-build` pre-release,
+// The newest extension release (a v… tag), pre-releases included (GitHub's /releases/latest skips those): the start
+// page links its .vsix and ncdev.exe. The same repository also has the workbench's updates (workbench-<date>, no files)
+// and the `test-build` pre-release, which the v… tag leaves out. --test-build links that test build instead (the
+// repository's `test-build` pre-release,
 // made by .github/workflows/test-build.yml from an extension branch), so a local site hands out what will be released.
 const TEST_BUILD = process.argv.includes('--test-build');
 let vsix = { url: 'https://github.com/Snailedlt/nucleus-devtools/releases', name: 'the .vsix', tag: 'latest release' };
 let ncdevUrl = 'https://github.com/Snailedlt/nucleus-devtools/releases';
 try {
-  const api = TEST_BUILD ? 'https://api.github.com/repos/Snailedlt/nucleus-devtools/releases/tags/test-build' : 'https://api.github.com/repos/Snailedlt/nucleus-devtools/releases?per_page=10';
+  const api = TEST_BUILD ? 'https://api.github.com/repos/Snailedlt/nucleus-devtools/releases/tags/test-build' : 'https://api.github.com/repos/Snailedlt/nucleus-devtools/releases?per_page=30';
   const res = await fetch(api, {
     headers: { accept: 'application/vnd.github+json', ...(process.env.GITHUB_TOKEN ? { authorization: `Bearer ${process.env.GITHUB_TOKEN}` } : {}) },
   });
   if (!res.ok) throw new Error(`GitHub API ${res.status}${TEST_BUILD && res.status === 404 ? ': no test build yet (run the Test build workflow)' : ''}`);
   const body = await res.json();
-  const rel = TEST_BUILD ? body : body.find((r) => !r.draft && r.assets.some((a) => a.name.endsWith('.vsix')));
+  const rel = TEST_BUILD ? body : body.find((r) => !r.draft && /^v\d/.test(r.tag_name) && r.assets.some((a) => a.name.endsWith('.vsix')));
   const asset = rel?.assets.find((a) => a.name.endsWith('.vsix'));
   if (asset) vsix = { url: asset.browser_download_url, name: asset.name, tag: TEST_BUILD ? `test build, ${rel.name.replace(/^Test build:\s*/, '')}` : rel.tag_name };
   const exe = rel?.assets.find((a) => a.name === 'ncdev.exe');

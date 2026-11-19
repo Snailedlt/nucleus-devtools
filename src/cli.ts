@@ -717,7 +717,7 @@ async function cmdWorkbench(args: Args, json: boolean): Promise<number> {
   // The newest release with the file, pre-releases included. If the API is unavailable (rate
   // limits), fall back to the newest full release's download link.
   let rel = { tag_name: 'the latest release', url: 'https://github.com/Snailedlt/nucleus-devtools/releases/latest/download/workbench.html' };
-  const res = await fetch('https://api.github.com/repos/Snailedlt/nucleus-devtools/releases?per_page=20', { headers: { accept: 'application/vnd.github+json' } }).catch(() => undefined);
+  const res = await fetch('https://api.github.com/repos/Snailedlt/nucleus-devtools/releases?per_page=50', { headers: { accept: 'application/vnd.github+json' } }).catch(() => undefined);
   if (res?.ok) {
     const releases = (await res.json()) as { tag_name: string; draft: boolean; assets: { name: string; browser_download_url: string }[] }[];
     const r = releases.find((x) => !x.draft && x.assets.some((a) => a.name === 'workbench.html'));
