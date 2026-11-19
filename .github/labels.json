@@ -55,9 +55,34 @@
     "description": "The nucleus command-line tool and MCP server"
   },
   {
+    "name": "area: editor",
+    "color": "1d76db",
+    "description": "The workbench editor: Code, Form, Blocks, Lines, checks"
+  },
+  {
+    "name": "area: packages",
+    "color": "006b75",
+    "description": "Handler packages (.zip/.nc) and their files"
+  },
+  {
+    "name": "area: ux",
+    "color": "5319e7",
+    "description": "Look, layout, onboarding and ease of use"
+  },
+  {
+    "name": "area: mascots",
+    "color": "f9a03f",
+    "description": "Duo and Nucli, animations"
+  },
+  {
+    "name": "area: website",
+    "color": "bfd4f2",
+    "description": "The start page and other pages"
+  },
+  {
     "name": "feedback",
     "color": "fef2c0",
-    "description": "Tester feedback (from the issue form)"
+    "description": "Feedback on any tool, the workbench included (from the issue form)"
   },
   {
     "name": "doc-review",

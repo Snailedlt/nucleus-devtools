@@ -1,17 +1,17 @@
 name: Test build
-run-name: Test build of splitscreenme-vscode ${{ inputs.branch || 'claude/next-release' }}
+run-name: Test build of ${{ inputs.branch || 'claude/next-release' }}
 # The tools as they'll be released, before they are: builds the real .vsix, ncdev.exe (with the Notepad++ plugin
-# inside) and the plugin's zip from a splitscreenme-vscode branch, the way its Release workflow does, and publishes
-# them here as the pre-release `test-build` (replaced each run). A local site built with
-#   node build.mjs --preview --test-build
+# inside) and the plugin's zip from a branch of this repository, the way the Release workflow does, and publishes
+# them as the pre-release `test-build` (replaced each run). A local site built with
+#   node build.mjs --preview --test-build   (in workbench/playground)
 # links its downloads to it, so testers get the tools from the tools page like real users, just the newer version.
-# It lives in this repo on purpose: the tools' update checks (ncdev update, the Notepad++ plugin, the live start
-# page) only read splitscreenme-vscode's releases, so a test build never reaches anyone who didn't ask for it.
+# The tools' update checks never pick it up although it's in the same repository: ncdev update and the Notepad++
+# plugin take only a release with SHA256SUMS.txt (this one has none), and the start and tools pages only v… tags.
 on:
   workflow_dispatch:
     inputs:
       branch:
-        description: 'splitscreenme-vscode branch to build (empty: the branch being tested for the next release)'
+        description: 'Branch to build (empty: the branch being tested for the next release)'
         required: false
         default: ''
       commit:
@@ -29,9 +29,9 @@ on:
 # Nothing by default; each job asks for what it needs.
 permissions: {}
 
-# The extension repository the test build comes from (change it here if the tools move upstream).
+# The repository the test build comes from: this one (the tools and the workbench live together).
 env:
-  EXT_REPO: Snailedlt/nucleus-devtools
+  EXT_REPO: ${{ github.repository }}
 
 concurrency:
   group: test-build
@@ -163,7 +163,7 @@ jobs:
 
           Built from commit \`$SHA\` by $AUTHOR, committed $DATE.
 
-          Get it the way users will: from the tools page of the next release's site, https://nucleus-workbench-next.vercel.app/tools/ (or build the site with \`node build.mjs --preview --test-build\` and serve \`dist/pages\`).
+          Get it the way users will: from the tools page of the next release's site, https://nucleus-workbench-next.vercel.app/tools/ (or build the site with \`node build.mjs --preview --test-build\` in \`workbench/playground\` and serve \`dist/pages\`).
           EOF
           gh release create test-build "out/splitscreenme-vscode-v$VER-test.vsix" out/ncdev.exe out/NcDev.zip --prerelease --target "$GITHUB_SHA" --title "Test build: v$VER (${SHA:0:7})" --notes-file notes.md
       - name: Summary
@@ -173,5 +173,5 @@ jobs:
             echo
             echo "https://github.com/$GH_REPO/releases/tag/test-build"
             echo
-            echo "Local site with these downloads: \`node build.mjs --preview --test-build\` in playground/, then serve dist/pages."
+            echo "Local site with these downloads: \`node build.mjs --preview --test-build\` in workbench/playground/, then serve dist/pages."
           } >> "$GITHUB_STEP_SUMMARY"

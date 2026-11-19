@@ -1,7 +1,8 @@
 name: Weekly check
-# Real Jint vs Try it, every week (and on pushes that touch the harness), against splitscreenme-vscode's main branch:
+# Real Jint vs Try it, every week (and on pushes to main that touch the harness), with the core of the same commit.
+# The Jint testbench is in workbench/ (setup.sh, run.sh, src/, probes/, tools/):
 #   1. engine probes still give the recorded Jint 2.11.58 results (test-probes.sh)
-#   2. Try it predicts the same outcome on every probe, directly and isolated (sim-parity.mjs)
+#   2. Try it predicts the same outcome on every probe, directly and isolated (playground/sim-parity.mjs)
 #   3. every verified Hub handler (current version, sha256-checked) runs in real Jint, network
 #      isolated, and Try it predicts the same outcome and launch arguments; none has lint errors
 #      (tools/compare-hub.mjs, also written to the run summary)
@@ -13,7 +14,7 @@ on:
   workflow_dispatch:
   push:
     branches: [main]
-    paths: ['.github/workflows/nightly.yml', 'tools/**', 'run.sh', 'setup.sh', 'src/**', 'probes/**']
+    paths: ['.github/workflows/nightly.yml', 'workbench/tools/**', 'workbench/run.sh', 'workbench/setup.sh', 'workbench/test-probes.sh', 'workbench/src/**', 'workbench/probes/**']
 
 permissions:
   contents: write # only to publish the usage counts on the data branch
@@ -23,11 +24,6 @@ jobs:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/checkout@v4
-        with:
-          repository: Snailedlt/nucleus-devtools
-          ref: main
-          path: core
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -35,31 +31,34 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -y -qq mono-devel unzip
       - name: Allow unprivileged network isolation (unshare -rn)
         run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || true
-      - name: Build the linter and CLI
-        working-directory: core
+      - name: Build the linter and CLI (the repository root)
         run: npm ci && npm run build
       - name: Build the Jint harness
+        working-directory: workbench
         run: ./setup.sh
       - name: Engine probes (real Jint)
+        working-directory: workbench
         run: ./test-probes.sh
       - name: Try it matches Jint on every probe
-        working-directory: playground
+        working-directory: workbench/playground
         run: |
           npm ci
-          node sim-parity.mjs --core ../core
-          node sim-parity.mjs --core ../core --isolated
+          node sim-parity.mjs
+          node sim-parity.mjs --isolated
       - name: Keep downloaded Hub handlers between runs (each version is fetched once)
         uses: actions/cache@v4
         with:
-          path: downloads
+          path: workbench/downloads
           key: hub-handlers-${{ github.run_id }}
           restore-keys: hub-handlers-
       - name: Fetch verified Hub handlers (current verified versions only; new versions only)
+        working-directory: workbench
         run: python3 -I tools/fetch_verified.py --limit 200
       - name: Count how often each name is used, for the workbench's Lines (published on the data branch)
         if: github.ref == 'refs/heads/main' && github.event_name != 'push'
+        working-directory: workbench
         run: |
-          node tools/usage-counts.mjs downloads/handlers --core core --out "$RUNNER_TEMP/usage.json"
+          node tools/usage-counts.mjs downloads/handlers --core .. --out "$RUNNER_TEMP/usage.json"
           git fetch -q --depth 1 origin data
           git worktree add -q --detach "$RUNNER_TEMP/data" FETCH_HEAD
           cp "$RUNNER_TEMP/usage.json" "$RUNNER_TEMP/data/usage.json"
@@ -69,20 +68,23 @@ jobs:
           git -c user.name='weekly-check' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -qm "Usage counts $(date -u +%F)"
           git push -q "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" HEAD:data
       - name: Run them in real Jint (network isolated)
+        working-directory: workbench
         run: REQUIRE_ISOLATION=1 ./run.sh --verified > jint-hub.txt
       - name: Compare with Try it, and lint
-        run: node tools/compare-hub.mjs jint-hub.txt core
+        working-directory: workbench
+        run: node tools/compare-hub.mjs jint-hub.txt ..
       - name: Is Nucleus newer than the pinned stubs?
         if: always()
+        working-directory: workbench
         run: |
           pinned=$(grep -oP 'NUCLEUS_REF:-\K[0-9a-f]+' setup.sh)
           latest=$(git ls-remote https://github.com/SplitScreen-Me/splitscreenme-nucleus refs/heads/master | cut -f1)
-          [ "$pinned" = "$latest" ] || echo "::warning::Nucleus master is at ${latest:0:7}, the stubs are pinned to ${pinned:0:7}. Update NUCLEUS_REF in setup.sh (and regenerate the API model in splitscreenme-vscode)."
+          [ "$pinned" = "$latest" ] || echo "::warning::Nucleus master is at ${latest:0:7}, the stubs are pinned to ${pinned:0:7}. Update NUCLEUS_REF in setup.sh (and regenerate the API model: npm run generate at the repository root)."
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: nightly-results
           path: |
-            jint-hub.txt
-            downloads/compare-hub.json
-            downloads/verified-manifest.json
+            workbench/jint-hub.txt
+            workbench/downloads/compare-hub.json
+            workbench/downloads/verified-manifest.json

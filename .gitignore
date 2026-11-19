@@ -6,6 +6,5 @@ build/
 dist/
 dist-test/
 *.vsix
-testbench
 .sea-cache/
 dist-sea/
