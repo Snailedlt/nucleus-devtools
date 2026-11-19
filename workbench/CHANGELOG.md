@@ -15,6 +15,12 @@ How to write it (people and AI agents read this, and the workbench shows it):
 ## Unreleased
 ### ⚠️ Changed
 - **A new address: https://snailedlt.github.io/nucleus-devtools/.** The workbench moved into the tools' repository, [nucleus-devtools](https://github.com/Snailedlt/nucleus-devtools), so it's built from the same commit as the checks it runs. Update your bookmarks; your drafts and settings come along (same site, new folder). Reports go to the same forms as the other tools'.
+### 🛠️ Improved
+- **Nucli reacts once, then settles.** "Nothing to fix", "Oops" and "Fixed" play once and keep their ending (the tick, the "!", the fixed code) instead of repeating every few seconds; with Motion set to lively he goes on blinking, his electrons circling. Loaders keep moving while you wait, and Test all's ring is the new one from the concept sheet: the electrons ride the front of the ring as it fills. *Still* now shows each scene's own pose (a reaction its ending) rather than a frozen moment.
+### ⚡ Faster
+- **Mascots move only where you can see them.** Ones that are scrolled away or in a hidden panel are paused, and each starts when it first comes into view. Check, Try it, Test all and Docs keep the mascot they show while they update, so typing no longer restarts it and Test all's ring runs smoothly through the run.
+### 🐛 Fixed
+- **Nucli's worried and searching faces show again.** In "Oops" and "Nothing matches", the face change never played.
 
 ---
 

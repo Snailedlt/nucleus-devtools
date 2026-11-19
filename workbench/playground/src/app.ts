@@ -39,7 +39,7 @@ import { announceLine, hoverDelay, initA11y } from './a11y';
 import { initNews } from './news';
 import { initPanels, type PanelEdge } from './panels-ui';
 import { initTouchTitles } from './touch-titles';
-import { mascot } from './mascots';
+import { keepMascots, mascot } from './mascots';
 import { fixWithNucli, applyEditsToText } from './fixfx';
 import { placeExample } from './lines';
 import { prettyCode } from '@core/pretty';
@@ -1029,7 +1029,7 @@ function renderProblems(text: string) {
   if (!list.length) {
     // Nucli: dozing while there's no code, pleased when there's nothing to fix.
     if (!editor.getValue().trim()) {
-      el.innerHTML = `<li class="empty masc-empty">${mascot('n-sleep', { size: 72, zoom: 1.2 })}<span><strong>Waiting for code.</strong> Type or paste a handler, or <button class="link" type="button" id="go-open">open one</button> (Ctrl+P).</span></li>`;
+      keepMascots(el, () => el.innerHTML = `<li class="empty masc-empty">${mascot('n-sleep', { size: 72, zoom: 1.2 })}<span><strong>Waiting for code.</strong> Type or paste a handler, or <button class="link" type="button" id="go-open">open one</button> (Ctrl+P).</span></li>`);
       el.querySelector('#go-open')?.addEventListener('click', () => showOpen());
       return;
     }
@@ -1038,12 +1038,12 @@ function renderProblems(text: string) {
     const about = !folderProblems.some((x) => extraShown.includes(x)) ? 'the package' : !pkgProblems.some((x) => extraShown.includes(x)) ? 'your game' : 'the package and your game';
     const what = extraShown.every((x) => x.severity === 'info') ? (xn === 1 ? 'note' : 'notes') : xn === 1 ? 'problem' : 'problems';
     if (xn) el.innerHTML = `<li class="empty">Nothing in the code to fix; ${xn} ${what} about ${about} below.</li>`;
-    else el.innerHTML =
+    else keepMascots(el, () => el.innerHTML =
       simple || filter === 'all'
         ? `<li class="empty masc-empty">${mascot('n-ok', { size: 72, zoom: 1.2 })}<span>Nothing to fix. <button class="link" type="button" id="go-sim">Try it</button> to see what each player gets.${
             simple ? '' : counts.hint ? ` There ${counts.hint === 1 ? 'is' : 'are'} also <button class="link" type="button" id="go-hints">${plural(counts.hint, 'hint')}</button> about outdated options.` : ''
           }</span></li>`
-        : `<li class="empty">No ${filter === 'info' ? 'info' : filter + 's'}.</li>`;
+        : `<li class="empty">No ${filter === 'info' ? 'info' : filter + 's'}.</li>`);
     el.querySelector('#go-sim')?.addEventListener('click', () => selectTab('simulate'));
     el.querySelector('#go-hints')?.addEventListener('click', () => setFilter('hint'));
     return;
@@ -2223,7 +2223,7 @@ function renderOpen() {
   activeEntry = Math.min(activeEntry, Math.max(0, shown.length - 1));
   const body = $('#open-body');
   if (!shown.length) {
-    body.innerHTML = `<p class="empty masc-empty">${mascot('n-scan', { size: 72 })}<span>Nothing matches "${esc(q)}". Try a game name, an author, or words like "template", "mutex" or "arrow".</span></p>`;
+    keepMascots(body, () => body.innerHTML = `<p class="empty masc-empty">${mascot('n-scan', { size: 72 })}<span>Nothing matches "${esc(q)}". Try a game name, an author, or words like "template", "mutex" or "arrow".</span></p>`);
     return;
   }
   const taken = HUB_EXAMPLES.takenAt ? new Date(HUB_EXAMPLES.takenAt).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' }) : '';
