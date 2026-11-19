@@ -13,7 +13,7 @@ How to write it (people and AI agents read this; the release workflow publishes 
 - A bug fixed or a request done from an issue in this repository: end that change's own line with "(#12)" (several: "(#12, #14)"), or say "Fixes #12" in the commit. On release the issue gets a short comment, "Fixed in vX.Y.Z" (under 🐛 Fixed) or "Added in vX.Y.Z" (elsewhere), with a link to the release notes and a thanks to whoever reported or asked (scripts/issue-bots.mjs in splitscreenme-vscode). Only "(#12)" counts: a number mentioned in passing ("see #12") or on a Thanks line doesn't.
 -->
 
-## 0.9.0 · 2026-11-18
+## 0.9.0 · 2026-11-19
 
 ### ✨ New
 
