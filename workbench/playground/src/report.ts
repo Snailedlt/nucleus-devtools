@@ -1,0 +1,88 @@
+import { toast } from './toast';
+import { checksum } from './checksum';
+// Feedback links (the tester feedback and doc review issue forms) filled in with what the workbench knows: the build,
+// browser, screen, settings, the open handler (by name and source, never its code), the tester profile and the test
+// item. It goes in the form's "Details from the workbench" field with a checksum. GitHub can't lock a field, so the
+// bot in splitscreenme-vscode (.github/workflows/report-details.yml) copies the block into a comment the reporter
+// can't edit or remove, and says whether it was changed before sending.
+declare const BUILD: { bench?: string; core: string };
+
+export interface ReportState {
+  handler?: { name: string; kind: string; link?: string; hubId?: string; hubVersion?: string };
+  view?: string;
+}
+let state: () => ReportState = () => ({});
+/** The app tells the reports what is open. */
+export const setReportState = (fn: () => ReportState) => (state = fn);
+
+export { checksum };
+
+const get = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
+function browser(): string {
+  const ua = navigator.userAgent;
+  const m = ua.match(/(Edg|OPR|Firefox|Chrome|Version)\/(\d+)/);
+  const name = !m ? 'Unknown browser' : m[1] === 'Edg' ? 'Edge' : m[1] === 'OPR' ? 'Opera' : m[1] === 'Version' ? 'Safari' : m[1];
+  const os = /Windows/.test(ua) ? 'Windows' : /Android/.test(ua) ? 'Android' : /iPhone|iPad/.test(ua) ? 'iOS' : /Mac OS/.test(ua) ? 'macOS' : /Linux/.test(ua) ? 'Linux' : 'other OS';
+  return `${name}${m ? ' ' + m[2] : ''} on ${os}${matchMedia('(pointer: coarse)').matches ? ', touch' : ''}`;
+}
+
+/** What's open, for the reports' "Where the handler is from" (core/report.ts HandlerOrigin): never its code. */
+export function openHandler(): { name: string; kind: string; link?: string; hubId?: string; hubVersion?: string } | undefined {
+  return state().handler;
+}
+/** The version line of a report ("workbench 9589434"). */
+export const workbenchVersion = () => `workbench ${BUILD.bench ?? ''}`.trim();
+
+/** The block's lines, without the checksum (`handler: false` leaves out the open handler: the report says it). */
+export function contextLines(extra: Record<string, string | undefined> = {}, o: { handler?: boolean } = {}): string[] {
+  const r = document.documentElement.dataset;
+  const s = state();
+  const prof = (() => { try { return JSON.parse(get('nucleus-workbench-tester-profile') || 'null'); } catch { return null; } })();
+  const lines = [
+    `Workbench: build ${BUILD.bench ?? '?'}, core ${BUILD.core}`,
+    `Page: ${location.origin}${location.pathname}`,
+    `Browser: ${browser()}`,
+    `Screen: ${innerWidth}x${innerHeight} (pixel ratio ${devicePixelRatio})`,
+    `Settings: look ${r.site ?? 'www'}, ${r.theme ?? (matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')}, layout ${r.layout ?? 'bar'}, ${r.mode === 'dev' ? 'advanced' : 'guided'}${s.view ? `, ${s.view} view` : ''}, check ${get('nucleus-workbench-check-density') ?? 'compact'}`,
+    s.handler && o.handler !== false ? `Open handler: ${s.handler.name} (${s.handler.kind}${s.handler.link ? `, ${s.handler.link}` : ''})` : '',
+    prof ? `Tester: coding ${prof.coding ?? '?'}, Nucleus ${prof.nucleus ?? '?'}` : '',
+    ...Object.entries(extra).map(([k, v]) => (v ? `${k}: ${v}` : '')),
+  ].filter(Boolean);
+  return lines;
+}
+/** The block of lines, ending with its checksum. */
+export function reportContext(extra: Record<string, string | undefined> = {}): string {
+  const lines = contextLines(extra);
+  return [...lines, `Check: ${checksum(lines)}`].join('\n');
+}
+
+// The workbench's own feedback goes to this repo's form (.github/ISSUE_TEMPLATE/feedback.yml); checks and the editors
+// have theirs in splitscreenme-vscode.
+const FORM = 'https://github.com/Snailedlt/nucleuscoop-handler-testbench/issues/new';
+/** Phones and tablets only: the GitHub app can catch github.com links, and it opens a blank issue: no form, no details. */
+export const onPhone = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
+export const GH_APP_NOTE = 'Opens GitHub. Use your browser, not the GitHub app: the app leaves out the form and its details.';
+/** The note under a report link, on phones only (empty elsewhere). */
+export function appNote(): string {
+  return onPhone() ? `<span class="gh-app-note">${GH_APP_NOTE}</span>` : '';
+}
+/** Opens a report form; on phones the note shows first, so it's there when the tester comes back. */
+export function openReport(url: string): void {
+  if (onPhone()) toast(GH_APP_NOTE, { kind: 'info' });
+  window.open(url, '_blank', 'noopener');
+}
+/** The tester feedback form, filled in. */
+export function feedbackUrl(opts: { title?: string; test?: string; area?: string } = {}): string {
+  const s = state();
+  const q = new URLSearchParams({ template: 'feedback.yml', area: opts.area ?? 'Workbench', version: `workbench ${BUILD.bench ?? ''}`.trim() });
+  if (opts.title) q.set('title', opts.title);
+  if (s.handler?.link) q.set('handler', s.handler.link);
+  q.set('context', reportContext({ 'Test item': opts.test }));
+  return `${FORM}?${q}`;
+}
+/** Adds the details to another form's link (the doc review form). */
+export function withContext(url: string, extra: Record<string, string | undefined> = {}): string {
+  const u = new URL(url);
+  u.searchParams.set('context', reportContext(extra));
+  return u.toString();
+}
