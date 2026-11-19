@@ -31,6 +31,7 @@ The workbench (it uses the core at the root, so `npm ci` there first):
 cd workbench/playground && npm ci
 node build.mjs --preview   # the site in dist/pages
 npm test                   # unit tests and every published link
+npx playwright install chromium   # once: the browser smoke.mjs uses
 node smoke.mjs             # the site in a real browser, light and dark, with accessibility checks
 ```
 

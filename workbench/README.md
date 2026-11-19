@@ -52,6 +52,7 @@ Requires Mono (`mcs`, `mono`), Node 18+, Python 3, git, curl and unzip. On Ubunt
 
 ```bash
 sudo apt-get install mono-complete nodejs python3 git curl unzip
+cd workbench
 ./setup.sh
 ```
 
@@ -61,9 +62,11 @@ sudo apt-get install mono-complete nodejs python3 git curl unzip
 - downloads Jint and Newtonsoft.Json from NuGet;
 - generates the stubs and builds `build/harness.exe`.
 
-Nothing third-party is committed to this repo.
+Nothing third-party is committed to the repository.
 
 ## Usage
+
+The commands below run in `workbench/`.
 
 ```bash
 # Your own handlers
@@ -134,7 +137,7 @@ In Advanced mode everything is keyboard-driven:
 - **F8** / **Shift+F8** steps through problems;
 - **?** lists the shortcuts.
 
-**Theme and dev bar.** The page uses splitscreen.me's theme (brand blue, system fonts, light and dark). A dev bar, like lonnsinnplassering's, sets the colour mode and checks the WCAG contrast of the theme's text colours. Open it with Ctrl+Alt+D (remembered), a `#dev` link (this page load only), or "Show or hide the dev bar" under Examples… (Ctrl K).
+**Theme and dev bar.** The page uses splitscreen.me's theme (brand blue, system fonts, light and dark). A dev bar sets the colour mode and checks the WCAG contrast of the theme's text colours. Open it with Ctrl+Alt+D (remembered), a `#dev` link (this page load only), or "Show or hide the dev bar" under Examples… (Ctrl K).
 
 **Share links.** **Share › Copy a link** puts the handler, compressed, into the link (`#share-…`), so anyone with the link sees the same code; with text selected it shares just the selection, which keeps links short enough for a Discord message (2,000 characters; whole handlers are usually longer). For those, **Share › Save the file** saves the handler and its files as a `.zip` and copies a short message to post with it.
 
@@ -143,7 +146,7 @@ Links like `#hub-<id>`, `#probe-17`, `#template-basic` or `#example-mistakes` op
 It uses the same core code as the extension, from the repository root (`src/core`). Run `npm ci` there first.
 
 ```bash
-cd workbench/playground && npm ci && node build.mjs   # → dist/workbench.html (--core <dir> for another checkout of the core)
+cd workbench/playground && npm ci && node build.mjs   # → dist/workbench.html (--core <dir> builds against another commit's core, as the /previous/ build does)
 ```
 
 The simulation runs in the browser's JavaScript engine, not Jint. It emulates the Jint rules the probes confirmed, and it refuses code Jint can't parse. Before running a handler it rewrites the source so the browser behaves like Jint where they differ: ES2015+ built-ins Jint lacks (`.includes()`, `Object.assign`, `Map`, …) fail, `let`/`const` become `var`, and a top-level `"use strict"` applies to the whole handler.

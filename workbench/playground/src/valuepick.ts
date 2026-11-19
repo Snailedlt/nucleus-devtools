@@ -1,4 +1,4 @@
-// Pick a value instead of typing it (testbench#22, an idea from messenils): put the cursor on (or tap) the value of an
+// Pick a value instead of typing it (#66, an idea from messenils): put the cursor on (or tap) the value of an
 // option, e.g. the `false` in `Game.SymlinkGame = false;`, and a small ▾ appears after it; it opens the values the
 // option takes (true/false, an enum's values, − / + for numbers). Alt+↓ opens it from the keyboard. Nothing shows until
 // the cursor is on such a value, so it stays out of the way of people who type (AGENTS.md, "Who it's for").
