@@ -1,4 +1,4 @@
-// "Your game on this PC" in VS Code (splitscreenme-vscode#13): link a handler to the game's install folder, then the
+// "Your game on this PC" in VS Code (nucleus-devtools#13): link a handler to the game's install folder, then the
 // checks in core/gamefolder.ts (shared with the workbench) compare ExecutableName, BinariesFolder, the symlink lists
 // and the like with the real files, with fixes; inside those lists, completion offers the game's own files.
 // Only names and sizes are read, plus the import tables of the game's .exe and DLLs for the hints (core/importhooks.ts); nothing leaves the PC.

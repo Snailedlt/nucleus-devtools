@@ -1,4 +1,4 @@
-// The game's install folder in the workbench: the checks themselves are in the core (splitscreenme-vscode
+// The game's install folder in the workbench: the checks themselves are in the core (the repository root's
 // src/core/gamefolder.ts, shared with VS Code); this file reads a folder the author picks and draws the list pickers.
 export * from '@core/gamefolder';
 export { importProblems } from '@core/importhooks';

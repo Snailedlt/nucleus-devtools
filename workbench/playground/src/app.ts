@@ -2956,7 +2956,7 @@ $('#set-import-file').addEventListener('change', async () => {
     msg.textContent = e?.message ?? "Couldn't read that file.";
   }
 });
-$('#build-info').textContent = `Linter and API from splitscreenme-vscode @ ${BUILD.core} · Nucleus @ ${BUILD.nucleus ?? '?'} · Jint ${BUILD.jint ?? '2.11.58'}`;
+$('#build-info').textContent = `Linter and API from nucleus-devtools @ ${BUILD.core} · Nucleus @ ${BUILD.nucleus ?? '?'} · Jint ${BUILD.jint ?? '2.11.58'}`;
 
 // ---------------------------------------------------------------------------
 // Fix with AI and Fix all (aifix-ui.ts)

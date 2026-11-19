@@ -713,7 +713,7 @@ export { lineOf };
 
 // ---------------------------------------------------------------------------
 // Outline (document symbols): a map of the handler for VS Code's Outline, breadcrumbs and Go to Symbol, and
-// `textDocument/documentSymbol` in `nucleus lsp` (splitscreenme-vscode#15).
+// `textDocument/documentSymbol` in `nucleus lsp` (nucleus-devtools#15).
 
 export type SymbolKind = 'namespace' | 'property' | 'function' | 'variable';
 export interface SymbolEntry {

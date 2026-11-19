@@ -293,7 +293,7 @@ export function valueContextAt(text: string, offset: number): ValueContext | und
   return { owner, name, member, partial: m[2], partialStart: offset - m[2].length, values };
 }
 
-/** A value in the code that can be picked from a list: `Game.SymlinkGame = |false|;` (testbench#22). */
+/** A value in the code that can be picked from a list: `Game.SymlinkGame = |false|;` (nucleuscoop-handler-testbench#22). */
 export interface ValuePick {
   owner: string;
   name: string;

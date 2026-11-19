@@ -12,7 +12,7 @@
 // - ExecutableName / ExecutableNames: matched against the picked file's name, any case (GameManager.cs:110, :119).
 // - Context.RootFolder / OrigRootFolder: the game root (instance / original); Context.RootInstallFolder: the
 //   exe's folder (GenericGameHandler.cs:1274-1276).
-// Pure (no DOM, no Node): shared by the workbench (playground/src/gamefolder.ts in nucleuscoop-handler-testbench
+// Pure (no DOM, no Node): shared by the workbench (workbench/playground/src/gamefolder.ts
 // adds the folder picker) and VS Code (src/gamefolder-node.ts reads the folder from disk). Tests: src/test/gamefolder.test.ts.
 
 export interface GameFolder {

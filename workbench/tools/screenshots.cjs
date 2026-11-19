@@ -2,7 +2,7 @@
 //   (cd playground/dist/pages && python3 -m http.server 8765) &
 //   node tools/screenshots.cjs [http://127.0.0.1:8765/] [--only check,looks]
 // Needs Python with Pillow (WebP, and the phone collage). Writes docs/images/gallery/workbench-<view>-light.webp and
-// -dark.webp (the start page's gallery and the README; the VS Code and Notepad++ ones are in splitscreenme-vscode's
+// -dark.webp (the start page's gallery and the README; the VS Code and Notepad++ ones are in the repository root's
 // docs/images/gallery), and the release-note images under docs/images/changelog/.
 const path = require('path');
 const fs = require('fs');

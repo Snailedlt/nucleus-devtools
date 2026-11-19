@@ -4,7 +4,7 @@
 //
 //   node tools/share-report.mjs [--out <dir>] [--limit N] [--cache <dir>] [--keep]
 //
-// Every package is downloaded once through splitscreenme-vscode's src/hubcache.ts (its own limit of two at a time,
+// Every package is downloaded once through the core's src/hubcache.ts (its own limit of two at a time,
 // hubClientHeaders(tool, 'share-report'), the daily index for the list), never by calling the Hub API directly.
 // Packages go to a temporary cache and are deleted as soon as they're measured (--keep keeps them, for a rerun);
 // nothing downloaded is written to the repository. The results: <out>/share-report.json and <out>/share-report.md.

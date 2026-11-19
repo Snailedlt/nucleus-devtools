@@ -1,4 +1,4 @@
-// The package checks live in the core (splitscreenme-vscode src/core/pkgcheck.ts), shared with VS Code, the CLI and
+// The package checks live in the core (src/core/pkgcheck.ts), shared with VS Code, the CLI and
 // `nucleus lsp`; this file adds what only the workbench needs (file badges, editor modes).
 export * from '@core/pkgcheck';
 import type { FileKind } from '@core/pkgcheck';

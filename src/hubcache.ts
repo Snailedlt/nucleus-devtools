@@ -104,7 +104,7 @@ export function cacheDir(): string {
   return path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'), 'nucleus-tools');
 }
 
-/** Our daily copy of the Hub's list (the testbench's hub-sync workflow), served by GitHub, so people's
+/** Our daily copy of the Hub's list (the hub-sync workflow, .github/workflows/hub-sync.yml), served by GitHub, so people's
  *  searches never reach the Hub's API. The Hub itself is only asked when the index is missing or stale. */
 export const HUB_INDEX_URL = 'https://raw.githubusercontent.com/Snailedlt/nucleus-devtools/data/hub-index.json';
 const STALE_MS = 3 * 24 * 60 * 60_000;

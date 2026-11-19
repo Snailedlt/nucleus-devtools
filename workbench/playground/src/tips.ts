@@ -1,5 +1,5 @@
 // Tips: a loading-screen-style tip bar under the code, plus Clippy-style tips that react to what
-// is being edited (each shown once). Every claim here is verified (see splitscreenme-vscode's
+// is being edited (each shown once). Every claim here is verified (see the root AGENTS.md's
 // AGENTS.md "Facts the code relies on" and the testbench probes). Can be turned off.
 // General tips come in five topics: best practices and pitfalls (writing handlers: Nucleus and Jint
 // behaviour), and shortcuts, settings and features (using this workbench). Add one with every new

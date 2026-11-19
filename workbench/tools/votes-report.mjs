@@ -80,7 +80,7 @@ for (const { path: p, count } of hits) {
 }
 const sorted = (m) => [...m.values()].map((x) => ({ ...x, up: Math.max(0, x.up), down: Math.max(0, x.down) })).sort((a, b) => b.down - a.down || b.up - a.up || a.id.localeCompare(b.id));
 // docs/practice: people's votes; aiDocs/aiPractice: AIs', never mixed (only people's make an AI-written doc "Verified by
-// people": splitscreenme-vscode core/docvotes.ts).
+// people": the core's src/core/docvotes.ts).
 const report = { takenAt: new Date().toISOString(), from: day(start), to: day(end), site, docs: sorted(votes.doc), practice: sorted(votes.practice), aiDocs: sorted(votes.aidoc), aiPractice: sorted(votes.aipractice), tips: sorted(votes.tip), rules: sorted(votes.rule), use: use.sort((a, b) => b.count - a.count) };
 fs.mkdirSync(out, { recursive: true });
 fs.writeFileSync(path.join(out, 'votes.json'), JSON.stringify(report, null, 1) + '\n');

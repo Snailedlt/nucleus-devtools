@@ -1,4 +1,4 @@
-// "Nucleus Co-op handlers" for Notepad++ (splitscreenme-vscode#19, step 2): problems underlined in the code, docs on
+// "Nucleus Co-op handlers" for Notepad++ (nucleus-devtools#19, step 2): problems underlined in the code, docs on
 // hover, suggestions that know where you are, parameter hints, quick fixes, Fix all, Format, Try it and a Problems
 // panel. All the logic is in the standalone tool (`ncdev lsp`, the same Language Server other editors use); this
 // plugin only shows it, so it rarely needs to change. Built with MinGW (npp-plugin/build.sh).

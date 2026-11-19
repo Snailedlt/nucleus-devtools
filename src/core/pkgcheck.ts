@@ -1,5 +1,5 @@
 // Checks on a handler package's other files (the .zip / .nc around handler.js), by what Nucleus' Hub install does
-// with them (DownloadPrompt.ExtractHandler, AGENTS.md in splitscreenme-vscode): handler.js at the root is the handler,
+// with them (DownloadPrompt.ExtractHandler, the root AGENTS.md): handler.js at the root is the handler,
 // every top-level folder's contents are merged into handlers/<GameName>/, other files at the root are dropped.
 // Pure functions (no DOM, no Node): shared by the workbench, the VS Code extension, the CLI and `nucleus lsp`.
 import { hubGameName } from './hubscan';

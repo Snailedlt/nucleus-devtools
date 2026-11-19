@@ -10,7 +10,7 @@ export const MAX_FILE = 256 * 1024; // content for files up to this size…
 export const MAX_TOTAL = 1024 * 1024; // …until a handler's files add up to this
 const HEADERS = hubClientHeaders('hub-files', 'package-files');
 
-/** The package's URL on the Hub (as splitscreenme-vscode's core/hub.ts packageUrl). */
+/** The package's URL on the Hub (as the core's src/core/hub.ts packageUrl). */
 export const packageUrl = (id, pkg, version) => `https://hub.splitscreen.me/cdn/storage/packages/${pkg}/original/handler-${id}-v${version}.nc`;
 
 /** The zip's entries (central directory), with a reader for each. */

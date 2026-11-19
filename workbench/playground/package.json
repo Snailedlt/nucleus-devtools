@@ -1,7 +1,7 @@
 {
   "name": "nucleus-handler-workbench",
   "private": true,
-  "description": "Browser workbench for Nucleus Co-op handlers: linter, API search and a Game.Play simulator. Built from splitscreenme-vscode's core.",
+  "description": "Browser workbench for Nucleus Co-op handlers: linter, API search and a Game.Play simulator. Built from the core at the repository root (nucleus-devtools).",
   "scripts": {
     "build": "node build.mjs",
     "smoke": "node smoke.mjs",

@@ -39,7 +39,7 @@ function highlights(body, tag) {
 export function discordPayload(body, tag, now = new Date()) {
   const { items, version, thanks } = highlights(body, tag);
   // A rich embed, so the extension's posts look different from the workbench's
-  // (nucleuscoop-handler-testbench tools/release-post.mjs): its own name, icon and colour.
+  // (workbench/tools/release-post.mjs): its own name, icon and colour.
   const url = `${repo}/releases/tag/${tag}`;
   const shown = items.slice(0, 5);
   const description = [

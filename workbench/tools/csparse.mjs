@@ -1,4 +1,4 @@
-// C# member parser, extracted from splitscreenme-vscode/scripts/generate-api.mjs.
+// C# member parser, extracted from scripts/generate-api.mjs at the repository root.
 import fs from "node:fs";
 import path from "node:path";
 const read = (...p) => fs.readFileSync(path.join(...p), "utf8").replace(/^\uFEFF/, "").replace(/\r\n/g, "\n");

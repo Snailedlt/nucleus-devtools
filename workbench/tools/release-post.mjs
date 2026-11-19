@@ -1,6 +1,6 @@
 // The Discord post for a workbench update, from CHANGELOG.md (the newest dated section, or the one
 // named): a heading, up to three highlights (the bold summaries), the link and the thanks. The same
-// shape as the extension's (splitscreenme-vscode scripts/release-notes.mjs --discord).
+// shape as the extension's (the extension's scripts/release-notes.mjs --discord).
 //   node tools/release-post.mjs [<section id, e.g. "2026-11-05 23:00">] [--json | --notes | --tag]
 // --json prints the webhook payload (a rich embed) instead of the text; --notes the whole section as GitHub
 // release notes (images as absolute links); --tag the release tag (workbench-2026-11-05, workbench-2026-11-05-2300).
@@ -48,7 +48,7 @@ if (process.argv.includes('--notes')) {
 }
 if (process.argv.includes('--json')) {
   // A rich embed, so the workbench's posts look different from the extension's
-  // (splitscreenme-vscode scripts/release-notes.mjs --discord --json): its own name, icon, colour.
+  // (the extension's scripts/release-notes.mjs --discord --json): its own name, icon, colour.
   const shown = items.slice(0, 5);
   const description = [
     ...shown.map((s) => `• ${s}`),

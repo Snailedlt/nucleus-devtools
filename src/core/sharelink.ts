@@ -1,4 +1,4 @@
-// The workbench's share links (nucleuscoop-handler-testbench playground/src/share.ts): the handler, compressed with
+// The workbench's share links (workbench/playground/src/share.ts): the handler, compressed with
 // deflate-raw and written in base-62 (every 5 bytes become 7 letters or digits), after "#share-". Used by "Open in
 // the Browser Workbench" in VS Code, the Language Server and the Notepad++ plugin. The compressing is the host's
 // (zlib in Node, CompressionStream in the browser); this part is pure, and the workbench imports it.

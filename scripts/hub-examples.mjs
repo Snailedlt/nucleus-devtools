@@ -6,9 +6,9 @@
 //
 //   node scripts/hub-examples.mjs --hub <dir with hub/<id>.js and hub/packages.json>
 //
-// The dir is a checkout of the testbench's `data` branch (its `hub/` mirror of every Hub handler):
-//   git -C ../nucleuscoop-handler-testbench fetch origin data
-//   mkdir /tmp/hubdata && git -C ../nucleuscoop-handler-testbench archive origin/data hub | tar -x -C /tmp/hubdata
+// The dir is a checkout of this repository's `data` branch (its `hub/` mirror of every Hub handler):
+//   git fetch origin data
+//   mkdir /tmp/hubdata && git archive FETCH_HEAD hub | tar -x -C /tmp/hubdata
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';

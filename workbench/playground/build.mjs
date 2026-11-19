@@ -724,7 +724,7 @@ fs.mkdirSync(path.join(startDir, 'gallery'), { recursive: true });
   for (const n of names) for (const f of [`${n}-light.webp`, `${n}-dark.webp`]) {
     const dir = dirs[n.split('-')[0]];
     // The start page shows each of these: a missing one would ship as a broken picture, so stop here.
-    if (!dir || !fs.existsSync(path.join(dir, f))) throw new Error(`build: ${dir ? path.join(dir, f) : f} is missing (the start page's gallery shows it). The VS Code and Notepad++ screenshots come from splitscreenme-vscode's docs/images/gallery.`);
+    if (!dir || !fs.existsSync(path.join(dir, f))) throw new Error(`build: ${dir ? path.join(dir, f) : f} is missing (the start page's gallery shows it). The VS Code and Notepad++ screenshots come from the repository root's docs/images/gallery.`);
     fs.copyFileSync(path.join(dir, f), path.join(startDir, 'gallery', f));
   }
 }

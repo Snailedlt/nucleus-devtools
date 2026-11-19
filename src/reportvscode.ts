@@ -47,7 +47,7 @@ async function toolsOrHandler(code: string | undefined): Promise<'tools' | 'hand
 /** Possible duplicates, the GitHub form, or the text to copy. */
 async function send(input: ReportInput) {
   const r = buildReport({ ...input, version: input.version ?? `VS Code extension ${extVersion}`, details: [...details(), ...(input.details ?? [])] });
-  const hits = await vscode.window.withProgress({ location: vscode.ProgressLocation.Window, title: 'Looking for the same report on GitHub…' }, () => findDuplicates(r, { userAgent: 'splitscreenme-vscode' }));
+  const hits = await vscode.window.withProgress({ location: vscode.ProgressLocation.Window, title: 'Looking for the same report on GitHub…' }, () => findDuplicates(r, { userAgent: 'nucleus-devtools-vscode' }));
   if (hits.length) {
     const pick = await vscode.window.showQuickPick(
       [...hits.map((h) => ({ label: `$(issues) #${h.number} ${h.title}`, description: h.thumbs ? `👍 ${h.thumbs}` : '', detail: 'Open it, and add a 👍 or a comment', url: h.url })), { label: '$(add) None of these: a new report', url: '' }],
