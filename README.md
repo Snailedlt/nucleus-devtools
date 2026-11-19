@@ -226,7 +226,7 @@ This installs the **Nucleus Co-op handlers** plugin and puts `ncdev` in `%LOCALA
 `ncdev lsp` is a Language Server with the same features: problems and quick fixes, hover, completion with your own names and snippets, signature help, go to definition, rename, outline, Format Document, window-message hints, Try it, and *Package*, *Install*, *New handler* and *Test in Nucleus* as code actions and commands. `ncdev dap` brings the debugger. Any editor with an LSP client can use it; most need only a few lines of config.
 
 1. **Get the server.** Windows: `ncdev.exe` from the [newest release](https://github.com/Snailedlt/nucleus-devtools/releases) (no Node needed; `ncdev update` keeps it current). Anywhere with Node.js 18+: `nucleus.js` from the same release.
-2. **Point your editor's LSP client at it** for JavaScript files, over stdio: `ncdev lsp`, or `node /path/to/nucleus.js lsp`. It only answers for handler files, so your usual JavaScript server keeps working beside it.
+2. **Point your editor's LSP client at it** for JavaScript files, over stdio: `ncdev lsp`, or `node /path/to/nucleus.js lsp`. It only answers for handler files, so your usual JavaScript server keeps working beside it. The examples below start it by name, so `ncdev` must be on your `PATH`; otherwise use its full path (e.g. `C:\Tools\ncdev.exe`).
 3. **Open a handler.** Problems should show within a second.
 
 | Editor | Setup | Tested by people | Tested by AI |
@@ -546,6 +546,7 @@ The workbench uses the core at the root, so run `npm ci` there first:
 cd workbench/playground && npm ci
 node build.mjs --preview   # the site in dist/pages
 npm test                   # unit tests and every published link
+npx playwright install chromium   # once: the browser smoke.mjs uses
 node smoke.mjs             # the site in a real browser, light and dark, with accessibility checks
 ```
 
