@@ -41,7 +41,7 @@ function nextNotification(match: (m: any) => boolean): Promise<any> {
 const diagnosticsFor = (uri: string, version?: number) => nextNotification((m) => m.method === 'textDocument/publishDiagnostics' && m.params.uri === uri && (version === undefined || m.params.version === version));
 
 before(async () => {
-  proc = spawn(process.execPath, [path.join(__dirname, '..', 'dist', 'cli.js'), 'lsp', '--stdio'], { stdio: ['pipe', 'pipe', 'inherit'] });
+  proc = spawn(process.execPath, [path.join(__dirname, '..', 'dist', 'cli.js'), 'lsp', '--stdio'], { stdio: ['pipe', 'pipe', 'inherit'], env: { ...process.env, NCDEV_NO_ISSUE_SEARCH: '1' } });
   let buf = Buffer.alloc(0);
   proc.stdout!.on('data', (chunk: Buffer) => {
     buf = Buffer.concat([buf, chunk]);
@@ -82,6 +82,15 @@ after(async () => {
   assert.equal(await exited, 0);
 });
 
+test('lsp: an option nothing reads is a hint tagged Unnecessary (faded, like unused code)', async () => {
+  const uri = 'file:///tmp/unused-option.js';
+  notify('textDocument/didOpen', { textDocument: { uri, languageId: 'javascript', version: 1, text: HEADER + 'Game.AddOption("FPS", "", "fps", ["30", "60"]);\n' } });
+  const d = (await diagnosticsFor(uri, 1)).params.diagnostics.find((x: any) => x.code === 'unused-option');
+  assert.equal(d.severity, 4);
+  assert.deepEqual(d.tags, [1]);
+  notify('textDocument/didClose', { textDocument: { uri } });
+});
+
 test('lsp: diagnostics with codes, links and tags; quick fixes and fix all', async () => {
   const text = HEADER + 'Game.Hook.ForceFocuss = true;\nGame.HookGetCursorPos = true;\nGame.KillMutex = "M";\n';
   notify('textDocument/didOpen', { textDocument: { uri: URI, languageId: 'javascript', version: 1, text } });
@@ -103,6 +112,20 @@ test('lsp: diagnostics with codes, links and tags; quick fixes and fix all', asy
   assert.deepEqual(edit.range.start, { line: 3, character: 10 });
   assert.ok(actions.some((a: any) => /Disable unknown-member/.test(a.title)));
   assert.ok(actions.some((a: any) => a.kind === 'source.fixAll.nucleus'));
+  // "This check is wrong…": after the fixes, never preferred; nucleus.report gives the prefilled form and the choices.
+  const wrong = actions.find((a: any) => a.kind === 'quickfix.report');
+  assert.equal(wrong.title, 'This check is wrong (unknown-member)…');
+  assert.ok(actions.indexOf(wrong) > 0 && !wrong.isPreferred);
+  assert.ok((await request('textDocument/codeAction', { textDocument: { uri: URI }, range: unknown.range, context: { diagnostics: [unknown], only: ['quickfix'] } })).result.some((a: any) => a.kind === 'quickfix.report'), 'a quickfix filter keeps it');
+  const rep = (await request('workspace/executeCommand', { command: wrong.command.command, arguments: [{ ...wrong.command.arguments[0], choose: true }] })).result;
+  const form = new URL(rep.url);
+  assert.equal(form.pathname, '/Snailedlt/splitscreenme-vscode/issues/new');
+  assert.equal(form.searchParams.get('template'), 'check-wrong.yml');
+  assert.equal(form.searchParams.get('rule'), 'unknown-member');
+  assert.equal(form.searchParams.get('code'), 'Game.Hook.ForceFocuss = true;', 'only the flagged line');
+  assert.match(form.searchParams.get('context')!, /^ncdev: .*\nOS: .*\nEditor: .*\nHandler: .*\nReport: this check is wrong\nRule: unknown-member\nLine: 4\nCheck: [0-9a-f]{8}$/);
+  assert.ok(rep.choices.some((c: any) => /without the flagged code/.test(c.title) && !new URL(c.url).searchParams.has('code')));
+  assert.ok(rep.choices.some((c: any) => c.copy && /discord\.com/.test(c.url)));
 
   const fixAll = (await request('textDocument/codeAction', { textDocument: { uri: URI }, range: unknown.range, context: { diagnostics: [], only: ['source.fixAll'] } })).result;
   assert.equal(fixAll.length, 1);
@@ -123,7 +146,9 @@ test('lsp: hover, completion, value suggestions, signature help, inlay hints', a
   assert.equal(hover.contents.kind, 'markdown');
   assert.match(hover.contents.value, /Game\.Hook\.ForceFocus: boolean/);
   // The name's docs in the workbench, one click away (no clientInfo: tagged "lsp").
-  assert.ok(hover.contents.value.includes('[Open in Docs](https://snailedlt.github.io/nucleuscoop-handler-testbench/docs/Game.Hook.ForceFocus/?ref=lsp)'), hover.contents.value);
+  assert.ok(hover.contents.value.endsWith('[Full docs](https://snailedlt.github.io/nucleuscoop-handler-testbench/docs/Game.Hook.ForceFocus/?ref=lsp)'), hover.contents.value);
+  // Short: no "In practice", examples or votes (those are in the docs the link opens).
+  assert.doesNotMatch(hover.contents.value, /In practice|```js|Default:/);
 
   const completion = (await request('textDocument/completion', { textDocument: doc, position: { line: 4, character: 12 } })).result;
   const sym = completion.items.find((i: any) => i.label === 'SymlinkGame');
@@ -441,4 +466,139 @@ test('lsp: quick fixes in a CRLF document insert CRLF (no mixed line endings)', 
   }
   assert.ok(applied >= 4, `${applied} quick fixes tried`);
   notify('textDocument/didClose', { textDocument: { uri } });
+});
+
+/** A second server, for a client that advertises window/showDocument. Every wait has a deadline and fails when the
+ *  server exits, so a missing message fails the test instead of hanging it. */
+function showDocumentClient() {
+  const p2 = spawn(process.execPath, [path.join(__dirname, '..', 'dist', 'cli.js'), 'lsp', '--stdio'], { stdio: ['pipe', 'pipe', 'inherit'], env: { ...process.env, NCDEV_NO_ISSUE_SEARCH: '1' } });
+  const write = (msg: unknown) => {
+    const body = Buffer.from(JSON.stringify(msg), 'utf8');
+    p2.stdin!.write(`Content-Length: ${body.length}\r\n\r\n`);
+    p2.stdin!.write(body);
+  };
+  const got: any[] = [];
+  const wait: { match: (m: any) => boolean; resolve: (m: any) => void; reject: (e: Error) => void; timer: NodeJS.Timeout }[] = [];
+  let exited = false;
+  p2.on('exit', () => {
+    exited = true;
+    for (const w of wait.splice(0)) {
+      clearTimeout(w.timer);
+      w.reject(new Error('the server exited before the expected message'));
+    }
+  });
+  let buf = Buffer.alloc(0);
+  p2.stdout!.on('data', (chunk: Buffer) => {
+    buf = Buffer.concat([buf, chunk]);
+    for (;;) {
+      const sep = buf.indexOf('\r\n\r\n');
+      if (sep < 0) return;
+      const len = Number(buf.subarray(0, sep).toString().match(/Content-Length: (\d+)/i)![1]);
+      if (buf.length < sep + 4 + len) return;
+      const msg = JSON.parse(buf.subarray(sep + 4, sep + 4 + len).toString('utf8'));
+      buf = buf.subarray(sep + 4 + len);
+      got.push(msg);
+      const w = wait.find((x) => x.match(msg));
+      if (w) {
+        wait.splice(wait.indexOf(w), 1);
+        clearTimeout(w.timer);
+        w.resolve(msg);
+      }
+    }
+  });
+  const next = (match: (m: any) => boolean, ms = 15000): Promise<any> => {
+    const found = got.find(match);
+    if (found) return Promise.resolve(found);
+    if (exited) return Promise.reject(new Error('the server has exited'));
+    return new Promise((resolve, reject) => {
+      const w = { match, resolve, reject, timer: setTimeout(() => {
+        wait.splice(wait.indexOf(w), 1);
+        reject(new Error(`no matching message within ${ms} ms`));
+      }, ms) };
+      wait.push(w);
+    });
+  };
+  let id = 1000;
+  const ask = (method: string, params: unknown) => {
+    const n = id++;
+    write({ jsonrpc: '2.0', id: n, method, params });
+    return next((m) => m.id === n && m.method === undefined);
+  };
+  const start = async () => {
+    await ask('initialize', { processId: null, rootUri: null, capabilities: { window: { showDocument: { support: true } } }, initializationOptions: { lint: { compareWithHub: false } } });
+    write({ jsonrpc: '2.0', method: 'initialized', params: {} });
+  };
+  /** The default "This check is wrong" for the first diagnostic of a rule in a new document. */
+  const reportDefault = async (uri: string, text: string, rule: string) => {
+    write({ jsonrpc: '2.0', method: 'textDocument/didOpen', params: { textDocument: { uri, languageId: 'javascript', version: 1, text } } });
+    const diags = (await next((m) => m.method === 'textDocument/publishDiagnostics' && m.params.uri === uri)).params.diagnostics;
+    const d = diags.find((x: any) => x.code === rule);
+    assert.ok(d, `a ${rule} diagnostic`);
+    const actions = (await ask('textDocument/codeAction', { textDocument: { uri }, range: d.range, context: { diagnostics: [d] } })).result;
+    const wrong = actions.find((a: any) => a.kind === 'quickfix.report');
+    assert.ok(wrong && !('choose' in wrong.command.arguments[0]), 'the default action, no choose');
+    const rep = (await ask('workspace/executeCommand', { command: wrong.command.command, arguments: wrong.command.arguments })).result;
+    const show = await next((m) => m.method === 'window/showDocument');
+    return { rep, show };
+  };
+  return { write, next, got, start, reportDefault, kill: () => p2.kill() };
+}
+
+test('lsp: the default "This check is wrong" opens the form without the flagged code (a client that opens links)', async () => {
+  // Nothing with code may reach GitHub before the person chooses it.
+  const c = showDocumentClient();
+  try {
+    await c.start();
+    const { rep, show } = await c.reportDefault('file:///tmp/nucleus-lsp-test/handlers/Private.js', HEADER + 'Game.Hook.ForceFocuss = true; // secret\n', 'unknown-member');
+    // The choices (picked by the person) still offer the version with the flagged code.
+    assert.ok(rep.choices.some((ch: any) => new URL(ch.url).searchParams.get('code')?.includes('Game.Hook.ForceFocuss')), 'a choice with the flagged code');
+    const opened = new URL(show.params.uri);
+    assert.equal(opened.searchParams.get('template'), 'check-wrong.yml');
+    assert.ok(!opened.searchParams.has('code') && !show.params.uri.includes('secret'), 'no flagged code in the opened link');
+    assert.ok(!c.got.some((m) => m.method === 'window/showDocument' && /secret/.test(m.params.uri)));
+    c.write({ jsonrpc: '2.0', id: show.id, result: { success: true } });
+    const msg = await c.next((m) => m.method === 'window/showMessage' && /Opened the report/.test(m.params.message));
+    assert.match(msg.params.message, /left out/);
+  } finally {
+    c.kill();
+  }
+});
+
+test('lsp: the default report leaves out what it reads from the handler (Game.GameName, Hub id)', async () => {
+  const c = showDocumentClient();
+  try {
+    await c.start();
+    const text = 'Game.GUID = "A";\nGame.GameName = "PrivateGame77";\nGame.ExecutableName = "a.exe";\nHub.Handler.Id = "hubid99";\nGame.Hook.ForceFocuss = true;\n';
+    const { rep, show } = await c.reportDefault('file:///tmp/nucleus-lsp-test/handlers/Named.js', text, 'unknown-member');
+    assert.ok(rep.choices.some((ch: any) => ch.url.includes('PrivateGame77')), 'the full report names the handler');
+    assert.ok(!show.params.uri.includes('PrivateGame77') && !show.params.uri.includes('hubid99'), show.params.uri);
+    c.write({ jsonrpc: '2.0', id: show.id, result: { success: true } });
+    const msg = await c.next((m) => m.method === 'window/showMessage' && /Opened the report/.test(m.params.message));
+    assert.match(msg.params.message, /the handler's name/);
+  } finally {
+    c.kill();
+  }
+});
+
+test('lsp: the default report leaves out a check message that quotes the handler (option-compare)', async () => {
+  const c = showDocumentClient();
+  try {
+    await c.start();
+    const text = HEADER + 'Game.AddOption("Fps", "", "fps", [30, 60]);\nGame.Play = function () {\n  var topsecret42 = Context.Options["fps"];\n  if (topsecret42 === 60) {}\n};\n';
+    const { rep, show } = await c.reportDefault('file:///tmp/nucleus-lsp-test/handlers/Compare.js', text, 'option-compare');
+    // The full report (a choice) has the message, so the check below tests the left-out part.
+    assert.ok(rep.choices.some((ch: any) => new URL(ch.url).searchParams.get('message')?.includes('topsecret42')), 'the full report quotes the handler');
+    // The choice without the flagged code leaves out the message as well.
+    const without = rep.choices.find((ch: any) => /without the flagged code/.test(ch.title));
+    assert.ok(without, 'a choice without the flagged code');
+    const wv = [...new URL(without.url).searchParams.values()].join('\n');
+    assert.ok(!wv.includes('topsecret42') && !wv.includes('Context.Options'), wv);
+    const opened = new URL(show.params.uri);
+    const values = [...opened.searchParams.values()].join('\n');
+    assert.ok(!values.includes('topsecret42') && !values.includes('Context.Options'), values);
+    assert.ok(!opened.searchParams.has('code'));
+    assert.equal(opened.searchParams.get('rule'), 'option-compare');
+  } finally {
+    c.kill();
+  }
 });

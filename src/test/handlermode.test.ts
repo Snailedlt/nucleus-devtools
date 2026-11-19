@@ -46,13 +46,19 @@ test('package.json: the handler language has a grammar built on JavaScript\'s, a
   const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
   const c = pkg.contributes;
   assert.ok(c.languages.some((l: any) => l.id === HANDLER_LANGUAGE && fs.existsSync(l.configuration)), 'the language, with its configuration file');
+  const lang = c.languages.find((l: any) => l.id === HANDLER_LANGUAGE);
+  const ignore = fs.readFileSync('.vscodeignore', 'utf8');
+  for (const icon of [lang.icon.light, lang.icon.dark]) {
+    assert.ok(fs.existsSync(icon), `the file icon ${icon} exists`);
+    assert.ok(ignore.includes('!' + icon.replace(/^\.\//, '')), `the file icon ${icon} is packaged (.vscodeignore)`);
+  }
   const grammar = c.grammars.find((g: any) => g.language === HANDLER_LANGUAGE);
   assert.deepEqual(JSON.parse(fs.readFileSync(grammar.path, 'utf8')).patterns, [{ include: 'source.js' }], 'JavaScript\'s colours');
   assert.ok(pkg.activationEvents.includes(`onLanguage:${HANDLER_LANGUAGE}`));
   for (const [what, list] of [['snippets', c.snippets], ['semanticTokenScopes', c.semanticTokenScopes], ['breakpoints', c.breakpoints]] as const)
     assert.ok((list as any[]).some((x) => x.language === HANDLER_LANGUAGE), `${what} cover the handler language`);
   assert.ok(c.debuggers[0].languages.includes(HANDLER_LANGUAGE), 'the debugger offers itself in handler files');
-  const setting = c.configuration.properties['splitscreenme.languageMode'];
+  const setting = Object.assign({}, ...c.configuration.map((g: any) => g.properties))['splitscreenme.languageMode'];
   assert.equal(setting.default, 'handler');
   assert.deepEqual(setting.enum, ['handler', 'javascript']);
   assert.ok(fs.readFileSync('.vscodeignore', 'utf8').includes('!syntaxes/**'), 'the grammar ships in the .vsix');

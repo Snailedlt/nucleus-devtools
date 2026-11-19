@@ -1,8 +1,10 @@
 // Typed access to the generated Nucleus handler API model (data/nucleus-api.json).
 import raw from '../../data/nucleus-api.json';
+import sources from '../../data/sources.json';
 import { JS_FUNCTIONS, JS_GLOBAL_OBJECTS, JS_OBJECTS, isJsBuiltin, mdnUrl } from './jsbuiltins';
 import { DOTNET_OBJECTS } from './dotnet';
 import { prettyCode, prettySignature } from './pretty';
+import { DocPart, partVotes, verifiedLabel, votesLine } from './docvotes';
 
 export type SimpleType =
   | 'string'
@@ -47,12 +49,35 @@ export interface Member {
   doc: string;
   /** Set when the doc was written by Claude (data/claude-docs.json) rather than taken from the official docs. */
   docBy?: 'claude';
-  /** What a Claude-written doc is based on (source files and functions). */
-  docBasis?: string;
+  /** What a Claude-written doc is based on (source files and functions, Hub data): AiBasis. */
+  docBasis?: AiBasis;
   /** A person who checked a Claude-written doc against Nucleus (data/claude-docs.json "checkedBy"), and when. */
   docCheckedBy?: string;
   docCheckedOn?: string;
   example?: string;
+  /** Where the example comes from when not the official docs: 'claude' (AI-written, data/claude-practice.json), 'hub'
+   *  (the most common value or call in Hub handlers, data/hub-examples.json) or 'generated' (from its type). */
+  exampleBy?: 'claude' | 'hub' | 'generated';
+  /** What a 'hub' or 'generated' example is ("From Hub handlers", no counts). */
+  exampleNote?: string;
+  /** Where the example goes in a handler: 'top' (the top level), 'Game.Play' or another callback. */
+  exampleIn?: string;
+  /** "In practice": what it really does in Nucleus' source and how Hub handlers use it, written by Claude (AI) from
+   *  them (data/claude-practice.json), apart from `doc`. */
+  practice?: string;
+  practiceBasis?: AiBasis;
+  /** What the AI-written parameter docs are based on (data/claude-param-docs.json basis). */
+  paramsBasis?: AiBasis;
+  practiceCheckedBy?: string;
+  practiceCheckedOn?: string;
+  /** How many of the verified Hub handlers use it (api.hubHandlers.count of them). */
+  hubUse?: number;
+  /** Per engine family with enough Hub handlers (api.hubHandlers.engines): how many of its handlers use it. */
+  engineUse?: Record<string, number>;
+  /** "By engine: more common in Unreal Engine games, rarer in Unity games." (no counts: those are in `engineUse`): only where an engine
+   *  family uses it notably more or less than all handlers (scripts/hub-engines.mjs engineLine). Mechanical, not
+   *  AI-written; shown with "In practice", or alone. */
+  byEngine?: string;
   category?: string;
   deprecated?: string;
   /** Legacy input option the Proto Input guide says to set to false. */
@@ -96,6 +121,13 @@ export interface ApiModel {
   objects: Record<string, ApiObject>;
   enums: Record<string, EnumInfo>;
   nucleusClasses: Record<string, NucleusClass>;
+  /** The verified Hub handlers `hubUse` counts are from (data/hub-examples.json). */
+  hubHandlers?: { count: number; takenAt: string; /** Handlers per engine family (data/hub-engines.json), families with enough of them. */ engines?: Record<string, number> };
+  /** The links of the basis' `hub` and `engines` items (data/sources.json `data`, a repository file made a permalink). */
+  basisLinks?: Partial<Record<'hub' | 'engines', string | null>>;
+  /** The tip each repository's source links were looked up from ("owner/name": sha; each link is at its file's last
+   *  change before it, the item's `commit`: scripts/sources.mjs). */
+  sourceCommits?: Record<string, string>;
 }
 
 /** The model as objects without a prototype: a name typed in a handler (`toString`, `constructor`, `__proto__`) is
@@ -334,12 +366,22 @@ export function looksLikeTypo(name: string, candidates: string[]): boolean {
 // Display helpers
 // ---------------------------------------------------------------------------
 
+/** A parameter's type as hints and signatures show it. The model types a C# `string` parameter
+ *  `string | number | boolean`, since Jint turns a number or boolean into text there (so the checks accept them);
+ *  what the method wants is still a string, and that's what a person should read. The same for an enum. */
+export function paramType(p: Param): string {
+  const cs = (p.csType ?? '').replace(/\[\]$/, '');
+  if (p.type === 'string | number | boolean' && /^(string|String|System\.String)$/.test(cs)) return 'string';
+  // An enum parameter (`Nucleus.SaveType | number | boolean`): its values are what to pass.
+  return p.type.match(/^(Nucleus\.\w+) \| number \| boolean$/)?.[1] ?? p.type;
+}
+
 export function memberSignature(owner: string, name: string, m: Member): string[] {
   const label = ownerLabel(owner);
   const full = label ? `${label}.${name}` : name;
   if (m.kind === 'method') {
     return (m.overloads ?? []).map(
-      (o) => `${full}(${o.params.map((p) => `${p.rest ? '...' : ''}${p.name}${p.optional ? '?' : ''}: ${p.type}`).join(', ')}): ${o.returns}`,
+      (o) => `${full}(${o.params.map((p) => `${p.rest ? '...' : ''}${p.name}${p.optional ? '?' : ''}: ${paramType(p)}`).join(', ')}): ${o.returns}`,
     );
   }
   const t = m.kind === 'object' ? m.ref ?? m.ts : m.ts;
@@ -371,33 +413,236 @@ export function ownerLabel(owner: string): string {
 }
 
 /** The label shown with a doc Claude wrote (empty for human-written docs). */
-export const claudeNote = (m: { docBy?: string; docBasis?: string; docCheckedBy?: string; docCheckedOn?: string }) =>
+export const claudeNote = (m: { docBy?: string; docBasis?: AiBasis; docCheckedBy?: string; docCheckedOn?: string }) =>
   m.docBy !== 'claude' ? ''
-  : m.docCheckedBy ? `AI-written, based on ${m.docBasis}. Checked by ${m.docCheckedBy}${m.docCheckedOn ? ` on ${m.docCheckedOn}` : ''}.`
-  : `AI-written, based on ${m.docBasis}. Not from the official docs.`;
+  : m.docCheckedBy ? `AI-written, based on ${aiBasisWords(m.docBasis)}. Checked by ${m.docCheckedBy}${m.docCheckedOn ? ` on ${m.docCheckedOn}` : ''}.`
+  : `AI-written, based on ${aiBasisWords(m.docBasis)}. Not from the official docs.`;
 
 /** The "Doc review" issue form for a Claude-written doc, with its name filled in (.github/ISSUE_TEMPLATE/doc-review.yml;
- *  the doc-review workflow adds the doc itself as a comment the reporter can't remove). */
-export const docReviewUrl = (path: string) =>
-  `https://github.com/Snailedlt/splitscreenme-vscode/issues/new?template=doc-review.yml&title=${encodeURIComponent(`Doc review: ${path}`)}&member=${encodeURIComponent(path)}`;
+ *  the doc-review workflow adds the doc itself as a comment the reporter can't remove). `part`: which part the vote was on;
+ *  "In practice" says so in the title (`Doc review: Game.KillMutex (In practice)`), the doc keeps the plain title. */
+export const docReviewUrl = (path: string, part: DocPart = 'doc') => docFormUrl('Doc review', path, part);
+/** The same form for feedback after a 👍 (something to add, a better example): titled as feedback. */
+export const docFeedbackUrl = (path: string, part: DocPart = 'doc') => docFormUrl('Doc feedback', path, part);
+const docFormUrl = (kind: string, path: string, part: DocPart) =>
+  `https://github.com/Snailedlt/splitscreenme-vscode/issues/new?template=doc-review.yml&title=${encodeURIComponent(`${kind}: ${path}${part === 'practice' ? ' (In practice)' : ''}`)}&member=${encodeURIComponent(path)}`;
 
-export function memberMarkdown(owner: string, name: string, m: Member): string {
+/** The label of an AI-written "In practice" part (empty without one). */
+export const practiceNote = (m: Member) =>
+  !m.practice ? ''
+  : `AI-written, based on ${aiBasisWords(m.practiceBasis)}.${m.practiceCheckedBy ? ` Checked by ${m.practiceCheckedBy}${m.practiceCheckedOn ? ` on ${m.practiceCheckedOn}` : ''}.` : ''}`;
+/** "Used by 564 of 899 Hub handlers" (empty when no Hub handler uses it). Not shown with "In practice", which has no
+ *  counts; kept for the workbench. */
+export const hubUseText = (m: Member) => (m.hubUse && api.hubHandlers ? `Used by ${m.hubUse} of ${api.hubHandlers.count} Hub handlers` : '');
+/** Where an example comes from, in a few words ('' for the official docs'). */
+export const exampleSource = (m: Member) => (m.exampleBy === 'claude' ? 'AI-written' : m.exampleBy ? m.exampleNote ?? '' : '');
+
+/** The votes and the verified label of one doc part, as a Markdown line ('' with no votes). */
+function votesMarkdown(path: string, part: DocPart, aiWritten: boolean): string {
+  const v = partVotes(path, part);
+  const verified = aiWritten ? verifiedLabel(v) : '';
+  return [verified ? `**✓ ${verified}**` : '', votesLine(v)].filter(Boolean).join(' · ');
+}
+
+/**
+ * The first sentence of a Markdown doc, for a hover: the first paragraph up to its first full stop (not one in code,
+ * a name such as `Game.Play`, or "e.g."), or the official docs' " | " separator; a very short one ("Optional.") takes
+ * the next sentence too. Cut at a word with "…" past `max`.
+ */
+export function firstSentence(md: string, max = 200): string {
+  const para = (md.split(/\n\s*\n/).find((x) => x.trim() && !x.trim().startsWith('```')) ?? '').replace(/\s*\n\s*/g, ' ').trim();
+  let code = false;
+  let end = para.length;
+  for (let i = 0; i < para.length; i++) {
+    const c = para[i];
+    if (c === '`') code = !code;
+    if (code) continue;
+    const bar = c === ' ' && para.slice(i, i + 3) === ' | ';
+    const stop = (c === '.' || c === '!' || c === '?') && (i + 1 === para.length || /\s/.test(para[i + 1]));
+    if (!bar && !stop) continue;
+    if (stop && c === '.' && /(?:\be\.g|\bi\.e|\betc|\bvs|\bcf)$/i.test(para.slice(0, i))) continue;
+    if (i < 25 && !bar) continue; // "Optional.", "Hub metadata.": too little on its own
+    end = bar ? i : i + 1;
+    break;
+  }
+  let out = para.slice(0, end).trim();
+  if (out.length > max) {
+    const cut = out.lastIndexOf(' ', max);
+    out = out.slice(0, cut > max / 2 ? cut : max).replace(/[,;:(\s]+$/, '');
+    // An unclosed code span would swallow the rest of the hover.
+    if ((out.match(/`/g) ?? []).length % 2) out += '`';
+    out += '…';
+  } else if (out && !/[.!?…:]$/.test(out)) out += '.';
+  return out;
+}
+
+/**
+ * A member's hover: the signature, the doc's first sentence (a ✨ before it when AI wrote it) and nothing else. The full doc,
+ * "In practice", votes, the engine line and examples stay in the Docs view and the completion docs (memberMarkdown):
+ * help on request, not on screen. The caller adds the links to the full docs.
+ */
+export function memberHoverMarkdown(owner: string, name: string, m: Member): string {
+  const parts: string[] = ['```ts\n' + memberSignature(owner, name, m).map((x) => prettySignature(x)).join('\n') + '\n```'];
+  if (m.deprecated) parts.push(`**${m.deprecated}**`);
+  const first = m.doc ? firstSentence(m.doc) : '';
+  // An AI-written doc: a ✨ before it, where it comes from on its own small line.
+  if (first) parts.push(isAiPart(m, 'doc') ? `${AI_MARK} ${first}` : first);
+  if (first && isAiPart(m, 'doc')) parts.push(aiBasisLine(m, 'doc'));
+  if (m.required) parts.push('**Required**');
+  if (isJsBuiltin(owner)) parts.push(`[MDN: ${owner ? `${owner}.` : ''}${name}](${mdnUrl(owner, name)})`);
+  return parts.join('\n\n');
+}
+
+/** A place in memberMarkdown's text for a control the caller puts there itself (VS Code's Docs panel and the docs
+ *  pages: each part's 👍/👎 inside it; 'practice-open'/'practice-close' around "In practice"; 'ai-doc', 'ai-params'
+ *  and 'ai-example' open the frame of an AI-written part, 'ai-close' ends it: core/aimark.ts placeAiFrames). A
+ *  paragraph of its own. */
+export const docSlot = (name: 'doc' | 'practice' | 'practice-open' | 'practice-close' | 'ai-doc' | 'ai-params' | 'ai-example' | 'ai-close') => `@@slot:${name}@@`;
+
+/** The mark before AI-written text where there is no frame (Markdown: hovers, suggestion docs, parameter hints). */
+export const AI_MARK = '✨';
+/** The parts of a doc AI can have written. */
+export type AiPart = 'doc' | 'practice' | 'params' | 'example';
+/** Whether that part of the member is AI-written. */
+export function isAiPart(m: Member, part: AiPart): boolean {
+  if (part === 'doc') return m.docBy === 'claude' && Boolean(m.doc);
+  if (part === 'practice') return Boolean(m.practice);
+  if (part === 'example') return m.exampleBy === 'claude' && Boolean(m.example);
+  return (m.overloads ?? []).some((o) => o.params.some((p) => p.doc && p.docBy === 'claude'));
+}
+/** One source an AI-written part rests on (data/claude-*.json `basis.source`): `project` (Nucleus, ProtoInputHooks,
+ *  Proto Input guide, …: data/sources.json `projects`), `file` (shown as code) and `what` in it (functions, call
+ *  sites); each optional. `url`: the link to it, and `commit`: the last commit that changed it (the link is at that
+ *  commit), which npm run generate looks up (scripts/sources.mjs). */
+export interface AiSource { project?: string; file?: string; what?: string; url?: string; commit?: string }
+/** What an AI-written part is based on, as data (data/claude-docs.json, claude-practice.json, claude-param-docs.json
+ *  `basis`): the `source` files, the verified Hub handlers (`hub.counted`: the date they were counted), the Hub games'
+ *  engines (`engines`: true, or the families the text names) and a `note` for anything else. Every place that shows
+ *  it builds its text from aiBasisItems: the sparkle's tooltip (core/aimark.ts aiTip), the Markdown line
+ *  (aiBasisMarkdown), the words for agents (aiBasisWords; scripts/basis.mjs has the same for the .d.ts). */
+export interface AiBasis { source?: AiSource[]; hub?: { counted: string }; engines?: true | string[]; note?: string }
+/** One thing a part is based on, ready to show: a source (`project`, named only where it changes, `file`, `what`) or
+ *  a `text` (the Hub handlers, the engines, a note), with its `url` when it has one. */
+export interface AiBasisItem { project?: string; file?: string; what?: string; text?: string; url?: string }
+
+/** The basis of an AI-written part (undefined when the part isn't AI-written). */
+export function aiBasisOf(m: Member, part: AiPart): AiBasis | undefined {
+  if (!isAiPart(m, part)) return undefined;
+  const b = part === 'doc' ? m.docBasis : part === 'params' ? m.paramsBasis : m.practiceBasis;
+  return b ?? { note: 'the Nucleus source' };
+}
+/** The Hub data's words (data/sources.json `data`) and links (the model's `basisLinks`, made by npm run generate). */
+const basisData = sources.data as Record<'hub' | 'engines', { text: string; url?: string }>;
+const basisLink = (k: 'hub' | 'engines') => api.basisLinks?.[k] ?? basisData[k].url;
+/** Everything a part is based on, one item per source, in order: the source files (the project named only where it
+ *  changes), the note, the verified Hub handlers, the Hub games' engines. Each with its link where it has one. */
+export function aiBasisItems(b: AiBasis): AiBasisItem[] {
+  let prev = '';
+  const items: AiBasisItem[] = (b.source ?? []).map((i) => {
+    const project = i.project && i.project !== prev ? i.project : undefined;
+    prev = i.project ?? prev;
+    return { project, file: i.file, what: i.what, url: i.url };
+  });
+  if (b.note) items.push({ text: b.note });
+  if (b.hub) items.push({ text: basisData.hub.text.replace('{counted}', b.hub.counted), url: basisLink('hub') });
+  if (b.engines) items.push({ text: basisData.engines.text.replace('{families}', Array.isArray(b.engines) && b.engines.length ? ` (${b.engines.join(', ')})` : ''), url: basisLink('engines') });
+  return items;
+}
+/** One item as text; `code` wraps a file name, `text` escapes the rest, `link` wraps the linked part (the file, else
+ *  the whole item) in its link: "Nucleus GenericGameHandler.cs (StartGame)". */
+export function aiBasisItemText(i: AiBasisItem, f: { code?: (s: string) => string; text?: (s: string) => string; link?: (s: string, url: string) => string } = {}): string {
+  const code = f.code ?? ((s) => s), text = f.text ?? ((s) => s);
+  const link = (s: string) => (i.url && f.link ? f.link(s, i.url) : s);
+  if (i.text !== undefined) return link(text(i.text));
+  if (i.file) return `${i.project ? `${text(i.project)} ` : ''}${link(code(i.file))}${i.what ? ` (${text(i.what)})` : ''}`;
+  return link(text([i.project, i.what].filter(Boolean).join(': ')));
+}
+/** The basis on one line, for Markdown (hovers, suggestion docs): "Based on Nucleus [`GenericGameHandler.cs`](…)
+ *  (…) · [verified Hub handlers, counted …](…)", each source linked. */
+export function aiBasisMarkdown(b: AiBasis): string {
+  const items = aiBasisItems(b).map((i) => aiBasisItemText(i, { code: (s) => `\`${s}\``, text: (s) => s.replace(/[[\]*_`]/g, '\\$&'), link: (s, u) => `[${s}](${u})` }));
+  return items.length ? `Based on ${items.join(' · ')}` : '';
+}
+/** The basis in words, for agents (CLI, MCP, api.md: "AI-written, based on …"): "Nucleus GenericGameHandler.cs (…),
+ *  ProcessUtil.cs; verified Hub handlers, counted 2026-11-17; Hub game engines (Source)". No links: scripts/basis.mjs
+ *  basisWords is the same for the .d.ts (a test checks they agree). */
+export function aiBasisWords(b: AiBasis | undefined): string {
+  if (!b) return 'the Nucleus source';
+  const items = aiBasisItems(b);
+  const src = items.filter((i) => i.text === undefined || i.text === b.note).map((i) => aiBasisItemText(i));
+  const rest = items.filter((i) => i.text !== undefined && i.text !== b.note).map((i) => aiBasisItemText(i));
+  return [src.join(', '), ...rest].filter(Boolean).join('; ');
+}
+/** Where an AI-written part comes from, as plain text on one line ('' when the part isn't AI-written): "Based on …",
+ *  for a title attribute. */
+export function aiBasis(m: Member, part: AiPart): string {
+  const b = aiBasisOf(m, part);
+  const items = b ? aiBasisItems(b).map((i) => aiBasisItemText(i)) : [];
+  return items.length ? `Based on ${items.join(' · ')}` : '';
+}
+/** The same in Markdown, each source linked (aiBasisMarkdown). */
+export function aiBasisMd(m: Member, part: AiPart): string {
+  const b = aiBasisOf(m, part);
+  return b ? aiBasisMarkdown(b) : '';
+}
+/** "Checked by Ann on 2026-11-01" for an AI-written part a person checked ('' otherwise): stays visible, small. */
+export function aiChecked(m: Member, part: AiPart): string {
+  const [by, on] = part === 'doc' ? [m.docCheckedBy, m.docCheckedOn] : part === 'practice' ? [m.practiceCheckedBy, m.practiceCheckedOn] : [];
+  return by && isAiPart(m, part) ? `Checked by ${by}${on ? ` on ${on}` : ''}` : '';
+}
+/** The small line under an AI-written part in Markdown: where it comes from, and who checked it. */
+export const aiBasisLine = (m: Member, part: AiPart) => `_${aiBasisMd(m, part)}${aiChecked(m, part) ? ` · ✓ ${aiChecked(m, part)}` : ''}_`;
+/** Text with the ✨ before its first paragraph (on its own when the text starts with a code block or a list). */
+const withMark = (md: string) => (/^(```|- |\d+\. |#)/.test(md.trimStart()) ? `${AI_MARK}\n\n${md}` : `${AI_MARK} ${md}`);
+
+/**
+ * `slots`: put docSlot markers in, and leave out the "Is it wrong? Tell us" links (the caller's votes lead there).
+ * AI-written parts (the doc, the parameters, "In practice", the example): in Markdown a ✨ before the text and the
+ * basis on its own small line; with `slots` the caller frames them (core/aimark.ts), so neither is in the text.
+ */
+export function memberMarkdown(owner: string, name: string, m: Member, slots = false): string {
   const parts: string[] = [];
+  const tellUs = (checked: unknown, path: string) => (checked || slots ? '' : ` [Is it wrong? Tell us](${docReviewUrl(path)})`);
   // Each overload laid out as prettier would (one parameter per line when it's long), the example too.
   parts.push('```ts\n' + memberSignature(owner, name, m).map((x) => prettySignature(x)).join('\n') + '\n```');
   if (m.deprecated) parts.push(`**${m.deprecated}**`);
-  if (m.doc) parts.push(m.doc);
-  if (claudeNote(m)) parts.push(`_✎ ${claudeNote(m)}_${m.docCheckedBy ? '' : ` [Is it wrong? Tell us](${docReviewUrl(`${ownerLabel(owner)}.${name}`)})`}`);
-  // What to pass for each parameter (every name once, from whichever overload has it).
+  const path = `${ownerLabel(owner)}${ownerLabel(owner) ? '.' : ''}${name}`;
+  const aiDoc = isAiPart(m, 'doc');
+  if (aiDoc && slots) parts.push(docSlot('ai-doc'));
+  if (m.doc) parts.push(aiDoc && !slots ? withMark(m.doc) : m.doc);
+  if (aiDoc && !slots) parts.push(`${aiBasisLine(m, 'doc')}${tellUs(m.docCheckedBy, path)}`);
+  const docVotes = m.doc ? votesMarkdown(path, 'doc', aiDoc) : '';
+  if (docVotes) parts.push(docVotes);
+  if (slots && m.doc) parts.push(docSlot('doc'));
+  if (aiDoc && slots) parts.push(docSlot('ai-close'));
+  // What to pass for each parameter (every name once, from whichever overload has it). The AI-written ones: a ✨ each
+  // in Markdown; with slots, after the others in their own frame.
   const params = new Map<string, Param>();
   for (const o of m.overloads ?? []) for (const p of o.params) if (p.doc && !params.has(p.name)) params.set(p.name, p);
-  if (params.size) parts.push([...params.values()].map((p) => `- \`${p.name}\`: ${p.doc}`).join('\n') + ([...params.values()].some((p) => p.docBy === 'claude') ? '\n\n_✎ Parameters: AI-written from the Nucleus source._' : ''));
+  const item = (p: Param) => `- \`${p.name}\`: ${p.docBy === 'claude' && !slots ? `${AI_MARK} ` : ''}${p.doc}`;
+  const human = [...params.values()].filter((p) => p.docBy !== 'claude'), ai = [...params.values()].filter((p) => p.docBy === 'claude');
+  if (slots) {
+    if (human.length) parts.push(human.map(item).join('\n'));
+    if (ai.length) parts.push(docSlot('ai-params'), ai.map(item).join('\n'), docSlot('ai-close'));
+  } else if (params.size) parts.push([...params.values()].map(item).join('\n') + (ai.length ? `\n\n${aiBasisLine(m, 'params')}` : ''));
   const meta: string[] = [];
   if (m.default !== undefined) meta.push(`Default: \`${m.default}\``);
   if (m.category) meta.push(`Category: ${m.category}`);
   if (m.required) meta.push('**Required**');
   if (meta.length) parts.push(meta.join(' · '));
-  if (m.example) parts.push('```js\n' + prettyCode(m.example) + '\n```');
+  // "In practice": AI-written, its own basis and votes, apart from the doc above.
+  if (m.practice) {
+    const pv = votesMarkdown(path, 'practice', true);
+    if (slots) parts.push([docSlot('practice-open'), '**In practice**', m.practice, ...(pv ? [pv] : []), docSlot('practice'), docSlot('practice-close')].join('\n\n'));
+    else parts.push(`**${AI_MARK} In practice**\n\n${m.practice}\n\n${aiBasisLine(m, 'practice')}${tellUs(m.practiceCheckedBy, path)}${pv ? `\n\n${pv}` : ''}`);
+  }
+  // Where one engine's handlers use it notably more or less: mechanical, not AI-written, under "In practice" or alone.
+  if (m.byEngine) parts.push(`${m.practice ? '' : '**In practice**\n\n'}_${m.byEngine}_`);
+  if (m.example) {
+    const code = '```js\n' + prettyCode(m.example) + '\n```';
+    if (isAiPart(m, 'example')) parts.push(...(slots ? [docSlot('ai-example'), `_Example_\n\n${code}`, docSlot('ai-close')] : [`_${AI_MARK} Example_\n\n${code}`]));
+    else parts.push((exampleSource(m) ? `_Example: ${exampleSource(m)}_\n\n` : '') + code);
+  }
   parts.push(isJsBuiltin(owner) ? `[MDN: ${owner ? `${owner}.` : ''}${name}](${mdnUrl(owner, name)})` : `[Handler API docs](${DOCS_URL})`);
   return parts.join('\n\n');
 }

@@ -1,0 +1,60 @@
+name: This check is wrong
+description: A check warns about something that works in Nucleus Co-op, or its explanation or fix is wrong. Opened from the problem itself in the workbench, VS Code, Notepad++ or ncdev.
+title: "Check is wrong: "
+labels: [feedback, check-wrong]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks! Checks should only warn about things that really break or do nothing in Nucleus Co-op, so every false alarm helps. Everything below is filled in when you open this from the problem; change or remove anything before you submit, including the code.
+  - type: input
+    id: rule
+    attributes:
+      label: Which check
+      description: The check's id, e.g. `unknown-member` (shown in Advanced mode, VS Code's Problems panel, or `ncdev lint`).
+      placeholder: unknown-member
+    validations:
+      required: true
+  - type: input
+    id: message
+    attributes:
+      label: What it said
+  - type: dropdown
+    id: verdict
+    attributes:
+      label: What's wrong
+      options:
+        - It's a false alarm (the handler works in Nucleus)
+        - The explanation or the fix is wrong
+        - Something else
+    validations:
+      required: true
+  - type: textarea
+    id: what
+    attributes:
+      label: What Nucleus really does
+      description: What happens when you run the handler in Nucleus Co-op, and how you know (a test, a Nucleus version, a line in its source). Plain words are fine.
+    validations:
+      required: true
+  - type: textarea
+    id: code
+    attributes:
+      label: The flagged code
+      description: Only the flagged lines, if you chose to include them. Remove anything you don't want to share.
+      render: js
+  - type: input
+    id: handler
+    attributes:
+      label: Where the handler is from
+      description: A Hub handler (its id and version), an example, or your own code.
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: The tool and its version, e.g. VS Code extension 0.8.0, ncdev 0.8.0, or the workbench build.
+  - type: textarea
+    id: context
+    attributes:
+      label: Details from the tool
+      description: Filled in for you (versions, which check, where the handler is from; your code only if you chose to include it, for example as a link that opens your handler). Please leave it as it is. A bot keeps a copy as the first comment.
+      render: text

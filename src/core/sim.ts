@@ -182,7 +182,13 @@ const fmt = (v: unknown): string => {
   if (typeof v === 'function') return 'function () {…}';
   if (Array.isArray(v)) return '[' + v.map(fmt).join(', ') + ']';
   if (typeof v === 'object' && (v as any).__label) return (v as any).__label;
-  return String(v);
+  // A value the summary can't show (an object without a prototype in a draft handler's array): a placeholder, so
+  // the rest of the run is still reported.
+  try {
+    return String(v);
+  } catch {
+    return '{…}';
+  }
 };
 
 function parseDefault(m: Member): unknown {
@@ -218,6 +224,9 @@ function returnValue(name: string, returns: string, args: unknown[], ctx: Record
 }
 
 /** A Proxy behaving like a Jint ObjectWrapper around one of Nucleus' .NET objects. */
+/** Each simulated .NET object's values, for changedOptions (Game.ProtoInput, Game.Hook, ...). */
+const STORES = new WeakMap<object, Record<string, unknown>>();
+
 function clr(type: string, label: string, log: string[], ignored: string[], store: Record<string, unknown>, extra: Record<string, unknown> = {}): any {
   const obj = api.objects[type];
   const members = obj.members;
@@ -281,6 +290,7 @@ function clr(type: string, label: string, log: string[], ignored: string[], stor
     },
   });
   dotnetLabels.set(proxy, label);
+  STORES.set(proxy, store);
   return proxy;
 }
 
@@ -511,7 +521,12 @@ export function simulate(src: string, opt: SimOptions, hooks?: SimHooks): SimRes
 function changedOptions(label: string, type: string, store: Record<string, unknown>): { path: string; value: unknown }[] {
   const out: { path: string; value: unknown }[] = [];
   for (const [k, m] of Object.entries(api.objects[type].members)) {
-    if (m.kind === 'method' || m.kind === 'object' || m.internal) continue;
+    if (m.internal || m.kind === 'method') continue;
+    if (m.kind === 'object') {
+      const inner = m.ref && api.objects[m.ref] && store[k] && typeof store[k] === 'object' ? STORES.get(store[k] as object) : undefined;
+      if (inner) out.push(...changedOptions(`${label}.${k}`, m.ref!, inner));
+      continue;
+    }
     const v = store[k];
     if (v === undefined || v === null || v === parseDefault(m)) continue;
     if (Array.isArray(v) && !v.length) continue;

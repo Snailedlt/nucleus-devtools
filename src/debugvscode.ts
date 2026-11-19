@@ -14,8 +14,27 @@ class InlineAdapter implements vscode.DebugAdapter {
   }
 }
 
+/** The Run menu's Debug (and F5's configuration): step through the open handler, simulated. With no breakpoint in it,
+ *  it pauses on the first statement, so Debug always shows something. */
+export function debugConfigFor(doc: vscode.TextDocument, breakpoints: readonly vscode.Breakpoint[]): vscode.DebugConfiguration {
+  const has = breakpoints.some((b) => b.enabled && (b as vscode.SourceBreakpoint).location?.uri?.toString() === doc.uri.toString());
+  return { type: 'nucleus', request: 'launch', name: 'Step through the handler', program: doc.uri.scheme === 'file' ? doc.uri.fsPath : '${file}', stopOnEntry: !has };
+}
+
+/** Debug reads the handler by its path (${file}, its folder's files): an untitled one is saved first. */
+const saveFirst = () => vscode.window.showInformationMessage('Save the handler first to debug it (Debug reads it and its folder by its path).');
+
 export function registerDebugger(context: vscode.ExtensionContext, isHandler: (d: vscode.TextDocument) => boolean) {
   context.subscriptions.push(
+    vscode.commands.registerCommand('splitscreenme.debugHandler', async () => {
+      const doc = vscode.window.activeTextEditor?.document;
+      if (!doc || !isHandler(doc)) {
+        vscode.window.showInformationMessage('Open a Nucleus Co-op handler to debug it.');
+        return;
+      }
+      if (doc.isUntitled) return void saveFirst();
+      await vscode.debug.startDebugging(vscode.workspace.getWorkspaceFolder?.(doc.uri), debugConfigFor(doc, vscode.debug.breakpoints));
+    }),
     vscode.debug.registerDebugAdapterDescriptorFactory('nucleus', { createDebugAdapterDescriptor: () => new vscode.DebugAdapterInlineImplementation(new InlineAdapter()) }),
     vscode.debug.registerDebugConfigurationProvider('nucleus', {
       // F5 with no launch.json, in a handler: step through it with Try it's defaults.
@@ -23,7 +42,9 @@ export function registerDebugger(context: vscode.ExtensionContext, isHandler: (d
         if (!config.type && !config.request) {
           const doc = vscode.window.activeTextEditor?.document;
           if (!doc || !isHandler(doc)) return config;
-          return { type: 'nucleus', request: 'launch', name: 'Step through the handler', program: '${file}' };
+          // As the Run menu's Debug does: paused on the first statement when there's no breakpoint in it.
+          if (doc.isUntitled) return void saveFirst();
+          return debugConfigFor(doc, vscode.debug.breakpoints);
         }
         if (!config.program) config.program = '${file}';
         return config;

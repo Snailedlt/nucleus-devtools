@@ -9,6 +9,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The history without file contents: npm test checks that the AI docs' links to this repository's own
+          # files are at each file's last change (src/test/docs.test.ts).
+          fetch-depth: 0
+          filter: blob:none
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -16,15 +21,23 @@ jobs:
       - run: npm ci
       - run: npm run typecheck
       - run: npm test
+      # Every link the AI docs' sources lead to works (GitHub permalinks, the docs pages, the Hub).
+      - name: Source links work
+        run: npm run check-links
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
       # The skill's bundle (scripts/nucleus.js, 2.6 MB) is committed only with a release, so the history doesn't
       # grow by a bundle per change; the Release workflow checks it then. Its API reference is checked here.
       - name: Generated skill reference is committed
         run: git diff --exit-code -- plugin/ ':!plugin/skills/nucleus-handler/scripts/nucleus.js'
       - run: npx vsce package --no-dependencies -o splitscreenme-vscode.vsix
       - uses: actions/upload-artifact@v4
+        id: vsix
         with:
           name: vsix
           path: splitscreenme-vscode.vsix
+    outputs:
+      vsix: ${{ steps.vsix.outputs.artifact-url }}
 
   standalone:
     # ncdev (#18) with the Notepad++ plugin inside (#19): the plugin compiles, and the Linux build passes the smoke test.
@@ -40,9 +53,60 @@ jobs:
         with:
           path: .sea-cache
           key: sea-${{ hashFiles('scripts/sea.mjs') }}
-      - run: npm run build && sh scripts/build-native.sh linux-x64
+      # A pull request also builds ncdev.exe, so it can be tried on Windows before it's merged.
+      - run: npm run build && sh scripts/build-native.sh ${{ github.event_name == 'pull_request' && 'win-x64,linux-x64' || 'linux-x64' }}
       - name: The plugin is ready for Notepad++'s Plugins Admin (DLL versions, zips)
         run: |
           (cd dist-sea && zip -q -X ../NcDev.zip NcDev.dll && mkdir -p x86 && cp NcDev-x86.dll x86/NcDev.dll && cd x86 && zip -q -X ../../NcDev-x86.zip NcDev.dll)
           node scripts/npp-plugin-list.mjs
       - run: node scripts/smoke-standalone.mjs dist-sea/ncdev-linux-x64
+      - uses: actions/upload-artifact@v4
+        id: ncdev
+        if: github.event_name == 'pull_request'
+        with:
+          name: ncdev-and-notepadpp
+          path: |
+            dist-sea/ncdev.exe
+            dist-sea/ncdev-linux-x64
+            NcDev.zip
+            NcDev-x86.zip
+    outputs:
+      ncdev: ${{ steps.ncdev.outputs.artifact-url }}
+
+  links:
+    # One comment per pull request, updated on every push: where to download this PR's builds to try them.
+    if: github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository
+    needs: [build, standalone]
+    runs-on: ubuntu-latest
+    # One writer per pull request at a time; and see the head check below.
+    concurrency:
+      group: pr-builds-${{ github.event.pull_request.number }}
+      cancel-in-progress: false
+    permissions:
+      pull-requests: write
+    steps:
+      - uses: actions/github-script@v7
+        env:
+          VSIX: ${{ needs.build.outputs.vsix }}
+          NCDEV: ${{ needs.standalone.outputs.ncdev }}
+        with:
+          script: |
+            const marker = '<!-- pr-builds -->';
+            const sha = context.payload.pull_request.head.sha.slice(0, 7);
+            const body = [
+              marker,
+              `**Try this pull request** (builds of ${sha}; you need to be signed in to GitHub to download, and they're kept 90 days)`,
+              '',
+              `- VS Code: [the .vsix](${process.env.VSIX}): unzip it, then *Extensions › ⋯ › Install from VSIX…*`,
+              `- ncdev and Notepad++: [ncdev.exe, ncdev-linux-x64 and the plugin zips](${process.env.NCDEV})`,
+            ].join('\n');
+            const { owner, repo } = context.repo;
+            const issue_number = context.payload.pull_request.number;
+            // An older push that finishes last never replaces the newer push's links.
+            const { data: pr } = await github.rest.pulls.get({ owner, repo, pull_number: issue_number });
+            if (pr.head.sha !== context.payload.pull_request.head.sha) return core.info(`Not the pull request's head any more (${pr.head.sha.slice(0, 7)}): links left as they are.`);
+            const comments = await github.paginate(github.rest.issues.listComments, { owner, repo, issue_number, per_page: 100 });
+            // Only this workflow's own comment (a quoted marker elsewhere is someone else's).
+            const mine = comments.find((c) => c.user?.login === 'github-actions[bot]' && c.body?.startsWith(marker));
+            if (mine) await github.rest.issues.updateComment({ owner, repo, comment_id: mine.id, body });
+            else await github.rest.issues.createComment({ owner, repo, issue_number, body });

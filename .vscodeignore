@@ -5,6 +5,7 @@
 !snippets/**
 !syntaxes/**
 !media/icon.png
+!media/nucleus-handler.svg
 !package.json
 !README.md
 !CHANGELOG.md

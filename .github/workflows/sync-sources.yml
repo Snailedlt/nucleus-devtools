@@ -2,7 +2,13 @@ name: Sync with Nucleus and the docs
 # Once a day, a tiny check (git ls-remote, a few hundred bytes) whether Nucleus Co-op's source or the
 # splitscreen.me docs moved past the commits data/nucleus-api.json was generated from. Only then: clone
 # both, regenerate the API model, docs and skill files, test, and open (or update) a pull request with
-# the diff, so new or changed options show up for review instead of silently.
+# the diff, so new or changed options show up for review instead of silently. The same pull request carries
+# the docs' vote counts (data/doc-votes.json, which make "Verified by people" labels) and the Hub handlers' usage
+# (data/hub-examples.json: the docs' Hub examples and counts) with each handler's game engine (data/hub-engines.json,
+# from the cached Wikidata answers in data/wikidata-engines.json: no Wikidata query here), all from the testbench's
+# data branch. Every AI docs source link is at the last commit that changed its file (scripts/sources.mjs), so a link
+# that moves means that file changed: the pull request lists each such file with its diff and the AI-written parts
+# written from it, to check again (scripts/source-changes.mjs).
 # Needs: Settings > Actions > General > "Allow GitHub Actions to create and approve pull requests".
 on:
   schedule:
@@ -22,6 +28,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The history (no file contents): the links to this repository's own files are at their last change.
+          fetch-depth: 0
+          filter: blob:none
       - name: Did Nucleus or the docs move?
         id: check
         run: |
@@ -36,33 +46,94 @@ jobs:
           if [ $same_n = 1 ] && [ $same_w = 1 ]; then echo "changed=false" >> "$GITHUB_OUTPUT"; else echo "changed=true" >> "$GITHUB_OUTPUT"; fi
           n=$(echo "$n" | cut -c1-7); w=$(echo "$w" | cut -c1-7)
           echo "nucleus=$n" >> "$GITHUB_OUTPUT"; echo "www=$w" >> "$GITHUB_OUTPUT"
-      - if: steps.check.outputs.changed == 'true'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: The docs' votes and the Hub handlers' usage (the testbench's data branch)
+        id: data
+        run: |
+          node scripts/doc-votes.mjs || echo "::warning::No votes report: data/doc-votes.json stays."
+          if git clone -q --depth 1 --branch data --filter=blob:none https://github.com/Snailedlt/nucleuscoop-handler-testbench.git ../hubdata; then
+            npm ci --ignore-scripts --no-audit --no-fund >/dev/null
+            # The two Hub snapshots go together: if either fails, both stay as they were.
+            if node scripts/hub-engines.mjs --hub ../hubdata && node scripts/hub-examples.mjs --hub ../hubdata; then echo "hubok=true" >> "$GITHUB_OUTPUT"; else
+              echo "::warning::hub-engines or hub-examples failed: data/hub-engines.json and data/hub-examples.json stay."
+              git checkout -- data/hub-examples.json data/hub-engines.json
+            fi
+          fi
+          # Only the date moved in the Hub snapshots (their data, without takenAt, is the same): nothing to review.
+          same() { node -e 'const fs=require("fs"),cp=require("child_process");const f=process.argv[1];const strip=(t)=>{const j=JSON.parse(t);delete j.takenAt;return JSON.stringify(j)};let old="";try{old=cp.execSync("git show HEAD:"+f,{encoding:"utf8",maxBuffer:1e9})}catch{process.exit(1)}process.exit(strip(old)===strip(fs.readFileSync(f,"utf8"))?0:1)' "$1"; }
+          hub=false; votes=false
+          if ! same data/hub-examples.json || ! same data/hub-engines.json; then hub=true; else git checkout -- data/hub-examples.json data/hub-engines.json; fi
+          git diff --quiet -- data/doc-votes.json || votes=true
+          echo "hub=$hub" >> "$GITHUB_OUTPUT"; echo "votes=$votes" >> "$GITHUB_OUTPUT"
+          if [ $hub = true ] || [ $votes = true ]; then echo "changed=true" >> "$GITHUB_OUTPUT"; else echo "changed=false" >> "$GITHUB_OUTPUT"; fi
+      - if: steps.check.outputs.changed == 'true' || steps.data.outputs.changed == 'true'
         uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
       - name: Regenerate
-        if: steps.check.outputs.changed == 'true'
+        if: steps.check.outputs.changed == 'true' || steps.data.outputs.changed == 'true'
         run: |
-          git clone --quiet --depth 1 --filter=blob:none https://github.com/SplitScreen-Me/splitscreenme-nucleus ../splitscreenme-nucleus
-          git clone --quiet --depth 1 --filter=blob:none https://github.com/SplitScreen-Me/splitscreenme-www ../splitscreenme-www
-          git clone --quiet --depth 1 --filter=blob:none https://github.com/SplitScreen-Me/splitscreenme-protoInput ../splitscreenme-protoInput
+          # The model the changes are compared with (scripts/source-changes.mjs), before anything is committed here.
+          echo "SYNC_BASE=$(git rev-parse HEAD)" >> "$GITHUB_ENV"
+          # Full history without file contents: each source link is at the last commit that changed its file.
+          git clone --quiet --filter=blob:none https://github.com/SplitScreen-Me/splitscreenme-nucleus ../splitscreenme-nucleus
+          git clone --quiet --filter=blob:none https://github.com/SplitScreen-Me/splitscreenme-www ../splitscreenme-www
+          git clone --quiet --filter=blob:none https://github.com/SplitScreen-Me/splitscreenme-protoInput ../splitscreenme-protoInput
           npm ci
           npm run generate
+          # Hub usage counted against the model this PR publishes (new members included, also when upstream moved after
+          # the check above), then the docs again: whenever both snapshots were made above. A failed count stops the
+          # step (set -e) before the build and tests.
+          if [ "${{ steps.data.outputs.hubok }}" = true ]; then
+            node scripts/hub-examples.mjs --hub ../hubdata
+            # Each snapshot on its own: one whose data didn't change (only takenAt moved) stays as committed.
+            for f in data/hub-examples.json data/hub-engines.json; do
+              if node -e 'const fs=require("fs"),cp=require("child_process");const f=process.argv[1];const strip=(t)=>{const j=JSON.parse(t);delete j.takenAt;return JSON.stringify(j)};let old="";try{old=cp.execSync("git show HEAD:"+f,{encoding:"utf8",maxBuffer:1e9})}catch{process.exit(1)}process.exit(strip(old)===strip(fs.readFileSync(f,"utf8"))?0:1)' "$f"; then git checkout -- "$f"; fi
+            done
+            npm run generate
+          fi
+          # The engines data is linked at its last commit on GitHub: a new snapshot is committed and pushed first, then the
+          # model is made again, so its link shows this version. It goes to a staging branch, not the pull request's: an
+          # open sync pull request keeps its complete update until this run has built, tested and checked the links (the
+          # next step puts the final commit, a child of this one, on sync/upstream and deletes the staging branch).
+          if ! git diff --quiet -- data/hub-engines.json; then
+            git switch -C sync/upstream
+            git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -qm "Hub game engines from the testbench's data branch" -- data/hub-engines.json
+            git push -qf origin HEAD:refs/heads/sync/upstream-staging
+            npm run generate
+          fi
           npm run build
           npm test
+          # The AI docs' source links (permalinks at the clones' commits) work.
+          GITHUB_TOKEN=${{ github.token }} npm run check-links
       - name: Open or update the pull request
-        if: steps.check.outputs.changed == 'true'
+        if: steps.check.outputs.changed == 'true' || steps.data.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          # Only the recorded commit ids changed: nothing to review.
-          if git diff --quiet -- . ':(exclude)data/nucleus-api.json' ':(exclude)types/nucleus.d.ts' && [ "$(git diff --numstat | awk '{s+=$1} END {print s+0}')" -le 2 ]; then echo "Upstream moved, but no option or doc changed."; exit 0; fi
+          # Only the tips the model was made from changed (its `source`, `sourceCommits`, the .d.ts header): nothing to
+          # review. A source link's commit moves only when its file changed, so that is always a change to review.
+          same_model() { node -e 'const cp=require("child_process"),fs=require("fs");const strip=(t)=>{const j=JSON.parse(t);delete j.source;delete j.sourceCommits;return JSON.stringify(j)};process.exit(strip(cp.execSync("git show "+process.env.SYNC_BASE+":data/nucleus-api.json",{encoding:"utf8",maxBuffer:1e9}))===strip(fs.readFileSync("data/nucleus-api.json","utf8"))?0:1)'; }
+          if git diff --quiet "$SYNC_BASE" -- . ':(exclude)data/nucleus-api.json' ':(exclude)types/nucleus.d.ts' && [ "$(git diff --numstat "$SYNC_BASE" -- types/nucleus.d.ts | awk '{s+=$1} END {print s+0}')" -le 2 ] && same_model; then echo "Upstream moved, but no option or doc changed."; exit 0; fi
+          # The Hub note from the final snapshots (after the recount), not the first pass's flag.
+          hubdiff=false; git diff --quiet "$SYNC_BASE" -- data/hub-examples.json data/hub-engines.json || hubdiff=true
+          # The AI docs' source files that changed, each with its diff and the AI-written parts to check again.
+          node scripts/source-changes.mjs --base "$SYNC_BASE" > ../source-changes.md
           branch=sync/upstream
           git switch -C "$branch"
-          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -qam "API model from Nucleus ${{ steps.check.outputs.nucleus }} and docs ${{ steps.check.outputs.www }}"
+          git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -qam "API model from Nucleus ${{ steps.check.outputs.nucleus }} and docs ${{ steps.check.outputs.www }}, with the docs' votes and Hub usage"
           git push -qf origin "$branch"
-          body="Nucleus Co-op's source or the splitscreen.me docs changed, so the generated API model, type definitions and skill reference were regenerated (tests pass).
-
-          Review the diff of \`data/nucleus-api.json\` for new, removed or renamed options. If users will notice the change, add a line to \`CHANGELOG.md\` under Unreleased before merging."
-          gh pr view "$branch" >/dev/null 2>&1 && gh pr edit "$branch" --body "$body" || gh pr create --head "$branch" --base main --title "Sync the API model with Nucleus and the docs" --body "$body"
+          # The staging branch of the engines snapshot (Regenerate), if any: its commit is in sync/upstream now.
+          git push -q origin --delete sync/upstream-staging 2>/dev/null || true
+          what=""
+          [ "${{ steps.check.outputs.changed }}" = true ] && what="Nucleus Co-op's source or the splitscreen.me docs changed: review the diff of \`data/nucleus-api.json\` for new, removed or renamed options. "
+          [ "$hubdiff" = true ] && what="$what The Hub handlers' usage changed (\`data/hub-examples.json\`, \`data/hub-engines.json\`): examples and counts in the docs. "
+          [ "${{ steps.data.outputs.votes }}" = true ] && what="$what The docs' votes changed (\`data/doc-votes.json\`). "
+          [ -s ../source-changes.md ] && what="$what Some AI docs' source files changed: check the AI-written parts listed below against each diff. "
+          { echo "The generated API model, type definitions and skill reference were regenerated (tests pass). $what"; echo
+            if [ -s ../source-changes.md ]; then cat ../source-changes.md; echo; fi
+            echo "If users will notice the change, add a line to \`CHANGELOG.md\` under Unreleased before merging."; } > ../pr-body.md
+          gh pr view "$branch" >/dev/null 2>&1 && gh pr edit "$branch" --body-file ../pr-body.md || gh pr create --head "$branch" --base main --title "Sync the API model with Nucleus and the docs" --body-file ../pr-body.md

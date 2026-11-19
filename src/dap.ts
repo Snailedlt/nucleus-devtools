@@ -180,8 +180,9 @@ export class HandlerDebugSession {
       case 'scopes': {
         const step = this.trace?.steps[this.at];
         if (!step) return this.respond(req, { scopes: [] });
-        const scopes: { name: string; vars: Record<string, ValueView> | undefined; expensive?: boolean }[] = [
-          { name: 'Variables', vars: step.locals },
+        // Locals first (VS Code opens the first scope): the function's own variables where it's paused.
+        const scopes: { name: string; vars: Record<string, ValueView> | undefined; hint?: 'locals' }[] = [
+          { name: 'Locals', vars: step.locals, hint: 'locals' },
           { name: 'Handler variables', vars: step.globals },
           { name: 'Context', vars: step.context },
           { name: 'Player', vars: step.player },
@@ -189,7 +190,7 @@ export class HandlerDebugSession {
           { name: 'Done so far', vars: this.doneSoFar() },
         ];
         return this.respond(req, {
-          scopes: scopes.filter((s) => s.vars && Object.keys(s.vars).length).map((s) => ({ name: s.name, variablesReference: this.ref(s.vars!), expensive: false })),
+          scopes: scopes.filter((s) => s.vars && Object.keys(s.vars).length).map((s) => ({ name: s.name, ...(s.hint ? { presentationHint: s.hint } : {}), variablesReference: this.ref(s.vars!), expensive: false })),
         });
       }
       case 'variables': {

@@ -29,7 +29,7 @@ The browser workbench has [its own](https://github.com/Snailedlt/nucleuscoop-han
 - **Colours that tell Nucleus names apart**, in your theme's own JavaScript colours: option groups (`Game.Hook`), fixed choices (`Nucleus.Folder.InstancedGameFolder`) and callbacks (`Game.Play`) each get one, so a name Nucleus doesn't know stands out.
 - **IntelliSense** for `Game`, `Game.Hook`, `Game.ProtoInput`, `Context`, `Player`, `PlayerList`, `ProtoInput`, `Hub` and the `Nucleus.*` enums. Completion lists every option Nucleus actually has, with types, defaults and docs. On an empty line, `Game.` completes the whole assignment, e.g. `Game.SymlinkGame = true|false;`. After `=`, the values the option takes.
 - **Suggestions that know your handler:** `Context.Options["` suggests the keys your `Game.AddOption` lines add, and `== "` their choices; what your own functions return is understood after a dot.
-- **Hover docs** and **signature help** for every method and its overloads, saying what to pass for each parameter of the most used ones. API names in them are links to the **Nucleus Docs** panel.
+- **Hover docs** and **signature help** for every method and its overloads, saying what to pass for each parameter of the most used ones. API names in them are links to the **Docs** panel.
 - **Snippets** for what most handlers do (`iniset`, `replacelines`, `regkey`, `startargs`, `ifoption`, `eachplayer`…), offered where a statement starts; in an empty file, `handler` writes the whole template.
 - **Linting** for the mistakes that make handlers fail, often silently. See [Lint rules](#lint-rules).
 - **Fix all**, deterministic and offline: applies every fix that keeps the handler's behaviour or repairs code Nucleus can't load. It runs as a command, on save, or as `ncdev lint --fix`. Fixes that change behaviour or need your input stay one-click quick fixes. On the 41 engine probes, it takes 11 of the 16 that fail in Jint 2.11.58 to working.
@@ -38,7 +38,7 @@ The browser workbench has [its own](https://github.com/Snailedlt/nucleuscoop-han
 - **New Handler** wizard that generates a handler which passes the linter, with optional Proto Input, Goldberg, INI resolution and user-option sections.
 - **Package for the Hub**: builds a `.nc` package laid out the way Nucleus' installer expects.
 - **Install into Nucleus**: copies the handler and its asset folder into your Nucleus `handlers` folder.
-- **Test in Nucleus Co-op** (Windows): the ▷ button above a handler installs it and starts Nucleus with its game selected.
+- **Test in Nucleus Co-op** (Windows): the Run button (▷) above a handler installs it and starts Nucleus Co-op with its game selected. The same button's menu has **Try It** and **Debug**.
 - **Go to definition** (F12) and the **Outline** of the handler's options, functions and variables.
 - **Checks against the game's folder**: link the game's install folder and `ExecutableName`, `BinariesFolder` and the symlink lists are checked against the real files (only names and sizes are read).
 - **A getting-started guide**: *Help › Welcome › Make a Nucleus Co-op handler* walks from an empty file to the Hub.
@@ -83,20 +83,25 @@ One engine runs underneath all of them, so the checks, suggestions and docs are 
 
 | Command | What it does |
 | --- | --- |
-| **Nucleus: New Handler…** | Asks for the game name, executable, Steam app ID and optional features, then writes a ready-to-edit handler. |
-| **Nucleus: Try It (Simulate Each Player)** | Opens a panel beside the editor showing what Nucleus would set up for each player: window position and size, launch arguments, the settings files it changes, options Nucleus skips, and errors a player would hit. It updates as you type; pick 1–4 players, the keyboard & mouse player and the monitor size in the panel. Also the ▷ button in the editor title bar. See [Try it](#try-it). |
+| **Nucleus: New Handler…** | One guided flow (step 1 of 5, with Back): the game name, executable, Steam app ID, optional features and the folder to save in. Writes a ready-to-edit `<Name>.js` and its `<Name>/` folder (`Game.Folder`). |
+| **Nucleus: Try It (Simulate Each Player)** | Opens a panel beside the editor showing what Nucleus would set up for each player: window position and size, launch arguments, the settings files it changes, options Nucleus skips, and errors a player would hit. It updates as you type; pick 1–4 players, the keyboard & mouse player and the monitor size in the panel. Also in the Run button (▷) above a handler. **Nucleus: Try It: Test All Combinations** runs every player count, input setup and monitor size. See [Try it](#try-it). |
 | **Nucleus: Package Handler for the Hub (.nc)** | Zips `Game.js` as `handler.js`, plus the `Game/` asset folder next to it. Also available in the Explorer context menu. |
-| **Nucleus: Test in Nucleus Co-op** (▷ above a handler, Windows) | Installs the handler and starts Nucleus Co-op with its game selected: pick the players and press Play. Restarts an open Nucleus (with your OK; it reads handlers when it starts) and offers to turn on its debug log once. **Nucleus: Open Nucleus Co-op's Debug Log** opens `debug-log.txt`. Also `ncdev test` and in Notepad++. |
+| **Nucleus: Test in Nucleus Co-op** (the Run button ▷ above a handler, Windows) | Installs the handler and starts Nucleus Co-op with its game selected: pick the players and press Play. Restarts an open Nucleus (with your OK; it reads handlers when it starts) and offers to turn on its debug log once. **Nucleus: Open Nucleus Co-op's Debug Log** opens `debug-log.txt`. Also `ncdev test` and in Notepad++. |
 | **Nucleus: Install Handler into Nucleus Co-op** | Copies `Game.js` and `Game/` into `<Nucleus>/handlers/`. Asks for your Nucleus folder once (`splitscreenme.nucleusPath`). |
 | **Nucleus: Browse Handlers on the Hub…** | Searches hub.splitscreen.me; opens a handler's source or its Hub page. |
 | **Nucleus: Set Up Type Definitions** | Writes `.vscode/nucleus.d.ts` and a `jsconfig.json` (ES5 lib), then hands completion over to the TypeScript service and keeps the folder's handlers in JavaScript mode. Add `// @ts-check` to a handler for type errors. |
-| **Nucleus: Fix All Auto-fixable Problems** | Applies every safe fix to the open handler. To run it on save, add `"editor.codeActionsOnSave": { "source.fixAll.nucleus": "explicit" }`. |
-| **Nucleus: Lint All Handlers in Workspace** | Lints every handler in the workspace, not just open files. |
-| **Nucleus: Docs (Every Option and Function)** | Opens **Nucleus Docs** beside the editor: every option and function with its docs, by group or by search (**Nucleus: Search the Docs…**). API names in hovers, parameter hints and suggestions open their page here; *Open in the workbench* shows the same page in the browser. |
-| **Nucleus: Open Documentation…** | Quick links to the handler API, guides, Proto Input, FAQ, Hub and PCGamingWiki. |
+| **Nucleus: Fix All Problems That Can Be Fixed** | Applies every safe fix to the open handler. To run it on save, add `"editor.codeActionsOnSave": { "source.fixAll.nucleus": "explicit" }`. |
+| **Nucleus: Check All Handlers in the Workspace** | Checks every handler in the workspace, not just open files. |
+| **Nucleus: Docs: Open (Every Option and Function)** | Opens the **Docs** beside the editor: every option and function with its docs, by group or by search (**Nucleus: Docs: Search…**), and on its main page the links to the guides, Proto Input, FAQ, Hub, PCGamingWiki and where to ask for help. API names in hovers, parameter hints and suggestions open their page here; *Open on the web* shows the same page in the browser. |
+| **Nucleus: Debug Handler** | Steps through the handler the way Nucleus Co-op runs it, simulated (also F5, and Debug in the Run button). Without a breakpoint it pauses on the first line. |
+| **Nucleus: Report a Problem…** / **Request a Feature…** | Opens the right GitHub form, filled in (versions, where the handler is from, never its code), after showing open reports that may be the same. No GitHub account? *Copy the report* and paste it in the testers' Discord thread. See [Reporting problems and asking for features](#reporting-problems-and-asking-for-features). |
 | **Nucleus: Open in the Browser Workbench** | The handler you're editing, in the [browser workbench](https://snailedlt.github.io/nucleuscoop-handler-testbench/?ref=vscode-readme-md) (its visual editor, Lines, Test all), through a share link. |
 
+On any problem, **Ctrl+.** (the light bulb) also has **This check is wrong (rule)…**, after the fixes, and the Try it panel's report button (*Nucleus did something different*) sends what Try it showed next to what really happened.
+
 Package and Install both refuse to continue if the handler has lint errors, unless you confirm.
+
+Hover the language in the status bar (**{} Nucleus Co-op handler**) for the handler's status: its checks (the problem count, or OK), its game folder, with *Link…* or *Unlink*, and *Feedback* (Report a problem…). What the extension did, and any error, goes to **View › Output › Nucleus**; quiet results such as "nothing to fix" show briefly in the status bar instead of a notification.
 
 ### Handler asset folder
 
@@ -129,6 +134,7 @@ The repo also ships an agent kit, so coding agents (Claude Code, Copilot, Codex,
   | `ncdev api Game.KillMutex` / `ncdev api --search mutex` | The "hover": type, default and docs |
   | `ncdev hub search <game>` / `ncdev hub fetch <id>` | Study how existing handlers solved the same problem |
   | `ncdev new …` / `ncdev install …` / `ncdev package …` | Scaffold a handler / copy it into Nucleus' `handlers` folder / build the `.nc` package |
+  | `ncdev imports <game folder>` | What the game's `.exe` and DLLs use (controllers, cursor, keys, focus, windows) and the Proto Input hooks and Nucleus options that match, with the lines to add; follows a launcher to the game it starts (`--list` prints every import and export) |
 
 ### Claude Code
 
@@ -151,7 +157,8 @@ The skill loads automatically when you ask about Nucleus handlers.
 | `nucleus_simulate` | Try it: each player's window, launch arguments and file changes |
 | `nucleus_debug` | Stop at breakpoints (with conditions) and errors: variables, call stack, watches |
 | `nucleus_explain` | What one line does: its names' docs and its problems |
-| `nucleus_api` / `nucleus_api_search` | Type, default and docs of an option; search by words |
+| `nucleus_api` / `nucleus_api_search` | Type, default and docs of an option (the doc, its AI-written "In practice" part, an example); search by words |
+| `nucleus_vote_doc` | Say whether a doc is right after checking it against Nucleus' source; counted as an AI vote, apart from people's (also `ncdev docs vote`) |
 | `nucleus_new_handler` | A lint-clean handler from the templates |
 | `nucleus_hub_search` / `nucleus_hub_handler` | Find Hub handlers; read a verified one as an example |
 | `nucleus_rules` | What each check does; with a rule id, why it matters, the fix and examples |
@@ -217,18 +224,20 @@ Every check has its own page, with why it matters, a wrong and a right example a
 | `callback-only-global` | error | `Context`, `Player`, `PlayerList`, `Handler` or `ProtoInput` used at the top level. They only exist inside callbacks such as `Game.Play`. |
 | `guid-changed` | warning | `Game.GUID` differs from the version published on the Hub (same `Hub.Handler.Id`). Nucleus keys a user's game, profiles, cover and content folder by GUID, so the update drops the game from their list. Checked in VS Code (setting `splitscreenme.lint.compareWithHub`), with `ncdev lint --hub`, and in the workbench for Hub handlers. Fix: keep the published GUID. |
 | `file-encoding` | warning | The file isn't valid UTF-8 (often ANSI / Windows-1252): Nucleus reads handlers as UTF-8, so accented letters arrive as `�`. |
-| `undefined-name` | error / warning | A name nothing declares and Nucleus doesn't provide (`"system.cfg", sdfsdf`, a typo of a variable): reading it throws "… is not defined", so at the top level the handler fails to load and in a callback Nucleus stops there. Names from the handler's plugins (`pluginsInfo.txt` in its folder) count as defined; when the linter can't see that folder, an unknown `Name.Member` is only a warning. |
+| `undefined-name` | error / warning | A name nothing declares and Nucleus doesn't provide (`"system.cfg", sdfsdf`, a typo of a variable): reading it throws "… is not defined", so at the top level the handler fails to load and in a callback Nucleus stops there. Names from the handler's plugins (`pluginsInfo.txt` in its folder) count as defined; when the linter can't see that folder, an unknown `Name.Member` is only a warning, and so is a name inside a function nothing in the handler calls. |
 | `missing-builtin` | error / warning | Built-ins newer than ES5 that Jint 2.x doesn't have: `Object.assign`, `Array.from`, `Number.isInteger`, `Math.trunc`, `Map`, `Set`, `Promise`, … (errors), and string/array methods such as `.includes()`, `.startsWith()`, `.find()`, `.repeat()`, `.trimEnd()` (warnings, because the receiver's type isn't known; errors on literals). They throw "Object has no method …" when the code runs. Fixes rewrite `.includes(x)`/`.startsWith(x)` with `indexOf` and `.trimStart()`/`.trimEnd()` with `replace`. `padStart`/`padEnd` do exist. |
 | `callback-misuse` | warning / error | `Game.SetupSse` (Nucleus never calls it); `GamePlayBeforeGameSetup` and `GamePlayAfterLaunch` both true (`Game.Play` never runs); `Context.StartArguments` set in a `Game.Play` that runs after launch (no effect); a `Game.CustomHotkeys` entry without its `Game.OnCustomHotKey_N` (**error**: Nucleus calls it without checking and crashes when the hotkey is pressed). |
 | `duplicate-assignment` | warning | The same option is set twice at the top level, so the first value is dead. |
 | `hub-install-parse` | warning / error | When installing from the Hub (or dropping a .nc/.zip), Nucleus reads `Game.GameName` and `Game.ExecutableName` from the raw text: the first two lines (comments included) that *start with* `game.executablename` or `game.gamename`, ignoring case, taking the text between the first and last `"`. The rule replays that scan. **Error** when the install fails: a matched line without two `"` (single quotes, a variable), or no `Game.ExecutableName` line reached. Warning when Nucleus would read a different line or value (indentation, a quote in a comment, `ExecutableNames` or a commented-out line first). |
 | `guid-characters` | info | `Game.GUID` becomes a folder name, so use letters, digits and spaces. |
-| `protoinput-legacy-hooks` | warning | The handler uses Proto Input with multiple keyboards/mice but leaves the legacy input options (`Game.HookGetCursorPos`, `Game.SendNormalMouseInput`, …) unset or `true`; several default to `true`. The [Proto Input guide](https://www.splitscreen.me/docs/protoinput) says to set them to `false`. Fix inserts the lines. |
+| `protoinput-legacy-hooks` | warning | The handler uses Proto Input with multiple keyboards/mice but leaves the legacy input options (`Game.HookGetCursorPos`, `Game.SendNormalMouseInput`, …) unset or `true`; several default to `true`. The [Proto Input guide](https://www.splitscreen.me/docs/proto) says to set them to `false`. Fix inserts the lines. |
 | `protoinput-inactive` | warning | The handler sets `Game.ProtoInput` options but never starts Proto Input (`InjectStartup` or an `InjectRuntime_…` method), so Nucleus ignores them. Fix adds `InjectStartup`. |
 | `protoinput-needs-hook` | warning | `Game.ProtoInput.BlockedMessages` or a message filter without `Game.ProtoInput.MessageFilterHook = true`: they only work inside that hook. Fix adds it. |
 | `blocked-message` | warning | A number in `BlockedMessages` that Proto Input's message list doesn't have (it blocks another entry, or nothing), or one listed twice (info). |
+| `protoinput-needs-raw-input` | info | In a handler with `Game.SupportsMultipleKeyboardsAndMice`, a Proto Input cursor or key state hook (`GetCursorPosHook`, `GetKeyStateHook`, …) without `Game.ProtoInput.RegisterRawInputHook`: they answer from keyboards and mice Proto Input only reads with that hook, so keyboard and mouse players get no key presses and a frozen cursor. Fix adds the raw input hook. |
 | `needs-option` | warning | An option Nucleus only reads when another is on: `FakeFocusInterval` / `FakeFocusSendActivate…` need `FakeFocus`, the fake-cursor options need `DrawFakeMouseCursor`, `SteamlessArgs` / `SteamlessTiming` need `UseSteamless`. Fix turns the parent on. |
 | `option-compare` | warning | A `Context.Options["key"]` value compared as a number or boolean: from a saved profile Nucleus gives every option back as text (`"4"`, `"True"`), so `=== 4`, `== true` and `case 4:` never match, and a `false` option is the text `"False"`, which an `if` counts as true. Follows the value through the handler's own variables. Loose `== 4` is fine. Fix: `==` for `===`, or `case "4":` when the option's values are text. |
+| `unused-option` | hint | A `Game.AddOption` whose key nothing in the handler reads (`Context.Options["key"]`, `.key`): players pick a value that changes nothing. Shown faded, like unused code in VS Code, with no squiggle. Quiet when it can't follow every read (a key in a variable, `Context.Options` passed on or looped over) and for one-value notes. Nucleus itself reads no option, `Game.ShowOptionAsStep` included. |
 | `deprecated` | hint | Options the docs mark deprecated, such as the pre-Proto Input multi-keyboard settings. |
 
 General JavaScript mistakes are checked with [ESLint](https://eslint.org)'s own rules (run inside the tools, no setup), only the ones that catch real bugs and were checked against every Hub handler:
@@ -288,7 +297,7 @@ The linter runs over the 150 most-downloaded handlers on the Hub with **no error
 | `splitscreenme.lint.packageChecks` | `true` | Check the files in the handler's `<Name>/` folder as they'd go into the .nc (Windows names, overwrites, broken INI/JSON, missing files). |
 | `splitscreenme.format.quotes` | `double` | Quotes when formatting: `double` (what the Hub install reads best), `single` or `keep`. A string containing the chosen quote keeps its own. |
 | `splitscreenme.format.semicolons` | `add` | Semicolons when formatting: `add` or `keep`. |
-| `splitscreenme.gameFolders` | `{}` | The game's install folder per handler, set with **Nucleus: Link the Game's Folder…**. |
+| `splitscreenme.gameFolders` | `{}` | The game's install folder per handler (file name → folder), set by hand. **Nucleus: Game Folder: Link…** keeps its links on this PC instead, so no path ends up in a shared `.vscode/settings.json`. |
 | `splitscreenme.completion.enable` | `true` | The extension's completion/hover/signature help. Turned off by **Set Up Type Definitions**, because TypeScript then provides them. |
 | `splitscreenme.nucleusPath` | | Your Nucleus Co-op folder, used by Install. |
 | `splitscreenme.showWhatsNew` | `true` | After an update, a short note with what's new. **Nucleus: What's New** opens the changelog any time. |
@@ -297,7 +306,7 @@ The linter runs over the 150 most-downloaded handlers on the Hub with **no error
 
 Handlers open in a language mode of their own, **Nucleus Co-op handler**. It uses JavaScript's grammar, so colours, brackets, comments and folding look the same as in any `.js` file. VS Code's built-in JavaScript and TypeScript features don't run on it, though: their suggestions would otherwise mix with the handler's, and many of them are wrong for Nucleus (browser globals like `document`, and newer methods such as `Array.prototype.includes` that Nucleus' engine, Jint 2.11.58, doesn't have).
 
-- The status bar shows the mode. Click it to switch one file back to JavaScript; that file stays JavaScript for the session.
+- Handler files get their own file icon, Nucleus Co-op's logo with a JS tag, in the Explorer, tabs and breadcrumbs. It shows with VS Code's default file icons (Seti) and icon themes that don't claim `.js` files themselves; Material Icon Theme and vscode-icons pick an icon by file extension first, so there a handler keeps their JavaScript icon (the status bar still says **Nucleus Co-op handler**). The status bar shows the mode. Click it to switch one file back to JavaScript; that file stays JavaScript for the session.
 - `"splitscreenme.languageMode": "javascript"` keeps all handlers as JavaScript.
 - **Nucleus: Set Up Type Definitions** sets that for its folder, because `// @ts-check` needs the TypeScript service.
 - Formatters, linters, snippets and keybindings you set up for `javascript` (Prettier, ESLint, …) don't apply to handler files. Add `nucleus-handler` to their languages, or use JavaScript mode. The extension's own formatter, snippets and debugger work in both.
@@ -343,6 +352,8 @@ npm ci && npm run build
 node dist/cli.js path/to/handlers   # or `ncdev` / `nucleus-lint` once the package is installed
 ```
 
+`ncdev report` opens a report from the command line: `ncdev report` (a problem), `ncdev report feature`, `ncdev report tryit MyGame.js`, or `ncdev report --check unknown-member MyGame.js` (this check is wrong: the flagged line only, `--no-code` leaves it out). It prints the prefilled form's link and open reports that may be the same; `--open` opens it, `--text` prints it to paste in the testers' Discord thread.
+
 `--fix` applies every safe automatic fix and saves the files, and `--fix-dry-run` shows what it would change. `format` re-indents and spaces handlers (`--write` saves, `--check` exits 1 when a file isn't formatted), and `--hub` compares `Game.GUID` with the Hub version. Lint options: `--json`, `--rule unknown-member=error`, `--quiet` (errors only), `--verbose` (include hints), `--all` (lint every `.js`, not just handler-looking ones), `--list-rules`. The exit code is 1 when there are errors.
 
 ## Other editors
@@ -374,7 +385,7 @@ This installs the **Nucleus Co-op handlers** plugin and puts `ncdev` in `%LOCALA
 - **Suggestions as you type** after a dot, `=`, a quote…: the members that exist there, the values an option takes (`true`/`false`, `Nucleus.DPIHandling.True`…), the game's own files once its folder is linked. The selected one's type and docs show in the status bar. Parameter hints after `(`.
 - **The handler's own functions and variables** are suggested too, with the comment above them as their docs, and their parameters show after `(`. `Context.Options["` suggests the keys your `Game.AddOption` lines add, and `== "` their choices.
 - **Alt+F12**: go to where a function, variable or option is defined; *Find references* lists every use; *Rename…* changes a variable or function everywhere in the handler.
-- **Alt+Enter**: the fixes for the line. **Plugins › Nucleus Co-op handlers** has *Fix all*, *Format handler*, *Try it* (what Nucleus would set up for 1–4 players, in a new tab), a *Problems panel* (double-click to jump, right-click for the fixes), *Link the game's folder…*, *Open in the browser workbench* (this handler, in the workbench's visual editor and Test all), the *API reference* and *Check for updates*. Every command can get a shortcut in *Settings › Shortcut Mapper*.
+- **Alt+Enter**: the fixes for the line. **Plugins › Nucleus Co-op handlers** has *Fix all*, *Format handler*, *Try it* (what Nucleus would set up for 1–4 players, in a new tab), a *Problems panel* (double-click to jump, right-click for the fixes), *Link the game's folder…*, *Open in the browser workbench* (this handler, in the workbench's visual editor and Test all), the *API reference*, *Check for updates*, and *Report a problem…* / *Request a feature…* (Alt+Enter on a problem also has *This check is wrong*). Every command can get a shortcut in *Settings › Shortcut Mapper*.
 - **New handler…** asks the game's name, its .exe and what to start with, then creates and opens the handler. **Install to Nucleus Co-op** copies it (and its `<Name>/` folder) into Nucleus' `handlers` folder, asking first if it has errors or is already installed. The **Outline panel** lists the handler's options, functions and variables; click one to jump there.
 - **Test in Nucleus Co-op** installs the handler and starts Nucleus with its game selected (restarting an open one, with your OK); **Open Nucleus' debug log** shows what happened.
 - **Browse the Hub…** lists the Hub's handlers (most downloaded first, or search by game), and downloads one with its files and opens it. **Package as .nc…** makes the file to upload to the Hub.
@@ -492,6 +503,22 @@ src/mcp.ts              ncdev mcp: the tools as an MCP server
 scripts/generate-api.mjs
 ```
 
+## Reporting problems and asking for features
+
+Every tool knows where its report belongs, so you never pick a repository: the workbench and Learn open the workbench's forms; checks, Try it, the docs, VS Code, Notepad++, ncdev and other editors open this repository's. Each report is filled in with what the tool knows (versions, the check, where the handler came from: a Hub id and version, an example or your own code) and you see all of it before you submit. Code is only included when it's the flagged line(s) of a check, and you can leave it out.
+
+- **Report a problem**: VS Code's command palette or the language status (*Feedback*), Notepad++'s plugin menu, `ncdev report`, the workbench's menu.
+- **This check is wrong**: on every check's problem (not on the game folder's or package's): Ctrl+. in VS Code, Alt+Enter in Notepad++, the code actions of any LSP editor, `ncdev report --check <rule> <file>`, the problem's flag in the workbench.
+- **Nucleus did something different**: the report button in the Try it panel (VS Code and the workbench), `ncdev report tryit <file>`.
+- **I want to do…**: a feature request that starts from the problem: what you're trying to do and what's in the way (*Request a Feature…*, `ncdev report feature`).
+- **A problem with one Hub handler** (the game doesn't start, splits wrong)? That's for the handler's author and the community, not these tools: the report flows ask, and point to its Hub page, the [Discord](https://discord.gg/XxGMkqCf4r) and [r/nucleuscoop](https://www.reddit.com/r/nucleuscoop/).
+
+Before a new report opens, the tools look for open reports that may be the same (GitHub's search, no sign-in): add a 👍 there instead. GitHub is the way we prefer, since issues are easiest for us to work with; **no GitHub account?** *Copy the report* and paste it in the [testers' Discord thread](https://discord.com/channels/142649962839277568/1568403337613680650/1568777762221588531). When a release fixes your report, the release says so on it.
+
+## Credits
+
+The handler file icon (`media/nucleus-handler.svg`) is [Nucleus Co-op](https://github.com/SplitScreen-Me/splitscreenme-nucleus)'s logo with a JS tag. The logo (`media/nucleus-original.svg`, with one-colour `nucleus-plain.svg` and `nucleus-line.svg`) is redrawn as a vector from Nucleus Co-op's `icon.ico` and theme `logo.png` (`scripts/nucleus-logo/`).
+
 ## Links
 
-[Handler API](https://www.splitscreen.me/docs/handler-api) · [Creating handlers](https://www.splitscreen.me/docs/create-handlers) · [Proto Input](https://www.splitscreen.me/docs/protoinput) · [Hub](https://hub.splitscreen.me) · [Nucleus Co-op](https://github.com/SplitScreen-Me/splitscreenme-nucleus) · [r/nucleuscoop](https://www.reddit.com/r/nucleuscoop/) · [Discord](https://discord.gg/XxGMkqCf4r)
+[Handler API](https://www.splitscreen.me/docs/handler-api) · [Creating handlers](https://www.splitscreen.me/docs/create-handlers) · [Proto Input](https://www.splitscreen.me/docs/proto) · [Hub](https://hub.splitscreen.me) · [Nucleus Co-op](https://github.com/SplitScreen-Me/splitscreenme-nucleus) · [r/nucleuscoop](https://www.reddit.com/r/nucleuscoop/) · [Discord](https://discord.gg/XxGMkqCf4r)

@@ -5,6 +5,7 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import * as mock from './vscode-mock';
 import { activate, isHandler, problemsBesideLint } from '../extension';
+import { checksText } from '../langstatus';
 import { RULES } from '../core/lint';
 
 const m = vscode as unknown as typeof mock;
@@ -54,7 +55,31 @@ test('Restricted Mode: the extension runs, and Install / Test in Nucleus / Set u
 
 test('package.json rule settings match the linter rules', () => {
   const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
-  assert.deepEqual(Object.keys(pkg.contributes.configuration.properties['splitscreenme.lint.rules'].properties).sort(), Object.keys(RULES).sort());
+  const props = Object.assign({}, ...pkg.contributes.configuration.map((g: any) => g.properties));
+  assert.deepEqual(Object.keys(props['splitscreenme.lint.rules'].properties).sort(), Object.keys(RULES).sort());
+});
+
+test('one name everywhere: the Nucleus category, settings in titled groups with readable labels', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+  for (const c of pkg.contributes.commands) {
+    assert.equal(c.category, 'Nucleus', c.command);
+    assert.match(c.command, /^splitscreenme\./, 'command ids stay as they are (keybindings)');
+  }
+  const groups = pkg.contributes.configuration;
+  assert.ok(Array.isArray(groups) && groups.length > 1);
+  assert.deepEqual(groups.map((g: any) => g.order), groups.map((_: any, i: number) => i + 1));
+  for (const g of groups) assert.ok(g.title && Object.keys(g.properties).length, g.title);
+  const props = Object.assign({}, ...groups.map((g: any) => g.properties));
+  for (const [key, p] of Object.entries<any>(props)) {
+    assert.match(key, /^splitscreenme\./);
+    if (p.enum) assert.equal(p.enumItemLabels?.length, p.enum.length, `${key}: a readable label per value`);
+    // Searching Settings for "nucleus" still finds every one (its keywords, and where true its description).
+    assert.ok(p.keywords?.includes('Nucleus Co-op') && p.keywords.includes('SplitScreen.Me'), key);
+    assert.match(`${key} ${p.description ?? p.markdownDescription}`, /nucleus/i, key);
+  }
+  assert.equal(props['splitscreenme.languageMode'].enumItemLabels[1], 'JavaScript');
+  // The commands are Nucleus's (the tools are Nucleus Co-op tools under the SplitScreen.Me umbrella, AGENTS.md).
+  for (const f of ['README.md', 'PORTING.md', 'TESTING.md', 'package.json']) assert.doesNotMatch(fs.readFileSync(path.join(__dirname, '..', f), 'utf8'), /SplitScreen\.Me: (What's New|Set Up|Game Folder|Try It|Fix All|New Handler|Report)/, f);
 });
 
 test('handler detection', () => {
@@ -82,6 +107,17 @@ test('diagnostics are published with codes, tags and positions', async () => {
   assert.equal(actions[0].edit.edits[0].text, 'ForceFocus');
   assert.match(actions[1].title, /Disable unknown-member/);
   assert.equal(actions[1].edit.edits[0].text, '// nucleus-lint-disable-next-line unknown-member\n');
+  m.workspace.textDocuments = [];
+});
+
+test('an option nothing reads is a Hint tagged Unnecessary (faded, no squiggle)', async () => {
+  const doc = m.makeDocument(HEADER + 'Game.AddOption("FPS", "", "fps", ["30", "60"]);\n');
+  m.workspace.textDocuments = [doc];
+  activate({ subscriptions: [] } as any);
+  await tick();
+  const d = m.__diagnostics.get(doc.uri.toString())!.find((x: any) => x.code.value === 'unused-option')!;
+  assert.equal(d.severity, m.DiagnosticSeverity.Hint);
+  assert.deepEqual(d.tags, [m.DiagnosticTag.Unnecessary]);
   m.workspace.textDocuments = [];
 });
 
@@ -155,15 +191,35 @@ test('fix-all code action (source.fixAll.nucleus) and in quick fixes', async () 
   assert.deepEqual(provider.provideCodeActions(m.makeDocument(HEADER), null, { diagnostics: [], only: m.CodeActionKind.SourceFixAll }), []);
 });
 
-test('Try it panel: simulates the active handler, no scripts, settings via command links', async () => {
+test('Try it panel: simulates the active handler; toggle buttons, only our own script', async () => {
   const run = (id: string, ...args: unknown[]) => m.__registered.commands.filter((c: any) => c.id === id).at(-1)!.fn(...args);
   m.window.activeTextEditor = { document: m.makeDocument(HEADER + 'Game.Play = function () { Context.StartArguments = "-w " + Context.Width; };\n') };
   await run('splitscreenme.tryIt');
   const panel = m.__panels.at(-1)!;
-  assert.equal(panel.options.enableScripts, false);
-  assert.match(panel.webview.html, /Nucleus would set up all 2 players/);
-  assert.match(panel.webview.html, /-w 960/);
-  assert.match(panel.webview.html, /command:splitscreenme\.tryItSet\?/);
+  const html = panel.webview.html;
+  assert.match(html, /Nucleus would set up all 2 players/);
+  assert.match(html, /-w 960/);
+  // The explanation is folded away, and opens with the keyboard (a <details>).
+  assert.match(html, /<details class="how" id="how"><summary>How this works ⓘ<\/summary>/);
+  // Real toggle buttons in labelled groups: the one in effect is pressed.
+  assert.match(html, /role="group" aria-labelledby="g-players"/);
+  assert.match(html, /<button type="button" class="choice" data-id="players-2" [^>]*aria-pressed="true"/);
+  assert.match(html, /data-id="players-4" [^>]*aria-pressed="false"/);
+  // Scripts: only the panel's own, by its nonce; nothing inline elsewhere.
+  assert.equal(panel.options.enableScripts, true);
+  const nonce = html.match(/script-src 'nonce-([^']+)'/)![1];
+  assert.equal((html.match(/<script/g) ?? []).length, 1);
+  assert.ok(html.includes(`<script nonce="${nonce}">`));
+  assert.doesNotMatch(html, / on[a-z]+=/);
+  const script = html.match(/<script nonce="[^"]+">([\s\S]*?)<\/script>/)![1];
+  assert.doesNotThrow(() => new Function(script), 'the panel\'s script parses');
+  // A button's message changes the settings like the command does.
+  panel.__onMessage!({ type: 'set', change: { players: 3 } });
+  // The render runs in the worker: wait for it (bounded), not for a fixed time.
+  for (let i = 0; i < 250 && !/all 3 players/.test(panel.webview.html); i++) await new Promise((r) => setTimeout(r, 20));
+  assert.match(panel.webview.html, /all 3 players/);
+  await run('splitscreenme.tryItSet', { players: 2.5 }); // not a whole number: ignored
+  assert.match(panel.webview.html, /all 3 players/);
   await run('splitscreenme.tryItSet', { players: 4 });
   assert.match(panel.webview.html, /all 4 players/);
   assert.match(panel.webview.html, /Player 4/);
@@ -246,4 +302,180 @@ test('Fix all counts the problems it leaves: package and game-folder ones, and t
   ];
   assert.equal(problemsBesideLint(handler as any, all, [json as any]), 2);
   assert.equal(problemsBesideLint(handler as any, all, []), 1);
+});
+
+test("Link the Game's Folder keeps the link on this PC, never in a settings file; Unlink says what it did", async () => {
+  const state = new Map<string, unknown>();
+  const globalState = { get: (k: string) => state.get(k), update: async (k: string, v: unknown) => void state.set(k, v), keys: () => [...state.keys()] };
+  activate({ subscriptions: [], globalState } as any);
+  const game = fs.mkdtempSync(path.join(require('node:os').tmpdir(), 'game-'));
+  fs.writeFileSync(path.join(game, 'a.exe'), 'x');
+  const doc = m.makeDocument(HEADER, path.join(game, 'Game.js'));
+  m.window.activeTextEditor = { document: doc };
+  const run = (id: string) => [...m.__registered.commands].reverse().find((c) => c.id === id)!.fn();
+  m.__configWrites.length = 0;
+  m.window.__openDialog = [m.Uri.file(game)];
+  await run('splitscreenme.linkGameFolder');
+  assert.deepEqual(state.get('splitscreenme.gameFolders'), { [doc.uri.fsPath]: game });
+  assert.deepEqual(m.__configWrites, [], 'no settings file is written');
+  await run('splitscreenme.unlinkGameFolder');
+  assert.deepEqual(state.get('splitscreenme.gameFolders'), {});
+  assert.match(m.window.__status.at(-1)!, /^Nucleus: unlinked Game\.js/);
+  await run('splitscreenme.unlinkGameFolder');
+  assert.match(m.window.__status.at(-1)!, /isn't linked/);
+  assert.deepEqual(m.__configWrites, [], 'unlinking nothing writes nothing');
+  m.window.activeTextEditor = undefined;
+  fs.rmSync(game, { recursive: true, force: true });
+});
+
+test('the palette shows Nucleus commands only where they work', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+  const when = Object.fromEntries(pkg.contributes.menus.commandPalette.map((e: { command: string; when: string }) => [e.command.replace('splitscreenme.', ''), e.when]));
+  for (const c of ['tryIt', 'explainLine', 'fixAll', 'packageHandler', 'installHandler', 'testInNucleus', 'linkGameFolder', 'unlinkGameFolder']) assert.match(when[c], /splitscreenme\.isHandler/, c);
+  assert.match(when.unlinkGameFolder, /splitscreenme\.gameFolderLinked/);
+  assert.equal(when.formatHandler, 'false', 'Format Document does the same');
+  for (const e of pkg.contributes.menus['explorer/context']) assert.match(e.when, /resourcePath in splitscreenme\.handlerFiles/, e.command);
+});
+
+test('each command has at most one palette entry (VS Code ORs them)', () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+  const ids = pkg.contributes.menus.commandPalette.map((e: { command: string }) => e.command);
+  assert.deepEqual(ids.filter((c: string, i: number) => ids.indexOf(c) !== i), []);
+});
+
+test('the Run menu: Test in Nucleus Co-op (Windows), Try It and Debug in one Run button; Debug pauses at the start without breakpoints', async () => {
+  const pkg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+  assert.equal(pkg.contributes.menus['editor/title'], undefined, 'no separate ▷ buttons');
+  const run = pkg.contributes.menus['editor/title/run'];
+  assert.deepEqual(run.map((e: any) => e.command), ['splitscreenme.testInNucleus', 'splitscreenme.tryIt', 'splitscreenme.debugHandler']);
+  assert.match(run[0].when, /isWindows/);
+  for (const e of run) assert.match(e.when, /splitscreenme\.isHandler/);
+  const debug = (vscode as any).debug;
+  const doc = m.makeDocument(HEADER, '/work/Demo.js');
+  m.window.activeTextEditor = { document: doc };
+  await m.__registered.commands.find((c: any) => c.id === 'splitscreenme.debugHandler').fn();
+  assert.deepEqual(debug.__started.at(-1), { type: 'nucleus', request: 'launch', name: 'Step through the handler', program: '/work/Demo.js', stopOnEntry: true });
+  debug.breakpoints = [{ enabled: true, location: { uri: doc.uri } }];
+  await m.__registered.commands.find((c: any) => c.id === 'splitscreenme.debugHandler').fn();
+  assert.equal(debug.__started.at(-1).stopOnEntry, false);
+  debug.breakpoints = [];
+  m.window.activeTextEditor = undefined;
+});
+
+test('walkthrough: no raw code marks in step text, its media exist, Test in Nucleus Co-op only on Windows', () => {
+  const root = path.join(__dirname, '..');
+  const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
+  const steps = pkg.contributes.walkthroughs[0].steps;
+  for (const s of steps) {
+    assert.doesNotMatch(s.description, /`/, `${s.id}: VS Code shows backticks in step text as they are`);
+    const media = s.media.markdown ? [s.media.markdown] : Object.values(s.media.image);
+    for (const f of media as string[]) assert.ok(fs.existsSync(path.join(root, f)), f);
+    for (const [, id] of s.description.matchAll(/\(command:([\w.]+)\)/g)) assert.ok(pkg.contributes.commands.some((c: any) => c.command === id), id);
+  }
+  assert.ok(['docs', 'debug', 'fixall'].every((id) => steps.some((s: any) => s.id === id)));
+  assert.equal(steps.find((s: any) => s.id === 'install').when, 'isWindows');
+});
+
+test('New Handler: one guided flow with steps and Back, saving <Name>.js with its <Name>/ folder where you pick', async (t) => {
+  const dir = fs.mkdtempSync(path.join((await import('node:os')).tmpdir(), 'nucleus-new-'));
+  t.after(() => fs.rmSync(dir, { recursive: true, force: true }));
+  m.workspace.workspaceFolders = [{ name: 'handlers', uri: m.Uri.file(dir) }];
+  m.__inputs.length = 0;
+  // Name, exe, BACK (to the exe, which keeps what was typed), exe again, no Steam ID, Proto Input, the workspace folder.
+  m.__answers.push('My Game', 'MyGame.exe', 'BACK', 'MyGame.exe', '', ['Proto Input'], ['handlers']);
+  await m.__registered.commands.find((c: any) => c.id === 'splitscreenme.newHandler').fn();
+  const steps = m.__inputs.map((i: any) => `${i.step}/${i.totalSteps}${i.back ? '<' : ''}`);
+  assert.deepEqual(steps, ['1/5', '2/5<', '3/5<', '2/5<', '3/5<', '4/5<', '5/5<']);
+  assert.equal(m.__inputs[3].value, 'MyGame.exe', 'Back keeps the answer');
+  assert.ok(m.__inputs.every((i: any) => i.title === 'New Nucleus Co-op handler'));
+  const js = fs.readFileSync(path.join(dir, 'My Game.js'), 'utf8');
+  assert.match(js, /Game\.GameName = "My Game";/);
+  assert.match(js, /Game\.ExecutableName = "MyGame\.exe";/);
+  assert.ok(fs.statSync(path.join(dir, 'My Game')).isDirectory(), 'its Game.Folder');
+  assert.equal(m.window.__shown.at(-1).fsPath, path.join(dir, 'My Game.js'));
+  // Escape at any step: nothing is written.
+  m.__answers.push('Other', undefined);
+  await m.__registered.commands.find((c: any) => c.id === 'splitscreenme.newHandler').fn();
+  assert.ok(!fs.existsSync(path.join(dir, 'Other.js')));
+  // A refused executable name (not .exe, or a tab in it) keeps the box open for a corrected one.
+  m.__inputs.length = 0;
+  m.__answers.push('Third', 'bad', 'My\tGame.exe', 'Third.exe', '', [], ['handlers']);
+  await m.__registered.commands.find((c: any) => c.id === 'splitscreenme.newHandler').fn();
+  assert.match(fs.readFileSync(path.join(dir, 'Third.js'), 'utf8'), /Game\.ExecutableName = "Third\.exe";/);
+  // A file where the handler's folder goes: nothing is written.
+  fs.writeFileSync(path.join(dir, 'Fourth'), 'x');
+  m.__answers.push('Fourth', 'Fourth.exe', '', [], ['handlers']);
+  await m.__registered.commands.find((c: any) => c.id === 'splitscreenme.newHandler').fn(); // (the error is shown)
+  assert.ok(!fs.existsSync(path.join(dir, 'Fourth.js')));
+  m.workspace.workspaceFolders = undefined;
+});
+
+test('quiet results: a handler that can\'t be formatted, and Fix all with nothing to fix, go to the status bar and the log', async () => {
+  const win = vscode.window as any;
+  const warn = win.showWarningMessage, info = win.showInformationMessage;
+  const popups: string[] = [];
+  win.showWarningMessage = win.showInformationMessage = async (msg: string) => void popups.push(msg);
+  try {
+    const doc = m.makeDocument(HEADER + 'var s = "abc;\n'); // an unterminated string, as while typing
+    assert.deepEqual(m.__registered.formatting[0].provideDocumentFormattingEdits(doc, { insertSpaces: true, tabSize: 2 }), []);
+    assert.match(m.window.__status.at(-1)!, /Nucleus: not formatted/);
+    assert.ok(m.__log.some((l) => /^warn Format /.test(l)));
+    m.window.activeTextEditor = { document: m.makeDocument(HEADER) };
+    await m.__registered.commands.find((c: any) => c.id === 'splitscreenme.fixAll').fn();
+    assert.match(m.window.__status.at(-1)!, /^Nucleus: nothing to fix/);
+  } finally {
+    win.showWarningMessage = warn; win.showInformationMessage = info;
+    m.window.activeTextEditor = undefined;
+  }
+  assert.deepEqual(popups, [], 'no notification');
+});
+
+test('language status: the checks and the game folder beside the handler language', () => {
+  assert.ok(m.__languageStatus['splitscreenme.checks'] && m.__languageStatus['splitscreenme.gameFolder']);
+  assert.deepEqual(m.__languageStatus['splitscreenme.checks'].selector, [{ language: 'nucleus-handler' }], 'only for handlers');
+  const d = (sev: number) => new m.Diagnostic(new m.Range(new m.Position(0, 0), new m.Position(0, 1)), 'x', sev) as any;
+  assert.deepEqual(checksText([]), { text: 'No problems', severity: 'ok' });
+  assert.deepEqual(checksText([d(m.DiagnosticSeverity.Hint), d(m.DiagnosticSeverity.Information)]), { text: 'No problems', severity: 'ok' });
+  assert.deepEqual(checksText([d(m.DiagnosticSeverity.Error), d(m.DiagnosticSeverity.Warning), d(m.DiagnosticSeverity.Error)]), { text: '2 errors, 1 warning', severity: 'error' });
+});
+
+test('Docs panel: 👍/👎 inside each part as command links; the follow-up link only after a vote', async () => {
+  const { voteLine, placeVotes, fallbackMarkdown } = await import('../docspanel');
+  const { docsPage } = await import('../core/docspage');
+  const up = voteLine('Game.KillMutex', 'doc', 'The doc', { 'doc/Game.KillMutex': 'up' }, true);
+  assert.equal((up.match(/command:splitscreenme\.docsVote\?/g) ?? []).length, 2);
+  assert.match(up, /class="vote on"[^>]*aria-label="The doc: you said Right\. Activate to take it back"[^>]*title="You said: Right/);
+  assert.doesNotMatch(up, /role="button"/, 'links, as they behave (no script for Space)');
+  assert.match(up, />Give feedback</);
+  assert.match(up, /title=Doc%20feedback%3A%20Game\.KillMutex&amp;/, 'the doc keeps the plain title');
+  assert.doesNotMatch(up, /Tell us what's wrong/);
+  const down = voteLine('Game.KillMutex', 'practice', '"In practice" (AI-written)', { 'practice/Game.KillMutex': 'down' }, true);
+  assert.match(down, /Tell us what's wrong/);
+  // The part is in the report: a 👎 on "In practice" says so in the title (the name stays plain for the bot).
+  assert.match(down, /title=Doc%20review%3A%20Game\.KillMutex%20\(In%20practice\)&amp;member=Game\.KillMutex"/);
+  assert.match(voteLine('Game.KillMutex', 'practice', 'p', { 'practice/Game.KillMutex': 'up' }, true), /title=Doc%20feedback%3A%20Game\.KillMutex%20\(In%20practice\)/);
+  // No vote (or one taken back): no follow-up link.
+  assert.doesNotMatch(voteLine('Game.KillMutex', 'doc', 'The doc', {}, true), /class="follow"/);
+  assert.match(voteLine('Game.KillMutex', 'doc', 'The doc', {}, false), /telemetry is off/);
+  // Placed inside its part: the doc's under the description, "In practice"'s inside its box.
+  const page = docsPage('q:Game.KillMutex', (v) => v, true);
+  const { api } = await import('../core/api');
+  const html = placeVotes(fallbackMarkdown(page.markdown), 'Game.KillMutex', [{ part: 'doc', label: 'The doc' }, { part: 'practice', label: '"In practice" (AI-written)' }], {}, true, api.objects.Game.members.KillMutex);
+  assert.doesNotMatch(html, /@@slot/);
+  const box = /<section class="ai-box practice"[^>]*>([\s\S]*?)<\/section>/.exec(html);
+  assert.ok(box && /In practice/.test(box[1]) && /Is this right\?/.test(box[1]), 'the practice vote in its box');
+  assert.ok(html.indexOf('Is this doc right?') < html.indexOf('<section class="ai-box practice"'), 'the doc vote before "In practice"');
+  // AI-written parts framed, with the sparkle's tooltip (the basis) and a hidden "AI-written"; the human doc plain.
+  assert.match(box[1], /class="ai-badge" tabindex="0" aria-describedby="ai-practice"[\s\S]*<span class="sr-only">AI-written<\/span><span class="ai-tip" id="ai-practice"><span class="ai-tip-h">[\s\S]*AI-written[\s\S]*Based on[\s\S]*<a class="ai-src" href="https:\/\/github\.com\//);
+  assert.match(html, /<div class="ai-box" data-ai="example">/, 'the AI-written example framed');
+  assert.doesNotMatch(html, /data-ai="doc"/, 'the human doc stays plain');
+  assert.doesNotMatch(html.replace(/<span class="ai-tip"[\s\S]*?<\/span><\/span><\/span>(?=<\/span>)/g, '').replace(/<span class="sr-only"[^>]*>[^<]*<\/span>/g, ''), />[^<]*AI-written/, 'no visible "AI-written" words');
+  const play = placeVotes(fallbackMarkdown(docsPage('q:Game.Play', (v) => v, true).markdown), 'Game.Play', [{ part: 'doc', label: 'The doc' }], {}, true, api.objects.Game.members.Play);
+  assert.match(play, /<div class="ai-box" data-ai="doc">[\s\S]*Is this doc right\?[\s\S]*?<\/div>/, 'an AI-written doc framed, its vote inside');
+  assert.doesNotMatch(html, /Is it wrong\? Tell us/, 'the vote leads there instead');
+  // Markdown (Search text is in it) never renders the vote command; docs links still work.
+  assert.doesNotMatch(fallbackMarkdown('[x](command:splitscreenme.docsVote?%5B%22a%22%5D)'), /href/);
+  assert.match(fallbackMarkdown('[x](command:splitscreenme.showDocs?%5B%22a%22%5D)'), /href="command:splitscreenme\.showDocs\?/);
+  // Without slots (hovers, the workbench) the text has no markers.
+  assert.doesNotMatch(docsPage('q:Game.KillMutex', (v) => v).markdown, /@@slot/);
 });

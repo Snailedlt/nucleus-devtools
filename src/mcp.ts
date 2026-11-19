@@ -2,9 +2,12 @@
 // so any MCP client (Claude Desktop, Claude Code, Cursor, VS Code Copilot, ...) can check, fix,
 // simulate and look up Nucleus Co-op handlers without a shell. Same core as the CLI and the
 // extension. Handler code only ever runs in the isolated simulator (src/sandbox.ts).
+import { sendAiVote } from './aivote';
 import fs from 'node:fs';
 import path from 'node:path';
 import readline from 'node:readline';
+import { readGameBinaries } from './gamefolder-node';
+import { analyse, exePath, findExes, importsReport } from './core/importhooks';
 import { lint, lineOf, lineStart, RULES } from './core/lint';
 import { fixAll } from './core/fix';
 import { formatHandler } from './core/format';
@@ -238,6 +241,18 @@ export const TOOLS: Tool[] = [
     },
   },
   {
+    name: 'nucleus_vote_doc',
+    title: 'Vote on a doc (as an AI)',
+    description:
+      'Say whether a handler API doc is right, after you checked it: against the Nucleus Co-op or Proto Input source, or a handler that works in Nucleus. part "doc" is the member\'s doc, "practice" its AI-written "In practice" part (nucleus_api shows both). Counted as an AI vote, shown apart from people\'s votes; it never makes a doc "Verified by people". Vote only on what you checked, once per part. Sends only the name, the part and the vote.',
+    inputSchema: { type: 'object', properties: { name: { type: 'string', description: 'The member, e.g. "Game.KillMutex".' }, part: { type: 'string', enum: ['doc', 'practice'] }, vote: { type: 'string', enum: ['up', 'down'], description: 'up: right; down: wrong or unclear.' } }, required: ['name', 'part', 'vote'] },
+    annotations: { readOnlyHint: false, openWorldHint: true, idempotentHint: true },
+    run: async (a) => {
+      const r = await sendAiVote(a.name, a.part, a.vote, VERSION);
+      return { text: r.message, data: r, isError: !r.ok };
+    },
+  },
+  {
     name: 'nucleus_new_handler',
     title: 'Start a handler from a template',
     description: 'Returns a lint-clean handler from the official templates, to save as <GameName>.js and adapt. Does not write any file.',
@@ -292,6 +307,30 @@ export const TOOLS: Tool[] = [
       if (!entry?.data) return { text: `${h.title}: the package has no handler.js.`, isError: true };
       const src = Buffer.from(entry.data).toString('utf8').replace(/^﻿/, '');
       return { text: `// ${h.title} v${h.currentVersion} by ${h.ownerName} (${handlerPageUrl(h._id)})\n${src}`, data: { id: h._id, title: h.title, version: h.currentVersion, source: src } };
+    },
+  },
+  {
+    name: 'nucleus_game_imports',
+    title: 'What a game\'s files use',
+    description: 'Reads a game\'s .exe and DLLs on this computer (only their import/export tables and names written in them; nothing runs) and says what the game uses for controllers, cursor, keys, focus and windows, with the Proto Input hooks and Nucleus options that match (checked against Proto Input\'s and Nucleus\' source and the Hub handlers) and the lines to add. Follows a launcher to the game it starts. Use it when writing a handler for a game you have installed.',
+    inputSchema: { type: 'object', properties: { path: { type: 'string', description: 'The game\'s install folder, or one .exe/.dll.' }, exe: { type: 'string', description: 'The game\'s .exe name, if the folder has several.' }, controllers: { type: 'boolean', description: 'Include controller suggestions (default true).' }, kbm: { type: 'boolean', description: 'Include several-keyboards-and-mice suggestions (default true).' } }, required: ['path'] },
+    annotations: { readOnlyHint: true },
+    run: (a) => {
+      if (typeof a.path !== 'string' || !a.path) return { text: 'Give `path`: the game\'s install folder, or one .exe/.dll.', isError: true };
+      if (!fs.existsSync(a.path)) return { text: `${a.path} doesn't exist.`, isError: true };
+      const files = readGameBinaries([a.path]);
+      if (!files.length) return { text: `No .exe or .dll files at ${a.path}.`, isError: true };
+      const exe = a.exe ? String(a.exe) : undefined;
+      const exeHits = exe ? findExes(files.filter((f) => !f.dll), exe) : [];
+      if (exe && !exeHits.length) return { text: `No program called ${exe} at ${a.path} (found: ${files.filter((f) => !f.dll).map((f) => f.fileName).join(', ') || 'none'}).`, isError: true };
+      if (exeHits.length > 1) return { text: `${exe} could be ${exeHits.map(exePath).join(' or ')}: give one of these paths (relative to ${a.path}) in \`exe\`, e.g. \`exe: "${exePath(exeHits[0]!)}"\`.`, isError: true };
+      const r = analyse(files, exeHits[0]);
+      const controllers = a.controllers !== false, kbm = a.kbm !== false;
+      return {
+        text: importsReport(r, { controllers, kbm }),
+        // The same filters as the text: an excluded suggestion isn't in the data either.
+        data: { game: r.main?.fileName, launchers: r.launchers.map((f) => f.fileName), findings: r.found.filter((f) => (controllers || !f.rule.ctl) && (kbm || !f.rule.kbm)).map((f) => ({ id: f.rule.id, area: f.rule.area, title: f.rule.title, lines: f.lines, maybe: !!f.rule.maybe, controllers: !!f.rule.ctl, kbm: !!f.rule.kbm })) },
+      };
     },
   },
   {

@@ -52,8 +52,10 @@ test('dap: breakpoint, stack, scopes, variables, evaluate, stepping back and on 
   assert.match(frames[0].name, /^Game\.Play · player 2 of 2$/);
   const scopes = req('scopes', { frameId: 0 }).res.body.scopes;
   const names = scopes.map((s: any) => s.name);
-  assert.ok(names.includes('Variables') && names.includes('Context'), names.join(', '));
-  const vars = req('variables', { variablesReference: scopes.find((s: any) => s.name === 'Variables').variablesReference }).res.body.variables;
+  assert.ok(names.includes('Context'), names.join(', '));
+  assert.equal(names[0], 'Locals', 'the function\'s own variables first (VS Code opens the first scope)');
+  assert.equal(scopes[0].presentationHint, 'locals');
+  const vars = req('variables', { variablesReference: scopes.find((s: any) => s.name === 'Locals').variablesReference }).res.body.variables;
   assert.equal(vars.find((v: any) => v.name === 'args').value, '"-w 960"');
   assert.equal(req('evaluate', { expression: 'Context.PlayerID', context: 'hover' }).res.body.result, '1');
 

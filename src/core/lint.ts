@@ -10,6 +10,7 @@ import * as acorn from 'acorn';
 import { parseLikeJint } from './jsparse';
 import { BEFORE_SESSION } from './lifecycle';
 import { analyzeScopes, type Binding } from './scopes';
+import { codeOf } from './importhooks';
 import {
   api,
   Member,
@@ -160,6 +161,10 @@ export const RULES = {
     severity: 'warning',
     description: 'A number in Game.ProtoInput.BlockedMessages that Proto Input can\'t block as written: it isn\'t in Proto Input\'s message list (it then blocks a different entry, or nothing), or it is listed twice.',
   },
+  'protoinput-needs-raw-input': {
+    severity: 'info',
+    description: 'In a handler for several keyboards and mice (Game.SupportsMultipleKeyboardsAndMice), a Proto Input cursor or key state hook (GetCursorPosHook, GetKeyStateHook, GetAsyncKeyStateHook, GetKeyboardStateHook) without Game.ProtoInput.RegisterRawInputHook: these hooks answer from the player\'s keyboard and mouse that only the raw input hook reads, so the game sees no key pressed and a frozen cursor.',
+  },
   'needs-option': {
     severity: 'warning',
     description: 'An option Nucleus only reads when another one is on (FakeFocusInterval needs FakeFocus, SteamlessArgs needs UseSteamless, DrawFakeMouseCursorForControllers needs DrawFakeMouseCursor, ...): set alone, it does nothing.',
@@ -174,7 +179,7 @@ export const RULES = {
   },
   'undefined-name': {
     severity: 'error',
-    description: 'A name the handler never declares and Nucleus doesn\'t provide (a typo, a stray word, a variable from another handler). Reading it throws "<name> is not defined": at the top level Nucleus can\'t load the handler, inside a callback it stops there.',
+    description: 'A name the handler never declares and Nucleus doesn\'t provide (a typo, a stray word, a variable from another handler). Reading it throws "<name> is not defined": at the top level Nucleus can\'t load the handler, inside a callback it stops there. Only a warning inside a function nothing in the handler calls or passes on.',
   },
   'missing-builtin': {
     severity: 'error',
@@ -187,6 +192,10 @@ export const RULES = {
   'option-compare': {
     severity: 'warning',
     description: 'A `Context.Options["key"]` value compared as if it were a number or a boolean, where only text works: when the player starts from a saved profile, Nucleus gives every option back as text ("4", "True", "False"). So `=== 4`, `== true`, `case 4:` never match, and a "False" option counts as true in an `if`.',
+  },
+  'unused-option': {
+    severity: 'hint',
+    description: 'A `Game.AddOption` whose key nothing in the handler reads (`Context.Options["key"]`): players can pick a value, but it changes nothing. Nucleus itself never reads an option\'s value (`Game.ShowOptionAsStep` only asks for it). Shown faded, like unused code; quiet when the handler reads options in a way it can\'t follow (a key in a variable, `Context.Options` passed on).',
   },
   deprecated: { severity: 'hint', description: 'The option is deprecated (setting it to false is fine).' },
   // General JavaScript mistakes: ESLint's own rules (core/jsrules.ts).
@@ -363,6 +372,9 @@ interface Ctx {
 
 const hasUseStrict = (body: Node[] | undefined) => !!body?.some((st) => st.type === 'ExpressionStatement' && st.directive === 'use strict');
 
+/** Members of `Context.Options` (a .NET Dictionary); Jint matches the first letter in either case. */
+const DICT_MEMBER = /^(?:[Kk]eys|[Vv]alues|[Cc]ount|[Cc]ontainsKey|[Cc]ontainsValue|[Tt]ryGetValue|[Gg]etEnumerator|[Aa]dd|[Rr]emove|[Cc]lear|[Cc]omparer)$/;
+
 class Analyzer {
   private aliases = new Map<string, Resolved | null>();
   private parentOf = new WeakMap<Node, Node>();
@@ -411,11 +423,98 @@ class Analyzer {
     this.checkProtoInputLegacy();
     this.checkProtoInputWiring();
     this.checkNeedsOption();
+    this.checkNeedsRawInput();
     this.checkGuid();
     this.checkPublishedGuid();
     this.checkEncoding();
     this.checkReplacedObjects();
     this.checkOptionCompare();
+    this.checkUnusedOptions();
+  }
+
+  /**
+   * `Game.AddOption(name, desc, "fps", values)` whose key nothing reads: the player's choice changes nothing. Nucleus
+   * itself reads no option's value (it only stores the choice in the profile; `ShowOptionAsStep` just asks for it,
+   * GenericGameInfo/JSUserInputControl), so the handler's `Context.Options["fps"]` (or `.fps`, or a method such as
+   * `ContainsKey("fps")`) is the only reader. Quiet whenever it can't follow every read: a key that isn't written out,
+   * `Context` or `Context.Options` used any other way (passed, aliased, looped over), `eval`/`Function`/`with`.
+   */
+  private checkUnusedOptions() {
+    if (!/\bAddOption\b/.test(this.text)) return;
+    const adds: Node[] = [];
+    const read = new Set<string>();
+    let unsure = false;
+    const parent = new Map<Node, Node>();
+    const lit = (n: Node | undefined): string | undefined => (n?.type === 'Literal' && typeof n.value === 'string' ? n.value : undefined);
+    const walk = (n: Node, p?: Node) => {
+      if (unsure) return;
+      if (p) parent.set(n, p);
+      if (n.type === 'WithStatement') unsure = true;
+      if (n.type === 'Identifier' && (n.name === 'eval' || n.name === 'Function')) unsure = true;
+      if (n.type === 'CallExpression' && this.chainOf(n.callee) === 'Game.AddOption' && lit(n.arguments[2]) !== undefined) adds.push(n);
+      for (const key of Object.keys(n)) {
+        if (key === 'type' || key === 'start' || key === 'end') continue;
+        const v = n[key];
+        if (Array.isArray(v)) for (const c of v) c && typeof c.type === 'string' && walk(c, n);
+        else if (v && typeof v.type === 'string') walk(v, n);
+      }
+    };
+    walk(this.program);
+    if (unsure || !adds.length) return;
+    // Every reference to `Context`: only `Context.<name>` is followed; `Context.Options` only as `[key]`/`.key`.
+    visit(this.program, (x) => {
+      if (unsure || x.type !== 'Identifier' || x.name !== 'Context') return;
+      const p = parent.get(x);
+      if (p?.type === 'MemberExpression' && p.property === x && !p.computed) return; // `a.Context`
+      if (p?.type === 'Property' && p.key === x && !p.computed) return; // `{ Context: 1 }`
+      if (p?.type !== 'MemberExpression' || p.object !== x) return void (unsure = true);
+      const name = p.computed ? lit(p.property) : p.property.name;
+      if (p.computed && name === undefined) return void (unsure = true);
+      // Jint matches .NET names with the first letter in either case: `Context.options` is the same.
+      if (!/^[Oo]ptions$/.test(name)) return;
+      const m = parent.get(p);
+      if (m?.type !== 'MemberExpression' || m.object !== p) return void (unsure = true);
+      // `Context.Options[0]`: Jint turns the number into the text key "0".
+      const key = m.computed ? (m.property.type === 'Literal' && typeof m.property.value === 'number' ? String(m.property.value) : lit(m.property)) : m.property.name;
+      if (key === undefined) return void (unsure = true);
+      const call = parent.get(m);
+      // Jint looks a written-out name up as a member first, so `Options["ContainsKey"]` is the method, like `.ContainsKey`.
+      if (call?.type === 'CallExpression' && call.callee === m) {
+        // `Context.Options.ContainsKey("fps")`: its written-out keys are read; anything else, can't tell.
+        const keys = call.arguments.map(lit).filter((k: string | undefined): k is string => k !== undefined);
+        if (!keys.length) return void (unsure = true);
+        keys.forEach((k: string) => read.add(k));
+        return;
+      }
+      // `Keys`, `values`, `Count`… (a dictionary member, not a key): can't tell which options are read through it.
+      if (DICT_MEMBER.test(key)) return void (unsure = true);
+      read.add(key);
+    });
+    if (unsure) return;
+    const sc = analyzeScopes(this.program);
+    for (const c of adds) {
+      const k = c.arguments[2];
+      const key: string = k.value;
+      if (read.has(key)) continue;
+      // One value (`["READ"]`) or none: a note for the players, not a choice.
+      let v = c.arguments[3];
+      if (v?.type === 'Identifier') v = singleValue(sc.bindingOf.get(v)) ?? v;
+      if (v?.type === 'ArrayExpression' && v.elements.length <= 1) continue;
+      // Removing the line is offered only when the key appears nowhere else (`ShowOptionAsStep("fps", ...)` needs it).
+      const stmt = parent.get(c);
+      const ls = stmt ? lineStart(this.text, stmt.start) : 0;
+      const le = stmt ? nextLineStart(this.text, stmt.end) : 0;
+      const alone = stmt?.type === 'ExpressionStatement' && parent.get(stmt) === this.program && this.text.slice(ls, stmt.start).trim() === '' && /^\s*(\/\/.*)?(\r?\n)?$/.test(this.text.slice(stmt.end, le));
+      const elsewhere = this.text.split(JSON.stringify(key)).length + this.text.split(`'${key}'`).length > 3;
+      this.report({
+        rule: 'unused-option',
+        message: `Nothing in this handler reads \`Context.Options[${JSON.stringify(key)}]\`, so the player's choice changes nothing. Read it where the choice matters (usually in \`Game.Play\`), or remove the option.`,
+        start: k.start,
+        end: k.end,
+        tags: ['unnecessary'],
+        fixes: alone && !elsewhere ? [{ title: 'Remove this option', edits: [{ start: ls, end: le, text: '' }] }] : undefined,
+      });
+    }
   }
 
   /**
@@ -433,7 +532,10 @@ class Analyzer {
         if (m?.type !== 'MemberExpression' || m.object !== r.node) return false;
         const g = sc.parentOf.get(m);
         return (g?.type === 'AssignmentExpression' && g.left === m) || (g?.type === 'UpdateExpression' && g.argument === m) ||
-          (g?.type === 'CallExpression' && g.callee === m && !m.computed && /^(push|unshift|splice|fill|reverse|sort|copyWithin|pop|shift)$/.test(m.property.name));
+          // any method call on it, except read-only ones called by name, dotted or as a literal key (`answers["join"](",")`
+          // reads; `answers["push"](2)` and an unknown key count)
+          (g?.type === 'CallExpression' && g.callee === m && !/^(slice|indexOf|lastIndexOf|join|concat|toString|map|filter|forEach|some|every|reduce|reduceRight)$/.test(
+            (m.computed ? (m.property.type === 'Literal' && typeof m.property.value === 'string' ? m.property.value : '') : m.property.name) as string));
       }) ||
       // Escapes (`var alias = answers`, `f(answers)`): it may be changed where we don't follow it. Reading
       // `answers[i]` / `answers.length` and passing it to Game.AddOption are fine.
@@ -506,10 +608,16 @@ class Analyzer {
             const between = this.text.slice(x.left.end, x.right.start).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, (c) => ' '.repeat(c.length));
             const i = between.indexOf(x.operator);
             const opAt = i < 0 ? -1 : x.left.end + i;
+            // All the option's values are text: compare with text (`=== "144"`), the exact match, first; `==` (it turns
+            // the text into a number first) second. Otherwise a fresh pick may be a number, so only `==` fits both.
+            const asText = allText(o.key) && b.type === 'Literal' && typeof b.value === 'number' ? JSON.stringify(String(b.value)) : undefined;
+            const cmpFixes: Fix[] = [];
+            if (asText) cmpFixes.push({ title: `Change to \`${x.operator} ${asText}\``, edits: [{ start: b.start, end: b.end, text: asText }] });
+            if (opAt >= 0) cmpFixes.push({ title: `Change \`${x.operator}\` to \`${loose}\``, edits: [{ start: opAt, end: opAt + 3, text: loose }] });
             report(
               x,
-              `\`${src(a)}\` is text${allText(o.key) ? ' (the option\'s values are text)' : ' when the player starts from a saved profile'}, and \`${x.operator}\` never matches text with a number, so \`${src(x)}\` is ${x.operator === '===' ? 'never true' : 'always true'}${allText(o.key) ? '' : ' then'}. With \`${loose}\` it matches both "${src(b)}" and ${src(b)}.`,
-              opAt >= 0 ? [{ title: `Change \`${x.operator}\` to \`${loose}\``, edits: [{ start: opAt, end: opAt + 3, text: loose }] }] : undefined,
+              `\`${src(a)}\` is text${allText(o.key) ? ' (the option\'s values are text)' : ' when the player starts from a saved profile'}, and \`${x.operator}\` never matches text with a number, so \`${src(x)}\` is ${x.operator === '===' ? 'never true' : 'always true'}${allText(o.key) ? '' : ' then'}. ${asText ? `Compare with text, \`${x.operator} ${asText}\`; \`${loose} ${src(b)}\` also works (it turns the text into a number first).` : `With \`${loose}\` it matches both "${src(b)}" and ${src(b)}.`}`,
+              cmpFixes,
             );
           }
         }
@@ -951,10 +1059,24 @@ class Analyzer {
     const maybePlugin = asObject && this.plugins === undefined;
     // `x = 1` makes a global (outside strict mode); collectBindings already counts it as declared.
     const s = suggest(name, [...this.declared, ...this.fnExprNames, ...Object.keys(api.globals).filter((g) => !api.globals[g].hidden)]);
-    const where =
-      ctx.fnDepth === 0
+    // Inside a function nothing calls or passes on: the line never runs, so it can't throw yet.
+    const unused = this.uncalledFunction(n);
+    const where = unused
+      ? `It's inside \`${unused}\`, which nothing in the handler calls, so it does no harm yet`
+      : ctx.fnDepth === 0
         ? 'Nucleus runs this line when it loads the handler, so the handler fails to load'
         : 'Nucleus stops with an error when this line runs (in `Game.Play`, that ends the session)';
+    if (unused && !maybePlugin) {
+      this.report({
+        rule: 'undefined-name',
+        severity: 'warning',
+        message: `\`${name}\` is not defined anywhere: nothing in the handler declares it and Nucleus doesn't provide it. It's inside \`${unused}\`, which nothing in the handler calls, so it does no harm yet; calling \`${unused}\` would throw "${name} is not defined".${s ? ` Did you mean \`${s}\`?` : ' Remove it (or the unused function), or declare it with `var`.'}`,
+        start: n.start,
+        end: n.end,
+        fixes: s ? [{ title: `Change to ${s}`, edits: [{ start: n.start, end: n.end, text: s }] }] : undefined,
+      });
+      return;
+    }
     if (maybePlugin) {
       this.report({
         rule: 'undefined-name',
@@ -973,6 +1095,37 @@ class Analyzer {
       // A guess, so never applied by Fix all.
       fixes: s ? [{ title: `Change to ${s}`, edits: [{ start: n.start, end: n.end, text: s }] }] : undefined,
     });
+  }
+
+  private usedNames?: Set<string>;
+  /** The name of a named function around `n` that nothing in the handler refers to (never called or passed on), if any. */
+  private uncalledFunction(n: Node): string | undefined {
+    if (!this.usedNames) {
+      const used = new Set<string>();
+      const walk = (x: Node, parent?: Node) => {
+        if (!x || typeof x.type !== 'string') return;
+        if (x.type === 'Identifier' && this.isReference(x, parent)) used.add(x.name);
+        for (const k of Object.keys(x)) {
+          if (k === 'parent') continue;
+          const v = (x as any)[k];
+          if (Array.isArray(v)) for (const c of v) c && typeof c.type === 'string' && walk(c, x);
+          else if (v && typeof v.type === 'string') walk(v, x);
+        }
+      };
+      walk(this.program);
+      this.usedNames = used;
+    }
+    for (let p = this.parentOf.get(n), child: Node = n; p; child = p, p = this.parentOf.get(p)) {
+      let fname: string | undefined;
+      if (p.type === 'FunctionDeclaration' && p.id) fname = p.id.name;
+      else if (p.type === 'FunctionExpression' && child !== p.id) {
+        const d = this.parentOf.get(p);
+        if (d?.type === 'VariableDeclarator' && d.init === p && d.id.type === 'Identifier') fname = d.id.name;
+        else continue;
+      } else continue;
+      if (fname && !this.usedNames.has(fname)) return fname;
+    }
+    return undefined;
   }
 
   private checkMissingBuiltin(n: Node, ctx: Ctx) {
@@ -1112,12 +1265,15 @@ class Analyzer {
       }
     }
     const indentOf = (pos: number) => text.slice(lineStart(text, pos), pos).match(/^\s*/)![0];
+    // The handler's own indent: its first indented line's, else two spaces.
+    const unit = text.match(/^([ \t]+)\S/m)?.[1] ?? '  ';
     if (playFn) {
-      const inner = indentOf(playStmt!.start) + '  ';
+      const firstInPlay = playFn.body.body[0];
+      const inner = firstInPlay && lineOf(text, firstInPlay.start) !== lineOf(text, playFn.body.start) ? indentOf(firstInPlay.start) : indentOf(playStmt!.start) + unit;
       const block = lines.map((l) => inner + l.replace(/\n/g, '\n' + inner)).join('\n');
       edits.push({ start: playFn.body.start + 1, end: playFn.body.start + 1, text: `\n${block}` });
     } else {
-      const block = lines.map((l) => '  ' + l.replace(/\n/g, '\n  ')).join('\n');
+      const block = lines.map((l) => unit + l.replace(/\n/g, '\n' + unit)).join('\n');
       edits.push({ start: text.length, end: text.length, text: `${text.endsWith('\n') ? '' : '\n'}\nGame.Play = function () {\n${block}\n};\n` });
     }
     this.moveFix = { title: playFn ? 'Move the code that uses it into Game.Play' : 'Move the code that uses it into a new Game.Play', edits, preferred: true };
@@ -1131,6 +1287,8 @@ class Analyzer {
     if (o.type !== 'MemberExpression' || o.computed || o.property.name !== 'Options' || o.object.type !== 'Identifier' || o.object.name !== 'Context') return;
     const key: string = n.property.value;
     if (this.addedKeys.has(key)) return;
+    // Jint looks a written-out name up as a member first: `Options["ContainsKey"]` is the dictionary's method, not a key.
+    if (DICT_MEMBER.test(key)) return;
     const keys = [...this.addedKeys];
     const s = keys.length ? suggest(key, keys) ?? keys.find((k) => k.toLowerCase() === key.toLowerCase()) : undefined;
     const q = n.property.raw[0];
@@ -1992,6 +2150,59 @@ class Analyzer {
         fixes: [{ title: `Turn on Game.${n.any[0]}`, edits: [{ start: at, end: at, text: `Game.${n.any[0]} = true;\n` }] }],
       });
     }
+  }
+
+  // Proto Input's cursor and key state hooks answer from FakeMouseKeyboard, which only raw input fills; Proto Input only
+  // registers for raw input when RegisterRawInputHook is installed (RegisterRawInputHook::InstallImpl ->
+  // RawInput::RegisterProtoForRawInput). Info only: controller-only handlers may want a frozen cursor on purpose.
+  private checkNeedsRawInput() {
+    // The value a setting ends up with: its last top-level assignment.
+    const last = (k: string) => {
+      const list = this.topAssignments.get(`Game.ProtoInput.${k}`) ?? [];
+      return list[list.length - 1];
+    };
+    const isTrue = (k: string) => {
+      const n = last(k);
+      return !!n && n.right.type === 'Literal' && n.right.value === true;
+    };
+    // Comments don't turn a hook on, nor does text in a string.
+    const code = codeOf(this.text).code;
+    const codeNoStrings = code.replace(/"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'/g, (s) => s[0] + ' '.repeat(s.length - 2) + s[0]); // same length: offsets stay comparable with this.text
+    const started = ['InjectStartup', 'InjectRuntime_RemoteLoadMethod', 'InjectRuntime_EasyHookMethod', 'InjectRuntime_EasyHookStealthMethod'].some(isTrue);
+    if (!started) return;
+    // Installed at runtime (ProtoInput.InstallHook(..., RegisterRawInputHookID)) counts. So does the option set to true:
+    // by the last top-level assignment, or (when no top-level `= false` wins) anywhere, such as inside an option's `if`.
+    // Only Proto Input's own InstallHook: a function of the handler's called InstallHook installs nothing.
+    if (/\bProtoInput\s*\.\s*InstallHook\s*\([^;]*\bRegisterRawInputHookID\b/.test(codeNoStrings)) return;
+    const raw = last('RegisterRawInputHook');
+    if (isTrue('RegisterRawInputHook')) return;
+    const rawOff = raw && raw.right.type === 'Literal' && raw.right.value === false;
+    // A `= true` anywhere counts when no top-level `= false` wins, and after that `= false` too (a block that runs later,
+    // `if (true) { … }`): the hook may well be on, so no warning and no fix that would change the default.
+    const enables = [...codeNoStrings.matchAll(/\bGame\.ProtoInput\.RegisterRawInputHook\s*=\s*true\b/g)];
+    if (enables.some((m) => !rawOff || m.index! > raw!.start)) return;
+    if (isTrue('TranslateXinputtoMKB')) return; // the state then comes from the controller
+    // Only where players can bring keyboards and mice: for controller-only players a frozen cursor is harmless.
+    if (!/\bGame\.SupportsMultipleKeyboardsAndMice\s*=\s*true\b/.test(code)) return;
+    const STATE = ['GetCursorPosHook', 'GetKeyStateHook', 'GetAsyncKeyStateHook', 'GetKeyboardStateHook'];
+    const hits = STATE.filter(isTrue).map((k) => ({ k, node: last(k) }));
+    if (!hits.length) return;
+    const first = hits.reduce((a, b) => (a.node!.start < b.node!.start ? a : b));
+    const names = hits.map((h) => '`' + h.k + '`').join(', ');
+    const at = lineStart(this.text, first.node!.start);
+    const off = rawOff ? raw : undefined;
+    this.report({
+      rule: 'protoinput-needs-raw-input',
+      severity: 'info',
+      message: `${names} answer${hits.length === 1 ? 's' : ''} from the player's own keyboard and mouse, which Proto Input only reads with \`Game.ProtoInput.RegisterRawInputHook\`. Without it, keyboard and mouse players get no key presses and a frozen cursor.`,
+      start: first.node!.left.start,
+      end: first.node!.left.end,
+      // An explicit `= false` that wins is changed to true; with no assignment the line is added; a last assignment of
+      // another value (a variable, an expression): no fix, an added line before it would be overridden.
+      fixes: off ? [{ title: 'Turn on Game.ProtoInput.RegisterRawInputHook', edits: [{ start: off.right.start, end: off.right.end, text: 'true' }] }]
+        : raw ? undefined
+        : [{ title: 'Turn on Game.ProtoInput.RegisterRawInputHook', edits: [{ start: at, end: at, text: 'Game.ProtoInput.RegisterRawInputHook = true;\n' }] }],
+    });
   }
 
   private checkGuid() {

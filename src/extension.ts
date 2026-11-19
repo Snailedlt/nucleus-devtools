@@ -4,7 +4,9 @@ import { registerWhatsNew } from './whatsnew';
 import { Diagnostic as LintDiagnostic, lint, RuleId, Severity } from './core/lint';
 import { registerCommands } from './commands';
 import { registerTryIt } from './tryit';
+import { registerReports, REPORT_COMMANDS, type CheckArgs } from './reportvscode';
 import { docsCommandLink, OPEN_DOCS, registerDocsPanel } from './docspanel';
+import { docsPageUrl } from './core/docspage';
 import { ruleOverrides } from './settings';
 import { definitionAt } from './core/definition';
 import { rangeFormatEdits } from './core/features';
@@ -15,7 +17,10 @@ import { publishedNow } from './published';
 import { checkPackage, type PkgProblem } from './core/pkgcheck';
 import { gameFolderDiagnostics, registerGameFolders } from './gamefolders';
 import { registerDebugger } from './debugvscode';
+import { registerHandlerFiles } from './handlerfiles';
 import { forgetPackageFiles, packageFileForPath, packageFilesFor, packageFilePath } from './pkgfiles';
+import { disposeLog, log, status } from './log';
+import { registerLanguageStatus } from './langstatus';
 
 const SOURCE = 'nucleus';
 // Handlers open in their own language mode (handlermode.ts); in JavaScript mode, by the setting or by hand, too.
@@ -27,6 +32,8 @@ const SELECTOR: vscode.DocumentSelector = [
 ];
 
 const lintDiagnosticOf = new WeakMap<vscode.Diagnostic, LintDiagnostic>();
+/** The document version a check's diagnostic was made for (its lines are from that text). */
+const lintVersionOf = new WeakMap<vscode.Diagnostic, number>();
 
 function config() {
   return vscode.workspace.getConfiguration('splitscreenme');
@@ -98,7 +105,7 @@ export function activate(context: vscode.ExtensionContext) {
         const files = doc.uri.scheme === 'file' && config().get('lint.packageChecks', true) ? packageFilesFor(doc.uri.fsPath) : undefined;
         const problems = files ? checkPackage(text, files) : [];
         diags.push(...problems.filter((p) => !p.file && p.start !== undefined).map((p) => pkgDiagnostic(p, new vscode.Range(doc.positionAt(p.start!), doc.positionAt(p.end ?? p.start!)), doc.version)));
-        // The game folder linked to this handler (Nucleus: Link the Game's Folder…), if any.
+        // The game folder linked to this handler (Nucleus: Game Folder: Link…), if any.
         diags.push(...gameFolderDiagnostics(doc, SOURCE, SEVERITY));
         collection.set(doc.uri, diags);
         for (const u of pkgUris.get(key) ?? []) pkgCollection.delete(u);
@@ -153,16 +160,19 @@ export function activate(context: vscode.ExtensionContext) {
       const editor = vscode.window.activeTextEditor;
       if (!editor || !isHandler(editor.document)) return vscode.commands.executeCommand('editor.action.formatDocument');
       const opts = editor.options;
-      const [edit] = formatEdits(editor.document, { insertSpaces: opts.insertSpaces !== false, tabSize: typeof opts.tabSize === 'number' ? opts.tabSize : 4 });
+      // Refused (a syntax error) is not "already formatted": cantFormat said why.
+      const r = coreFormatEdits(editor.document.getText(), formatStyle({ insertSpaces: opts.insertSpaces !== false, tabSize: typeof opts.tabSize === 'number' ? opts.tabSize : 4 }));
+      if ('error' in r) return cantFormat(editor.document, r.error);
+      const [edit] = r.edits.map((e) => vscode.TextEdit.replace(toRange(editor.document, e), e.text));
       if (edit) await editor.edit((b) => b.replace(edit.range, edit.newText));
-      else vscode.window.setStatusBarMessage('Nucleus: already formatted', 2500);
+      else status('already formatted', 2500);
     }),
     // Explain This Line (Ctrl+Alt+E, the editor's right-click menu or the palette): the line's explanation as a hover.
     // `at.line`: a line to explain instead of the cursor's (for other callers); the cursor moves there first.
     vscode.commands.registerCommand(EXPLAIN, async (at?: { line?: number }) => {
       const editor = vscode.window.activeTextEditor;
       if (!editor || !isHandler(editor.document)) {
-        vscode.window.showInformationMessage('Open a Nucleus handler to explain a line of it.');
+        status('open a Nucleus Co-op handler to explain a line of it');
         return;
       }
       if (typeof at?.line === 'number' && at.line >= 0 && at.line < editor.document.lineCount) {
@@ -172,7 +182,7 @@ export function activate(context: vscode.ExtensionContext) {
       const pos = editor.selection.active;
       const line = editor.document.lineAt(pos.line);
       if (line.isEmptyOrWhitespace) {
-        vscode.window.setStatusBarMessage('Nucleus: an empty line, nothing to explain', 2500);
+        status('an empty line, nothing to explain', 2500);
         return;
       }
       if (pos.character < line.firstNonWhitespaceCharacterIndex) editor.selection = new vscode.Selection(pos.with(undefined, line.firstNonWhitespaceCharacterIndex), pos.with(undefined, line.firstNonWhitespaceCharacterIndex));
@@ -182,19 +192,19 @@ export function activate(context: vscode.ExtensionContext) {
     vscode.commands.registerCommand('splitscreenme.fixAll', async () => {
       const editor = vscode.window.activeTextEditor;
       if (!editor || !isHandler(editor.document)) {
-        vscode.window.showInformationMessage('Open a Nucleus handler to fix it.');
+        status('open a Nucleus Co-op handler to fix it');
         return;
       }
       const edit = fixAllEdit(editor.document);
       if (!edit) {
-        vscode.window.showInformationMessage('Nothing to fix automatically.');
+        status('nothing to fix automatically');
         return;
       }
       await vscode.workspace.applyEdit(edit.edit);
       const left = lint(editor.document.getText(), { rules: ruleOverrides() }).filter((d) => d.severity === 'error' || d.severity === 'warning').length;
       // Fix all doesn't touch package or game-folder problems: count them too, so "nothing else" is true.
       const rest = left + problemsBesideLint(editor.document.uri, vscode.languages.getDiagnostics(), pkgUris.get(editor.document.uri.toString()) ?? []);
-      vscode.window.showInformationMessage(`Fixed ${edit.count} problem${edit.count === 1 ? '' : 's'}.${rest ? ` ${rest} need${rest === 1 ? 's' : ''} your decision: see the Problems panel.` : ' Nothing else to fix.'}`);
+      status(`fixed ${edit.count} problem${edit.count === 1 ? '' : 's'}.${rest ? ` ${rest} need${rest === 1 ? 's' : ''} your decision: see the Problems panel.` : ' Nothing else to fix.'}`, 6000);
     }),
     vscode.languages.registerCompletionItemProvider(SELECTOR, { provideCompletionItems: (d, p) => (featuresOn(d) ? completions(d, p) : undefined) }, '.', '=', ' ', '[', ',', '"', "'"),
     vscode.languages.registerHoverProvider(SELECTOR, { provideHover: (d, p) => (featuresOn(d) ? hover(d, p) : undefined) }),
@@ -261,10 +271,13 @@ export function activate(context: vscode.ExtensionContext) {
   );
 
   registerTryIt(context, isHandler);
+  registerReports(context);
   registerDocsPanel(context);
   registerGameFolders(context, isHandler, SELECTOR, (d) => refresh(d, 0));
   registerHandlerMode(context, isHandler);
   registerDebugger(context, isHandler);
+  registerLanguageStatus(context, isHandler);
+  registerHandlerFiles(context, (p, text) => isHandlerFile(p, text, config().get<'auto' | 'always' | 'off'>('detection', 'auto')), isHandler);
 
   registerCommands(context, {
     lintFiles: (entries) => {
@@ -276,7 +289,9 @@ export function activate(context: vscode.ExtensionContext) {
   });
 }
 
-export function deactivate() {}
+export function deactivate() {
+  disposeLog();
+}
 
 // ---------------------------------------------------------------------------
 // Diagnostics
@@ -335,6 +350,7 @@ function toVsDiagnostics(doc: vscode.TextDocument, diags: LintDiagnostic[]): vsc
       v.tags = d.tags.map((t) => (t === 'deprecated' ? vscode.DiagnosticTag.Deprecated : vscode.DiagnosticTag.Unnecessary));
     }
     lintDiagnosticOf.set(v, d);
+    lintVersionOf.set(v, doc.version);
     return v;
   });
 }
@@ -348,22 +364,31 @@ function formatStyle(opts: { insertSpaces: boolean; tabSize: number }) {
 function rangeFormat(doc: vscode.TextDocument, start: number, end: number, opts: { insertSpaces: boolean; tabSize: number }, quiet = false): vscode.TextEdit[] {
   const r = rangeFormatEdits(doc.getText(), start, end, formatStyle(opts));
   if ('error' in r) {
-    if (!quiet) void vscode.window.showWarningMessage(`Nucleus: ${r.error}`);
+    if (!quiet) cantFormat(doc, r.error);
     return [];
   }
   return r.edits.map((e) => vscode.TextEdit.replace(toRange(doc, e), e.text));
 }
 
+/** The formatter refused (a syntax error, usually while typing, or on every save with format on save): the status
+ *  bar and the output channel, never a notification; the problem itself is underlined already. */
+function cantFormat(doc: vscode.TextDocument, why: string) {
+  log.warn(`Format ${doc.uri.scheme === 'file' ? doc.uri.fsPath : 'Untitled'}: ${why}`);
+  vscode.window.setStatusBarMessage(`$(warning) Nucleus: not formatted: ${why}`, 5000);
+}
+
 function formatEdits(doc: vscode.TextDocument, opts: { insertSpaces: boolean; tabSize: number }): vscode.TextEdit[] {
   const r = coreFormatEdits(doc.getText(), formatStyle(opts));
   if ('error' in r) {
-    void vscode.window.showWarningMessage(`Nucleus: ${r.error}`);
+    cantFormat(doc, r.error);
     return [];
   }
   return r.edits.map((e) => vscode.TextEdit.replace(toRange(doc, e), e.text));
 }
 
 const FIX_ALL_KIND = vscode.CodeActionKind.SourceFixAll.append('nucleus');
+/** "This check is wrong…": a quick fix's kind, so it shows with the fixes (Ctrl+.), but not a fix. */
+const REPORT_KIND = vscode.CodeActionKind.QuickFix.append('report');
 
 /** One edit replacing the document with the result of "Fix all", or undefined if nothing changes. */
 function fixAllEdit(doc: vscode.TextDocument): { edit: vscode.WorkspaceEdit; count: number } | undefined {
@@ -400,6 +425,17 @@ class FixProvider implements vscode.CodeActionProvider {
     for (const d of ctx.diagnostics) {
       const fix = pkgFixOf.get(d);
       if (fix && fix.version === doc.version) actions.push(toCodeAction(doc, { title: fix.title, kind: 'quickfix', edits: fix.edits, preferred: true }, d));
+    }
+    // "This check is wrong…": last in the list (after the fixes), once per check here, never preferred.
+    const seen = new Set<string>();
+    for (const [lintD, d] of byLint) {
+      if (seen.has(lintD.rule)) continue;
+      seen.add(lintD.rule);
+      const a = new vscode.CodeAction(`This check is wrong (${lintD.rule})…`, REPORT_KIND);
+      a.diagnostics = [d];
+      const args: CheckArgs = { uri: doc.uri.toString(), rule: lintD.rule, message: lintD.message, startLine: d.range.start.line, endLine: d.range.end.line, version: lintVersionOf.get(d) };
+      a.command = { title: 'This check is wrong…', command: REPORT_COMMANDS.check, arguments: [args] };
+      actions.push(a);
     }
     return actions;
   }
@@ -464,7 +500,7 @@ function hover(doc: vscode.TextDocument, pos: vscode.Position): vscode.Hover | u
     const e = explainLine(doc.getText(), doc.offsetAt(pos));
     if (e) return new vscode.Hover(markdown(e.markdown), doc.lineAt(pos.line).range);
   }
-  const h = hoverAt(doc.getText(), doc.offsetAt(pos), { own: ownNames(doc), docsLink: docsCommandLink });
+  const h = hoverAt(doc.getText(), doc.offsetAt(pos), { own: ownNames(doc), docsLink: docsCommandLink, webDocsLink: (path) => docsPageUrl(path, 'vscode') });
   return h && new vscode.Hover(markdown(h.markdown), toRange(doc, h.range));
 }
 

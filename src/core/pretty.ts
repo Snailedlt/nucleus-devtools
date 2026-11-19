@@ -67,9 +67,18 @@ function printNode(n: any, src: string): Doc {
         body = n.body.body.map((st: any) => printStatement(st, src));
       } catch (e) {
         if (!(e instanceof Unsupported)) throw e;
-        body = src.slice(n.body.start + 1, n.body.end - 1).trim().split('\n').map((l) => l.trim());
+        // Kept as written: the common indent goes, the nesting inside (a loop's body, a call's arguments) stays.
+        const inner = src.slice(n.body.start + 1, n.body.end - 1);
+        // A first statement on the brace's own line (`function () { if (x) {`) is not part of the common indent.
+        const inline = !/^[ \t]*(\r?\n|$)/.test(inner);
+        const raw = inner.replace(/\t/g, '    ').replace(/^\s*\n/, '').trimEnd().split('\n').map((l) => l.trimEnd());
+        const rest = inline ? raw.slice(1) : raw;
+        let common = Infinity; // (a loop, not Math.min(...): a long body would overflow the call's arguments)
+        for (const l of rest) if (l.trim()) common = Math.min(common, l.match(/^ */)![0].length);
+        body = raw.map((l, i) => (inline && i === 0 ? l.trim() : l.slice(Number.isFinite(common) ? common : 0)));
       }
-      return [...head, '{', indent(...body.flatMap((d) => [hardline, d])), hardline, '}'];
+      // One array, not spread: a long body would overflow the call's arguments.
+      return [...head, '{', indent(body.flatMap((d) => [hardline, d])), hardline, '}'];
     }
     default:
       throw new Unsupported();

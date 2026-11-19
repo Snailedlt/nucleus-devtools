@@ -45,6 +45,10 @@ test('wrong ExecutableName: warning with did-you-mean and a fix', () => {
   // Engine facts are in the folder summary, not problems.
   assert.ok(!ps.some((x) => x.title.startsWith('Game folder:')));
   assert.deepEqual(gf.engineFacts(unreal).map((f) => f.id).sort(), ['steam', 'unreal', 'xinput']);
+  // Facts about the game come marked as facts (editors show them as hints, not squiggles); real mismatches don't.
+  const facts = ps.filter((x) => x.fact);
+  assert.ok(facts.length && facts.every((x) => x.title.startsWith('Your game: ')), JSON.stringify(facts));
+  assert.ok(!p.fact);
 });
 
 test('wrong ExecutableName, not a near spelling: the one exe with the same start is offered (Unreal -Shipping)', () => {

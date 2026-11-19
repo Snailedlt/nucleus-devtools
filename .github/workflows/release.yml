@@ -16,12 +16,18 @@ on:
 
 permissions:
   contents: write
+  issues: write # "This is in vX.Y.Z" on the issues the release fixes
 
 jobs:
   release:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The history without file contents: npm test checks that the AI docs' links to this repository's own
+          # files are at each file's last change (src/test/docs.test.ts).
+          fetch-depth: 0
+          filter: blob:none
       - name: Only from main (or a pushed tag)
         if: github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'
         run: |
@@ -79,6 +85,23 @@ jobs:
         run: |
           node scripts/release-notes.mjs --tag "$TAG" --discord --json > discord.json
           node scripts/announce.mjs discord.json
+      - name: Tell the issues it fixes (never fails the release)
+        id: fixed
+        continue-on-error: true
+        uses: actions/github-script@v7
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+        with:
+          script: |
+            // scripts/issue-bots.mjs (tested by src/test/bots.test.ts): "Fixes #N" in the commits since the last release,
+            // and the issues the CHANGELOG section names under Fixed or as (#N). This repository only, once per issue.
+            const fs = require('fs');
+            const bots = await import(`${process.env.GITHUB_WORKSPACE}/scripts/issue-bots.mjs`);
+            const tag = process.env.TAG;
+            const url = `https://github.com/${context.repo.owner}/${context.repo.repo}/releases/tag/${tag}`;
+            const commits = await bots.commitsSincePrevious({ github, context, tag, prefix: 'v', core });
+            const done = await bots.runFixedComments({ github, context, tag, url, notes: fs.readFileSync('release-notes.md', 'utf8'), commits, core });
+            core.setOutput('issues', done.map((n) => `#${n}`).join(', '));
       - name: Summary (links and the Discord post)
         env:
           TAG: ${{ steps.version.outputs.tag }}
@@ -97,6 +120,7 @@ jobs:
             echo
             if [ -n "${{ secrets.DISCORD_WEBHOOKS != '' && 'yes' || '' }}" ]; then echo "Posted to Discord automatically (DISCORD_WEBHOOKS)."; else echo "To post it automatically next time, add a DISCORD_WEBHOOKS secret (one Discord webhook URL per line)."; fi
             echo
+            if [ -n "${{ steps.fixed.outputs.issues }}" ]; then echo "Told the issues it fixes: ${{ steps.fixed.outputs.issues }}"; echo; fi
             echo "The intro page's download link and the extension's update note pick up the new version by themselves; ncdev update and the Notepad++ plugin see the new ncdev.exe."
             echo
             echo "<details><summary>Notepad++ Plugins Admin entries (for a pull request to notepad-plus-plus/nppPluginList; not listed automatically)</summary>"

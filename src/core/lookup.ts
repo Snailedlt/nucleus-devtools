@@ -1,6 +1,14 @@
 // API lookup/search for agents and the CLI (`nucleus api ...`), and the
 // Markdown API reference shipped with the agent skill.
-import { api, claudeNote, Member, memberSignature, ownerLabel, suggest } from './api';
+import { api, claudeNote, exampleSource, Member, memberSignature, ownerLabel, practiceNote, suggest } from './api';
+import { prettyCode } from './pretty';
+import { DocPart, partVotes, verifiedLabel, votesLine } from './docvotes';
+
+/** ' Verified by people (12 votes).' for an AI-written part that is ('' otherwise). */
+const verifiedText = (path: string, part: DocPart, aiWritten: boolean) => {
+  const l = aiWritten ? verifiedLabel(partVotes(path, part)) : '';
+  return l ? ` ${l}.` : '';
+};
 
 export interface Entry {
   /** Display path, e.g. "Game.Hook.ForceFocus". */
@@ -150,11 +158,13 @@ export function search(query: string, limit = 20): Entry[] {
       // Context.X fields that mirror Game.X are rarely what you want to set.
       if (e.owner === 'Context' && api.objects.Game.members[e.name] && e.member.kind !== 'method') score -= 5;
       if (!e.member.doc) score -= 1;
+      // Game.* first: what a handler sets; the rest is mostly called from inside its functions.
+      if (e.path.startsWith('Game.')) score += 2;
       return { e, score };
     })
     .filter((x) => x.score > 0)
     // Equal scores: the shorter name first ("mutex" finds KillMutex before KillLastInstanceMutex), then A–Z.
-    .sort((a, b) => b.score - a.score || a.e.name.length - b.e.name.length || a.e.path.localeCompare(b.e.path));
+    .sort((a, b) => b.score - a.score || Number(b.e.path.startsWith('Game.')) - Number(a.e.path.startsWith('Game.')) || a.e.name.length - b.e.name.length || a.e.path.localeCompare(b.e.path));
   return scored.slice(0, limit).map((x) => x.e);
 }
 
@@ -169,8 +179,14 @@ export function formatEntry(e: Entry, verbose = true): string {
   if (meta.length) lines.push(`  (${meta.join('; ')})`);
   if (m.deprecated) lines.push(`  ${m.deprecated}`);
   if (verbose && m.doc) lines.push(...m.doc.split('\n').map((l) => `  ${l}`));
-  if (verbose && claudeNote(m)) lines.push(`  [${claudeNote(m)}]`);
-  if (verbose && m.example) lines.push(`  Example: ${m.example}`);
+  if (verbose && claudeNote(m)) lines.push(`  [${claudeNote(m)}${verifiedText(e.path, 'doc', m.docBy === 'claude')}]`);
+  if (verbose && m.practice) lines.push('  In practice (AI-written):', ...m.practice.split('\n').map((l) => `  ${l}`), `  [${practiceNote(m)}${verifiedText(e.path, 'practice', true)}]`);
+  if (verbose && m.byEngine) lines.push(`  ${m.byEngine}`);
+  if (verbose) for (const [part, label] of [['doc', 'Doc'], ['practice', 'In practice']] as const) {
+    const v = votesLine(partVotes(e.path, part));
+    if (v && (part === 'doc' ? m.doc : m.practice)) lines.push(`  Votes on the ${label === 'Doc' ? 'doc' : '"In practice" part'}: ${v}`);
+  }
+  if (verbose && m.example) lines.push(`  Example${exampleSource(m) ? ` (${exampleSource(m)})` : ''}:`, ...prettyCode(m.example).split('\n').map((l) => `    ${l}`));
   return lines.join('\n');
 }
 
@@ -201,8 +217,10 @@ export function markdownReference(): string {
       if (meta.length) out.push(meta.join(' · '));
       if (m.deprecated) out.push(`**${m.deprecated}**`);
       if (m.doc) out.push(m.doc);
-      if (claudeNote(m)) out.push(`_✎ ${claudeNote(m)}_`);
-      if (m.example) out.push('Example: `' + m.example + '`');
+      if (claudeNote(m)) out.push(`_✎ ${claudeNote(m)}${verifiedText(e.path, 'doc', m.docBy === 'claude')}_`);
+      if (m.practice) out.push(`In practice (AI-written): ${m.practice}`, `_✎ ${practiceNote(m)}${verifiedText(e.path, 'practice', true)}_`);
+      if (m.byEngine) out.push(m.byEngine);
+      if (m.example) out.push('Example' + (exampleSource(m) ? ` (${exampleSource(m)})` : '') + ':', '```js', prettyCode(m.example), '```');
       out.push('');
     }
   }

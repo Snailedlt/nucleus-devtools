@@ -163,6 +163,13 @@ const NUCLEUS: Record<string, RuleDoc> = {
     good: 'Game.ProtoInput.InjectStartup = true;\nGame.ProtoInput.MessageFilterHook = true;\nGame.ProtoInput.BlockedMessages = [0x0008];',
     fix: 'Pick the message by name from the list (hover a number to see which message it is).',
   },
+  'protoinput-needs-raw-input': {
+    title: 'Key or cursor hooks without raw input',
+    why: 'GetCursorPosHook and the key state hooks answer the game with the player\'s own cursor and keys. Proto Input only reads those keyboards and mice when Game.ProtoInput.RegisterRawInputHook is on, so without it the game sees no key pressed and a frozen cursor.',
+    bad: 'Game.ProtoInput.InjectStartup = true;\nGame.SupportsMultipleKeyboardsAndMice = true;\nGame.ProtoInput.GetKeyStateHook = true;',
+    good: 'Game.ProtoInput.InjectStartup = true;\nGame.SupportsMultipleKeyboardsAndMice = true;\nGame.ProtoInput.RegisterRawInputHook = true;\nGame.ProtoInput.GetKeyStateHook = true;',
+    fix: 'Turn the raw input hook on (the quick fix adds it). Shown only in handlers with Game.SupportsMultipleKeyboardsAndMice; for controller-only players a frozen cursor is harmless.',
+  },
   'needs-option': {
     title: 'An option that needs another one',
     why: 'Nucleus only reads some options when another is on: FakeFocusInterval needs FakeFocus, SteamlessArgs needs UseSteamless, and so on. Alone, it does nothing.',
@@ -176,6 +183,13 @@ const NUCLEUS: Record<string, RuleDoc> = {
     bad: 'Game.AddOption("Players", "", "players", ["2", "4"]);\nGame.Play = function () {\n  if (Context.Options["players"] === 4) {\n    Context.StartArguments = "-four";\n  }\n};',
     good: 'Game.AddOption("Players", "", "players", ["2", "4"]);\nGame.Play = function () {\n  if (Context.Options["players"] == "4") {\n    Context.StartArguments = "-four";\n  }\n};',
     fix: 'Compare with text ("4", "Yes") or with `==`, which matches "4" and 4; give yes/no options text values such as "Yes" and "No". The quick fix changes `===` to `==`.',
+  },
+  'unused-option': {
+    title: 'An option nothing reads',
+    why: 'Nucleus shows the option and stores the player\'s choice, but never reads it itself (`Game.ShowOptionAsStep` only asks for it): only the handler\'s own `Context.Options["key"]` does. With no such read, the choice changes nothing, and players think a setting works when it doesn\'t. Shown faded, like unused code.',
+    bad: 'Game.AddOption("FPS cap", "", "fps", ["30", "60"]);\nGame.Play = function () {\n  Context.StartArguments = "-windowed";\n};',
+    good: 'Game.AddOption("FPS cap", "", "fps", ["30", "60"]);\nGame.Play = function () {\n  var fps = Context.Options["fps"];\n  Context.StartArguments = "-windowed -fps " + fps;\n};',
+    fix: 'Read the option where the choice matters (usually in `Game.Play`), check the key is spelled the same in both places, or remove the option. The quick fix removes the line when nothing else names the key.',
   },
   'guid-changed': {
     title: 'A GUID that differs from the Hub',
@@ -191,7 +205,7 @@ const NUCLEUS: Record<string, RuleDoc> = {
   },
   'undefined-name': {
     title: 'A name that doesn\'t exist',
-    why: 'Nothing declares this name and Nucleus doesn\'t provide it: a typo, a stray word or a variable from another handler. Reading it throws "<name> is not defined": at the top level the handler fails to load, in Game.Play the session ends.',
+    why: 'Nothing declares this name and Nucleus doesn\'t provide it: a typo, a stray word or a variable from another handler. Reading it throws "<name> is not defined": at the top level the handler fails to load, in Game.Play the session ends. Inside a function nothing in the handler calls, it\'s only a warning: that code never runs until something calls it.',
     bad: 'Game.Play = function () {\n  var args = "-w " + widht;\n};',
     good: 'Game.Play = function () {\n  var width = Context.Width;\n  var args = "-w " + width;\n};',
     fix: 'Fix the spelling (the problem suggests the closest name) or declare the variable first.',

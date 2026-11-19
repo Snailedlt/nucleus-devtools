@@ -63,5 +63,15 @@
     "name": "doc-review",
     "color": "7057ff",
     "description": "A report about an AI-written doc (from the issue form)"
+  },
+  {
+    "name": "check-wrong",
+    "color": "e99695",
+    "description": "A check warns about code that works, or explains it wrong (from the issue form)"
+  },
+  {
+    "name": "feature-request",
+    "color": "a2eeef",
+    "description": "\"I want to do…\": a goal and what's in the way (from the issue form)"
   }
 ]

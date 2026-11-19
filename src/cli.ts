@@ -1,6 +1,7 @@
 // `ncdev` (Nucleus Co-op dev tools): command-line tools for Nucleus Co-op handlers, for people, CI and AI agents.
 // Also a standalone .exe (#18, scripts/sea.mjs). `nucleus` is its old name and still works; `nucleus-lint <paths>`
 // is kept as a shortcut for `ncdev lint <paths>`.
+import { sendAiVote } from './aivote';
 import { installHandler } from './install';
 import { AFTER_START, debugLogOn, debugLogPath, nucleusStatus, setDebugLog, stopNucleus, testInNucleus } from './nucleusrun';
 import { lintPluginsFor } from './plugins';
@@ -10,7 +11,7 @@ import { publishedFor } from './published';
 import fs from 'node:fs';
 import path from 'node:path';
 import { lint, lineOf, lineStart, RULES, RuleId, Severity, LintOptions, looksLikeHandler } from './core/lint';
-import { fixAll } from './core/fix';
+import { fixAll, matchLeftAfterFix } from './core/fix';
 import { formatHandler } from './core/format';
 import { lookup, search, formatEntry, formatObject, markdownReference } from './core/lookup';
 import { handlerPageUrl, HubHandler } from './core/hub';
@@ -30,7 +31,12 @@ import os from 'node:os';
 import { EVERY_KEYBOARD } from './core/sim';
 import { formatSimulation } from './simformat';
 import { serve } from './mcp';
+import { readGameBinaries } from './gamefolder-node';
+import { analyse, exePath, findExes, importsReport } from './core/importhooks';
+import type { PeFile } from './core/pe';
 import { serve as serveLsp } from './lsp';
+import { buildReport, DISCORD_THREAD, findDuplicates, handlerHelp, handlerOrigin, simSummary, type ReportInput } from './core/report';
+import { spawn } from 'node:child_process';
 
 const HELP = `ncdev ${VERSION}: Nucleus Co-op dev tools (\`nucleus\` is the old name and still works)
 
@@ -47,6 +53,9 @@ Commands:
                               "Context.ModifySaveFile", "KillMutex", "Nucleus.Folder"
   api --search <words>        Search API names and docs, e.g. "api --search mutex"
   api --markdown              Print the full API reference as Markdown
+  docs vote <name> <doc|practice> <up|down>
+                              For AI agents: vote on a doc you checked against Nucleus' source (counted
+                              apart from people's votes; part "practice" is the AI-written "In practice")
   simulate <handler.js> [--players N] [--resolution 1920x1080] [--keyboard 1|all|none]
                               "Try it": load the handler and run Game.Play for each player the
                               way Nucleus would (emulating its Jint engine), without Nucleus or
@@ -77,6 +86,11 @@ Commands:
                               Build a Hub package (handler.js + the <Name>/ asset folder)
   init-agent [dir]            Install AI agent instructions and this tool into a handler folder
                               (AGENTS.md, CLAUDE.md, .claude/skills/nucleus-handler/)
+  imports <game folder|file>... [--exe <name.exe>] [--no-controllers] [--no-kbm] [--list]
+                              What the game's .exe and DLLs use (controllers, cursor, keys, focus,
+                              windows) and the Proto Input hooks and Nucleus options that match,
+                              with the lines to add. Follows a launcher to the game it starts.
+                              --list prints every import and export too. Reads only the files' tables
   rules [<id>]                List lint rules; with an id, that check explained (why, fix, examples)
   explain <handler.js> --line N
                               What line N does, in plain words: its names' docs and its problems
@@ -99,6 +113,14 @@ Commands:
                               itself, checked against the release's SHA-256 sums). --check only
                               says whether there is one (exit code 10 if so)
   --version                   Show the version
+  report [problem|feature|tryit] [handler.js] [--open] [--text]
+  report --check <rule> <handler.js> [--line N] [--no-code] [--open] [--text]
+                              Report a problem, ask for a feature ("I want to do…"), say Try it
+                              differs from Nucleus, or that a check is wrong: prints the prefilled
+                              GitHub form's link (versions, the check, where the handler is from;
+                              only the flagged lines of code, unless --no-code) and open reports
+                              that may be the same. --open opens it in the browser; --text prints
+                              the report to paste in the testers' Discord thread (no GitHub account)
   dap                         Run as a Debug Adapter (stdio) for editors with DAP support: nvim-dap,
                               Helix, Zed, JetBrains, Emacs (dape) (PORTING.md, "Debugging")
 
@@ -127,7 +149,7 @@ interface Args {
   positional: string[];
   flags: Map<string, string[]>;
 }
-const BOOL_FLAGS = new Set(['--elevated', '--version', '-v', '--from-notepad++', '--step', '--json', '--stdio', '--all', '--quiet', '--verbose', '--force', '--search', '--markdown', '--fix', '--fix-dry-run', '--hub', '--write', '--check', '--remove', '--list-features', '--popular', '--restart', '--status', '-h', '--help']);
+const BOOL_FLAGS = new Set(['--no-controllers', '--no-kbm', '--list', '--open', '--no-code', '--text', '--elevated', '--version', '-v', '--from-notepad++', '--step', '--json', '--stdio', '--all', '--quiet', '--verbose', '--force', '--search', '--markdown', '--fix', '--fix-dry-run', '--hub', '--write', '--check', '--remove', '--list-features', '--popular', '--restart', '--status', '-h', '--help']);
 function parseArgs(argv: string[]): Args {
   const a: Args = { positional: [], flags: new Map() };
   for (let i = 0; i < argv.length; i++) {
@@ -160,11 +182,17 @@ async function main(argv: string[]): Promise<number> {
       rl.close();
     }
   }
-  const commands = ['lint', 'format', 'simulate', 'api', 'hub', 'new', 'install', 'test', 'package', 'init-agent', 'rules', 'mcp', 'lsp', 'dap', 'setup', 'workbench', 'debug', 'explain', 'update', 'version'];
+  const commands = ['report', 'lint', 'format', 'simulate', 'api', 'docs', 'hub', 'new', 'install', 'test', 'package', 'imports', 'init-agent', 'rules', 'mcp', 'lsp', 'dap', 'setup', 'workbench', 'debug', 'explain', 'update', 'version'];
   let cmd = argv[0] && commands.includes(argv[0]) ? argv.shift()! : undefined;
   if (!cmd && (argv[0] === '--version' || argv[0] === '-v')) cmd = 'version';
   if (path.basename(process.argv[1] ?? '').startsWith('nucleus-lint')) cmd ??= 'lint';
   if (argv.includes('--list-rules')) cmd = 'rules';
+  // `report --check <rule>`: here --check takes a value (elsewhere it's a switch).
+  if (cmd === 'report') {
+    const i = argv.indexOf('--check');
+    if (i >= 0 && argv[i + 1] && !argv[i + 1].startsWith('-')) argv.splice(i, 2, '--check-rule', argv[i + 1]);
+    else if (i >= 0) throw new Usage('report --check: give the check (its rule id, e.g. --check unknown-member)');
+  }
   const args = parseArgs(argv);
   if (!cmd) {
     if (has(args, '-h') || has(args, '--help') || !args.positional.length) {
@@ -172,6 +200,9 @@ async function main(argv: string[]): Promise<number> {
       return args.positional.length || has(args, '-h') || has(args, '--help') ? 0 : 2;
     }
     cmd = 'lint';
+  } else if (has(args, '-h') || has(args, '--help')) {
+    console.log(commandHelp(cmd));
+    return 0;
   }
   const json = has(args, '--json');
   switch (cmd) {
@@ -196,6 +227,8 @@ async function main(argv: string[]): Promise<number> {
       return cmdExplain(args, json);
     case 'api':
       return cmdApi(args, json);
+    case 'docs':
+      return cmdDocs(args, json);
     case 'hub':
       return cmdHub(args, json);
     case 'new':
@@ -206,6 +239,8 @@ async function main(argv: string[]): Promise<number> {
       return cmdTest(args, json);
     case 'package':
       return cmdPackage(args, json);
+    case 'imports':
+      return cmdImports(args, json);
     case 'init-agent':
       return cmdInitAgent(args, json);
     case 'mcp':
@@ -224,6 +259,8 @@ async function main(argv: string[]): Promise<number> {
       return serveDap().then((code) => process.exit(code));
     case 'workbench':
       return cmdWorkbench(args, json);
+    case 'report':
+      return cmdReport(args, json);
   }
   return 2;
 }
@@ -264,21 +301,36 @@ async function cmdLint(args: Args, json: boolean): Promise<number> {
     if (!all && !files.includes(file) && !looksLikeHandler(text)) continue;
     linted++;
     let fixed: { rule: string; title: string; line: number }[] = [];
+    let fixedText: string | undefined;
     const fileOptions = { ...options, plugins: lintPluginsFor(file), published: has(args, '--hub') ? await publishedFor(text) : undefined };
     if (fixMode) {
       const r = fixAll(text, fileOptions);
       fixed = r.applied;
-      if (r.code !== text) {
-        if (fixMode === 'write') fs.writeFileSync(file, (original.startsWith('﻿') ? '﻿' : '') + r.code);
+      fixedText = r.code;
+      if (r.code !== text && fixMode === 'write') {
+        fs.writeFileSync(file, (original.startsWith('﻿') ? '﻿' : '') + r.code);
         text = r.code;
       }
     }
-    const diags = lint(text, fileOptions).filter((d) => (quiet ? d.severity === 'error' : verbose || d.severity !== 'hint'));
+    // A dry run leaves the file as it is: what's left is shown at the file's own lines (core/fix.ts matchLeftAfterFix).
+    let found = lint(text, fileOptions);
+    let extra: ((typeof found)[number] & { line: number; column: number })[] = [];
+    if (fixMode === 'dry' && fixedText !== undefined && fixed.length) {
+      const r = matchLeftAfterFix(text, found, fixed, lint(fixedText, fileOptions));
+      found = r.kept;
+      extra = r.extra.map((l) => ({ ...l, line: lineOf(fixedText!, l.start) + 1, column: l.start - lineStart(fixedText!, l.start) + 1 }));
+    }
+    const diags = found.filter((d) => (quiet ? d.severity === 'error' : verbose || d.severity !== 'hint'));
     for (const d of diags) {
       if (d.severity === 'error') errors++;
       else if (d.severity === 'warning') warnings++;
     }
     const withPos = diags.map((d) => ({ ...d, line: lineOf(text, d.start) + 1, column: d.start - lineStart(text, d.start) + 1 }));
+    for (const d of extra.filter((d) => (quiet ? d.severity === 'error' : verbose || d.severity !== 'hint'))) {
+      if (d.severity === 'error') errors++;
+      else if (d.severity === 'warning') warnings++;
+      withPos.push(d);
+    }
     // The handler's folder (<Name>/ next to <Name>.js), as it goes into the .nc: core/pkgcheck.ts.
     const pkgFiles = packageFilesFor(file, 0);
     const pkg = (pkgFiles ? checkPackage(text, pkgFiles) : []).filter((p) => (quiet ? p.severity === 'error' : true));
@@ -292,7 +344,7 @@ async function cmdLint(args: Args, json: boolean): Promise<number> {
       out.push({ file, ...(fixMode ? { fixed } : {}), diagnostics: withPos, ...(pkgOut.length ? { package: pkgOut } : {}) });
       continue;
     }
-    if (!diags.length && !fixed.length && !pkgOut.length) continue;
+    if (!withPos.length && !fixed.length && !pkgOut.length) continue;
     console.log(file);
     for (const f of fixed) console.log(`  ${`${f.line}`.padEnd(9)} ${(fixMode === 'dry' ? 'would fix' : 'fixed').padEnd(8)} ${f.title}  [${f.rule}]`);
     for (const d of withPos) {
@@ -391,6 +443,15 @@ function cmdDebug(args: Args, json: boolean): number {
   const r = runDebug(src, opts, { breakpoints, watches: args.flags.get('--watch') ?? [], step: has(args, '--step') });
   print(json, { file, ...r.data }, () => r.text);
   return r.failed ? 1 : 0;
+}
+
+/** `ncdev docs vote <name> <doc|practice> <up|down>`: an AI agent's vote on a doc it checked (src/aivote.ts). */
+async function cmdDocs(args: Args, json: boolean): Promise<number> {
+  const [sub, name, part, vote] = args.positional;
+  if (sub !== 'vote' || !name || !part || !vote) throw new Usage('docs: "ncdev docs vote <name> <doc|practice> <up|down>", e.g. "ncdev docs vote Game.KillMutex practice up" (for AI agents that checked it)');
+  const r = await sendAiVote(name, part, vote, VERSION);
+  print(json, r, () => r.message);
+  return r.ok ? 0 : 1;
 }
 
 function cmdApi(args: Args, json: boolean): number {
@@ -531,6 +592,45 @@ async function cmdTest(args: Args, json: boolean): Promise<number> {
   return 0;
 }
 
+// ncdev imports: a game's program files read for the hooks a handler likely needs (core/pe.ts, core/importhooks.ts).
+/** `ncdev <command> --help`: that command's lines from HELP (and their continuation lines), or all of HELP. */
+function commandHelp(cmd: string): string {
+  const lines = HELP.split('\n');
+  const out: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    if (!lines[i].startsWith(`  ${cmd} `) && lines[i] !== `  ${cmd}`) continue;
+    out.push(lines[i]);
+    while (i + 1 < lines.length && /^ {6,}\S/.test(lines[i + 1])) out.push(lines[++i]);
+  }
+  return out.length ? `Usage:\n${out.join('\n')}\n\nRun "ncdev --help" for every command and option.` : HELP;
+}
+
+function cmdImports(args: Args, json: boolean): number {
+  if (!args.positional.length) throw new Usage('imports: give the game folder (or its .exe and DLLs)');
+  const missing = args.positional.filter((p) => !fs.existsSync(p));
+  if (missing.length) throw new Error(`${missing.join(', ')} doesn't exist`);
+  const files = readGameBinaries(args.positional);
+  if (!files.length) throw new Error(`No .exe or .dll files in ${args.positional.join(', ')}`);
+  const exe = flag(args, '--exe');
+  const exeHits = exe ? findExes(files.filter((f) => !f.dll), exe) : [];
+  if (exe && !exeHits.length)
+    throw new Error(`--exe: no program called ${exe} there (found: ${files.filter((f) => !f.dll).map((f) => f.fileName).join(', ') || 'none'})`);
+  if (exeHits.length > 1) throw new Error(`--exe: ${exe} could be ${exeHits.map(exePath).join(' or ')}; give one of those paths`);
+  const a = analyse(files, exeHits[0]);
+  const opts = { controllers: !has(args, '--no-controllers'), kbm: !has(args, '--no-kbm') };
+  const listing = (f: PeFile) => [
+    `${f.fileName} (${f.is64 ? '64' : '32'}-bit ${f.dll ? 'DLL' : 'program'}, ${a.roles.get(f)})`,
+    ...f.imports.map((im) => `  ${im.dll}${im.delay ? ' (delay-loaded)' : ''}: ${im.fns.map((x) => x.name || '#' + x.ord).join(', ')}`),
+    ...(f.exports.length ? [`  exports: ${f.exports.map((e) => e.name || '#' + e.ord).join(', ')}`] : []),
+  ].join('\n');
+  print(json, {
+    game: a.main?.fileName, launchers: a.launchers.map((f) => f.fileName),
+    files: files.map((f) => ({ file: f.fileName, role: a.roles.get(f), is64: f.is64, dll: f.dll, imports: has(args, '--list') ? f.imports : f.imports.length, exports: has(args, '--list') ? f.exports : f.exports.length, loads: f.rt.filter((x) => /\.dll$/i.test(x)) })),
+    findings: a.found.filter((f) => (opts.controllers || !f.rule.ctl) && (opts.kbm || !f.rule.kbm)).map((f) => ({ id: f.rule.id, area: f.rule.area, title: f.rule.title, why: f.rule.why, group: f.rule.ctl ? 'controllers' : f.rule.kbm ? (f.rule.detail ? 'kbm-detail' : 'kbm') : f.rule.maybe ? 'only-if' : 'game', lines: f.lines, found: f.hits })),
+  }, () => importsReport(a, opts) + (has(args, '--list') ? '\n\n' + files.map(listing).join('\n\n') : ''));
+  return 0;
+}
+
 function cmdPackage(args: Args, json: boolean): number {
   const file = args.positional[0];
   if (!file?.endsWith('.js')) throw new Usage('package: give the handler .js file');
@@ -544,6 +644,73 @@ function cmdPackage(args: Args, json: boolean): number {
 }
 
 /** Saves the newest release's workbench.html: the whole browser workbench in one offline file. */
+/** Opens a link in the default browser: true once the opener started, false when it couldn't (no xdg-open: the
+ *  error comes after spawn returns, so this waits for one or the other). */
+function openInBrowser(url: string): Promise<boolean> {
+  return new Promise((resolve) => {
+    try {
+      const [c, a] = process.platform === 'win32' ? ['cmd', ['/c', 'start', '""', url.replace(/&/g, '^&')]] : process.platform === 'darwin' ? ['open', [url]] : ['xdg-open', [url]];
+      const p = spawn(c, a as string[], { detached: true, stdio: 'ignore', windowsVerbatimArguments: process.platform === 'win32' });
+      p.once('spawn', () => { p.unref(); resolve(true); });
+      p.once('error', () => resolve(false));
+    } catch {
+      resolve(false);
+    }
+  });
+}
+
+async function cmdReport(args: Args, json: boolean): Promise<number> {
+  const rule = flag(args, '--check-rule');
+  const words = ['problem', 'feature', 'tryit', 'check'];
+  const first0 = args.positional[0];
+  if (!rule && first0 && !words.includes(first0) && !fs.existsSync(first0) && !/\.js$/i.test(first0))
+    throw new Usage(`report: "${first0}" is neither a kind of report (${words.join(', ')}) nor a handler file`);
+  const kind = (rule ? 'check' : words.includes(args.positional[0]) ? args.positional.shift()! : 'problem') as ReportInput['kind'];
+  if (kind === 'check' && !rule) throw new Usage('report --check <rule> <handler.js>: which check is wrong? (ncdev rules lists them)');
+  if (rule && !(rule in RULES)) throw new Usage(`report: no check called "${rule}" (ncdev rules lists them)`);
+  const file = args.positional[0];
+  if (file && !fs.existsSync(file)) throw new Error(`${file} doesn't exist`);
+  if (kind === 'check' && !file) throw new Usage('report --check <rule> <handler.js>: give the handler, so the report has the flagged line');
+  const text = file ? fs.readFileSync(file, 'utf8') : undefined;
+  const input: ReportInput = { kind, tool: 'ncdev', version: `ncdev ${VERSION}`, details: [`ncdev: ${VERSION}${isStandalone() ? ' (standalone)' : ''}`, `OS: ${process.platform} ${process.arch}`], handler: text !== undefined ? handlerOrigin(text) : undefined };
+  if (kind === 'check' && text !== undefined) {
+    // The flagged line: --line, else the check's first problem in the file.
+    const want = flag(args, '--line') ? Number(flag(args, '--line')) : undefined;
+    const count = text.split(/\r?\n/).length;
+    if (want !== undefined && !(Number.isInteger(want) && want >= 1 && want <= count)) throw new Usage(`report --line: a line number from 1 to ${count}`);
+    const d = lint(text).filter((x) => x.rule === rule).find((x) => want === undefined || lineOf(text, x.start) + 1 === want);
+    if (!d) process.stderr.write(want ? `Note: ${rule} doesn't flag line ${want} of ${file}. If it should, say so on the form.\n` : `Note: ${rule} doesn't flag anything in ${file}.\n`);
+    const lines = text.split(/\r?\n/);
+    const first = d ? lineOf(text, d.start) : want ? want - 1 : undefined;
+    const last = d ? lineOf(text, Math.max(d.start, d.end - 1)) : first;
+    Object.assign(input, { rule, message: d?.message, line: first !== undefined ? first + 1 : undefined, code: first !== undefined && !has(args, '--no-code') ? lines.slice(first, Math.min(last!, first + 19) + 1).join('\n') : undefined });
+  }
+  if (kind === 'tryit' && text !== undefined) input.sim = simSummary(simulateIsolated(text, { players: 2, width: 1920, height: 1080, keyboardPlayer: 0, plugins: pluginsFor(file!) }), { players: 2, resolution: '1920×1080', keyboard: 'player 1' });
+  const r = buildReport(input);
+  if (has(args, '--text')) {
+    print(json, { text: r.text, thread: DISCORD_THREAD }, () => `${r.text}\n\nPaste it in the testers' Discord thread: ${DISCORD_THREAD}`);
+    return 0;
+  }
+  const hits = process.env.NCDEV_NO_ISSUE_SEARCH ? [] : await findDuplicates(r, { userAgent: `ncdev/${VERSION}`, timeoutMs: 5000 });
+  const help = kind === 'problem' && input.handler?.hubId ? handlerHelp(input.handler) : undefined;
+  const opened = has(args, '--open') && (await openInBrowser(r.url));
+  print(json, { title: r.title, repo: r.repo, template: r.template, url: r.url, duplicates: hits, handlerHelp: help, opened }, () =>
+    [
+      `${r.title || (kind === 'feature' ? 'A feature request' : 'A report')} (${r.repo}, ${r.template})`,
+      ...(hits.length ? ['', 'Is it one of these? Open it and add a 👍 or a comment:', ...hits.map((h) => `  #${h.number} ${h.title}${h.thumbs ? ` (👍 ${h.thumbs})` : ''}\n    ${h.url}`)] : []),
+      ...(help ? ['', `Is the problem in this handler, not the tools? ${help.note}`, ...help.links.map((l) => `  ${l.label}: ${l.url}`)] : []),
+      '',
+      // The browser may still fail to start (no xdg-open): the link is always printed.
+      opened ? 'Opening the form in your browser: check it, then submit. If it didn\'t open, use this link:' : 'Open this link to send it (you see everything before it is sent):',
+      r.url,
+      ...(input.code ? ['', 'It includes the flagged line(s) only. Leave them out with --no-code, or delete them on the form.'] : []),
+      '',
+      `No GitHub account? ncdev report … --text prints it to paste in the testers' Discord thread: ${DISCORD_THREAD}`,
+    ].join('\n'),
+  );
+  return 0;
+}
+
 async function cmdWorkbench(args: Args, json: boolean): Promise<number> {
   const out = flag(args, '--out') ?? 'nucleus-workbench.html';
   if (fs.existsSync(out) && !has(args, '--force')) throw new Error(`${out} already exists (use --force to overwrite)`);

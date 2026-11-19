@@ -3,7 +3,7 @@ import { WORKBENCH_URL } from './core/sharelink';
 import * as vscode from 'vscode';
 import * as path from 'node:path';
 import * as fs from 'node:fs/promises';
-import { FEATURES, renderHandler, toHandlerFileName, validateGameName, Feature } from './core/templates';
+import { toHandlerFileName } from './core/templates';
 import { writeZip, handlerPackageEntries } from './core/zip';
 import { handlerPageUrl, HubHandler } from './core/hub';
 import { hubHandlers, hubPackage } from './hubcache';
@@ -12,6 +12,9 @@ import { findSkillDir, installAgentKit } from './core/pkg';
 import { gameFolderName } from './core/pkgcheck';
 import { ruleOverrides } from './settings';
 import { installHandler as installFiles, InstallError } from './install';
+import { log, status } from './log';
+import { newHandler } from './newhandler';
+import { webLinks } from './docspanel';
 import { AFTER_START, debugLogOn, debugLogPath, nucleusStatus, setDebugLog, stopNucleus, testInNucleus } from './nucleusrun';
 
 export interface CommandHost {
@@ -25,7 +28,9 @@ export function registerCommands(context: vscode.ExtensionContext, host: Command
         try {
           await fn(...args);
         } catch (e: any) {
-          vscode.window.showErrorMessage(`SplitScreen.Me: ${e?.message ?? e}`);
+          log.error(id, e);
+          const pick = await vscode.window.showErrorMessage(`Nucleus: ${e?.message ?? e}`, 'Show Log');
+          if (pick) log.show();
         }
       }),
     );
@@ -61,57 +66,6 @@ async function trusted(what: string): Promise<boolean> {
 }
 
 // ---------------------------------------------------------------------------
-
-async function newHandler() {
-  const gameName = await vscode.window.showInputBox({
-    title: 'New Nucleus handler (1/4)',
-    prompt: 'Game name, as shown in Nucleus',
-    placeHolder: 'e.g. Borderlands 2',
-    validateInput: (v) => validateGameName(v),
-  });
-  if (!gameName) return;
-  const executableName = await vscode.window.showInputBox({
-    title: 'New Nucleus handler (2/4)',
-    prompt: 'Game executable file name (used to find the game)',
-    placeHolder: 'e.g. Borderlands2.exe',
-    validateInput: (v) => (/^[^\\/:*?"<>|]+\.exe$/i.test(v.trim()) ? undefined : 'Enter a file name ending in .exe'),
-  });
-  if (!executableName) return;
-  const steamId = await vscode.window.showInputBox({
-    title: 'New Nucleus handler (3/4)',
-    prompt: 'Steam app ID (optional, find it on steamdb.info)',
-    validateInput: (v) => (!v || /^\d+$/.test(v.trim()) ? undefined : 'Digits only'),
-  });
-  if (steamId === undefined) return;
-  const picked = await vscode.window.showQuickPick(
-    FEATURES.map((f) => ({ label: f.label, detail: f.detail, id: f.id })),
-    { title: 'New Nucleus handler (4/4): optional features', canPickMany: true },
-  );
-  if (!picked) return;
-
-  const content = renderHandler({
-    gameName: gameName.trim(),
-    executableName: executableName.trim(),
-    steamId: steamId.trim() || undefined,
-    features: picked.map((p) => p.id as Feature),
-  });
-
-  const folder = vscode.workspace.workspaceFolders?.[0]?.uri;
-  const fileName = `${toHandlerFileName(gameName)}.js`;
-  const target = await vscode.window.showSaveDialog({
-    defaultUri: folder ? vscode.Uri.joinPath(folder, fileName) : undefined,
-    filters: { 'Nucleus handler': ['js'] },
-    title: 'Save handler',
-  });
-  if (!target) {
-    const asHandler = vscode.workspace.getConfiguration('splitscreenme').get('languageMode', 'handler') === 'handler';
-    const doc = await vscode.workspace.openTextDocument({ language: asHandler ? 'nucleus-handler' : 'javascript', content });
-    await vscode.window.showTextDocument(doc);
-    return;
-  }
-  await vscode.workspace.fs.writeFile(target, Buffer.from(content, 'utf8'));
-  await vscode.window.showTextDocument(target);
-}
 
 // ---------------------------------------------------------------------------
 
@@ -175,6 +129,7 @@ async function packageHandler(uri?: vscode.Uri) {
   });
   if (!target) return;
   await vscode.workspace.fs.writeFile(target, writeZip(entries));
+  log.info(`Packaged ${file.fsPath} into ${target.fsPath} (${files.length} file(s) from ${base}/)`);
   const msg = files.length
     ? `Packaged handler.js and ${files.length} file(s) from "${base}/" into ${path.basename(target.fsPath)}.`
     : `Packaged ${path.basename(target.fsPath)} (no "${base}/" asset folder found next to the handler).`;
@@ -229,6 +184,7 @@ async function testHandlerInNucleus(context: vscode.ExtensionContext, uri?: vsco
     await context.globalState.update('nucleus.debugLogAsked', true);
     if (on === 'Turn it on') setDebugLog(nucleus, true);
   }
+  log.info(`Test in Nucleus Co-op: ${file.fsPath} (Nucleus Co-op in ${nucleus})`);
   testInNucleus(file.fsPath, nucleus);
   const pick = await vscode.window.showInformationMessage(AFTER_START, ...(debugLogOn(nucleus) ? ['Open the Debug Log'] : []));
   if (pick) await openNucleusLog();
@@ -239,7 +195,7 @@ async function openNucleusLog() {
   if (!nucleus) return;
   const log = debugLogPath(nucleus);
   if (!(await fs.stat(log).then(() => true, () => false))) {
-    vscode.window.showInformationMessage(`Nucleus: there's no debug-log.txt in ${nucleus} yet. Turn on the debug log in Nucleus' settings (or answer yes when testing), then run a test.`);
+    vscode.window.showInformationMessage(`There's no debug-log.txt in ${nucleus} yet. Turn on the debug log in Nucleus' settings (or answer yes when testing), then run a test.`);
     return;
   }
   await vscode.window.showTextDocument(vscode.Uri.file(log), { preview: true });
@@ -269,6 +225,7 @@ async function installHandler(uri?: vscode.Uri) {
     else vscode.window.showErrorMessage(`Couldn't install: ${(e as Error).message}`);
     return;
   }
+  log.info(`Installed ${file.fsPath} into ${handlers}${copied ? ` with ${copied} asset file(s)` : ''}`);
   vscode.window.showInformationMessage(
     `Installed ${base}.js${copied ? ` and ${copied} asset file(s)` : ''} to ${handlers}. Restart Nucleus Co-op (or re-add the game) to pick up changes.`,
   );
@@ -438,21 +395,9 @@ async function openInWorkbench() {
   if (text !== undefined && !withHandler) vscode.window.showInformationMessage('This handler is too large to pass in a link: in the workbench, use Open file… to open it.');
 }
 
+/** The old "Docs: Web Links…" (out of the palette; its id still works): the same links as the Docs panel's main page. */
 async function openDocs() {
-  const links = [
-    { label: 'Handler API reference', url: 'https://www.splitscreen.me/docs/handler-api' },
-    { label: 'Creating handlers (guide)', url: 'https://www.splitscreen.me/docs/create-handlers' },
-    { label: 'Proto Input', url: 'https://www.splitscreen.me/docs/protoinput' },
-    { label: 'FAQ', url: 'https://www.splitscreen.me/docs/faq' },
-    { label: 'Nucleus Co-op docs (legacy)', url: 'https://nucleus-coop.github.io/docs/' },
-    { label: 'Browser workbench (Nucleus: Open in the Browser Workbench opens this handler there)', url: `${WORKBENCH_URL}?ref=vscode` },
-    { label: 'Handler hub', url: 'https://hub.splitscreen.me/' },
-    { label: 'Nucleus Co-op source code', url: 'https://github.com/SplitScreen-Me/splitscreenme-nucleus' },
-    { label: 'PCGamingWiki (check input & multiplayer support)', url: 'https://www.pcgamingwiki.com/wiki/Home' },
-    { label: 'Ask for help: SplitScreen.Me Discord', url: 'https://discord.gg/XxGMkqCf4r' },
-    { label: 'Ask for help: r/nucleuscoop', url: 'https://www.reddit.com/r/nucleuscoop/' },
-  ];
-  const pick = await vscode.window.showQuickPick(links.map((l) => ({ label: l.label, detail: l.url, url: l.url })), { title: 'SplitScreen.Me documentation' });
+  const pick = await vscode.window.showQuickPick(webLinks(`${WORKBENCH_URL}?ref=vscode`).map((l) => ({ label: l.label, detail: l.url, url: l.url })), { title: 'Nucleus Co-op handler documentation' });
   if (pick) vscode.env.openExternal(vscode.Uri.parse(pick.url));
 }
 
@@ -464,7 +409,7 @@ async function lintWorkspace(host: CommandHost) {
     if (looksLikeHandler(text) || /[\\/]handlers[\\/][^\\/]+\.js$/i.test(uri.fsPath)) entries.push({ uri, text });
   }
   host.lintFiles(entries);
-  vscode.window.showInformationMessage(`Linted ${entries.length} handler(s). See the Problems panel.`);
+  status(`checked ${entries.length} handler${entries.length === 1 ? '' : 's'}; the Problems panel lists what they found`, 6000);
   vscode.commands.executeCommand('workbench.actions.view.problems');
 }
 

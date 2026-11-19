@@ -306,7 +306,10 @@ Game.Play = function () {
   const d = only(src, 'option-compare');
   assert.equal(d.length, 6);
   assert.match(d[0].message, /option's values are text.*never true/);
-  assert.equal(apply(src, d[0].fixes![0]).includes('if (p == 4)'), true);
+  assert.equal(apply(src, d[0].fixes![0]).includes('if (p === "4")'), true, 'text values: compare with text first');
+  assert.equal(apply(src, d[0].fixes![1]).includes('if (p == 4)'), true, 'then the loose compare');
+  assert.match(d[0].message, /Compare with text, `=== "4"`; `== 4` also works/);
+  assert.equal(d[1].fixes!.length, 1, 'numbers in the list: only the loose compare fits a fresh pick too');
   assert.match(d[1].message, /saved profile.*always true then/);
   assert.match(d[2].message, /never equals `true`/);
   assert.match(d[3].message, /"False", which counts as true/);
@@ -380,6 +383,27 @@ Game.Play = function () {
   assert.equal(d.length, 2);
   assert.equal(d[0].fixes, undefined, 'answers escaped into alias');
   assert.equal(apply(src, d[1].fixes![0]).includes('case "1":'), true, 'reading other.length keeps the fix');
+});
+
+test('option-compare: no quoted-case fix when the option array is changed by a method, also by a computed name', () => {
+  const mk = (call: string) =>
+    HEADER +
+    `var answers = ["2", "4"];
+${call}
+Game.AddOption("Players", "", "players", answers);
+Game.Play = function () {
+  switch (Context.Options["players"]) { case 2: break; }
+};
+`;
+  for (const call of ['answers["push"](2);', 'answers.splice(0, 1, 2);']) {
+    const d = only(mk(call), 'option-compare');
+    assert.equal(d.length, 1);
+    assert.equal(d[0].fixes, undefined, call);
+  }
+  const ok = only(mk('var s = answers.join(",");'), 'option-compare');
+  assert.equal(ok[0].fixes?.length, 1, 'a read-only method keeps the fix');
+  assert.equal(only(mk('var s = answers["join"](",");'), 'option-compare')[0].fixes?.length, 1, 'also called with a literal key');
+  assert.equal(only(mk('answers[k](2);'), 'option-compare')[0].fixes, undefined, 'an unknown key may change it');
 });
 
 test('unknown-member: a compound write is never the harmless idiom; sequences and for tests pass the value on', () => {
@@ -522,11 +546,51 @@ test('options: AddOption values, duplicate keys, ShowOptionAsStep', () => {
   const add = (args: string) => HEADER + `Game.AddOption(${args});\n`;
   assert.equal(only(add('"Speed", "", "speed", true'), 'type-mismatch')[0].severity, 'error');
   assert.equal(only(add('"Name", "", "name", "Player"'), 'type-mismatch').length, 1);
-  assert.deepEqual(lint(add('"Speed", "", "speed", ["Low", "High"]') + 'var opts = ["a"];\nGame.AddOption("B", "", "b", opts);\nGame.AddOption("C", "", "c", []);\n'), []);
+  assert.deepEqual(lint(add('"Speed", "", "speed", ["Low", "High"]') + 'Game.Play = function () {\n  Context.StartArguments = Context.Options["speed"];\n};\nvar opts = ["a"];\nGame.AddOption("B", "", "b", opts);\nGame.AddOption("C", "", "c", []);\n'), []);
   const dup = only(add('"A", "", "k", ["x"]') + 'Game.AddOption("B", "", "k", ["y"]);\n', 'duplicate-assignment');
   assert.equal(dup[0].severity, 'error');
   assert.equal(only(HEADER + 'Game.ShowOptionAsStep("k", true, "Pick");\n', 'wrong-arguments').length, 1);
   assert.deepEqual(lint(add('"A", "", "k", [{ Name: "x" }]') + 'Game.ShowOptionAsStep("k", true, "Pick");\n'), []);
+});
+
+test('unused-option: an option nothing reads, faded (hint + unnecessary), quiet when it can\'t tell', () => {
+  const opt = 'Game.AddOption("FPS cap", "", "fps", ["30", "60"]);\n';
+  const play = (body: string) => HEADER + opt + 'Game.Play = function () {\n' + body + '\n};\n';
+  const d = only(play('Context.StartArguments = "-windowed";'), 'unused-option');
+  assert.equal(d.length, 1);
+  assert.equal(d[0].severity, 'hint');
+  assert.deepEqual(d[0].tags, ['unnecessary']);
+  assert.match(d[0].message, /Nothing in this handler reads `Context\.Options\["fps"\]`/);
+  assert.equal(play('').slice(d[0].start, d[0].end), '"fps"');
+  // The fix removes the line, offered (never automatic) only when nothing else names the key.
+  assert.equal(d[0].fixes?.[0].preferred, undefined);
+  assert.equal(only(play('Context.StartArguments = "-windowed";'), 'unused-option')[0].fixes?.[0].title, 'Remove this option');
+  // A key read by a typo'd name: still unused (and unknown-member points at the typo).
+  assert.equal(only(play('var f = Context.Options["fsp"];'), 'unused-option').length, 1);
+  // Read: bracket, dotted, lower-case `options` (Jint), a number key, a method with the key, in a function nothing calls.
+  for (const body of ['var f = Context.Options["fps"];', 'var f = Context.Options.fps;', 'var f = Context.options["fps"];', "var f = Context.Options['fps'];", 'if (Context.Options.ContainsKey("fps")) {}', 'if (Context.Options["ContainsKey"]("fps")) {}', 'function unused() { return Context.Options["fps"]; }']) {
+    assert.deepEqual(only(play(body), 'unused-option'), [], body);
+  }
+  assert.deepEqual(only(HEADER + 'Game.AddOption("A", "", "0", ["x", "y"]);\nGame.Play = function () {\n  var a = Context.Options[0];\n};\n', 'unused-option'), []);
+  // Can't tell: a key in a variable, Context.Options or Context passed on or aliased, looped over, eval.
+  for (const body of ['var k = "fps";\nvar f = Context.Options[k];', 'var o = Context.Options;', 'var c = Context;', 'show(Context.Options);', 'for (var k in Context.Options) {}', 'var n = Context.Options.Keys;', 'var f = Context["Options"][k];', 'eval("x");']) {
+    assert.deepEqual(only(play(body), 'unused-option'), [], body);
+  }
+  // A method written in brackets is still the method: it reads its own key, not one named "ContainsKey".
+  assert.equal(only(play('if (Context.Options["ContainsKey"]("fsp")) {}'), 'unused-option').length, 1);
+  for (const body of ['var n = Context.Options["Keys"];', 'var v = Context.Options["values"];', 'var n = Context.Options.count;', 'var e = Context.Options["getEnumerator"]();']) {
+    assert.deepEqual(only(play(body), 'unused-option'), [], body);
+  }
+  // Nor does unknown-member take a dictionary member written in brackets for a key; a typo'd key still gets it.
+  for (const body of ['if (Context.Options["ContainsKey"]("fps")) {}', 'var n = Context.Options["Keys"];', 'var n = Context.Options["count"];']) {
+    assert.deepEqual(only(play(body), 'unknown-member'), [], body);
+  }
+  assert.equal(only(play('if (Context.Options["ContainsKey"]("fps")) { var f = Context.Options["fsp"]; }'), 'unknown-member').length, 1);
+  // A note with one value (or none) is no choice; ShowOptionAsStep doesn't read it (Nucleus only asks), so no fix.
+  assert.deepEqual(only(HEADER + 'var note = ["READ"];\nGame.AddOption("Disband the lobby first", "", "note", note);\n', 'unused-option'), []);
+  const step = only(HEADER + opt + 'Game.ShowOptionAsStep("fps", true, "FPS");\n', 'unused-option');
+  assert.equal(step.length, 1);
+  assert.equal(step[0].fixes, undefined);
 });
 
 test('ExecutableName must be a file name, not a path', () => {
@@ -669,6 +733,21 @@ test('undefined-name: a stray word in a list, at the top level and in Game.Play'
   assert.match(inPlay[0].message, /ends the session/);
 });
 
+test('undefined-name: inside a function nothing calls, a warning that says so', () => {
+  const unused = only(`${HEADER}function RunCMD(f) {\n  var p = instanceFolder + "\\\\" + f;\n}\nvar later = function () { return gone; };\n`, 'undefined-name');
+  assert.deepEqual(unused.map((d) => d.severity), ['warning', 'warning']);
+  assert.match(unused[0].message, /inside `RunCMD`, which nothing in the handler calls/);
+  assert.match(unused[1].message, /inside `later`/);
+  // Used as an object (maybe a plugin), in a function nothing calls: says so, not "ends the session".
+  const obj = only(`${HEADER}function neverCalled() {\n  Contxt.Foo = 1;\n}\n`, 'undefined-name');
+  assert.equal(obj[0].severity, 'warning');
+  assert.match(obj[0].message, /inside `neverCalled`, which nothing in the handler calls/);
+  assert.doesNotMatch(obj[0].message, /ends the session/);
+  // Called, passed on, or a Nucleus callback: still an error.
+  const used = only(`${HEADER}function a() { return x1; }\nfunction b() { return x2; }\nvar c = function () { return x3; };\nGame.Play = function () { a(); var later = [b]; c(); return x4; };\n`, 'undefined-name');
+  assert.deepEqual(used.map((d) => d.severity), ['error', 'error', 'error', 'error']);
+});
+
 test('undefined-name: a typo of a variable suggests it, but Fix all leaves it alone', () => {
   const code = `${HEADER}Game.Play = function () {\n  var args = "-w";\n  Context.StartArguments = arsg;\n};\n`;
   const d = only(code, 'undefined-name');
@@ -744,6 +823,47 @@ test('protoinput-needs-hook: BlockedMessages and filters need MessageFilterHook'
   assert.equal(d[0].fixes![0].edits[0].text, 'Game.ProtoInput.MessageFilterHook = true;\n');
   assert.equal(only(HEADER + PI + 'Game.ProtoInput.MessageFilterHook = true;\nGame.ProtoInput.BlockedMessages = [0x0008];\n', 'protoinput-needs-hook').length, 0);
   assert.equal(only(HEADER + PI + 'Game.ProtoInput.BlockedMessages = [];\n', 'protoinput-needs-hook').length, 0);
+});
+test('protoinput-needs-raw-input: key and cursor hooks need the raw input hook', () => {
+  const KBM = PI + 'Game.SupportsMultipleKeyboardsAndMice = true;\n';
+  const d = only(HEADER + KBM + 'Game.ProtoInput.GetCursorPosHook = true;\nGame.ProtoInput.GetKeyStateHook = true;\n', 'protoinput-needs-raw-input');
+  assert.equal(d.length, 1);
+  assert.equal(d[0].severity, 'info');
+  assert.match(d[0].message, /GetCursorPosHook.*GetKeyStateHook/);
+  assert.equal(d[0].fixes![0].edits[0].text, 'Game.ProtoInput.RegisterRawInputHook = true;\n');
+  // With the raw input hook, as an option or installed at runtime: nothing to say.
+  assert.equal(only(HEADER + KBM + 'Game.ProtoInput.RegisterRawInputHook = true;\nGame.ProtoInput.GetKeyStateHook = true;\n', 'protoinput-needs-raw-input').length, 0);
+  assert.equal(only(HEADER + KBM + 'Game.ProtoInput.GetKeyStateHook = true;\nGame.ProtoInput.OnInputLocked = function () {\n  ProtoInput.InstallHook(PlayerList[0].ProtoInputInstanceHandle, ProtoInput.Values.RegisterRawInputHookID);\n};\n', 'protoinput-needs-raw-input').length, 0);
+  assert.equal(only(HEADER + KBM + 'Game.ProtoInput.GetKeyStateHook = true;\nif (true) {\n  Game.ProtoInput.RegisterRawInputHook = true;\n}\n', 'protoinput-needs-raw-input').length, 0);
+  // Controller-only handler: nothing to say.
+  assert.equal(only(HEADER + PI + 'Game.ProtoInput.GetCursorPosHook = true;\n', 'protoinput-needs-raw-input').length, 0);
+  // Hooks off, Proto Input not started, or the state comes from a controller: nothing to say.
+  assert.equal(only(HEADER + KBM + 'Game.ProtoInput.GetKeyStateHook = false;\n', 'protoinput-needs-raw-input').length, 0);
+  assert.equal(only(HEADER + 'Game.SupportsMultipleKeyboardsAndMice = true;\nGame.ProtoInput.GetKeyStateHook = true;\n', 'protoinput-needs-raw-input').length, 0);
+  assert.equal(only(HEADER + KBM + 'Game.ProtoInput.TranslateXinputtoMKB = true;\nGame.ProtoInput.GetCursorPosHook = true;\n', 'protoinput-needs-raw-input').length, 0);
+  // Comments don't turn it on; the last assignment counts; an explicit false is turned into true.
+  assert.equal(only(HEADER + KBM + '// Game.ProtoInput.RegisterRawInputHook = true;\n/* RegisterRawInputHookID */\nGame.ProtoInput.GetKeyStateHook = true;\n', 'protoinput-needs-raw-input').length, 1);
+  assert.equal(only(HEADER + KBM + 'Game.ProtoInput.GetKeyStateHook = true;\nGame.ProtoInput.GetKeyStateHook = false;\n', 'protoinput-needs-raw-input').length, 0);
+  // Strings before the `= false` don't shift the comparison: a later `= true` in a block still counts.
+  const longStr = 'var s = "' + 'x'.repeat(400) + '";\n';
+  assert.equal(only(HEADER + KBM + longStr + 'Game.ProtoInput.GetKeyStateHook = true;\nGame.ProtoInput.RegisterRawInputHook = false;\nif (true) {\n  Game.ProtoInput.RegisterRawInputHook = true;\n}\n', 'protoinput-needs-raw-input').length, 0);
+  const rawSrc = HEADER + KBM + 'Game.ProtoInput.GetKeyStateHook = true;\nGame.ProtoInput.RegisterRawInputHook = false;\n';
+  const f = only(rawSrc, 'protoinput-needs-raw-input');
+  assert.equal(f[0].fixes![0].edits[0].text, 'true');
+  const rawFixed = apply(rawSrc, f[0].fixes![0]);
+  assert.match(rawFixed, /^Game\.ProtoInput\.RegisterRawInputHook = true;$/m);
+  assert.match(rawFixed, /^Game\.ProtoInput\.GetKeyStateHook = true;$/m);
+  assert.equal(only(rawFixed, 'protoinput-needs-raw-input').length, 0, 'the fixed handler passes');
+  // A later `= true` in a block after the top-level false: it may be on, no warning (and no fix to the default).
+  assert.equal(only(rawSrc + 'if (true) {\n  Game.ProtoInput.RegisterRawInputHook = true;\n}\n', 'protoinput-needs-raw-input').length, 0);
+  // The handler's own function called InstallHook installs nothing.
+  assert.equal(only(HEADER + KBM + 'Game.ProtoInput.GetKeyStateHook = true;\nfunction InstallHook(RegisterRawInputHookID) {}\n', 'protoinput-needs-raw-input').length, 1);
+  // A later false wins over an earlier true; the ID only in a string installs nothing; an unknown last value: no fix.
+  assert.equal(only(HEADER + KBM + 'Game.ProtoInput.RegisterRawInputHook = true;\nGame.ProtoInput.GetKeyStateHook = true;\nGame.ProtoInput.RegisterRawInputHook = false;\n', 'protoinput-needs-raw-input').length, 1);
+  assert.equal(only(HEADER + KBM + 'Game.ProtoInput.GetKeyStateHook = true;\nvar s = "InstallHook(RegisterRawInputHookID)";\n', 'protoinput-needs-raw-input').length, 1);
+  const unk = only(HEADER + KBM + 'Game.ProtoInput.GetKeyStateHook = true;\nGame.ProtoInput.RegisterRawInputHook = Context.x;\n', 'protoinput-needs-raw-input');
+  assert.equal(unk.length, 1);
+  assert.ok(!unk[0].fixes?.length);
 });
 test('blocked-message: unlisted, past the end, and repeated numbers', () => {
   const ok = HEADER + PI + 'Game.ProtoInput.MessageFilterHook = true;\nGame.ProtoInput.BlockedMessages = [0x0008, 0x02a3, 0x02a1, 6];\n';

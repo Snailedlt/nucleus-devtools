@@ -111,7 +111,10 @@ struct DarkColors {
 };
 
 static const wchar_t* PLUGIN_NAME = L"Nucleus Co-op handlers";
-static const char* PLUGIN_VERSION = "1.0.0";
+#ifndef NCDEV_VERSION
+#define NCDEV_VERSION "0.0.0"  // build.sh passes package.json's version
+#endif
+static const char* PLUGIN_VERSION = NCDEV_VERSION;
 
 static NppData npp;
 static HINSTANCE hModule;
@@ -695,9 +698,10 @@ static void start() {
           [](const Value&) {
             ready = true;
             notify("initialized", Value(Object{}));
+            // The current document first: a request queued meanwhile (a report) is about it.
+            openCurrent();
             for (auto& b : queued) write(b);
             queued.clear();
-            openCurrent();
           },
           true);
 }
@@ -716,14 +720,22 @@ static void stop() {
 // ---------------------------------------------------------------------------------------------------------------
 // Problems: squiggles in the code and the Problems panel
 
-static int indError = 12, indWarning = 13, indInfo = 14;
+static int indError = 12, indWarning = 13, indInfo = 14, indUnused = 15;
 static bool stylesSet = false;
+// Unused code (the LSP's Unnecessary tag, 1): an option nothing reads. Faded, as VS Code fades it.
+static bool isUnused(const Value& d) {
+  if (!d["tags"].isArr()) return false;
+  for (auto& t : d["tags"].arr())
+    if (t.num() == 1) return true;
+  return false;
+}
 static void setupIndicators() {
   int first = 0;
-  if (SendMessage(npp._nppHandle, NPPM_ALLOCATEINDICATOR, 3, (LPARAM)&first) && first > 0) {
+  if (SendMessage(npp._nppHandle, NPPM_ALLOCATEINDICATOR, 4, (LPARAM)&first) && first > 0) {
     indError = first;
     indWarning = first + 1;
     indInfo = first + 2;
+    indUnused = first + 3;
   }
   for (HWND h : {npp._scintillaMainHandle, npp._scintillaSecondHandle}) {
     sci(h, SCI_INDICSETSTYLE, indError, INDIC_SQUIGGLEPIXMAP);
@@ -732,6 +744,8 @@ static void setupIndicators() {
     sci(h, SCI_INDICSETFORE, indWarning, RGB(215, 150, 0));
     sci(h, SCI_INDICSETSTYLE, indInfo, INDIC_DOTS);
     sci(h, SCI_INDICSETFORE, indInfo, RGB(60, 140, 230));
+    sci(h, SCI_INDICSETSTYLE, indUnused, INDIC_TEXTFORE);
+    sci(h, SCI_INDICSETFORE, indUnused, RGB(140, 140, 140));
     // Hover help needs dwell notifications; Notepad++ leaves them off.
     if (sci(h, SCI_GETMOUSEDWELLTIME) >= SC_TIME_FOREVER) sci(h, SCI_SETMOUSEDWELLTIME, 500);
   }
@@ -758,15 +772,20 @@ static void applyDiagnostics() {
   HWND h = curSci();
   if (!stylesSet) setupIndicators();
   sptr_t len = sci(h, SCI_GETLENGTH);
-  for (int ind : {indError, indWarning, indInfo}) {
+  for (int ind : {indError, indWarning, indInfo, indUnused}) {
     sci(h, SCI_SETINDICATORCURRENT, ind);
     sci(h, SCI_INDICATORCLEARRANGE, 0, len);
   }
   if (d) {
     for (auto& x : diagnostics[d->uri].arr()) {
       int sev = x["severity"].num(1);
-      sci(h, SCI_SETINDICATORCURRENT, sev == 1 ? indError : sev == 2 ? indWarning : indInfo);
       Range r = diagRange(h, x);
+      if (isUnused(x)) {
+        sci(h, SCI_SETINDICATORCURRENT, indUnused);
+        sci(h, SCI_INDICATORFILLRANGE, r.start, r.end - r.start);
+        if (sev == 4) continue;  // a hint: only faded, no underline
+      }
+      sci(h, SCI_SETINDICATORCURRENT, sev == 1 ? indError : sev == 2 ? indWarning : indInfo);
       sci(h, SCI_INDICATORFILLRANGE, r.start, r.end - r.start);
     }
   }
@@ -829,7 +848,7 @@ static void refreshPanel() {
   for (auto& x : panelItems) {
     int sev = x["severity"].num(1);
     std::wstring line = std::to_wstring(x["range"]["start"]["line"].num() + 1);
-    std::wstring kind = sev == 1 ? L"Error" : sev == 2 ? L"Warning" : L"Info";
+    std::wstring kind = sev == 1 ? L"Error" : sev == 2 ? L"Warning" : sev == 4 && isUnused(x) ? L"Unused" : L"Info";
     std::wstring msg = wide(plain(x["message"].str(), 3));
     std::replace(msg.begin(), msg.end(), L'\n', L' ');
     LVITEMW it{};
@@ -854,7 +873,8 @@ static void refreshPanel() {
   SendMessage(list, WM_SETREDRAW, TRUE, 0);
   // "2 errors, 1 warning" next to the panel's name.
   int ne = 0, nw = 0, ni = 0;
-  for (auto& x : panelItems) (x["severity"].num(1) == 1 ? ne : x["severity"].num(1) == 2 ? nw : ni)++;
+  for (auto& x : panelItems)
+    if (!(x["severity"].num(1) == 4 && isUnused(x))) (x["severity"].num(1) == 1 ? ne : x["severity"].num(1) == 2 ? nw : ni)++;
   std::wstring info;
   auto add = [&](int n, const wchar_t* one, const wchar_t* many) {
     if (!n) return;
@@ -1188,6 +1208,8 @@ static std::string plain(const std::string& md, size_t maxLines) {
     // The ⓘ and ✎ marks: not in every editor font (a box in Notepad++'s default call-tip font).
     for (const char* mark : {"\xE2\x93\x98", "\xE2\x9C\x8E"})
       for (size_t k; (k = t.find(mark)) != std::string::npos;) t.erase(k, 3 + (k + 3 < t.size() && t[k + 3] == ' '));
+    // The AI-written mark (✨): an emoji, a box in the call-tip font, so "[AI]" instead.
+    for (size_t k; (k = t.find("\xE2\x9C\xA8")) != std::string::npos;) t.replace(k, 3, "[AI]");
     while (!t.empty() && t[0] == ' ' && t.find_first_not_of(' ') != std::string::npos && out.empty()) t.erase(0, 1);
     if (t.empty() || t.find_first_not_of(" ") == std::string::npos) {
       if (++blank > 1 || out.empty()) continue;
@@ -1460,6 +1482,73 @@ static int pickAtCaret(HWND h, const std::vector<std::wstring>& choices) {
 
 static void needHandler() { MessageBoxW(npp._nppHandle, L"Open a handler (.js) first.", PLUGIN_NAME, MB_OK | MB_ICONINFORMATION); }
 
+// Reports (Report a problem, Request a feature, "This check is wrong" in Alt+Enter): the server's nucleus.report fills
+// the form and lists the ways on (possible duplicates, GitHub, copy for Discord, the handler's Hub page); the plugin
+// only shows them as a menu and opens the chosen link.
+// True only when the clipboard now holds the text. The buffer is ready before the old contents are cleared.
+static bool copyText(const std::string& text) {
+  std::wstring w = wide(text);
+  HGLOBAL g = GlobalAlloc(GMEM_MOVEABLE, (w.size() + 1) * sizeof(wchar_t));
+  if (!g) return false;
+  void* p = GlobalLock(g);
+  if (!p) {
+    GlobalFree(g);
+    return false;
+  }
+  memcpy(p, w.c_str(), (w.size() + 1) * sizeof(wchar_t));
+  GlobalUnlock(g);
+  if (!OpenClipboard(npp._nppHandle)) {
+    GlobalFree(g);
+    return false;
+  }
+  EmptyClipboard();
+  bool ok = SetClipboardData(CF_UNICODETEXT, g) != nullptr;
+  if (!ok) GlobalFree(g);
+  CloseClipboard();
+  return ok;
+}
+static void runReport(const Value& args) {
+  if (!lsp::running) lsp::start();
+  if (!lsp::running) {
+    // No ncdev yet: the tools' form, for the plugin (a feature request's own form for a feature).
+    bool feature = args.isObj() && args["kind"].isStr() && args["kind"].str() == "feature";
+    ShellExecuteW(npp._nppHandle, L"open", feature ? L"https://github.com/Snailedlt/splitscreenme-vscode/issues/new?template=feature-request.yml" : L"https://github.com/Snailedlt/splitscreenme-vscode/issues/new?template=tester-feedback.yml&area=Notepad%2B%2B+plugin", nullptr, nullptr, SW_SHOWNORMAL);
+    return;
+  }
+  Object o = args.isObj() ? *args.o : Object{};
+  o["choose"] = Value(true);
+  status(L"Nucleus: preparing the report…");
+  HWND h = curSci();
+  lsp::request("workspace/executeCommand", Value(Object{{"command", "nucleus.report"}, {"arguments", Value(Array{Value(o)})}}), [h](const Value& r) {
+    std::vector<Value> cs;
+    for (auto& c : r["choices"].arr())
+      if (c["url"].str().rfind("https://", 0) == 0) cs.push_back(c);
+    status(L"");
+    if (cs.empty()) return;
+    std::vector<std::wstring> titles;
+    for (auto& c : cs) titles.push_back(wide(c["title"].str()));
+    int i = pickAtCaret(h, titles);
+    if (i < 0) return;
+    if (cs[i]["copy"].isStr()) {
+      // Not copied (another program has the clipboard open): don't send them to paste something else.
+      if (!copyText(cs[i]["copy"].str())) {
+        status(L"Nucleus: couldn't copy the report (the clipboard is busy): try again");
+        return;
+      }
+      status(L"Nucleus: report copied, paste it on Discord");
+    }
+    ShellExecuteW(npp._nppHandle, L"open", wide(cs[i]["url"].str()).c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+  });
+}
+static void reportKind(const char* kind) {
+  Doc* d = active();
+  Object o{{"kind", kind}};
+  if (d) o["uri"] = Value(d->uri);
+  runReport(Value(o));
+}
+static void cmdReportProblem() { reportKind("problem"); }
+static void cmdRequestFeature() { reportKind("feature"); }
+
 static void cmdQuickFix() {
   HWND h = curSci();
   Doc* d = active();
@@ -1476,7 +1565,7 @@ static void cmdQuickFix() {
                [=](const Value& r) {
                  std::vector<Value> actions;
                  for (auto& a : r.arr())
-                   if (a["edit"].isObj()) actions.push_back(a);
+                   if (a["edit"].isObj() || a["command"]["command"].str() == "nucleus.report") actions.push_back(a);
                  if (actions.empty()) {
                    status(L"Nucleus: no fixes on this line");
                    return;
@@ -1484,7 +1573,9 @@ static void cmdQuickFix() {
                  std::vector<std::wstring> titles;
                  for (auto& a : actions) titles.push_back(wide(a["title"].str()));
                  int i = pickAtCaret(h, titles);
-                 if (i >= 0) applyWorkspaceEdit(actions[i]["edit"]);
+                 if (i < 0) return;
+                 if (actions[i]["edit"].isObj()) applyWorkspaceEdit(actions[i]["edit"]);
+                 else runReport(actions[i]["command"]["arguments"][(size_t)0]);
                });
 }
 static void cmdFixAll() {
@@ -1589,7 +1680,7 @@ static void cmdWorkbench() {
     std::string url = r["url"].str();
     if (url.rfind("https://", 0) != 0) return;
     ShellExecuteW(npp._nppHandle, L"open", wide(url).c_str(), nullptr, nullptr, SW_SHOWNORMAL);
-    if (!r["withHandler"].boolean()) status(L"Nucleus: this handler is too large for a link: in the workbench, use Open file… to open it");
+    if (!r["withHandler"].boolean()) status(L"Nucleus: too large for a link; use Open file… in the workbench");
   });
 }
 
@@ -2353,7 +2444,7 @@ static void cmdLinkFolder() {
   if (folder.empty()) return;
   iniSet(L"gameFolders", baseName(d->path), folder.c_str());
   if (lsp::running) lsp::notify("workspace/didChangeConfiguration", Value(Object{{"settings", lsp::settings()}}));
-  status(L"Nucleus: " + baseName(d->path) + L" is checked against " + folder);
+  status(L"Nucleus: game folder linked (" + baseName(folder) + L")");
 }
 static void cmdUnlinkFolder() {
   Doc* d = currentDoc();
@@ -2420,6 +2511,8 @@ static FuncItem funcs[] = {
     {L"API reference", cmdReference, 0, false, nullptr},
     {L"Settings…", cmdSettings, 0, false, nullptr},
     {L"Check for updates", cmdUpdate, 0, false, nullptr},
+    {L"Report a problem…", cmdReportProblem, 0, false, nullptr},
+    {L"Request a feature…", cmdRequestFeature, 0, false, nullptr},
     {L"About", cmdAbout, 0, false, nullptr},
 };
 static const int PANEL_INDEX = 10, OUTLINE_INDEX = 11, UPDATE_INDEX = 27;

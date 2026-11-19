@@ -15,13 +15,13 @@ interface DotNetList<T> { Count: number; [index: number]: T; }
 interface Game {
   /**
    * Hub metadata. Written by hub.splitscreen.me when the handler is uploaded, and kept up to date there. Don't add or edit these lines yourself.
-   * (AI-written, based on Nucleus GenericGameInfo.cs and GenericGameHandler.cs. Not from the official docs.)
+   * (AI-written, based on Nucleus GenericGameInfo.cs, GenericGameHandler.cs. Not from the official docs.)
    * @default new Hub()
    */
   readonly Hub: Hub;
   /**
    * Settings for Nucleus' custom xinput/x360ce hook DLL.
-   * (AI-written, based on Nucleus GenericGameInfo.cs and GenericGameHandler.cs. Not from the official docs.)
+   * (AI-written, based on Nucleus GenericGameInfo.cs, GenericGameHandler.cs. Not from the official docs.)
    * @default new GameHookInfo()
    */
   readonly Hook: GameHook;
@@ -45,11 +45,17 @@ interface Game {
   DirSymlinkExclusions: string[];
   /**
    * Array with the name of the files you don't want Nucleus Co-op to symlink, useful if you want to replace files or add external files.
+   *
+   * In practice: File names Nucleus leaves out when it links the game into each instance folder, so the instance gets no file of that name from the game (one Nucleus or the handler puts there instead, such as a Steam emulator's DLL). Steam games' handlers usually list `steam_api64.dll` (or `steam_api.dll`) and `steam_appid.txt`, for Goldberg's own copies.
+   * (AI-written, based on Nucleus GenericGameHandler.cs (fileExclusions passed to StartGameUtil.SymlinkGame); verified Hub handlers, counted 2026-11-17.)
    * @example Game.FileSymlinkExclusions = ["file1.txt", "file2.txt"];
    */
   FileSymlinkExclusions: string[];
   /**
    * Array with the name of the files you want Nucleus Co-op to make full copies of, in some cases games need certain files to be full copies or they won't run.
+   *
+   * In practice: Files Nucleus copies into each instance folder instead of linking them, so an instance can change its own copy (or the game refuses a linked file). Unity games are the usual case: their handlers copy `UnityPlayer.dll`, `globalgamemanagers` or `UnityCrashHandler64.exe`.
+   * (AI-written, based on Nucleus GenericGameHandler.cs (fileCopies from Game.FileSymlinkCopyInstead, lower case); verified Hub handlers, counted 2026-11-17; Hub game engines.)
    * @example Game.FileSymlinkCopyInstead = ["file1.txt", "file2.txt"];
    */
   FileSymlinkCopyInstead: string[];
@@ -72,20 +78,31 @@ interface Game {
   KeepSymLinkOnExit: boolean;
   /**
    * The interval in milliseconds the Handler should be updated at. Set it to 0 to disable updating (will lose all functionality that depends on ticks).
+   *
+   * In practice: Nucleus starts an update loop with this interval in milliseconds: each tick it updates and refreshes the game windows (positions, sizes, focus). 0 starts no loop at all. Almost always 100; 500 for games that don't like their windows being touched that often, mostly Unreal Engine games.
+   * (AI-written, based on Nucleus GenericGameHandler.cs (StartUpdateTick, StartUpdateTickThread, Update), GlobalWindowMethods.cs (UpdateAndRefreshGameWindows); verified Hub handlers, counted 2026-11-17; Hub game engines.)
    * @example Game.HandlerInterval = 100;
    */
   HandlerInterval: number;
   /**
    * Writes a detailed debug log while the handler runs.
-   * (AI-written, based on Nucleus GenericGameInfo.cs and GenericGameHandler.cs. Not from the official docs.)
+   * (AI-written, based on Nucleus GenericGameInfo.cs, GenericGameHandler.cs. Not from the official docs.)
+   * @example Game.Debug = true;
    */
   Debug: boolean;
   /**
    * Chooses whether or not to automatically move the windows around to fit in the right spaces.
+   *
+   * By engine: more common in Source games.
+   * From Hub handlers:
+   * @example Game.SupportsPositioning = true;
    */
   SupportsPositioning: boolean;
   /**
    * If SymlinkGame is enabled, if we should copy or symlink the game executable.
+   *
+   * In practice: With `Game.SymlinkGame`, false (the default) copies the game's executable into each instance folder instead of linking it, and also a `Game.LauncherExe` given as a relative path; everything else is linked. A copy lets each instance be patched or renamed on its own, which is why handlers practically always keep it false.
+   * (AI-written, based on Nucleus GenericGameHandler.cs (the instance folder setup: fileCopies.Add(gen.ExecutableName)); verified Hub handlers, counted 2026-11-17.)
    * @example Game.SymlinkExe = false;
    */
   SymlinkExe: boolean;
@@ -101,6 +118,11 @@ interface Game {
   HardcopyGame: boolean;
   /**
    * Enable/disable use of one keyboard/mouse player.
+   *
+   * In practice: Lets one player use the ordinary keyboard and mouse (the one Windows already uses), which the setup screen then offers. It's the single-keyboard option, for controller games where one player may use the keyboard; handlers rarely combine it with `Game.SupportsMultipleKeyboardsAndMice`.
+   * (AI-written, based on Nucleus DevicesFunctions.cs (if Game.SupportsKeyboard: the keyboard player), InputIcons.cs; verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: rarer in Unity games.
    * @example Game.SupportsKeyboard = true;
    */
   SupportsKeyboard: boolean;
@@ -111,11 +133,18 @@ interface Game {
   KeyboardPlayerFirst: boolean;
   /**
    * Array with the name of other files found in the executable's folder (so we don't confuse different games with similar file names). Example: Borderlands and Tales of the Borderlands share their executable name (borderlands.exe). We include 1 folder and a file that's unique to Borderlands to make sure the application doesn't confuse itself.
+   *
+   * In practice: Files or folders that must exist next to the game's executable (paths relative to its folder) for this handler to match it, when the player adds a game or Nucleus searches the disks. It tells apart games that share an executable name (hl2.exe, game.exe): authors pick a file or folder only that game has, such as a DLL it ships (`binkw32.dll` is a common one) or its data folder.
+   * (AI-written, based on Nucleus GameManager.cs (the ExecutableContext check: File.Exists or Directory.Exists for each entry); verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: rarer in Unreal Engine games.
+   * AI-written example:
+   * @example Game.ExecutableContext = ["data"];
    */
   ExecutableContext: string[];
   /**
    * Alternative executable names this handler matches (e.g. different store versions).
-   * (AI-written, based on Nucleus GenericGameInfo.cs and GenericGameHandler.cs. Not from the official docs.)
+   * (AI-written, based on Nucleus GenericGameInfo.cs, GenericGameHandler.cs. Not from the official docs.)
    */
   ExecutableNames: string[];
   /**
@@ -140,23 +169,34 @@ interface Game {
   GameName: string;
   /**
    * This is just the max players info that shows under the handler name in Nucleus UI. Usually we write the max number of players the game supports. (PC, should support 16 max connected input devices).
+   *
+   * In practice: Only shown in the game list ("2-4" under the game's name, HorizontalGameControl); Nucleus doesn't stop anyone from assigning more players. Authors put the number of players the game handles, usually 4 or 8; Source games' handlers often say 16.
+   * (AI-written, based on Nucleus HorizontalGameControl.cs, DevicesFunctions.cs (only the test devices are capped by it); verified Hub handlers, counted 2026-11-17; Hub game engines.)
    * @example Game.MaxPlayers = 16;
    */
   MaxPlayers: number;
   /**
    * This is just info. It will not limit the players number.
+   *
+   * In practice: Nothing in Nucleus reads it besides the interface that declares it: it's information for the reader of the handler. Authors usually say 4, sometimes 8 or 16.
+   * (AI-written, based on Nucleus IGameInfo.cs (no other use in the source); verified Hub handlers, counted 2026-11-17.)
    * @example Game.MaxPlayersOneMonitor = 4;
    */
   MaxPlayersOneMonitor: number;
   /**
    * How long Nucleus waits before starting the next instance, in **seconds** (the official docs say milliseconds, but every place Nucleus uses it waits `TimeSpan.FromSeconds(...)`). 0 or unset: no wait. A profile's "instances startup wait time" (also seconds) replaces it. `Game.PromptBetweenInstances` still needs it.
-   * (AI-written, based on Nucleus GenericGameHandler.cs (Thread.Sleep(TimeSpan.FromSeconds(gen.PauseBetweenStarts))); GameProfile.cs and ProfilesList.cs (PauseBetweenInstanceLaunch, shown in seconds). Not from the official docs.)
+   * (AI-written, based on Nucleus GenericGameHandler.cs (Thread.Sleep(TimeSpan.FromSeconds(gen.PauseBetweenStarts))), GameProfile.cs, ProfilesList.cs (PauseBetweenInstanceLaunch, shown in seconds). Not from the official docs.)
+   *
+   * In practice: Nucleus sleeps this many seconds after starting an instance, before the next one. A player can override it in the game's profile settings (Pause between instances launch); when that is above 0 it replaces the handler's value. Usually 20 to 30 seconds: enough for the game to open its window before the next copy starts; less for games that start quickly.
+   * (AI-written, based on Nucleus GenericGameHandler.cs (the per-instance start loop: GameProfile.PauseBetweenInstanceLaunch, Thread.Sleep); verified Hub handlers, counted 2026-11-17.)
    * @example Game.PauseBetweenStarts = 20;
    */
   PauseBetweenStarts: number;
   /**
    * The way the games handles DPI scaling. Modify this if the game is presenting different sizing behaviour after the Windows 10 Creators Update. Values: True: True tries to send the correct width and height to the game's window. Nucleus.DPIHandling.Scaled: Scaled will scale the width and height by the DPI of the system (see that it's not per-monitor). Nucleus.DPIHandling.InvScaled: InvScaled will scale the width and height by 1 / DPI of the system (see that it's not per-monitor).
    * @default DPIHandling.True
+   * From Hub handlers:
+   * @example Game.DPIHandling = Nucleus.DPIHandling.InvScaled;
    */
   DPIHandling: Nucleus.DPIHandling | number | boolean;
   /**
@@ -165,21 +205,38 @@ interface Game {
   DpiAwarenessMode: Nucleus.DpiAwarenessMode | number | boolean;
   /**
    * Adds whatever you put into the field as starting parameters for the game's executable. For example, in most cases '-windowed' will force windowed mode. Parameters can be chained. Necessary for some games.
+   * From Hub handlers:
+   * @example Game.StartArguments = "";
    */
   StartArguments: string;
   /**
    * In which folder the game exe is located? Relative path to where Nucleus should start the game's working folder to.
+   *
+   * In practice: Where the executable sits inside the game folder ("bin", "Binaries\\Win64"). Nucleus takes it off the executable's folder to find the game's root, so the whole game is linked into each instance, not only the executable's folder. Mostly Unreal Engine games' handlers set it, nearly all of them: to the project's "Binaries\\Win64" (or "Binaries\\Win32"), older Unreal games' to "System"; other games use "bin" or leave it empty.
+   * (AI-written, based on Nucleus GenericGameHandler.cs (rootFolder = the exe folder with gen.BinariesFolder replaced, or StringUtil.GetRootFromBinariesFolder with BinariesFolderPathFix); verified Hub handlers, counted 2026-11-17; Hub game engines (Unreal Engine).)
+   *
+   * By engine: more common in Unreal Engine games, rarer in Unity and Source games.
    * @example Game.BinariesFolder = "Bin";
    */
   BinariesFolder: string;
+  /**
+   * @example Game.BinariesFolderPathFix = true;
+   */
   BinariesFolderPathFix: boolean;
   /**
    * Enable or disable the sending of focus messages to each game window at a regular interval | default: false.
+   *
+   * In practice: Nucleus starts a thread that keeps sending focus messages (WM_ACTIVATE, WM_ACTIVATEAPP, WM_SETFOCUS, ...) to every instance's window, so games that pause in the background keep running. Most common in Unity games; `Game.FakeFocusInterval` sets how often, typically every 5 to 10 seconds.
+   * (AI-written, based on Nucleus GenericGameHandler.cs (if gen.FakeFocus: WindowFakeFocus.SendFocusMsgs thread), WindowFakeFocus.cs; verified Hub handlers, counted 2026-11-17; Hub game engines.)
+   *
+   * By engine: rarer in Unreal Engine games.
    * @example Game.FakeFocus = true;
    */
   FakeFocus: boolean;
   /**
    * The milliseconds between sending fake focus messages. Default at 1000, some rare games need this to be very low.
+   *
+   * By engine: rarer in Source and Unreal Engine games.
    * @default 1000
    * @example Game.FakeFocusInterval = 1000;
    */
@@ -193,6 +250,10 @@ interface Game {
   /**
    * Sends focus messages once to every player's game window, one second apart, after the last instance has started, to make each game believe it has focus. `Game.FakeFocusSendActivate` adds the activate message. Not run with `Game.ProcessChangesAtEnd`.
    * (AI-written, based on Nucleus GenericGameHandler.cs (last-instance block), WindowFakeFocus.cs (SendFakeFocusMsg). Not from the official docs.)
+   *
+   * By engine: rarer in Source and Unreal Engine games.
+   * From Hub handlers:
+   * @example Game.SendFakeFocusMsg = true;
    */
   SendFakeFocusMsg: boolean;
   /**
@@ -206,25 +267,42 @@ interface Game {
    * @example Game.SetTopMostAtEnd = true;
    */
   SetTopMostAtEnd: boolean;
+  /**
+   * @example Game.ForwardWindowToProtoInput = true;
+   */
   ForwardWindowToProtoInput: boolean;
   Favorite: boolean;
   /**
    * Adds a user-selectable option to the game profile. Read it back in `Game.Play` with `Context.Options["key"]`.
-   * (AI-written, based on Nucleus GenericGameInfo.cs and GenericGameHandler.cs. Not from the official docs.)
+   * (AI-written, based on Nucleus GenericGameInfo.cs, GenericGameHandler.cs. Not from the official docs.)
+   *
+   * In practice: Adds a question Nucleus asks before the session (usually a list to pick from), at the top level of the handler. The answer is in `Context.Options["<key>"]` inside `Game.Play`, as text when it comes from a saved profile. Handlers ask things like a resolution, an FPS cap or which instances get sound.
+   * (AI-written, based on Nucleus GenericGameInfo.cs (AddOption), GameProfile.cs (LoadGameProfile, saved answers come back as text); verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: rarer in Unity games.
    * @param name Title of the option shown to the player in Nucleus' options list. (AI-written)
    * @param desc Description shown under the title. (AI-written)
    * @param key Name the handler reads the chosen value with: Context.Options[key]. (AI-written)
    * @param value Default value or choices: an array of choices shows a drop-down (first item preselected); an empty array shows a text box. (AI-written)
    * @param defaultValue Stored on the option, but no Nucleus code reads it; a drop-down starts on the first item of value. (AI-written)
+   * AI-written example:
+   * @example Game.AddOption("Limit the frame rate?", "Some games run too fast without it.", "fps", ["60", "120", "Unlimited"]);
    */
   AddOption(name: string | number | boolean, desc: string | number | boolean, key: string | number | boolean, value: any, defaultValue: any): void;
   /**
    * Adds a user-selectable option to the game profile. Read it back in `Game.Play` with `Context.Options["key"]`.
-   * (AI-written, based on Nucleus GenericGameInfo.cs and GenericGameHandler.cs. Not from the official docs.)
+   * (AI-written, based on Nucleus GenericGameInfo.cs, GenericGameHandler.cs. Not from the official docs.)
+   *
+   * In practice: Adds a question Nucleus asks before the session (usually a list to pick from), at the top level of the handler. The answer is in `Context.Options["<key>"]` inside `Game.Play`, as text when it comes from a saved profile. Handlers ask things like a resolution, an FPS cap or which instances get sound.
+   * (AI-written, based on Nucleus GenericGameInfo.cs (AddOption), GameProfile.cs (LoadGameProfile, saved answers come back as text); verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: rarer in Unity games.
    * @param name Title of the option shown to the player in Nucleus' options list. (AI-written)
    * @param desc Description shown under the title. (AI-written)
    * @param key Name the handler reads the chosen value with: Context.Options[key]. (AI-written)
    * @param value Default value or choices: an array of choices shows a drop-down (first item preselected); an empty array shows a text box. (AI-written)
+   * AI-written example:
+   * @example Game.AddOption("Limit the frame rate?", "Some games run too fast without it.", "fps", ["60", "120", "Unlimited"]);
    */
   AddOption(name: string | number | boolean, desc: string | number | boolean, key: string | number | boolean, value: any): void;
   readonly HandlerId: string;
@@ -234,6 +312,10 @@ interface Game {
   IsUpdateAvailable(fetch: boolean): boolean;
   /**
    * Relative path to where Nucleus should start the game's working folder to. Example: The main executable is on the root directory (left4dead2.exe), but the game expects to be started with a working folder of 'bin' (all the game's libraries are there).
+   *
+   * By engine: more common in Source games.
+   * From Hub handlers:
+   * @example Game.WorkingFolder = "";
    */
   WorkingFolder: string;
   /**
@@ -241,19 +323,33 @@ interface Game {
    * @example Game.NeedsSteamEmulation = false;
    */
   NeedsSteamEmulation: boolean;
+  /**
+   * @example Game.NeedSteamClient = true;
+   */
   NeedSteamClient: boolean;
   /**
    * Array of mutexes to kill before starting the next game process. A 'Mutex/Mutant' is a mutually exclusive flag, which basically tells the game not to allow multiple instances of its program.
+   *
+   * In practice: Before it starts the second and later instances, Nucleus closes these named handles in the instance before (mutexes by default; `Game.KillMutexType` picks events, semaphores or sections), because many games refuse to start while another copy holds one. `Game.RenameNotKillMutex` renames them at startup instead. Find the names with a tool such as Process Explorer while the game runs. Source games share `hl2_singleton_mutex` and some Unreal Engine 4 games `UnrealEngine4`; Unity games rarely need it.
+   * (AI-written, based on Nucleus GenericGameHandler.cs (the mutex kill before the next instance), ProcessUtil.cs; verified Hub handlers, counted 2026-11-17; Hub game engines (Source).)
+   *
+   * By engine: more common in Source games, rarer in Unity games.
+   * AI-written example:
+   * @example Game.KillMutex = ["GameMutexName"];
    */
   KillMutex: string[];
   /**
    * Specify the type of mutex/handle to kill, for example "Mutant", "Event" or "Semaphore" | default: "Mutant".
+   *
+   * By engine: more common in Source games.
    * @default "Mutant"
    * @example Game.KillMutexType = "Mutant";
    */
   KillMutexType: string;
   /**
    * \# of seconds to wait before killing the mutex | Only works with killing not renaming | default: 0.
+   *
+   * By engine: more common in Source games.
    * @example Game.KillMutexDelay = 10;
    */
   KillMutexDelay: number;
@@ -264,12 +360,22 @@ interface Game {
   LauncherExe: string;
   /**
    * The name of the launcher's window title. Some games need to go through a launcher to open. This is needed or else the application will lose the game's window.
+   *
+   * In practice: While Nucleus looks for each instance's game window, a window whose title equals this (ignoring case) is treated as not the game yet, and Nucleus keeps looking. Use it for a launcher or splash window that shows up first under the game's process. Most handlers leave it empty; "splashscreen" is the usual value when there is one.
+   * (AI-written, based on Nucleus GlobalWindowMethods.cs (UpdateAndRefreshGameWindows: HWNDRetry when the title matches); verified Hub handlers, counted 2026-11-17.)
    * @example Game.LauncherTitle = "Launcher Window Title";
    */
   LauncherTitle: string;
   /**
    * Called once per instance (player), in player order. By default it runs after Nucleus has set up the instance (Goldberg, XInput DLLs, ...) and before the game starts, and `Context.StartArguments` is read after it. `Game.GamePlayBeforeGameSetup` runs it before that setup; `Game.GamePlayAfterLaunch` runs it after the game has started (then `Context.StartArguments` has no effect). If both are true it never runs. `Context`, `Player`, `PlayerList`, `Handler` and `ProtoInput` are available inside it. An error thrown here ends the whole session.
    * (AI-written, based on Nucleus GenericGameHandler.cs (where it is called). Not from the official docs.)
+   *
+   * In practice: Where nearly every handler does each instance's own setup: read `Context.Width`/`Height` and `Context.Nickname`, write configs with `Context.ModifySaveFile` or `Context.ReplaceLinesInTextFile`, copy files, and set `Context.StartArguments`.
+   * (AI-written, based on Nucleus GenericGameHandler.cs (where Game.Play is called); verified Hub handlers, counted 2026-11-17.)
+   * AI-written example:
+   * @example Game.Play = function () {
+  Context.StartArguments = "-windowed -width " + Context.Width + " -height " + Context.Height;
+};
    */
   Play: (() => void) | null;
   /**
@@ -294,15 +400,23 @@ interface Game {
   JsFileName: string;
   /**
    * If we should lock the mouse, requires Game.Hook.CustomDllEnabled = true;.
+   * @example Game.LockMouse = true;
    */
   LockMouse: boolean;
   /**
    * Path to the game handler folder (Nucleus-Coop\handlers\handler_folder).
+   *
+   * By engine: more common in Source games.
    * @example Game.Folder
    */
   Folder: string;
   /**
    * Enable or disable hooks to trick the game into thinking it has focus | default: false.
+   *
+   * In practice: Nucleus injects its hooks into each instance after launch so the game is told it is the foreground window (GetForegroundWindow and the like), even when it isn't. Used for games that stop or mute when they lose focus, especially common in Source games, sometimes with `Game.FakeFocus`; Unity games' handlers rarely use it.
+   * (AI-written, based on Nucleus GenericGameHandler.cs (post-launch hooks when gen.HookFocus), DllsInjector.cs (Hook GetForegroundWindow); verified Hub handlers, counted 2026-11-17; Hub game engines.)
+   *
+   * By engine: rarer in Unity games.
    * @example Game.HookFocus = true;
    */
   HookFocus: boolean;
@@ -338,6 +452,11 @@ interface Game {
   CMDOptions: string[];
   /**
    * Work-around for ForceFocusWindowName having to match 1:1 with game window title for resizing, positioning and focus | default: false.
+   *
+   * In practice: Nucleus normally only accepts a game window whose title is within 2 letters of `Game.Hook.ForceFocusWindowName`. True turns that check off, for games whose title changes (a version number, the level name, the FPS); handlers only set it when they need it, so it is nearly always true.
+   * (AI-written, based on Nucleus GlobalWindowMethods.cs (UpdateAndRefreshGameWindows: ComputeLevenshteinDistance > 2 && !HasDynamicWindowTitle); verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: rarer in Source games.
    * @example Game.HasDynamicWindowTitle = false;
    */
   HasDynamicWindowTitle: boolean;
@@ -346,6 +465,9 @@ interface Game {
    * @example Game.SymlinkFiles = ["game.exe","settings.cfg"];
    */
   SymlinkFiles: string[];
+  /**
+   * @example Game.HookInitDelay = true;
+   */
   HookInitDelay: boolean;
   /**
    * Enable or disable hooks of functions some games may try and use to prevent multiple instances from running | default: false.
@@ -359,16 +481,23 @@ interface Game {
   CopyFiles: string[];
   /**
    * Prevent games from resizing their windows on their own | Hooks after all instances have been opened (see Game.SetWindowHookStart for an alternative).
+   *
+   * By engine: rarer in Source games.
    * @example Game.SetWindowHook = true;
    */
   SetWindowHook: boolean;
   /**
    * Most games hide the taskbar when placed on-top but for games that don't you can use this.
+   *
+   * In practice: Hides the Windows taskbar while the session runs and shows it again afterwards. Nucleus skips it when the player uses split division (the colored background between screens) or already has the taskbar on auto-hide. Authors are split on it: true when the taskbar would show over the game windows.
+   * (AI-written, based on Nucleus TaskbarState.cs (genericGameInfo.HideTaskbar && !GameProfile.UseSplitDiv && !userTaskbarAutoHide); verified Hub handlers, counted 2026-11-17.)
    * @example Game.HideTaskbar = true;
    */
   HideTaskbar: boolean;
   /**
    * Prompt the user with a messagebox to let the user decide when to open the next instance | default: false, PauseBetweenStarts STILL required.
+   *
+   * By engine: more common in Source games.
    * @example Game.PromptBetweenInstances = true;
    */
   PromptBetweenInstances: boolean;
@@ -379,6 +508,8 @@ interface Game {
   HideCursor: boolean;
   /**
    * Instead of killing the mutex or handle, rename it on startup to something else | Requires Game.KillMutex to contain the EXACT name of the handles for this to work (no partial).
+   *
+   * By engine: more common in Source games.
    * @example Game.RenameNotKillMutex = true;
    */
   RenameNotKillMutex: boolean;
@@ -411,21 +542,33 @@ interface Game {
   HideDesktop: boolean;
   /**
    * After each new instance opens, resize, reposition and remove borders of the previous instance.
+   *
+   * In practice: As each new instance starts, Nucleus puts the window of the one before it back to its place and size (and strips its borders again), for games that move or resize their window when another copy starts. Handlers that set it use true; it is especially common in Unity games.
+   * (AI-written, based on Nucleus GenericGameHandler.cs (if i > 0 && gen.ResetWindows), GlobalWindowMethods.cs (ResetWindows); verified Hub handlers, counted 2026-11-17; Hub game engines.)
+   *
+   * By engine: rarer in Source games.
    * @example Game.ResetWindows = false;
    */
   ResetWindows: boolean;
   /**
    * When killing handles, should a partial search be done with the handle name? | Renaming handles requires an exact match | default: false.
+   *
+   * By engine: more common in Source games.
    * @example Game.PartialMutexSearch = false;
    */
   PartialMutexSearch: boolean;
   /**
    * Use the built-in Goldberg features in Nucleus | default: false.
+   *
+   * In practice: Nucleus sets up its built-in Goldberg Steam emulator in each instance before the default `Game.Play` runs (not before it with `Game.GamePlayBeforeGameSetup`, which runs `Game.Play` first), so every instance gets its own Steam id and nickname and the instances can find each other on the local network. It's the usual Steam emulation for Steam games across engines, nearly always together with `Game.SteamID`.
+   * (AI-written, based on Nucleus GenericGameHandler.cs (if gen.UseGoldberg: SteamFunctions.UseGoldberg per instance); verified Hub handlers, counted 2026-11-17.)
    * @example Game.UseGoldberg = false;
    */
   UseGoldberg: boolean;
   /**
    * @default false
+   * From Hub handlers:
+   * @example Game.GoldbergNoWarning = true;
    */
   GoldbergNoWarning: boolean;
   /**
@@ -457,8 +600,13 @@ interface Game {
   SteamlessTiming: number;
   /**
    * bool apply to launcher,string Steamless Args,int wait for exe patching finished.
+   * From Hub handlers:
+   * @example Game.SteamlessPatch = ["false", "--quiet --keepbind", "5000"];
    */
   SteamlessPatch: string[];
+  /**
+   * @example Game.UseGoldbergNoOGSteamDlls = true;
+   */
   UseGoldbergNoOGSteamDlls: boolean;
   CustomSteamApiDllPath: string[];
   /**
@@ -471,13 +619,20 @@ interface Game {
    * @example Game.UseForceBindIP = false;
    */
   UseForceBindIP: boolean;
+  /**
+   * @example Game.ForceBindIPDelay = true;
+   */
   ForceBindIPDelay: boolean;
   /**
    * @default false
+   * @example Game.ForceBindIPNoDummy = true;
    */
   ForceBindIPNoDummy: boolean;
   /**
    * Set up XInputPlus | If multiple dlls required, use comma seperated strings.
+   *
+   * In practice: The names XInputPlus' DLL is copied in as, next to the game in each instance (for example xinput1_3.dll), with its settings telling it which controller that instance gets. Handlers that list DLLs nearly always set `Game.Hook.XInputEnabled` too. `["xinput1_3.dll"]` is the usual list, above all in Unreal Engine games; some games load xinput1_4.dll instead.
+   * (AI-written, based on Nucleus XInputPlusDll.cs (SetupXInputPlusDll), GenericGameHandler.cs; verified Hub handlers, counted 2026-11-17; Hub game engines.)
    * @example Game.XInputPlusDll = ["xinput1_3.dll"];
    */
   XInputPlusDll: string[];
@@ -497,6 +652,8 @@ interface Game {
   PlayersPerInstance: number;
   /**
    * Set up Devreorder.
+   *
+   * By engine: more common in Source games.
    * @example Game.UseDevReorder = true;
    */
   UseDevReorder: boolean;
@@ -512,6 +669,8 @@ interface Game {
   HexEditExe: string[];
   /**
    * Disable raw input devices in game | default: false.
+   *
+   * By engine: more common in Unity games.
    * @example Game.BlockRawInput = false;
    */
   BlockRawInput: boolean;
@@ -562,6 +721,8 @@ interface Game {
   HardlinkGame: boolean;
   /**
    * Set the foreground window to be something other than game windows.
+   *
+   * By engine: rarer in Source games.
    * @example Game.SetForegroundWindowElsewhere = false;
    */
   SetForegroundWindowElsewhere: boolean;
@@ -572,11 +733,16 @@ interface Game {
   PreventWindowDeactivation: boolean;
   /**
    * Folders by default are hardcopied, with this enabled, folders will be symlinked instead | warning files placed in symlink folders will appear in the original game files too.
+   *
+   * In practice: When the instance folder is built, true links each game folder (and the folders inside it) to the original; false makes real, empty folders and then links or copies the files in them. Real folders are safer for games that write next to their files. Unreal Engine games' handlers mostly use true; Unity games' mostly false.
+   * (AI-written, based on Nucleus GenericGameHandler.cs (CreateSymbolicLink or Directory.CreateDirectory per folder), StartGameUtil.cs (SymlinkGame); verified Hub handlers, counted 2026-11-17; Hub game engines.)
    * @example Game.SymlinkFolders = false;
    */
   SymlinkFolders: boolean;
   /**
    * Create a steam_appid.txt file where the game executable is.
+   *
+   * By engine: more common in Source games.
    * @example Game.CreateSteamAppIdByExe = false;
    */
   CreateSteamAppIdByExe: boolean;
@@ -627,6 +793,11 @@ interface Game {
   GoldbergNoLocalSave: boolean;
   /**
    * Use custom environment variables for games that use them, replaces some common paths (e.g. AppData) with C:\Users\\<your username\>\NucleusCoop.
+   *
+   * In practice: Gives each instance its own user profile folders (AppData, Documents) under Nucleus' folder, by changing the environment the game starts with. The handler's `Game.UserProfileConfigPath`, `Game.UserProfileSavePath` and `Game.DocumentsConfigPath`/`DocumentsSavePath` are only copied there when it is true. Used for games that keep settings or saves in the user's profile, above all Unreal Engine games; rare in Unity games.
+   * (AI-written, based on Nucleus GenericGameHandler.cs (the UserProfile/Documents copies need gen.UseNucleusEnvironment; the instance's environment); verified Hub handlers, counted 2026-11-17; Hub game engines.)
+   *
+   * By engine: rarer in Unity and Source games.
    * @example Game.UseNucleusEnvironment = false;
    */
   UseNucleusEnvironment: boolean;
@@ -661,6 +832,9 @@ interface Game {
    */
   KillMutexTypeLauncher: string;
   KillMutexDelayLauncher: number;
+  /**
+   * @example Game.PartialMutexSearchLauncher = true;
+   */
   PartialMutexSearchLauncher: boolean;
   /**
    * If you only want specific instances to have fake focus messages sent to, specify them in a comma seperated string.
@@ -674,11 +848,18 @@ interface Game {
   KeyboardPlayerSkipFakeFocus: boolean;
   /**
    * Relative path from user profile (e.g. C:\Users\ZeroFox) to game's config path | Used to provide some extra functionality (open/delete/copy over to Nucleus Environment).
+   *
+   * By engine: rarer in Source and Unity games.
    * @example Game.UserProfileConfigPath = "AppData\\Local\\Game\\Config";
    */
   UserProfileConfigPath: string;
   /**
    * Relative path from user profile (e.g. C:\Users\ZeroFox) to game's save path | Used to provide some extra functionality (open/delete/copy over to Nucleus Environment).
+   *
+   * In practice: A folder inside the user's profile (relative, e.g. `AppData\\Roaming\\Game`) that Nucleus copies into each instance's own profile when `Game.UseNucleusEnvironment` is on, so every instance starts with the player's saves and keeps its own afterwards. Without UseNucleusEnvironment it isn't copied. The usual value is Goldberg's save folder (`AppData\\Roaming\\Goldberg SteamEmu Saves`), for Steam games that keep their saves through the emulator.
+   * (AI-written, based on Nucleus GenericGameHandler.cs (UserProfileSaveCopy needs gen.UseNucleusEnvironment), NucleusUsers.cs (UserProfileSaveCopy); verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: rarer in Source games.
    * @example Game.UserProfileSavePath = "AppData\\Local\\Game\\Saves";
    */
   UserProfileSavePath: string;
@@ -687,12 +868,19 @@ interface Game {
    * @example Game.PlayerSteamIDs = ["76561198134585131","76561198134585132"];
    */
   PlayerSteamIDs: string[];
+  /**
+   * @example Game.UseHandlerSteamIds = true;
+   */
   UseHandlerSteamIds: boolean;
   /**
    * Use this to replace bytes in a file at a specified address, can be for specific instances with optional 3rd argument | 1st arg: instance # (optional), 2nd arg: hex address offset, 3rd arg: new bytes.
    * @example Game.HexEditExeAddress = [ "1|address|bytes" ];
    */
   HexEditExeAddress: string[];
+  /**
+   * Same as HexEditExeAddress but for a file other than exe | Need to provide relative path (from game root folder) + filename as 1st or 2nd arg if not specifying an instance.
+   * @example Game.HexEditFileAddress = [ "1|relativePath|address|bytes" ];
+   */
   HexEditFileAddress: string[];
   /**
    * Force the games config files in UserProfileConfigPath to copy over from system user profile to Nucleus environment.
@@ -704,6 +892,9 @@ interface Game {
    * @example Game.ForceUserProfileSaveCopy = false;
    */
   ForceUserProfileSaveCopy: boolean;
+  /**
+   * @example Game.PromptBeforeProcessGrab = true;
+   */
   PromptBeforeProcessGrab: boolean;
   /**
    * Do the resizing, repositioning and post-launch hooking of all game instances at the very end | will not work with every option ran normally.
@@ -731,7 +922,6 @@ interface Game {
    */
   PromptBetweenInstancesEnd: boolean;
   /**
-   * Game.HexEditFileAddress = [ "1|relativePath|address|bytes" ]; //Same as HexEditExeAddress but for a file other than exe | Need to provide relative path (from game root folder) + filename as 1st or 2nd arg if not specifying an instance.
    * Do not display the warning message about a file being deleted .
    * @example Game.IgnoreDeleteFilesPrompt = false;
    */
@@ -746,9 +936,12 @@ interface Game {
    * @example Game.FlawlessWidescreen = "FWGameName";
    */
   FlawlessWidescreen: string;
+  /**
+   * Specify files to either rename or move | can accept relative path from root | optional first parameter to specify a specific instance to apply to, omit to do them all.
+   * @example Game.RenameAndOrMoveFiles = [ "1|before.dat|after.dat" ];
+   */
   RenameAndOrMoveFiles: string[];
   /**
-   * Game.RenameAndOrMoveFiles = [ "1|before.dat|after.dat" ];//Specify files to either rename or move | can accept relative path from root | optional first parameter to specify a specific instance to apply to, omit to do them all.
    * Specify files to be deleted from instanced folder | can accept relative path from root | optional first parameter to specify a specific instance to apply to, omit to do them all.
    * @example Game.DeleteFiles = [ "1|delete.dis" ];
    */
@@ -800,6 +993,11 @@ interface Game {
   KillLastInstanceMutex: boolean;
   /**
    * Should each game window be minimized and restored once all instances are opened?.
+   *
+   * In practice: Once an instance's window is placed, Nucleus minimises it and restores it again (ShowWindow 6, then 9). The source says it fixes black borders in some games (Minecraft) but can stretch others. Handlers that set it nearly always use true, mostly for Unreal Engine games.
+   * (AI-written, based on Nucleus GlobalWindowMethods.cs (UpdateAndRefreshGameWindows), WindowMerger.cs; verified Hub handlers, counted 2026-11-17; Hub game engines.)
+   *
+   * By engine: more common in Unreal Engine games, rarer in Source games.
    * @default false
    * @example Game.RefreshWindowAfterStart = false;
    */
@@ -815,7 +1013,6 @@ interface Game {
    */
   KillMutexAtEnd: boolean;
   /**
-   * Game.CMDBatchClose ["cmd1", "cmd2"];			//Run command lines upon exiting Nucleus.
    * When using CMDLaunch, should the game's starting arguments be inside the same quotations as the game path?
    * @example Game.CMDStartArgsInside = false;
    */
@@ -838,6 +1035,9 @@ interface Game {
   RunLauncherAndExe: boolean;
   /**
    * How many seconds to wait after launching game (or launcher) but before grabbing game process.
+   *
+   * In practice: After starting the game (or its launcher) Nucleus sleeps this many seconds before it looks for the game's process. Usually 5; raise it (10 or 15) when a launcher or splash screen hands over to the real game slowly.
+   * (AI-written, based on Nucleus GenericGameHandler.cs (Thread.Sleep before the process is grabbed); verified Hub handlers, counted 2026-11-17.)
    * @example Game.PauseBetweenProcessGrab = 30;
    */
   PauseBetweenProcessGrab: number;
@@ -858,11 +1058,13 @@ interface Game {
   LaunchAsDifferentUsersAlt: boolean;
   /**
    * An alternative method to changing IP per instance | this method will create loopback adapters for each player and assign them a static ip on the same subnet mask as your main network interface.
+   * @example Game.ChangeIPPerInstanceAlt = true;
    */
   ChangeIPPerInstanceAlt: boolean;
   /**
    * Run `Game.Play` after the instance has been launched instead of before. Changes to `Context.StartArguments` then have no effect. Don't combine with `Game.GamePlayBeforeGameSetup`: if both are true, `Game.Play` never runs.
    * (AI-written, based on Nucleus GenericGameHandler.cs (where it is called). Not from the official docs.)
+   * @example Game.GamePlayAfterLaunch = true;
    */
   GamePlayAfterLaunch: boolean;
   /**
@@ -882,6 +1084,8 @@ interface Game {
   LauncherExeIgnoreFileCheck: boolean;
   /**
    * This prompts user one time and applies to ALL players, unless a value text file already exists and saving is on.
+   *
+   * By engine: more common in Source games.
    * @example Game.CustomUserGeneralPrompts = ["Enter ROM name", "Enter filename"];
    */
   CustomUserGeneralPrompts: string[];
@@ -908,6 +1112,8 @@ interface Game {
    */
   SaveCustomUserInstanceValues: boolean;
   /**
+   *
+   * By engine: more common in Source games.
    * @example Game.SaveAndEditCustomUserGeneralValues = false;
    */
   SaveAndEditCustomUserGeneralValues: boolean;
@@ -947,6 +1153,8 @@ interface Game {
   ExtWindowStyleEndChanges: string[];
   /**
    * Setup wizark952's dinput blocker (block dinput for the game).
+   *
+   * By engine: more common in Source games.
    * @example Game.UseDInputBlocker = false;
    */
   UseDInputBlocker: boolean;
@@ -973,11 +1181,10 @@ interface Game {
   /**
    * Skips the window pass Nucleus runs after the last instance has started and when windows are reset: it re-applies position, size and border removal to game windows that still have a border, and applies `Game.WindowStyleEndChanges`, `Game.ExtWindowStyleEndChanges` and `Game.EnableWindows`. Default `false`.
    * (AI-written, based on Nucleus GenericGameHandler.cs (last-instance block), GlobalWindowMethods.cs (RemoveBorder, reset-windows update loop, ResetWindows). Not from the official docs.)
+   * From Hub handlers:
+   * @example Game.IgnoreWindowBorderCheck = true;
    */
   IgnoreWindowBorderCheck: boolean;
-  /**
-   * (undocumented)
-   */
   WriteToProcessMemory: string;
   /**
    * Automatically set up Nemirtinga's Epic Emulator in Nucleus
@@ -1006,10 +1213,16 @@ interface Game {
    * @example Game.PromptAfterFirstInstance = false;
    */
   PromptAfterFirstInstance: boolean;
+  /**
+   * @example Game.FakeFocusSendActivateIgnoreKB = true;
+   */
   FakeFocusSendActivateIgnoreKB: boolean;
+  /**
+   * Copy subfolders of current user profile to Nucleus user accounts.
+   * @example Game.CopyEnvFoldersToNucleusAccounts = ["Documents", "AppData"];
+   */
   CopyEnvFoldersToNucleusAccounts: string[];
   /**
-   * Game.CopyEnvFoldersToNucleusAccounts = ["Documents", "AppData"]; //Copy subfolders of current user profile to Nucleus user accounts.
    * Copy folders in game root folder to another spot in game folder | Relative paths from root of game folder.
    * @example Game.CopyFoldersTo = ["folderToMove|whereToMoveIt"];
    */
@@ -1121,9 +1334,6 @@ interface Game {
    * @example Game.DocumentsSavePathNoCopy = false;
    */
   DocumentsSavePathNoCopy: boolean;
-  /**
-   * (undocumented)
-   */
   FlawlessWidescreenPluginPath: string;
   /**
    * When using Game.XInputPlusDll, you can specify to use the previous version instead of latest (needed for some games).
@@ -1134,6 +1344,10 @@ interface Game {
    * @example Game.FlawlessWidescreenOverrideDisplay = false;
    */
   FlawlessWidescreenOverrideDisplay: boolean;
+  /**
+   * Run command lines upon exiting Nucleus.
+   * @example Game.CMDBatchClose = ["cmd1", "cmd2"];
+   */
   CMDBatchClose: string[];
   /**
    * Force Nucleus to treat the game as 32 or 64-bit architecture.
@@ -1153,100 +1367,142 @@ interface Game {
   DesktopScale: number[];
   /**
    * If enabled, it will allow multiple Keyboards and Mice to be used as a device input in Nucleus. Before enabling it by default, be sure that all works without problems.
+   *
+   * In practice: Lets players pick their own raw keyboard and mouse in the setup screen, and makes Nucleus inject its post-launch hooks into each instance. Handlers set it true for games where each player gets a keyboard and mouse, and nearly always inject Proto Input with it: the keyboards and mice reach the game through Proto Input's hooks.
+   * (AI-written, based on Nucleus GameProfile.cs (raw mice and keyboards listed when it's true), GenericGameHandler.cs (post-launch hooks), DllsInjector.cs; verified Hub handlers, counted 2026-11-17.)
    * @example Game.SupportsMultipleKeyboardsAndMice = true;
    */
   SupportsMultipleKeyboardsAndMice: boolean;
   /**
    * This will hook the SetCursorPos Windows function which the game may use to set the mouse position.
    *  This is useful to have on to prevent the game from moving the 'real' Windows mouse cursor around the screen.
+   *
+   * In practice: Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs, only with `Game.SupportsMultipleKeyboardsAndMice`), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
+   * (AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default true
    * @example Game.HookSetCursorPos = true;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   HookSetCursorPos: boolean;
   /**
    * This will hook the GetCursorPos Windows function which the game may use to get the mouse position.
+   *
+   * In practice: Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs, only with `Game.SupportsMultipleKeyboardsAndMice`), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
+   * (AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default true
    * @example Game.HookGetCursorPos = true;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   HookGetCursorPos: boolean;
   /**
    * These options hook Windows functions that can be used by the game to detect if keys are down.
+   *
+   * In practice: Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs, only with `Game.SupportsMultipleKeyboardsAndMice`), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
+   * (AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default true
    * @example Game.HookGetKeyState = false;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   HookGetKeyState: boolean;
   /**
    * HookGetAsyncKeyState is usually the only one that's needed, but leave the others enabled if there are no problems.
+   *
+   * In practice: Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs, only with `Game.SupportsMultipleKeyboardsAndMice`), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
+   * (AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default true
    * @example Game.HookGetAsyncKeyState = true;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   HookGetAsyncKeyState: boolean;
   /**
    * Some games may conflict with these hooks, so try toggling some of them if keyboard input isn't working properly.
+   *
+   * In practice: Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs, only with `Game.SupportsMultipleKeyboardsAndMice`), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
+   * (AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default true
    * @example Game.HookGetKeyboardState = false;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   HookGetKeyboardState: boolean;
   /**
    * This filters raw input messages inside the application. This makes sure each instance only receives input for its designated input device.
+   *
+   * In practice: Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs, only with `Game.SupportsMultipleKeyboardsAndMice`), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
+   * (AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @example Game.HookFilterRawInput = false;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   HookFilterRawInput: boolean;
   /**
    * This hook filters many mouse messages to position the mouse cursor and other necessary changes from within the game itself.
    *  This should almost always be enabled unless it causes some conflict.
+   *
+   * In practice: Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs, only with `Game.SupportsMultipleKeyboardsAndMice`), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
+   * (AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @example Game.HookFilterMouseMessages = false;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   HookFilterMouseMessages: boolean;
   /**
    * This is the main switch for legacy input.
+   *
+   * In practice: Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs, only with `Game.SupportsMultipleKeyboardsAndMice`), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Almost no handler sets it true.
+   * (AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @example Game.HookUseLegacyInput = false;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   HookUseLegacyInput: boolean;
   /**
    * ****Nucleus Co-op will hook mouse movement messages and the GetCursorPos function to work around legacy input. Some games only need the GetCursorPos hook and conflict when mouse movement messages are edited. If this is the case, enable this option***
+   *
+   * In practice: Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. No Hub handler sets it true.
+   * (AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @example Game.HookDontUpdateLegacyInMouseMsg = false;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   HookDontUpdateLegacyInMouseMsg: boolean;
   /**
    * Used for games that toggle the mouse visibility, e.g. hidden in first person movement and visible in menus.
    *  This shows/hides the fake mouse cursor when the game tries to show/hide the 'real' mouse cursor.
    *  ***!!!!Most of the time this one is the cause of crashes.!!!!***
+   *
+   * In practice: Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs, only with `Game.SupportsMultipleKeyboardsAndMice`), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
+   * (AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default true
    * @example Game.HookMouseVisibility = false;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   HookMouseVisibility: boolean;
   /**
    * Re-register raw input from directly within game process | Recommended to disable forwarding input while using this
+   *
+   * In practice: Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
+   * (AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default false
    * @example Game.HookReRegisterRawInput = false;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   HookReRegisterRawInput: boolean;
   /**
    * Includes the mouse when the Nucleus hook re-registers the game window's raw input so it keeps receiving input in the background. Only read when `Game.HookReRegisterRawInput` is on and the Nucleus hook DLL is injected (`Game.HookFocus`, `Game.SetWindowHook`, `Game.HideCursor`, `Game.PreventWindowDeactivation` or `Game.SupportsMultipleKeyboardsAndMice`). Default `true`; `false` leaves the game's mouse registration as it is.
-   * (AI-written, based on Nucleus DllsInjector.cs (InjectDLLs), GenericGameHandler.cs (InjectDLLs call sites), Nucleus.Inject Program.cs, Nucleus.Hook Hook.cpp + RawInputReRegister.cpp (reRegisterRawInput). Not from the official docs.)
+   * (AI-written, based on Nucleus DllsInjector.cs (InjectDLLs), GenericGameHandler.cs (InjectDLLs call sites), Nucleus.Inject Program.cs, Nucleus.Hook Hook.cpp, RawInputReRegister.cpp (reRegisterRawInput). Not from the official docs.)
+   *
+   * In practice: Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
+   * (AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default true
    * @example Game.HookReRegisterRawInputMouse = true;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   HookReRegisterRawInputMouse: boolean;
   /**
    * Includes the keyboard when the Nucleus hook re-registers the game window's raw input so it keeps receiving input in the background. Only read when `Game.HookReRegisterRawInput` is on and the Nucleus hook DLL is injected (`Game.HookFocus`, `Game.SetWindowHook`, `Game.HideCursor`, `Game.PreventWindowDeactivation` or `Game.SupportsMultipleKeyboardsAndMice`). Default `true`; `false` leaves the game's keyboard registration as it is.
-   * (AI-written, based on Nucleus DllsInjector.cs (InjectDLLs), GenericGameHandler.cs (InjectDLLs call sites), Nucleus.Inject Program.cs, Nucleus.Hook Hook.cpp + RawInputReRegister.cpp (reRegisterRawInput). Not from the official docs.)
+   * (AI-written, based on Nucleus DllsInjector.cs (InjectDLLs), GenericGameHandler.cs (InjectDLLs call sites), Nucleus.Inject Program.cs, Nucleus.Hook Hook.cpp, RawInputReRegister.cpp (reRegisterRawInput). Not from the official docs.)
+   *
+   * In practice: Read by Nucleus' own input hooks, injected into each instance (DllsInjector.cs), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
+   * (AI-written, based on Nucleus DllsInjector.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default true
    * @example Game.HookReRegisterRawInputKeyboard = true;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   HookReRegisterRawInputKeyboard: boolean;
   /**
@@ -1263,38 +1519,53 @@ interface Game {
   InjectDinputToXinputTranslation: boolean;
   /**
    * This will send the game mouse input via Windows messages.
+   *
+   * In practice: Read by Nucleus' own raw input forwarding (RawInputProcessor.cs), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
+   * (AI-written, based on Nucleus RawInputProcessor.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default true
    * @example Game.SendNormalMouseInput = true;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   SendNormalMouseInput: boolean;
   /**
    * This sends keyboard input via Windows messages. This is usually all that's needed to get keyboard input working.
+   *
+   * In practice: Read by Nucleus' own raw input forwarding (RawInputProcessor.cs), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
+   * (AI-written, based on Nucleus RawInputProcessor.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default true
    * @example Game.SendNormalKeyboardInput = true;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   SendNormalKeyboardInput: boolean;
   /**
    * Use this to send scroll wheel events to the game.
    *  Some games don't need this, if for example they receive scroll wheel data from raw input.
+   *
+   * In practice: Read by Nucleus' own raw input forwarding (RawInputProcessor.cs), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
+   * (AI-written, based on Nucleus RawInputProcessor.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default false
    * @example Game.SendScrollWheel = false;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   SendScrollWheel: boolean;
   /**
    * The same as ForwardRawMouseInput, but for keyboards. Again, this should almost never be used instead of re-register raw input.
+   *
+   * In practice: Read by Nucleus' own raw input forwarding (RawInputProcessor.cs), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. No Hub handler sets it true.
+   * (AI-written, based on Nucleus RawInputProcessor.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default false
    * @example Game.ForwardRawKeyboardInput = false;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   ForwardRawKeyboardInput: boolean;
   /**
    * In some cases, you may need to forward raw mouse input. This is almost never needed as re-register raw input has the same effect with a much more efficient method. Forwarding input forwards raw input from Nucleus Coop to the game. This has a high CPU usage and many input events will not pass, resulting in choppy movement.
+   *
+   * In practice: Read by Nucleus' own raw input forwarding (RawInputProcessor.cs), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false. No Hub handler sets it true.
+   * (AI-written, based on Nucleus RawInputProcessor.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default false
    * @example Game.ForwardRawMouseInput = false;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   ForwardRawMouseInput: boolean;
   /**
@@ -1302,9 +1573,12 @@ interface Game {
    *  If the game uses a custom cursor, you will probably not need this option. (This will be obvious if you see the games custom cursor and a fake cursor drawn over it).
    *  Be aware this is a 'fake' mouse cursor in the sense that Nucleus Coop will fake mouse input to the game via the other options and then the fake mouse cursor is drawn where the game should be responding to mouse input.
    *  The fake cursor is drawn by creating a large transparent window over the game. This may prevent the game from receiving mouse input from the 'real' Windows cursor. It is sometimes useful to disable this while testing.
+   *
+   * In practice: Read by Nucleus' own fake cursor (GenericGameHandler.cs, GlobalWindowMethods.cs), from before Proto Input. The Proto Input guide lists it among the options a Proto Input handler must set to false explicitly (some of them default to true), so Proto Input handlers set it false (Proto Input draws its own with `ProtoInput.SetDrawFakeCursor`). Only the few handlers that use Nucleus' own keyboard and mouse input instead of Proto Input set it true.
+   * (AI-written, based on Nucleus GenericGameHandler.cs, Proto Input guide protoinput.md (Handler development with Nucleus Co-op); verified Hub handlers, counted 2026-11-17.)
    * @default true
    * @example Game.DrawFakeMouseCursor = true;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   DrawFakeMouseCursor: boolean;
   /**
@@ -1316,12 +1590,15 @@ interface Game {
   /**
    * @default false
    * @example Game.UpdateFakeMouseWithInternalInput = false;
-   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/protoinput).
+   * @deprecated Deprecated: use Proto Input instead (see https://www.splitscreen.me/docs/proto).
    */
   UpdateFakeMouseWithInternalInput: boolean;
   /**
    * Once you have finished setting up the input options, enable this to automatically lock input (equivalent to pressing End) once all of the instances have been set up.
    *  This is usually convenient to leave disabled whilst testing.
+   *
+   * In practice: After the last instance is set up, Nucleus waits 5 seconds and locks the input by itself, as if the player pressed the lock key (End). Handlers usually leave it off, so players can arrange things first and lock when they're ready.
+   * (AI-written, based on Nucleus GenericGameHandler.cs (if gen.LockInputAtStart: Thread.Sleep(5000), LockInputRuntime.Lock); verified Hub handlers, counted 2026-11-17.)
    * @default false
    * @example Game.LockInputAtStart = true;
    */
@@ -1334,6 +1611,9 @@ interface Game {
   PreventGameFocus: boolean;
   /**
    * See https://docs.microsoft.com/en-us/windows/win32/inputdev/virtual-key-codes
+   *
+   * In practice: Nucleus overwrites it when a session starts: GenericGameHandler sets it to the lock key the player chose in Nucleus' settings (End, 0x23, unless changed), and the raw input processor only listens for that key. So the value in the handler has no effect; handlers that set it nearly all say 0x23 anyway.
+   * (AI-written, based on Nucleus GenericGameHandler.cs (gen.LockInputToggleKey = App_Hotkeys.LockKeyValue), App_Hotkeys.cs, RawInputProcessor.cs; verified Hub handlers, counted 2026-11-17.)
    * @default 0x23
    * @example Game.LockInputToggleKey = 0x23;
    */
@@ -1348,42 +1628,50 @@ interface Game {
    * @example Game.ForceLauncherExeIgnoreFileCheck = false;
    */
   ForceLauncherExeIgnoreFileCheck: boolean;
+  /**
+   * @example Game.UseDI8CoopLvlUnlocker = true;
+   */
   UseDI8CoopLvlUnlocker: boolean;
   /**
    * @default false
+   * @example Game.UseManualProtoControllersSetup = true;
    */
   UseManualProtoControllersSetup: boolean;
   /**
-   * Proto Input options (multiple mice/keyboards, focus hooks, input redirection). See https://www.splitscreen.me/docs/protoinput
-   * (AI-written, based on Nucleus GenericGameInfo.cs and GenericGameHandler.cs. Not from the official docs.)
+   * Proto Input options (multiple mice/keyboards, focus hooks, input redirection). See https://www.splitscreen.me/docs/proto
+   * (AI-written, based on Nucleus GenericGameInfo.cs, GenericGameHandler.cs. Not from the official docs.)
    * @default new ProtoInputOptions()
    */
   readonly ProtoInput: GameProtoInput;
   /**
    * Pauses the Windows Explorer threads behind the taskbar, Start menu and Alt+Tab while input is locked, so they can't react to input; they resume when input is unlocked. Read on every lock (the lock key, the gamepad lock shortcut or `Game.LockInputAtStart`). Default `false`.
-   * (AI-written, based on Nucleus LockInputRuntime.cs (Lock/Unlock), RawInputProcessor.cs, GamepadShortcuts.cs, GenericGameHandler.cs (LockInputAtStart); ProtoInputUtil KillExplorer.cpp (SuspendExplorer/RestartExplorer). Not from the official docs.)
+   * (AI-written, based on Nucleus LockInputRuntime.cs (Lock/Unlock), RawInputProcessor.cs, GamepadShortcuts.cs, GenericGameHandler.cs (LockInputAtStart), ProtoInputUtil KillExplorer.cpp (SuspendExplorer/RestartExplorer). Not from the official docs.)
    * @default false
+   * From Hub handlers:
+   * @example Game.LockInputSuspendsExplorer = true;
    */
   LockInputSuspendsExplorer: boolean;
   /**
    * v.2.1.2 see RawInputProcessor & GenericGameHandler
    * @default false
+   * From Hub handlers:
+   * @example Game.ToggleUnfocusOnInputsLock = true;
    */
   ToggleUnfocusOnInputsLock: boolean;
   CustomHotkeys: string[];
   /**
    * Called when the first custom hotkey from `Game.CustomHotkeys` is pressed. Required if that hotkey is defined (Nucleus calls it without checking). `Context` is the last player's, or undefined before the first instance is set up.
-   * (AI-written, based on Nucleus GenericGameInfo.cs and GenericGameHandler.cs. Not from the official docs.)
+   * (AI-written, based on Nucleus GenericGameInfo.cs, GenericGameHandler.cs. Not from the official docs.)
    */
   OnCustomHotKey_1: (() => void) | null;
   /**
    * Called when the second custom hotkey from `Game.CustomHotkeys` is pressed. Required if that hotkey is defined (Nucleus calls it without checking). `Context` is the last player's, or undefined before the first instance is set up.
-   * (AI-written, based on Nucleus GenericGameInfo.cs and GenericGameHandler.cs. Not from the official docs.)
+   * (AI-written, based on Nucleus GenericGameInfo.cs, GenericGameHandler.cs. Not from the official docs.)
    */
   OnCustomHotKey_2: (() => void) | null;
   /**
    * Called when the third custom hotkey from `Game.CustomHotkeys` is pressed. Required if that hotkey is defined (Nucleus calls it without checking). `Context` is the last player's, or undefined before the first instance is set up.
-   * (AI-written, based on Nucleus GenericGameInfo.cs and GenericGameHandler.cs. Not from the official docs.)
+   * (AI-written, based on Nucleus GenericGameInfo.cs, GenericGameHandler.cs. Not from the official docs.)
    */
   OnCustomHotKey_3: (() => void) | null;
   readonly HandlerType: any;
@@ -1397,7 +1685,7 @@ interface Game {
   LoadCustomAssemblies(_engine: any, configPath: string | number | boolean): boolean;
   /**
    * Shows a previously added option as its own setup step before launching.
-   * (AI-written, based on Nucleus GenericGameInfo.cs and GenericGameHandler.cs. Not from the official docs.)
+   * (AI-written, based on Nucleus GenericGameInfo.cs, GenericGameHandler.cs. Not from the official docs.)
    */
   ShowOptionAsStep(optionKey: string | number | boolean, required: boolean, title: string | number | boolean): CustomStep;
   /**
@@ -1423,8 +1711,17 @@ interface Game {
   readonly Profiles_Documents_SavePath: string[];
   readonly Players_BackupPath: string[];
   readonly Content_Folder: string;
+  /**
+   * @example var epicLang = Game.EpicLang;
+   */
   readonly EpicLang: string;
+  /**
+   * @example var gogLang = Game.GogLang;
+   */
   readonly GogLang: string;
+  /**
+   * @example var steamLang = Game.SteamLang;
+   */
   readonly SteamLang: string;
 }
 
@@ -1434,33 +1731,47 @@ interface Game {
 interface GameHook {
   /**
    * Use Nucleus' own XInput DLL (a custom x360ce) in each instance to give it one controller and keep it in focus. **On by default**: set it to `false` when the handler hands out controllers another way (XInputPlus with `Game.XInputPlusDll`, Proto Input), or Nucleus adds its DLL as well. `Game.Hook.XInputNames` says which DLL names it uses.
-   * (AI-written, based on Nucleus GameHookInfo.cs (CustomDllEnabled = true); GenericGameHandler.cs (XInputPlusDll.CustomDllEnabled); MasterHandler.js. Not from the official docs.)
+   * (AI-written, based on Nucleus GameHookInfo.cs (CustomDllEnabled = true), GenericGameHandler.cs (XInputPlusDll.CustomDllEnabled), MasterHandler.js. Not from the official docs.)
    * @default true
    * @example Game.Hook.CustomDllEnabled = false;
    */
   CustomDllEnabled: boolean;
   /**
    * If enabled, will allow DInput devices to be used as a device input in Nucleus. This doesn't mean that it will work with the game if not supported.
+   *
+   * In practice: True makes the setup screen list DirectInput controllers (as do `Game.Hook.XInputReroute` and `Game.ProtoInput.DinputDeviceHook`); with the custom XInput DLL it also goes into its settings. Only for the rare games that read controllers through DirectInput; almost every handler sets it false.
+   * (AI-written, based on Nucleus DevicesFunctions.cs (if g.Hook.DInputEnabled || g.Hook.XInputReroute || g.ProtoInput.DinputDeviceHook), XInputPlusDll.cs; verified Hub handlers, counted 2026-11-17.)
    * @example Game.Hook.DInputEnabled = false;
    */
   DInputEnabled: boolean;
   /**
    * If we should completely remove support for DirectInput input from the game
+   *
+   * By engine: more common in Source games, rarer in Unity games.
    * @example Game.Hook.DInputForceDisable = true;
    */
   DInputForceDisable: boolean;
   /**
    * If enabled, will allow XInput devices to be used as a device input in Nucleus. This doesn't mean that it will work with the game if not supported.
+   *
+   * In practice: Decides which controllers the setup screen lists: true lists XInput controllers (and hides their DInput twins); with `Game.Hook.CustomDllEnabled` it also goes into the custom DLL's settings. Proto Input's `Game.ProtoInput.XinputHook` lists them too. Set it true for games played with Xbox-style controllers; that's most handlers.
+   * (AI-written, based on Nucleus DevicesFunctions.cs (which gamepads are listed), XInputPlusDll.cs (CustomDllEnabled); verified Hub handlers, counted 2026-11-17.)
    * @example Game.Hook.XInputEnabled = true;
    */
   XInputEnabled: boolean;
   /**
    * If the game supports sdl2 joysticks(not a hook)
+   *
+   * In practice: Not a hook: Nucleus lists SDL2 controllers for the game and, for each instance, copies its own SDL2.dll (utils\SDL2\<arch>) next to the game's .exe, or into each folder in Game.SDLPaths, and writes SDL2.ini with that player's controller number. So it only works for games that load SDL2.dll as a separate file; a game with SDL built into its .exe (or a differently named SDL DLL such as SDL264.dll) keeps its own SDL and ignores it. Rare in Hub handlers; some also set Game.SDLPaths.
+   * (AI-written, based on Nucleus Tools/SDL2Dll/SDL2Dll.cs (SetupSDL2Dll), GenericGameHandler.cs (gen.Hook.SDL2Enabled), Controls/SetupScreen/DevicesFunctions.cs (SDL2 devices); verified Hub handlers, counted 2026-11-18.)
+   * From Hub handlers:
+   * @example Game.Hook.SDL2Enabled = true;
    */
   SDL2Enabled: boolean;
   /**
-   * The name of our custom DLL for gamepad control, some games need other names like xinput1_4.dll, xinput1_2.dll, xinput1_1.dll and xinput9_1_0.dll.
+   * Which XInput DLLs the custom DLL replaces. DInput DLLs are not supported.
    * @default new string[]
+   * @example Game.Hook.XInputNames = [ "xinput1_3.dll"];
    */
   XInputNames: string[];
   /**
@@ -1475,15 +1786,22 @@ interface GameHook {
   XInputReroute: boolean;
   /**
    * If our custom dll should set the window size and position locally, instead of the handler (inconsistent with some window sizes, look at Borderlands2.js for an example usage)
+   * @example Game.Hook.SetWindowSize = true;
    */
   SetWindowSize: boolean;
   /**
    * If our custom x360ce xinput DLL should hook into the game's window and fake Window's events so we never leave focus.
+   *
+   * In practice: It only goes into the custom XInput DLL's settings (ncoop.ini, ForceFocus), so it does nothing unless `Game.Hook.CustomDllEnabled` is true. Most handlers set it true without the custom DLL, where it changes nothing; focus is handled by Proto Input or the other focus options there.
+   * (AI-written, based on Nucleus XInputPlusDll.cs ((CustomDllEnabled: IniWriteValue("Options", "ForceFocus")), the only place it is read); verified Hub handlers, counted 2026-11-17.)
    * @example Game.Hook.ForceFocus = true;
    */
   ForceFocus: boolean;
   /**
    * If force focus is enabled, this is the window we are attaching ourselves to and the window we are going to keep on top. Needs the exact name of the window. If force focus is disabled you still need to set the game window name for resizing and positioning.
+   *
+   * In practice: Even without the custom XInput DLL, Nucleus uses it to recognise each instance's game window: the window must have this title (within 2 letters, unless `Game.HasDynamicWindowTitle`), and processes are matched on their main window title. Put the exact title the game window shows; practically every handler sets it.
+   * (AI-written, based on Nucleus GlobalWindowMethods.cs (UpdateAndRefreshGameWindows), GenericGameHandler.cs (process.MainWindowTitle == gen.Hook.ForceFocusWindowName), XInputPlusDll.cs (CustomDllEnabled: ForceFocusWindowRegex); verified Hub handlers, counted 2026-11-17.)
    * @default ""
    * @example Game.Hook.ForceFocusWindowName = "Game window title";
    */
@@ -1491,16 +1809,22 @@ interface GameHook {
   /**
    * If force focus is enabled, this blocks all mouse input.
    * @default true
+   * From Hub handlers:
+   * @example Game.Hook.BlockMouseEvents = true;
    */
   BlockMouseEvents: boolean;
   /**
    * If force focus is enabled, this blocks all keyboard input.
    * @default true
+   * From Hub handlers:
+   * @example Game.Hook.BlockKeyboardEvents = false;
    */
   BlockKeyboardEvents: boolean;
   /**
    * If force focus is enabled, this blocks all input events but gamepad.
    * @default true
+   * From Hub handlers:
+   * @example Game.Hook.BlockInputEvents = true;
    */
   BlockInputEvents: boolean;
   /**
@@ -1517,6 +1841,8 @@ interface GameHook {
   FixPosition: boolean;
   /**
    * Use the xinput custom dll from Alpha 8 instead of Alpha 10 | Will still force alpha 10 custom dll if game is x64.
+   *
+   * By engine: more common in Source games.
    * @default false
    * @example Game.Hook.UseAlpha8CustomDll = false;
    */
@@ -1559,42 +1885,100 @@ interface GameHook {
 interface GameProtoInput {
   /**
    * Nucleus starts each instance's game suspended, injects Proto Input, applies the `Game.ProtoInput` options and only then lets the game run, so the hooks are in place from its first line of code. This replaces Nucleus's other launch methods and the `InjectRuntime_…` options; it is not used with `Game.ThirdPartyLaunch` or `Game.NeedsSteamEmulation`. If injection fails, Nucleus shows an error and ends the session.
-   * (AI-written, based on Nucleus GenericGameHandler.cs (StartGame launch branch, runtime inject condition), ProtoInputLauncher.cs (InjectStartup, SetupInstance); ProtoInputLoader EasyHookStartup.cpp (RtlCreateSuspendedProcess). Not from the official docs.)
+   * (AI-written, based on Nucleus GenericGameHandler.cs (StartGame launch branch, runtime inject condition), ProtoInputLauncher.cs (InjectStartup, SetupInstance), ProtoInputLoader EasyHookStartup.cpp (RtlCreateSuspendedProcess). Not from the official docs.)
+   *
+   * In practice: For games that need the hooks before their first frame (raw input registered at startup, a launcher that checks focus), mostly Unreal Engine games; few handlers need it. It wins over the `InjectRuntime_…` options: Nucleus doesn't inject again at runtime when it is true.
+   * (AI-written, based on Nucleus GenericGameHandler.cs (if gen.ProtoInput.InjectStartup: ProtoInputLauncher.InjectStartup; the runtime branch needs !InjectStartup); verified Hub handlers, counted 2026-11-17; Hub game engines.)
    * @example Game.ProtoInput.InjectStartup = false;
    */
   InjectStartup: boolean;
   /**
    * Injects Proto Input into each instance's running game by making the game load the Proto Input DLL itself (a remote LoadLibrary call), once Nucleus has found its process, then applies the `Game.ProtoInput` options. Ignored when `Game.ProtoInput.InjectStartup`, `Game.ProtoInput.InjectRuntime_EasyHookMethod` or `Game.ProtoInput.InjectRuntime_EasyHookStealthMethod` is on. If injection fails, Nucleus shows an error and ends the session.
-   * (AI-written, based on Nucleus GenericGameHandler.cs (StartGame, runtime inject block), ProtoInputLauncher.cs (InjectRuntime priority order); ProtoInputLoader RemoteLoadLibrary.cpp. Not from the official docs.)
+   * (AI-written, based on Nucleus GenericGameHandler.cs (StartGame, runtime inject block), ProtoInputLauncher.cs (InjectRuntime priority order), ProtoInputLoader RemoteLoadLibrary.cpp. Not from the official docs.)
    * @example Game.ProtoInput.InjectRuntime_RemoteLoadMethod = false;
    */
   InjectRuntime_RemoteLoadMethod: boolean;
   /**
    * Injects Proto Input with EasyHook into each instance's running game once Nucleus has found its process, then applies the `Game.ProtoInput` options. Ignored when `Game.ProtoInput.InjectStartup` is on, and `Game.ProtoInput.InjectRuntime_EasyHookStealthMethod` takes priority over it. If injection fails, Nucleus shows an error and ends the session.
-   * (AI-written, based on Nucleus GenericGameHandler.cs (StartGame, runtime inject block), ProtoInputLauncher.cs (InjectRuntime, SetupInstance); ProtoInputLoader EasyHookRuntime.cpp. Not from the official docs.)
+   * (AI-written, based on Nucleus GenericGameHandler.cs (StartGame, runtime inject block), ProtoInputLauncher.cs (InjectRuntime, SetupInstance), ProtoInputLoader EasyHookRuntime.cpp. Not from the official docs.)
+   *
+   * In practice: The usual way handlers start Proto Input, for Unity and Unreal Engine games alike. Nucleus injects once it has found each instance's process, so the game's first moments run without the hooks; a game that registers raw input or checks focus right at startup needs `Game.ProtoInput.InjectStartup` instead (which then wins: the runtime injection is skipped).
+   * (AI-written, based on Nucleus GenericGameHandler.cs (runtime injection only when !InjectStartup), ProtoInputLauncher.cs (InjectRuntime, Stealth, then EasyHook, then RemoteLoad); verified Hub handlers, counted 2026-11-17; Hub game engines.)
    * @example Game.ProtoInput.InjectRuntime_EasyHookMethod = true;
    */
   InjectRuntime_EasyHookMethod: boolean;
   /**
-   * Automatically locks input once the instances are set up
+   * Injects Proto Input into each instance's running game with EasyHook's stealth injection, once Nucleus has found its process, then applies the `Game.ProtoInput` options. When more than one runtime method is true, this one is used. Ignored when `Game.ProtoInput.InjectStartup` is on. If injection fails, Nucleus shows an error and ends the session.
+   * (AI-written, based on Nucleus GenericGameHandler.cs (runtime inject block), ProtoInputLauncher.cs (InjectRuntime: EasyHookStealthInjectRuntime first), ProtoInput.cs. Not from the official docs.)
+   *
+   * In practice: When several runtime methods are true, this one is used first (then EasyHook, then RemoteLoad). Few handlers need it; try it when a game notices or crashes on the normal EasyHook injection.
+   * (AI-written, based on Nucleus ProtoInputLauncher.cs (InjectRuntime, if easyHookStealthMethod ... else if easyHookMethod ... else if remoteLoadLibMethod); verified Hub handlers, counted 2026-11-17.)
    * @example Game.ProtoInput.InjectRuntime_EasyHookStealthMethod = false;
    */
   InjectRuntime_EasyHookStealthMethod: boolean;
+  /**
+   * @example Game.ProtoInput.TranslateXinputtoMKB = true;
+   */
   TranslateXinputtoMKB: boolean;
+  /**
+   * @example Game.ProtoInput.TranslateXSwapSticks = true;
+   */
   TranslateXSwapSticks: boolean;
+  /**
+   * @example Game.ProtoInput.TranslateXScanner = true;
+   */
   TranslateXScanner: boolean;
+  /**
+   * @example Game.ProtoInput.TranslateXShouldersNextPoint = true;
+   */
   TranslateXShouldersNextPoint: boolean;
+  /**
+   * @example Game.ProtoInput.TranslateXAstatic = true;
+   */
   TranslateXAstatic: boolean;
+  /**
+   * @example Game.ProtoInput.TranslateXBstatic = true;
+   */
   TranslateXBstatic: boolean;
+  /**
+   * @example Game.ProtoInput.TranslateXXstatic = true;
+   */
   TranslateXXstatic: boolean;
+  /**
+   * @example Game.ProtoInput.TranslateXYstatic = true;
+   */
   TranslateXYstatic: boolean;
+  /**
+   * @example Game.ProtoInput.TranslateXAPointClick = true;
+   */
   TranslateXAPointClick: boolean;
+  /**
+   * @example Game.ProtoInput.TranslateXBPointClick = true;
+   */
   TranslateXBPointClick: boolean;
+  /**
+   * @example Game.ProtoInput.TranslateXXPointClick = true;
+   */
   TranslateXXPointClick: boolean;
+  /**
+   * @example Game.ProtoInput.TranslateXYPointClick = true;
+   */
   TranslateXYPointClick: boolean;
+  /**
+   * @example Game.ProtoInput.TranslateXAPointMove = true;
+   */
   TranslateXAPointMove: boolean;
+  /**
+   * @example Game.ProtoInput.TranslateXBPointMove = true;
+   */
   TranslateXBPointMove: boolean;
+  /**
+   * @example Game.ProtoInput.TranslateXXPointMove = true;
+   */
   TranslateXXPointMove: boolean;
+  /**
+   * @example Game.ProtoInput.TranslateXYPointMove = true;
+   */
   TranslateXYPointMove: boolean;
   TranslateXButtonA: number;
   TranslateXButtonB: number;
@@ -1619,21 +2003,33 @@ interface GameProtoInput {
   TranslateXDeadzone: number;
   /**
    * This hook will unsubscribe the game from Raw Input (if it has already subscribed to it), and then subscribes Proto Input to receive raw input instead. Raw input received is forwarded back to the game if it uses raw input. Proto Input receives all keyboard/mouse input from this hook so it always needs to be enabled.
+   *
+   * In practice: This is the switch that makes Proto Input read each player's own keyboard and mouse: installing it is the only place Proto Input registers its raw input window, and it takes raw input away from the game (the game's own registrations are redirected to Proto Input). Everything per-player for keyboards and mice depends on it: the Send…Messages options post each player's input to their window, and the cursor and key state hooks (GetCursorPosHook, GetKeyStateHook, …) answer from the state it fills. Without it those hooks see no keys pressed and a frozen cursor. Most Proto Input handlers turn it on, many of them from Game.ProtoInput.OnInputLocked with ProtoInput.InstallHook.
+   * (AI-written, based on ProtoInputHooks RegisterRawInputHook.cpp (InstallImpl: FindAlreadySubscribedWindows, RawInput::UnregisterGameFromRawInput, RawInput::RegisterProtoForRawInput), RawInput.cpp (ProcessRawInput, Send…Messages), FakeMouseKeyboard.cpp, Nucleus ProtoInputLauncher.cs; verified Hub handlers, counted 2026-11-18.)
    * @example Game.ProtoInput.RegisterRawInputHook = true;
    */
   RegisterRawInputHook: boolean;
   /**
    * When forwarding the input back to the game, you need to create a handle to the input data. However these handles can only be created by Windows. To get around this, Proto Input will send a dummy WM_INPUT message to the game (from the Register Raw Input hook). The game then calls GetRawInputData using the dummy handle. This hook intercepts the call and passes in the saved data. This hook is required to make forwarding raw input work, so it should always be enabled.
+   *
+   * In practice: Only matters for games that read raw input themselves. With Game.ProtoInput.RegisterRawInputHook on, Proto Input posts each player's raw input as WM_INPUT to the windows the game registered, tagged with its own signature; this hook lets the game's GetRawInputData read that data. Without the raw input hook it has nothing to pass on. Most Proto Input handlers turn it on, nearly always together with the raw input hook.
+   * (AI-written, based on ProtoInputHooks GetRawInputDataHook.cpp (0xAB000000 signature, RawInput::inputBuffer), RawInput.cpp (forwardingWindows, PostMessageW WM_INPUT), RegisterRawInputHook.cpp; verified Hub handlers, counted 2026-11-18.)
    * @example Game.ProtoInput.GetRawInputDataHook = true;
    */
   GetRawInputDataHook: boolean;
   /**
    * Hooks the GetMessage and PeekMessage functions to intercept every windows message for every window owned by the process. (Note this method is superior to changing WndProc since it works for all windows without knowing what they are, and is less fragile). This hook is used to make the message filters and blocks work. This should always be enabled.
+   *
+   * In practice: The filters (`RawInputFilter`, `MouseButtonFilter`, ...) and `Game.ProtoInput.BlockedMessages` only act inside this hook, so they do nothing while it is off. Most Proto Input handlers turn it on, and many then enable the filters only while input is locked, from `Game.ProtoInput.OnInputLocked` with `ProtoInput.EnableMessageFilter`.
+   * (AI-written, based on ProtoInputHooks MessageFilterHook.cpp, Nucleus ProtoInputLauncher.cs; verified Hub handlers, counted 2026-11-17.)
    * @example Game.ProtoInput.MessageFilterHook = true;
    */
   MessageFilterHook: boolean;
   /**
    * The GetCursorPos is one way of obtaining the cursor position, so this hook redirects it to the "fake" cursor position. Should always be enabled.
+   *
+   * In practice: Answers the game's GetCursorPos with the player's own (fake) cursor position, kept by Proto Input from the raw input of the keyboard and mouse picked in Nucleus. That state is only filled while Game.ProtoInput.RegisterRawInputHook is on; without it the cursor seems frozen. It also answers from the controller when TranslateXinputtoMKB is on. Most Proto Input handlers turn it on, often from OnInputLocked, and nearly always with the raw input hook.
+   * (AI-written, based on ProtoInputHooks GetCursorPosHook.cpp (Hook_GetCursorPos returns FakeMouseKeyboard state), RegisterRawInputHook.cpp, RawInput.cpp; verified Hub handlers, counted 2026-11-18.)
    * @example Game.ProtoInput.GetCursorPosHook = true;
    */
   GetCursorPosHook: boolean;
@@ -1644,16 +2040,25 @@ interface GameProtoInput {
   SetCursorPosHook: boolean;
   /**
    * Hooks GetKeyState to return the "fake" keyboard state. You should almost always have this enabled even if it appears to have no effect: when using multiple keyboards at the game time, they may interfere without this hook.
+   *
+   * In practice: Answers the game's GetKeyState with the player's own keys, kept by Proto Input from the raw input of the keyboard and mouse picked in Nucleus. That state is only filled while Game.ProtoInput.RegisterRawInputHook is on; without it the game sees no key pressed at all. Key hooks are used as a set: most Proto Input handlers turn on all three, often from OnInputLocked, and nearly always with the raw input hook.
+   * (AI-written, based on ProtoInputHooks GetKeyStateHook.cpp (Hook_GetKeyState returns FakeMouseKeyboard state), RegisterRawInputHook.cpp, RawInput.cpp; verified Hub handlers, counted 2026-11-18.)
    * @example Game.ProtoInput.GetKeyStateHook = true;
    */
   GetKeyStateHook: boolean;
   /**
    * Similar to Get Key State. Async also tells the caller whether the key was pressed since the last call, so this can resolve issues where keys are pressed or release when they shouldn't. Should almost always be enabled.
+   *
+   * In practice: Answers the game's GetAsyncKeyState with the player's own keys, kept by Proto Input from the raw input of the keyboard and mouse picked in Nucleus. That state is only filled while Game.ProtoInput.RegisterRawInputHook is on; without it the game sees no key pressed at all. Key hooks are used as a set: most Proto Input handlers turn on all three, often from OnInputLocked, and nearly always with the raw input hook.
+   * (AI-written, based on ProtoInputHooks GetAsyncKeyStateHook.cpp (Hook_GetAsyncKeyState returns FakeMouseKeyboard state), RegisterRawInputHook.cpp, RawInput.cpp; verified Hub handlers, counted 2026-11-18.)
    * @example Game.ProtoInput.GetAsyncKeyStateHook = true;
    */
   GetAsyncKeyStateHook: boolean;
   /**
    * Basically the same as Get Key State, except it returns the state of the entire keyboard. Should almost always be enabled.
+   *
+   * In practice: Answers the game's GetKeyboardState with the player's own keys, kept by Proto Input from the raw input of the keyboard and mouse picked in Nucleus. That state is only filled while Game.ProtoInput.RegisterRawInputHook is on; without it the game sees no key pressed at all. Key hooks are used as a set: most Proto Input handlers turn on all three, often from OnInputLocked, and nearly always with the raw input hook.
+   * (AI-written, based on ProtoInputHooks GetKeyboardStateHook.cpp (Hook_GetKeyboardState returns FakeMouseKeyboard state), RegisterRawInputHook.cpp, RawInput.cpp; verified Hub handlers, counted 2026-11-18.)
    * @example Game.ProtoInput.GetKeyboardStateHook = true;
    */
   GetKeyboardStateHook: boolean;
@@ -1669,17 +2074,22 @@ interface GameProtoInput {
   ClipCursorHook: boolean;
   /**
    * Prevents the game from setting a bounding region about the mouse cursor. Some games will repeatedly clip the cursor when they receive the fake focus, so this should almost always be enabled. Fake clip means that if the game tries to clip (i.e. bound) the real cursor, it will bound the fake cursor instead.
+   *
+   * By engine: rarer in Source games.
    * @example Game.ProtoInput.ClipCursorHookCreatesFakeClip = true;
    */
   ClipCursorHookCreatesFakeClip: boolean;
   /**
    * Hooks many functions (see the Details tab of the hook) related to the game checking if it's in the foreground or focused. Should always be enabled. Proto Input will repeatedly scan to find the main window, in case it changes.
+   *
+   * In practice: Hooks the functions a game uses to ask about focus (GetForegroundWindow, GetActiveWindow, GetFocus, WindowFromPoint, the capture and SetFocus calls), so every instance believes it is the active window. The most used Proto Input hook, nearly always on in Unreal Engine games; Unity games' handlers often do without it. Pair it with `Game.ProtoInput.BlockedMessages = [0x0008]` for games that also react to WM_KILLFOCUS, with `Game.ProtoInput.MessageFilterHook` on (the blocked messages only act inside that hook).
+   * (AI-written, based on ProtoInputHooks FocusHook.cpp (the hooked user32 functions); verified Hub handlers, counted 2026-11-17; Hub game engines.)
    * @example Game.ProtoInput.FocusHooks = true;
    */
   FocusHooks: boolean;
   /**
    * Gives each instance its own copy of the named mutexes, events and semaphores listed in `Game.ProtoInput.RenameHandles` (and named pipes in `Game.ProtoInput.RenameNamedPipes`) by adding a random number to any name that contains a listed text, so instances don't detect each other. Only affects names the game creates or opens after Proto Input is injected. Needs `Game.ProtoInput.InjectStartup` or an `InjectRuntime_…` option.
-   * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance: InstallHook RenameHandlesHookID, AddHandleToRename, AddNamedPipeToRename); ProtoInputHooks RenameHandlesHook.cpp (updateName, Nt* hooks). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance: InstallHook RenameHandlesHookID, AddHandleToRename, AddNamedPipeToRename), ProtoInputHooks RenameHandlesHook.cpp (updateName, Nt* hooks). Not from the official docs.)
    * @example Game.ProtoInput.RenameHandlesHook = false;
    */
   RenameHandlesHook: boolean;
@@ -1696,6 +2106,8 @@ interface GameProtoInput {
   DinputDeviceHook: boolean;
   /**
    * Prevents the game from calling SetWindowPos to resposition and resize the game window, instead forcing it to the resolution set by Nucleus. This will usually require using startup hooks.
+   *
+   * By engine: more common in Unreal Engine games.
    * @example Game.ProtoInput.SetWindowPosHook = true;
    */
   SetWindowPosHook: Nucleus.SetWindowPosHook | number | boolean;
@@ -1716,18 +2128,32 @@ interface GameProtoInput {
   CreateSingleHIDHook: boolean;
   /**
    * Hooks SetWindowLong and SetWindowLongPtr to prevent the game from re-adding a title bar after Nucleus has stripped it.
+   *
+   * By engine: more common in Unreal Engine games.
    * @example Game.ProtoInput.SetWindowStyleHook = true;
    */
   SetWindowStyleHook: boolean;
+  /**
+   * @example Game.ProtoInput.GetCursorInfoHook = true;
+   */
   GetCursorInfoHook: boolean;
+  /**
+   * @example Game.ProtoInput.SetWindowsHookHook = true;
+   */
   SetWindowsHookHook: boolean;
   MoveWindowHook: Nucleus.MoveWindowHook | number | boolean;
+  /**
+   * @example Game.ProtoInput.AdjustWindowRectHook = true;
+   */
   AdjustWindowRectHook: boolean;
   SetRemoveBorderHook: Nucleus.SetRemoveBorderHook | number | boolean;
   ScaleFromX: number;
   ScaleFromY: number;
   /**
    * Filters the WM_INPUT messages (which send raw input data) to only allow the forwarded messages from the Register Raw Input hook. This will allow only input from the selected device(s). Also modifies the message to tell the game that input was received while the game was in the foreground. Should always be enabled.
+   *
+   * In practice: Only acts inside `Game.ProtoInput.MessageFilterHook`. Handlers usually leave it false at the top and turn it on while input is locked instead: `ProtoInput.EnableMessageFilter(player.ProtoInputInstanceHandle, ProtoInput.Values.RawInputFilterID)` in `Game.ProtoInput.OnInputLocked` is the most common Proto Input call in Hub handlers.
+   * (AI-written, based on ProtoInputHooks MessageFilterHook.cpp; verified Hub handlers, counted 2026-11-17.)
    * @example Game.ProtoInput.RawInputFilter = true;
    */
   RawInputFilter: boolean;
@@ -1767,8 +2193,11 @@ interface GameProtoInput {
    */
   KeyboardButtonFilter: boolean;
   /**
-   * Blocks calls to GetRegisteredRawInputDevices and GetRawInputDeviceList to prevent the game from detecting raw input devices. You will usually need to use startup injection with this hook. If you enable this hook, you should **disable** the raw input filter, and add a block to WM_INPUT, like so: `Game.ProtoInput.BlockedMessages = [ 0x00FF ];`
-   * @example Game.ProtoInput.BlockedMessages = [ 0x00FF ];
+   * In the Block tab, you can select individual windows messages to block from the game. Usually a good one to block is WM_KILLFOCUS (0x0008). You can search for the hexadecimal code on MSDN, e.g. for [WM_KILLFOCUS](https://docs.microsoft.com/en-us/windows/win32/inputdev/wm-killfocus). Add the blocks to a handler like so:
+   *
+   * In practice: Window messages the game never sees (Proto Input's message filter hook drops them), so it only works with `Game.ProtoInput.MessageFilterHook` on; some handlers list messages without it. `[0x0008]` (WM_KILLFOCUS) keeps the game from noticing it lost focus, the usual list in Unreal Engine games; Unity games' handlers usually add WM_MOUSELEAVE and WM_MOUSEHOVER: `[0x0008, 0x02a3, 0x02a1]`. A number goes through Proto Input's own message table: one it doesn't list but within the table's range lands on another message's switch (and blocks that one), and one past its end does nothing, so add only listed messages.
+   * (AI-written, based on ProtoInputHooks MessageFilterHook.cpp, MessageList.cpp (GenerateIndexTable), Nucleus ProtoInputLauncher.cs; verified Hub handlers, counted 2026-11-17; Hub game engines.)
+   * @example Game.ProtoInput.BlockedMessages = [ 0x0008 ];
    */
   BlockedMessages: number[];
   /**
@@ -1783,86 +2212,110 @@ interface GameProtoInput {
   RenameNamedPipes: string[];
   /**
    * Proto Input turns the player's mouse wheel into mouse wheel window messages sent to the game window. Applied per instance when Proto Input is injected (`Game.ProtoInput.InjectStartup` or an `InjectRuntime_…` option). Not sent while `Game.ProtoInput.TranslateMKBtoXinput` is on.
-   * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → SetupMessagesToSend); ProtoInputHooks PipeCommunication.cpp, RawInput.cpp (SendInputMessages, ProcessMouseInput). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → SetupMessagesToSend), ProtoInputHooks PipeCommunication.cpp, RawInput.cpp (SendInputMessages, ProcessMouseInput). Not from the official docs.)
    * @example Game.ProtoInput.SendMouseWheelMessages = true;
    */
   SendMouseWheelMessages: boolean;
   /**
    * Proto Input turns the player's mouse clicks (left, right, middle and the two side buttons) into button down/up window messages sent to the game window. Applied per instance when Proto Input is injected (`Game.ProtoInput.InjectStartup` or an `InjectRuntime_…` option). Ignored when `Game.ProtoInput.SendMouseDblClkMessages` is on (that option sends the clicks itself) or `Game.ProtoInput.TranslateMKBtoXinput` is on.
-   * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → SetupMessagesToSend); ProtoInputHooks RawInput.cpp (SendInputMessages). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → SetupMessagesToSend), ProtoInputHooks RawInput.cpp (SendInputMessages). Not from the official docs.)
    * @example Game.ProtoInput.SendMouseButtonMessages = true;
    */
   SendMouseButtonMessages: boolean;
   /**
    * Proto Input sends a mouse move window message with the player's fake cursor position to the game window each time the player's mouse moves. Applied per instance when Proto Input is injected (`Game.ProtoInput.InjectStartup` or an `InjectRuntime_…` option). Not sent while `Game.ProtoInput.TranslateMKBtoXinput` is on.
-   * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → SetupMessagesToSend); ProtoInputHooks RawInput.cpp (SendInputMessages, ProcessMouseInput). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → SetupMessagesToSend), ProtoInputHooks RawInput.cpp (SendInputMessages, ProcessMouseInput). Not from the official docs.)
+   *
+   * In practice: Handlers turn the four Send…Messages options on together: games that read the mouse from window messages (WM_MOUSEMOVE and the like) then get each player's own mouse. Games that only read raw input don't need them.
+   * (AI-written, based on Proto Input docs: Send messages, ProtoInputHooks; verified Hub handlers, counted 2026-11-17.)
    * @example Game.ProtoInput.SendMouseMovementMessages = true;
    */
   SendMouseMovementMessages: boolean;
   /**
-   * Handled on input lock/unlock, don't enable this by default
    * @example Game.ProtoInput.SendKeyboardButtonMessages = true;
    */
   SendKeyboardButtonMessages: boolean;
+  /**
+   * @example Game.ProtoInput.SendMouseDblClkMessages = true;
+   */
   SendMouseDblClkMessages: boolean;
   /**
-   * Game.ProtoInput.FocusLoopIntervalMilliseconds = 5;
+   *
+   * In practice: Starts Proto Input's focus loop when Nucleus sets the instance up, with the `FocusLoop_…` messages and `FocusLoopIntervalMilliseconds`; those options do nothing without it. Many handlers leave it false and start the loop only while input is locked, with `ProtoInput.StartFocusMessageLoop` in `Game.ProtoInput.OnInputLocked`.
+   * (AI-written, based on Nucleus ProtoInputLauncher.cs (StartFocusMessageLoop when EnableFocusMessageLoop); verified Hub handlers, counted 2026-11-17.)
    * @example Game.ProtoInput.EnableFocusMessageLoop = true;
    */
   EnableFocusMessageLoop: boolean;
   /**
    * Milliseconds Proto Input's focus loop waits between rounds of focus messages to the game window. Default `5`. Only read when `Game.ProtoInput.EnableFocusMessageLoop` is on and Proto Input is injected (`Game.ProtoInput.InjectStartup` or an `InjectRuntime_…` option).
-   * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → StartFocusMessageLoop), ProtoInputOptions.cs; ProtoInputHooks FocusMessageLoop.cpp (LoopThread). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → StartFocusMessageLoop), ProtoInputOptions.cs, ProtoInputHooks FocusMessageLoop.cpp (LoopThread). Not from the official docs.)
+   *
+   * By engine: rarer in Source games.
    * @default 5
    * @example Game.ProtoInput.FocusLoopIntervalMilliseconds = 5;
    */
   FocusLoopIntervalMilliseconds: number;
   /**
    * Proto Input's focus loop repeatedly tells the game window it was activated by a click (WM_ACTIVATE), so it believes it still has focus. Only read when `Game.ProtoInput.EnableFocusMessageLoop` is on and Proto Input is injected (`Game.ProtoInput.InjectStartup` or an `InjectRuntime_…` option).
-   * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → StartFocusMessageLoop); ProtoInputHooks FocusMessageLoop.cpp (LoopThread). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → StartFocusMessageLoop), ProtoInputHooks FocusMessageLoop.cpp (LoopThread). Not from the official docs.)
+   *
+   * By engine: rarer in Source games.
    * @example Game.ProtoInput.FocusLoop_WM_ACTIVATE = true;
    */
   FocusLoop_WM_ACTIVATE: boolean;
   /**
    * Proto Input's focus loop repeatedly tells the game that its app became the active one (WM_ACTIVATEAPP), so it believes it still has focus. Only read when `Game.ProtoInput.EnableFocusMessageLoop` is on and Proto Input is injected (`Game.ProtoInput.InjectStartup` or an `InjectRuntime_…` option).
-   * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → StartFocusMessageLoop); ProtoInputHooks FocusMessageLoop.cpp (LoopThread). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → StartFocusMessageLoop), ProtoInputHooks FocusMessageLoop.cpp (LoopThread). Not from the official docs.)
+   *
+   * By engine: rarer in Source games.
    * @example Game.ProtoInput.FocusLoop_WM_ACTIVATEAPP = false;
    */
   FocusLoop_WM_ACTIVATEAPP: boolean;
   /**
    * Proto Input's focus loop repeatedly tells the game window to show itself as active (WM_NCACTIVATE), so it believes it still has focus. Only read when `Game.ProtoInput.EnableFocusMessageLoop` is on and Proto Input is injected (`Game.ProtoInput.InjectStartup` or an `InjectRuntime_…` option).
-   * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → StartFocusMessageLoop); ProtoInputHooks FocusMessageLoop.cpp (LoopThread). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → StartFocusMessageLoop), ProtoInputHooks FocusMessageLoop.cpp (LoopThread). Not from the official docs.)
+   *
+   * By engine: rarer in Source games.
    * @example Game.ProtoInput.FocusLoop_WM_NCACTIVATE = false;
    */
   FocusLoop_WM_NCACTIVATE: boolean;
   /**
    * Proto Input's focus loop repeatedly tells the game window it has keyboard focus (WM_SETFOCUS). Only read when `Game.ProtoInput.EnableFocusMessageLoop` is on and Proto Input is injected (`Game.ProtoInput.InjectStartup` or an `InjectRuntime_…` option).
-   * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → StartFocusMessageLoop); ProtoInputHooks FocusMessageLoop.cpp (LoopThread). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → StartFocusMessageLoop), ProtoInputHooks FocusMessageLoop.cpp (LoopThread). Not from the official docs.)
    * @example Game.ProtoInput.FocusLoop_WM_SETFOCUS = true;
    */
   FocusLoop_WM_SETFOCUS: boolean;
   /**
    * Proto Input's focus loop repeatedly tells the game window it is being activated by the mouse (WM_MOUSEACTIVATE). Only read when `Game.ProtoInput.EnableFocusMessageLoop` is on and Proto Input is injected (`Game.ProtoInput.InjectStartup` or an `InjectRuntime_…` option).
-   * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → StartFocusMessageLoop); ProtoInputHooks FocusMessageLoop.cpp (LoopThread). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → StartFocusMessageLoop), ProtoInputHooks FocusMessageLoop.cpp (LoopThread). Not from the official docs.)
    * @example Game.ProtoInput.FocusLoop_WM_MOUSEACTIVATE = true;
    */
   FocusLoop_WM_MOUSEACTIVATE: boolean;
   /**
-   * This is set in the input locking
-   * @example Game.ProtoInput.DrawFakeCursor = false;
+   * Enable this for games that don't have an in-game cursor
    */
   DrawFakeCursor: Nucleus.DrawFakeCursor | number | boolean;
   /**
+   * If you want to allow the fake cursor to not be bound by the window boundaries, enable this
+   *
+   * This can be useful as a workaround in some games that do not correctly reset the mouse cursor position to the window centre.
    * @example Game.ProtoInput.AllowFakeCursorOutOfBounds = true;
    */
   AllowFakeCursorOutOfBounds: boolean;
   /**
+   * Some games may detect mouse input with an offset, in which case some regions of the window would be inaccessible since Proto Input bounds the fake cursor to the window by default.
+   *
+   * You can get around this problem with this option: it will allow the fake cursor to go slightly beyond the window boundaries, so all regions should be accessible.
    * @example Game.ProtoInput.ExtendFakeCursorBounds = true;
    */
   ExtendFakeCursorBounds: boolean;
   /**
    * Lets the player show or hide Proto Input's fake cursor with a key on their own keyboard (`Game.ProtoInput.ToggleFakeCursorVisibilityShortcutVkey`, Home by default); that key press is not passed to the game as a message. Needs `Game.ProtoInput.InjectStartup` or an `InjectRuntime_…` option.
-   * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → SetToggleFakeCursorVisibilityShortcut), ProtoInputOptions.cs (Vkey default 0x24); ProtoInputHooks RawInput.cpp (SendKeyMessage). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInputLauncher.cs (SetupInstance → SetToggleFakeCursorVisibilityShortcut), ProtoInputOptions.cs (Vkey default 0x24), ProtoInputHooks RawInput.cpp (SendKeyMessage). Not from the official docs.)
+   *
+   * By engine: more common in Unity games, rarer in Source games.
+   * From Hub handlers:
+   * @example Game.ProtoInput.EnableToggleFakeCursorVisibilityShortcut = false;
    */
   EnableToggleFakeCursorVisibilityShortcut: boolean;
   /**
@@ -1872,6 +2325,8 @@ interface GameProtoInput {
   ToggleFakeCursorVisibilityShortcutVkey: number;
   /**
    * Monitors when the game tries to hide the cursor (e.g. when you close the menu in a first person game), and sets the visibility of the fake cursor instead. Should be almost always be enabled, except sometimes during debugging when you want to see where the fake mouse cursor is at all times. This hook also monitors calls to set the cursor image, so Proto Input will change the fake cursor to match the game's cursor image. Some games (notably Unity engine games) need DontShowCursorWhenImageUpdated enabled or the cursors will show when they shouldn't.
+   *
+   * By engine: more common in Unity games, rarer in Source games.
    * @example Game.ProtoInput.DontShowCursorWhenImageUpdated = false;
    */
   DontShowCursorWhenImageUpdated: boolean;
@@ -1886,12 +2341,25 @@ interface GameProtoInput {
    * @example Game.ProtoInput.UseOpenXinput = false;
    */
   UseOpenXinput: boolean;
+  /**
+   * @example Game.ProtoInput.TranslateMKBtoXinput = true;
+   */
   TranslateMKBtoXinput: boolean;
+  /**
+   * @example Game.ProtoInput.ReRegisterInput = true;
+   */
   ReRegisterInput: boolean;
+  /**
+   * @example Game.ProtoInput.PointerInMouse = true;
+   */
   PointerInMouse: boolean;
+  /**
+   * @example Game.ProtoInput.MessageSubWindows = true;
+   */
   MessageSubWindows: boolean;
   /**
-   * The number of controller icons dragged onto the screens
+   *
+   * By engine: more common in Unity games, rarer in Source games.
    * @example Game.ProtoInput.MultipleProtoControllers = false;
    */
   MultipleProtoControllers: boolean;
@@ -1902,18 +2370,54 @@ interface GameProtoInput {
    */
   DinputHookAlsoHooksGetDeviceState: boolean;
   /**
-   * Sets the virtual keycode for locking input (End key by default)
+   * This is identical to the setting in ProtoInputHost. You should leave this on so the "fake" input is only sent when the "real" input isn't
    * @example Game.ProtoInput.FreezeExternalInputWhenInputNotLocked = true;
    */
   FreezeExternalInputWhenInputNotLocked: boolean;
   /**
    * Function Nucleus calls each time input is locked (the lock key, the gamepad lock shortcut or `Game.LockInputAtStart`), and once after all instances are set up if input is locked by then. It sees the last player's `Context`.
-   * (AI-written, based on Nucleus LockInputRuntime.cs (Lock), GenericGameHandler.cs (after instance loop); AGENTS.md (last player's Context). Not from the official docs.)
+   * (AI-written, based on Nucleus LockInputRuntime.cs (Lock), GenericGameHandler.cs (after instance loop), Nucleus devtools AGENTS.md (last player's Context). Not from the official docs.)
+   *
+   * In practice: Runs once when the player locks the input (the lock key, End by default), with no arguments, so handlers loop over `PlayerList` and act on each `player.ProtoInputInstanceHandle`. They use it to switch Proto Input on only while input is locked: `ProtoInput.InstallHook`, `ProtoInput.EnableMessageFilter`, `ProtoInput.SetDrawFakeCursor(…, true)`, `ProtoInput.StartFocusMessageLoop`, undone in `Game.ProtoInput.OnInputUnlocked`. `Context` in it is the last player's.
+   * (AI-written, based on Nucleus ProtoInputOptions.cs (public Action OnInputLocked), LockInputRuntime.cs (OnInputLocked?.Invoke()); verified Hub handlers, counted 2026-11-17.)
+   * AI-written example:
+   * @example Game.ProtoInput.OnInputLocked = function () {
+  for (var i = 0; i < PlayerList.Count; i++) {
+    var handle = PlayerList[i].ProtoInputInstanceHandle;
+    ProtoInput.InstallHook(
+      handle,
+      ProtoInput.Values.GetCursorPosHookID
+    );
+    ProtoInput.EnableMessageFilter(
+      handle,
+      ProtoInput.Values.RawInputFilterID
+    );
+    ProtoInput.SetDrawFakeCursor(handle, true);
+  }
+};
    */
   OnInputLocked: (() => void) | null;
   /**
    * Function Nucleus calls each time input is unlocked, once after all instances are set up if input is not locked by then, and when the session ends (before `Game.OnStop`). It sees the last player's `Context`.
    * (AI-written, based on Nucleus LockInputRuntime.cs (Unlock), GenericGameHandler.cs (after instance loop; End). Not from the official docs.)
+   *
+   * In practice: Runs once when the player unlocks the input, with no arguments (handlers loop over `PlayerList`). They undo here what `Game.ProtoInput.OnInputLocked` did: `ProtoInput.UninstallHook`, `ProtoInput.DisableMessageFilter`, `ProtoInput.SetDrawFakeCursor(…, false)`, so the real mouse works normally again.
+   * (AI-written, based on Nucleus ProtoInputOptions.cs (public Action OnInputUnlocked), LockInputRuntime.cs (OnInputUnlocked?.Invoke()); verified Hub handlers, counted 2026-11-17.)
+   * AI-written example:
+   * @example Game.ProtoInput.OnInputUnlocked = function () {
+  for (var i = 0; i < PlayerList.Count; i++) {
+    var handle = PlayerList[i].ProtoInputInstanceHandle;
+    ProtoInput.UninstallHook(
+      handle,
+      ProtoInput.Values.GetCursorPosHookID
+    );
+    ProtoInput.DisableMessageFilter(
+      handle,
+      ProtoInput.Values.RawInputFilterID
+    );
+    ProtoInput.SetDrawFakeCursor(handle, false);
+  }
+};
    */
   OnInputUnlocked: (() => void) | null;
   /**
@@ -1932,7 +2436,7 @@ interface Context {
    * Settings for Nucleus' custom xinput/x360ce hook DLL.
    *
    * Copied from `Game.Hook` for the current instance.
-   * (AI-written, based on Nucleus GenericGameInfo.cs and GenericGameHandler.cs. Not from the official docs.)
+   * (AI-written, based on Nucleus GenericGameInfo.cs, GenericGameHandler.cs. Not from the official docs.)
    * @default new GameHookInfo()
    */
   Hook: GameHook;
@@ -1940,13 +2444,15 @@ interface Context {
    * The interval in milliseconds the Handler should be updated at. Set it to 0 to disable updating (will lose all functionality that depends on ticks).
    *
    * Copied from `Game.HandlerInterval` for the current instance.
+   * @example var handlerInterval = Context.HandlerInterval;
    */
   HandlerInterval: number;
   /**
    * Writes a detailed debug log while the handler runs.
    *
    * Copied from `Game.Debug` for the current instance.
-   * (AI-written, based on Nucleus GenericGameInfo.cs and GenericGameHandler.cs. Not from the official docs.)
+   * (AI-written, based on Nucleus GenericGameInfo.cs, GenericGameHandler.cs. Not from the official docs.)
+   * @example var debug = Context.Debug;
    */
   Debug: boolean;
   Error: string;
@@ -1955,65 +2461,76 @@ interface Context {
    * If SymlinkGame is enabled, if we should copy or symlink the game executable.
    *
    * Copied from `Game.SymlinkExe` for the current instance.
+   * @example var symlinkExe = Context.SymlinkExe;
    */
   SymlinkExe: boolean;
   /**
    * Enable/disable use of one keyboard/mouse player.
    *
    * Copied from `Game.SupportsKeyboard` for the current instance.
+   * @example var supportsKeyboard = Context.SupportsKeyboard;
    */
   SupportsKeyboard: boolean;
   /**
    * Array with the name of other files found in the executable's folder (so we don't confuse different games with similar file names). Example: Borderlands and Tales of the Borderlands share their executable name (borderlands.exe). We include 1 folder and a file that's unique to Borderlands to make sure the application doesn't confuse itself.
    *
    * Copied from `Game.ExecutableContext` for the current instance.
+   * @example var executableContext = Context.ExecutableContext;
    */
   ExecutableContext: string[];
   /**
    * The name of the game executable with the extension. This will be used by Nucleus to add games, to run the game and as process to follow for positioning and resizing.
    *
    * Copied from `Game.ExecutableName` for the current instance.
+   * @example var executableName = Context.ExecutableName;
    */
   ExecutableName: string;
   /**
    * Steam ID assigned to the current player.
    * (AI-written, based on Nucleus GenericContext.cs. Not from the official docs.)
+   * @example var playerSteamID = Context.PlayerSteamID;
    */
   readonly PlayerSteamID: string;
   /**
    * Here the SteamID of the game. You can find it on https://steamdb.info/ . Add only if the game is available on Steam.
    *
    * Copied from `Game.SteamID` for the current instance.
+   * @example var steamID = Context.SteamID;
    */
   SteamID: string;
   /**
    * The name of the folder that will be created inside the Nucleus content folder (just use letters not symbols). In this folder Nucleus will store the symlinked or copied game files for each instance of the game.
    *
    * Copied from `Game.GUID` for the current instance.
+   * @example var gUID = Context.GUID;
    */
   GUID: string;
   /**
    * Title of the game that will be shown in Nucleus.
    *
    * Copied from `Game.GameName` for the current instance.
+   * @example var gameName = Context.GameName;
    */
   GameName: string;
   /**
    * This is just the max players info that shows under the handler name in Nucleus UI. Usually we write the max number of players the game supports. (PC, should support 16 max connected input devices).
    *
    * Copied from `Game.MaxPlayers` for the current instance.
+   * @example var maxPlayers = Context.MaxPlayers;
    */
   MaxPlayers: number;
   /**
    * This is just info. It will not limit the players number.
    *
    * Copied from `Game.MaxPlayersOneMonitor` for the current instance.
+   * @example var maxPlayersOneMonitor = Context.MaxPlayersOneMonitor;
    */
   MaxPlayersOneMonitor: number;
   /**
    * Not used but could be present in some handlers
    *
    * Copied from `Game.SaveType` for the current instance.
+   * @example var saveType = Context.SaveType;
    */
   SaveType: Nucleus.SaveType | number | boolean;
   searchType: Nucleus.SearchType | number | boolean;
@@ -2021,12 +2538,18 @@ interface Context {
    * Not used but could be present in some handlers
    *
    * Copied from `Game.SavePath` for the current instance.
+   *
+   * By engine: more common in Source games.
+   * @example var savePath = Context.SavePath;
    */
   SavePath: string;
   /**
    * Set launch(start) arguments for the exe from within the Game.Play() function
    *
    * Copied from `Game.StartArguments` for the current instance.
+   *
+   * In practice: The command line the instance's game starts with. Set it in `Game.Play`: Nucleus reads it after `Game.Play` returns (it has no effect with `Game.GamePlayAfterLaunch`). Typically a windowed mode switch plus the instance's resolution, for games that take them on the command line (common in Unreal Engine and Unity games).
+   * (AI-written, based on Nucleus GenericGameHandler.cs (startArgs read after Game.Play); verified Hub handlers, counted 2026-11-17; Hub game engines.)
    * @example Context.StartArguments = "";
    */
   StartArguments: string;
@@ -2034,63 +2557,81 @@ interface Context {
    * In which folder the game exe is located? Relative path to where Nucleus should start the game's working folder to.
    *
    * Copied from `Game.BinariesFolder` for the current instance.
+   * @example var binariesFolder = Context.BinariesFolder;
    */
   BinariesFolder: string;
   /**
    * Relative path to where Nucleus should start the game's working folder to. Example: The main executable is on the root directory (left4dead2.exe), but the game expects to be started with a working folder of 'bin' (all the game's libraries are there).
    *
    * Copied from `Game.WorkingFolder` for the current instance.
+   * @example var workingFolder = Context.WorkingFolder;
    */
   WorkingFolder: string;
   /**
    * If the game needs a fake Steam wrapper (SSE) to run multiple instances (this is not needed if you are using the new use Goldberg emulator line).
    *
    * Copied from `Game.NeedsSteamEmulation` for the current instance.
+   * @example var needsSteamEmulation = Context.NeedsSteamEmulation;
    */
   NeedsSteamEmulation: boolean;
   /**
    * Array of mutexes to kill before starting the next game process. A 'Mutex/Mutant' is a mutually exclusive flag, which basically tells the game not to allow multiple instances of its program.
    *
    * Copied from `Game.KillMutex` for the current instance.
+   * @example var killMutex = Context.KillMutex;
    */
   KillMutex: string[];
   /**
    * Specify the type of mutex/handle to kill, for example "Mutant", "Event" or "Semaphore" | default: "Mutant".
    *
    * Copied from `Game.KillMutexType` for the current instance.
+   * @example var killMutexType = Context.KillMutexType;
    */
   KillMutexType: string;
   /**
    * \# of seconds to wait before killing the mutex | Only works with killing not renaming | default: 0.
    *
    * Copied from `Game.KillMutexDelay` for the current instance.
+   * @example var killMutexDelay = Context.KillMutexDelay;
    */
   KillMutexDelay: number;
   /**
    * Enable or disable symlink files from being deleted when Nucleus is closed | default: false.
    *
    * Copied from `Game.KeepSymLinkOnExit` for the current instance.
+   * @example var keepSymLinkOnExit = Context.KeepSymLinkOnExit;
    */
   KeepSymLinkOnExit: boolean;
   /**
    * If the game needs to go through a launcher before opening Nucleus will use this exe to start the game and it will still use the Game.ExecutableName process for positioning and resizing.
    *
    * Copied from `Game.LauncherExe` for the current instance.
+   * @example var launcherExe = Context.LauncherExe;
    */
   LauncherExe: string;
   /**
    * The name of the launcher's window title. Some games need to go through a launcher to open. This is needed or else the application will lose the game's window.
    *
    * Copied from `Game.LauncherTitle` for the current instance.
+   * @example var launcherTitle = Context.LauncherTitle;
    */
   LauncherTitle: string;
   /**
    * Zero-based index of the player/instance being set up.
    * (AI-written, based on Nucleus GenericContext.cs. Not from the official docs.)
+   *
+   * In practice: The instance's player number, starting at 0. Handlers use it in `Game.Play` to give each instance something of its own: a different port, save slot, user id or folder name.
+   * (AI-written, based on Nucleus GenericGameHandler.cs (player.PlayerID = i; context.PlayerID = player.PlayerID); verified Hub handlers, counted 2026-11-17.)
+   * @example var playerID = Context.PlayerID;
    */
   PlayerID: number;
+  /**
+   * @example var isFullscreen = Context.IsFullscreen;
+   */
   IsFullscreen: boolean;
   /**
+   *
+   * By engine: more common in Source games.
    * @default new UserInfo()
    */
   User: UserInfo;
@@ -2099,134 +2640,157 @@ interface Context {
    *
    * Copied from `Game.DPIHandling` for the current instance.
    * @default DPIHandling.True
+   * @example var dPIHandling = Context.DPIHandling;
    */
   DPIHandling: Nucleus.DPIHandling | number | boolean;
   /**
    * Enable or disable the sending of focus messages to each game window at a regular interval | default: false.
    *
    * Copied from `Game.FakeFocus` for the current instance.
+   * @example var fakeFocus = Context.FakeFocus;
    */
   FakeFocus: boolean;
   /**
    * Enable or disable hooks to trick the game into thinking it has focus | default: false.
    *
    * Copied from `Game.HookFocus` for the current instance.
+   * @example var hookFocus = Context.HookFocus;
    */
   HookFocus: boolean;
   /**
    * Forces the game window title to be whatever is specified in Game.Hook.ForceFocusWindowName (triggers once, after all instances have started) | default: false.
    *
    * Copied from `Game.ForceWindowTitle` for the current instance.
+   * @example var forceWindowTitle = Context.ForceWindowTitle;
    */
   ForceWindowTitle: boolean;
   /**
    * Sets the preferred processor for the game's threads, used when the system schedules threads, to determine which processor to run the thread on | default: system delegation.
    *
    * Copied from `Game.IdealProcessor` for the current instance.
+   * @example var idealProcessor = Context.IdealProcessor;
    */
   IdealProcessor: number;
   /**
    * Sets the processors on which the game's threads can run on (provide the # of the cores in a comma-seperated list in quotations) | default: system delegation.
    *
    * Copied from `Game.UseProcessor` for the current instance.
+   * @example var useProcessor = Context.UseProcessor;
    */
   UseProcessor: string;
   /**
    * Sets the overall priority category for the associated process. Can be "AboveNormal", "High" or "RealTime" | default: "Normal".
    *
    * Copied from `Game.ProcessorPriorityClass` for the current instance.
+   * @example var processorPriorityClass = Context.ProcessorPriorityClass;
    */
   ProcessorPriorityClass: string;
   /**
    * Launch a game using command prompt.
    *
    * Copied from `Game.CMDLaunch` for the current instance.
+   * @example var cMDLaunch = Context.CMDLaunch;
    */
   CMDLaunch: boolean;
   /**
    * Specify command line options if game is launched using command prompt | requires CMDLaunch to be true, each element is for a different instance.
    *
    * Copied from `Game.CMDOptions` for the current instance.
+   * @example var cMDOptions = Context.CMDOptions;
    */
   CMDOptions: string[];
   /**
    * Work-around for ForceFocusWindowName having to match 1:1 with game window title for resizing, positioning and focus | default: false.
    *
    * Copied from `Game.HasDynamicWindowTitle` for the current instance.
+   * @example var hasDynamicWindowTitle = Context.HasDynamicWindowTitle;
    */
   HasDynamicWindowTitle: boolean;
   /**
    * Symlink individual files from the game directory to the instanced folder.
    *
    * Copied from `Game.SymlinkFiles` for the current instance.
+   * @example var symlinkFiles = Context.SymlinkFiles;
    */
   SymlinkFiles: string[];
   /**
    * Copied from `Game.HookInitDelay` for the current instance.
+   * @example var hookInitDelay = Context.HookInitDelay;
    */
   HookInitDelay: boolean;
   /**
    * Enable or disable hooks of functions some games may try and use to prevent multiple instances from running | default: false.
    *
    * Copied from `Game.HookInit` for the current instance.
+   * @example var hookInit = Context.HookInit;
    */
   HookInit: boolean;
   /**
    * Copy files from the game directory to the instanced folder.
    *
    * Copied from `Game.CopyFiles` for the current instance.
+   * @example var copyFiles = Context.CopyFiles;
    */
   CopyFiles: string[];
   /**
    * Prevent games from resizing their windows on their own | Hooks after all instances have been opened (see Game.SetWindowHookStart for an alternative).
    *
    * Copied from `Game.SetWindowHook` for the current instance.
+   * @example var setWindowHook = Context.SetWindowHook;
    */
   SetWindowHook: boolean;
   /**
    * Most games hide the taskbar when placed on-top but for games that don't you can use this.
    *
    * Copied from `Game.HideTaskbar` for the current instance.
+   * @example var hideTaskbar = Context.HideTaskbar;
    */
   HideTaskbar: boolean;
   /**
    * Prompt the user with a messagebox to let the user decide when to open the next instance | default: false, PauseBetweenStarts STILL required.
    *
    * Copied from `Game.PromptBetweenInstances` for the current instance.
+   * @example var promptBetweenInstances = Context.PromptBetweenInstances;
    */
   PromptBetweenInstances: boolean;
   /**
    * Hide the mouse cursor in game instances.
    *
    * Copied from `Game.HideCursor` for the current instance.
+   * @example var hideCursor = Context.HideCursor;
    */
   HideCursor: boolean;
   /**
    * Instead of killing the mutex or handle, rename it on startup to something else | Requires Game.KillMutex to contain the EXACT name of the handles for this to work (no partial).
    *
    * Copied from `Game.RenameNotKillMutex` for the current instance.
+   * @example var renameNotKillMutex = Context.RenameNotKillMutex;
    */
   RenameNotKillMutex: boolean;
   /**
    * Adds the process ID to the end of the window title.
    *
    * Copied from `Game.IdInWindowTitle` for the current instance.
+   * @example var idInWindowTitle = Context.IdInWindowTitle;
    */
   IdInWindowTitle: boolean;
   /**
    * Will rename the game's executable to "\<exe name\> - Player X", x being the instance/player #.
    *
    * Copied from `Game.ChangeExe` for the current instance.
+   * @example var changeExe = Context.ChangeExe;
    */
   ChangeExe: boolean;
   /**
    * Before launching any games, Nucleus Co-op will open x360ce and let the user set up their controllers before continuing | close x360ce to continue | Don't use with custom dlls.
    *
    * Copied from `Game.UseX360ce` for the current instance.
+   * @example var useX360ce = Context.UseX360ce;
    */
   UseX360ce: boolean;
   /**
    * Copied from `Game.HookFocusInstances` for the current instance.
+   * @example var hookFocusInstances = Context.HookFocusInstances;
    */
   HookFocusInstances: string;
   bHasKeyboardPlayer: boolean;
@@ -2234,209 +2798,260 @@ interface Context {
    * Should the game window try and keep it's aspect ratio when being resized? | default: false.
    *
    * Copied from `Game.KeepAspectRatio` for the current instance.
+   * @example var keepAspectRatio = Context.KeepAspectRatio;
    */
   KeepAspectRatio: boolean;
   /**
    * After each new instance opens, resize, reposition and remove borders of the previous instance.
    *
    * Copied from `Game.ResetWindows` for the current instance.
+   * @example var resetWindows = Context.ResetWindows;
    */
   ResetWindows: boolean;
   /**
    * Use the built-in Goldberg features in Nucleus | default: false.
    *
    * Copied from `Game.UseGoldberg` for the current instance.
+   * @example var useGoldberg = Context.UseGoldberg;
    */
   UseGoldberg: boolean;
   /**
    * If steam_interface.txt is required, provide full path here to the original steam_api(64).dll and Nucleus will create one if it can't find an existing copy.
    *
    * Copied from `Game.OrigSteamDllPath` for the current instance.
+   * @example var origSteamDllPath = Context.OrigSteamDllPath;
    */
   OrigSteamDllPath: string;
   /**
    * Some older games require a steam_interfaces.txt file for Goldberg to work | Will first search orig game path and nucleus games path, if not found then tries to create one with the GoldbergNeedSteamInterface command.
    *
    * Copied from `Game.GoldbergNeedSteamInterface` for the current instance.
+   * @example var goldbergNeedSteamInterface = Context.GoldbergNeedSteamInterface;
    */
   GoldbergNeedSteamInterface: boolean;
   /**
    * When using x360ce, this will set certain hooktype that may work for xbox one controllers if the normal method does not work.
    *
    * Copied from `Game.XboxOneControllerFix` for the current instance.
+   * @example var xboxOneControllerFix = Context.XboxOneControllerFix;
    */
   XboxOneControllerFix: boolean;
   /**
    * Set up game instances with ForceBindIP; each instance having their own IP.
    *
    * Copied from `Game.UseForceBindIP` for the current instance.
+   * @example var useForceBindIP = Context.UseForceBindIP;
    */
   UseForceBindIP: boolean;
   /**
    * Set up XInputPlus | If multiple dlls required, use comma seperated strings.
    *
    * Copied from `Game.XInputPlusDll` for the current instance.
+   * @example var xInputPlusDll = Context.XInputPlusDll;
    */
   XInputPlusDll: string[];
   /**
    * When using Game.XInputPlusDll, you can specify to use the previous version instead of latest (needed for some games).
    *
    * Copied from `Game.XInputPlusOldDll` for the current instance.
+   * @example var xInputPlusOldDll = Context.XInputPlusOldDll;
    */
   XInputPlusOldDll: boolean;
   /**
    * Copy a file or folder you specify between the quotes to each instance folder, if the file/folder is located in Nucleus folder\utils\User. This function also accepts two additional parameters, a relative path from the game root folder if the file needs to be placed somewhere else within instance folder and one parameter to indicate which instances to copy the file to if it only needs to be in some. Use of parameters is separated by a | character. So it would look something like this [ "filename.ini|\\bin|1,2" ]. This example would copy filename.ini from Nucleus\utils\User to Instance0\bin and Instance1\bin. If you don't specify which instances, it will do them all by default. If you don't specify a path then root instance folder is used. If you want instances but root folder you would just do [ "filename.ini||1,2" ] | If copying multiple files, use comma seperated strings
    *
    * Copied from `Game.CopyCustomUtils` for the current instance.
+   * @example var copyCustomUtils = Context.CopyCustomUtils;
    */
   CopyCustomUtils: string[];
   /**
    * If using XInputPlus or X360ce and there are multiple players playing the same instance, set the # per instance here.
    *
    * Copied from `Game.PlayersPerInstance` for the current instance.
+   * @example var playersPerInstance = Context.PlayersPerInstance;
    */
   PlayersPerInstance: number;
   /**
    * Set up Devreorder.
    *
    * Copied from `Game.UseDevReorder` for the current instance.
+   * @example var useDevReorder = Context.UseDevReorder;
    */
   UseDevReorder: boolean;
   /**
    * Answers to `Game.CustomUserGeneralPrompts`.
    * (AI-written, based on Nucleus GenericContext.cs. Not from the official docs.)
+   *
+   * By engine: more common in Source games.
+   * @example var customUserGeneralValues = Context.CustomUserGeneralValues;
    */
   CustomUserGeneralValues: string[];
   /**
    * Answers to `Game.CustomUserPlayerPrompts` for the current player.
    * (AI-written, based on Nucleus GenericContext.cs. Not from the official docs.)
+   * @example var customUserPlayerValues = Context.CustomUserPlayerValues;
    */
   CustomUserPlayerValues: string[];
   /**
    * Answers to `Game.CustomUserInstancePrompts` for the current instance.
    * (AI-written, based on Nucleus GenericContext.cs. Not from the official docs.)
+   * @example var customUserInstanceValues = Context.CustomUserInstanceValues;
    */
   CustomUserInstanceValues: string[];
   /**
    * This method is the same used by Universal Split Screen (Hook Xinput for gamepads). It will make the instance redirect the controllers' input to a specific controller index. This restriction method doesn't create any files.
    *
    * Copied from `Game.InjectHookXinput` for the current instance.
+   * @example var injectHookXinput = Context.InjectHookXinput;
    */
   InjectHookXinput: boolean;
   /**
    * If you want to translate XInput to Dinput when using this restriction method + Game.Hook.XInputReroute = true;
    *
    * Copied from `Game.InjectDinputToXinputTranslation` for the current instance.
+   * @example var injectDinputToXinputTranslation = Context.InjectDinputToXinputTranslation;
    */
   InjectDinputToXinputTranslation: boolean;
   /**
    * Setup wizark952's dinput blocker (block dinput for the game).
    *
    * Copied from `Game.UseDInputBlocker` for the current instance.
+   * @example var useDInputBlocker = Context.UseDInputBlocker;
    */
   UseDInputBlocker: boolean;
   /**
    * Disable raw input devices in game | default: false.
    *
    * Copied from `Game.BlockRawInput` for the current instance.
+   * @example var blockRawInput = Context.BlockRawInput;
    */
   BlockRawInput: boolean;
   /**
    * Blocks the processing of all the windows messages that get sent when the window loses focus.
    *
    * Copied from `Game.PreventWindowDeactivation` for the current instance.
+   * @example var preventWindowDeactivation = Context.PreventWindowDeactivation;
    */
   PreventWindowDeactivation: boolean;
   /**
    * If x360ce dll should be named something OTHER than xinput1_3.dll | requires Game.Usex360ce to be set to true.
    *
    * Copied from `Game.X360ceDll` for the current instance.
+   * @example var x360ceDll = Context.X360ceDll;
    */
   X360ceDll: string[];
   /**
    * If you only want specific instances to have post launch hooks, specify them in a comma seperated string.
    *
    * Copied from `Game.PostHookInstances` for the current instance.
+   * @example var postHookInstances = Context.PostHookInstances;
    */
   PostHookInstances: string;
   /**
    * If you only want specific instances to have starting hooks, specify them in a comma seperated string.
    *
    * Copied from `Game.StartHookInstances` for the current instance.
+   * @example var startHookInstances = Context.StartHookInstances;
    */
   StartHookInstances: string;
   /**
    * If you only want specific instances to have fake focus messages sent to, specify them in a comma seperated string.
    *
    * Copied from `Game.FakeFocusInstances` for the current instance.
+   * @example var fakeFocusInstances = Context.FakeFocusInstances;
    */
   FakeFocusInstances: string;
   /**
    * When using CMDLaunch (or UseForceBindIP), specify command lines to run BEFORE the game launches in same cmd session, syntax is instance and | symbol as a delimiter and the line you want that instance to run. If you want same line to run all instances, leave out the # and | (only write the line in quotes).
    *
    * Copied from `Game.CMDBatchBefore` for the current instance.
+   * @example var cMDBatchBefore = Context.CMDBatchBefore;
    */
   CMDBatchBefore: string[];
   /**
    * When using CMDLaunch (or UseForceBindIP), specify command lines to run AFTER the game launches in same cmd session, syntax is instance and | symbol as a delimiter and the line you want that instance to run. If you want same line to run all instances, leave out the # and | (only write the line in quotes).
    *
    * Copied from `Game.CMDBatchAfter` for the current instance.
+   * @example var cMDBatchAfter = Context.CMDBatchAfter;
    */
   CMDBatchAfter: string[];
   /**
+   * Run command lines upon exiting Nucleus.
+   *
    * Copied from `Game.CMDBatchClose` for the current instance.
+   * @example var cMDBatchClose = Context.CMDBatchClose;
    */
   CMDBatchClose: string[];
   /**
-   * Game.CMDBatchClose ["cmd1", "cmd2"];			//Run command lines upon exiting Nucleus.
    * When using CMDLaunch, should the game's starting arguments be inside the same quotations as the game path?
    *
    * Copied from `Game.CMDStartArgsInside` for the current instance.
+   * @example var cMDStartArgsInside = Context.CMDStartArgsInside;
    */
   CMDStartArgsInside: boolean;
+  /**
+   * @example var launcherFolder = Context.LauncherFolder;
+   */
   LauncherFolder: string;
   /**
    * A list of steam IDs to be used instead of the pre-defined ones Nucleuses uses | IDs will be used in order they are placed, i.e. instance 1 will be first non-empty string in array.
    *
    * Copied from `Game.PlayerSteamIDs` for the current instance.
+   * @example var playerSteamIDs = Context.PlayerSteamIDs;
    */
   PlayerSteamIDs: string[];
   /**
    * Number of players in the session that are not keyboard players (`IsKeyboardPlayer` false). Nucleus only counts it in the first player's Context, before `Game.Play`; in every other player's Context it is 0. `Context.NumKeyboards` counts the keyboard players.
    * (AI-written, based on Nucleus GenericContext.cs, GenericGameHandler.cs (counting loop under if (i == 0) after CreateContext). Not from the official docs.)
    * @default 0
+   * @example var numControllers = Context.NumControllers;
    */
   NumControllers: number;
   /**
    * @default 0
+   * @example var numKeyboards = Context.NumKeyboards;
    */
   NumKeyboards: number;
+  /**
+   * @example var keepEditedRegKeys = Context.KeepEditedRegKeys;
+   */
   KeepEditedRegKeys: boolean;
   /**
    * Copied from `Game.BackupFiles` for the current instance.
+   * @example var backupFiles = Context.BackupFiles;
    */
   BackupFiles: string[];
   /**
    * Copied from `Game.BackupFolders` for the current instance.
+   * @example var backupFolders = Context.BackupFolders;
    */
   BackupFolders: string[];
   /**
    * @default Globals.UserEnvironmentRoot
+   * @example var nucleusEnvironmentRoot = Context.NucleusEnvironmentRoot;
    */
   NucleusEnvironmentRoot: string;
   /**
    * @default Globals.UserDocumentsRoot
+   * @example var nucleusDocumentsRoot = Context.NucleusDocumentsRoot;
    */
   NucleusDocumentsRoot: string;
   /**
    * @default Globals.NucleusInstallRoot + "\\utils"
+   * @example var utilFolder = Context.UtilFolder;
    */
   UtilFolder: string;
+  /**
+   * @example var playerGameFilesBackupFolder = Context.PlayerGameFilesBackupFolder;
+   */
   readonly PlayerGameFilesBackupFolder: string;
   readonly HandlerType: any;
   /**
    * Values chosen by the user for options added with `Game.AddOption`.
    * (AI-written, based on Nucleus GenericContext.cs. Not from the official docs.)
+   *
+   * By engine: rarer in Unity games.
+   * @example var options = Context.Options;
    */
   readonly Options: Record<string, any>;
   /**
@@ -2448,22 +3063,31 @@ interface Context {
   /**
    * Width in pixels of this instance's window.
    * (AI-written, based on Nucleus GenericContext.cs. Not from the official docs.)
+   *
+   * In practice: The width in pixels of this instance's part of the screen, as the player arranged it. Handlers read it in `Game.Play` to give the game its resolution: in `Context.StartArguments`, a config file or the registry, nearly always together with `Context.Height`.
+   * (AI-written, based on Nucleus GenericGameHandler.cs (context.Width from the player's bounds); verified Hub handlers, counted 2026-11-17.)
+   * @example var width = Context.Width;
    */
   readonly Width: number;
   /**
    * Height in pixels of this instance's window.
    * (AI-written, based on Nucleus GenericContext.cs. Not from the official docs.)
+   * @example var height = Context.Height;
    */
   readonly Height: number;
   /**
    * X position of this instance's window.
    * (AI-written, based on Nucleus GenericContext.cs. Not from the official docs.)
+   *
+   * By engine: more common in Source games.
    * @example Context.PosX
    */
   readonly PosX: number;
   /**
    * Y position of this instance's window.
    * (AI-written, based on Nucleus GenericContext.cs. Not from the official docs.)
+   *
+   * By engine: more common in Source games.
    * @example Context.PosY
    */
   readonly PosY: number;
@@ -2482,6 +3106,7 @@ interface Context {
   /**
    * Full path of the executable being launched for this instance.
    * (AI-written, based on Nucleus GenericContext.cs. Not from the official docs.)
+   * @example var exePath = Context.ExePath;
    */
   ExePath: string;
   /**
@@ -2492,11 +3117,13 @@ interface Context {
   /**
    * Root of the current instance's game folder (Nucleus-Coop\content\<GUID>\Instance<N>).
    * (AI-written, based on Nucleus GenericContext.cs. Not from the official docs.)
+   * @example var rootFolder = Context.RootFolder;
    */
   RootFolder: string;
   /**
    * The original game folder: the folder of the game executable the user picked, in lower case, with `Game.BinariesFolder` removed. Set per player when the instance is set up, before `Game.Play`. `Context.RootFolder` is the instance's own folder.
    * (AI-written, based on Nucleus GenericGameHandler.cs (rootFolder from exeFolder.ToLower() and BinariesFolder; context.OrigRootFolder = rootFolder). Not from the official docs.)
+   * @example var origRootFolder = Context.OrigRootFolder;
    */
   OrigRootFolder: string;
   /**
@@ -2556,7 +3183,12 @@ interface Context {
   readonly HasKeyboardPlayer: boolean;
   /**
    * Path to the Nucleus Co-op current instance root folder (Nucleus-Coop\content\GUID\Instance#).
+   *
+   * In practice: Returns a folder of this instance. `Nucleus.Folder.InstancedGameFolder` is the instance's own copy of the game folder (where `Game.SymlinkGame` links the game), the one handlers almost always ask for in `Game.Play`, to change files there; `Nucleus.Folder.Documents` is the user's Documents folder.
+   * (AI-written, based on Nucleus GenericContext.cs (GetFolder), GenericGameHandler.cs (the folder table); verified Hub handlers, counted 2026-11-17.)
    * @param folder Nucleus.Folder.InstancedGameFolder (this instance's root folder once it is set up), MainGameFolder (the folder holding the game's exe) or Documents (the user's Documents folder). (AI-written)
+   * AI-written example:
+   * @example var gameFolder = Context.GetFolder(Nucleus.Folder.InstancedGameFolder);
    */
   GetFolder(folder: Nucleus.Folder | number | boolean): string;
   /**
@@ -2569,6 +3201,9 @@ interface Context {
    * @example Context.GamepadGuid
    */
   readonly GamepadGuid: string;
+  /**
+   * @example var rawHID = Context.RawHID;
+   */
   readonly RawHID: string;
   /**
    * True if current player is using keyboard, useful for logic that is needed for keyboard only player.
@@ -2623,11 +3258,13 @@ interface Context {
   /**
    * The Steam language name for the game, for example `english`. Nucleus takes the game's own Steam language setting in Nucleus, else Nucleus's global Steam language setting, else the Steam client's language from the registry, and `english` if that is empty. `Game.GoldbergLanguage`, when set, overrides all of these.
    * (AI-written, based on Nucleus GenericContext.cs (SteamLang), SteamFunctions.cs (GetUserSteamLanguageChoice, GetUserSteamClientLanguage). Not from the official docs.)
+   * @example var steamLang = Context.SteamLang;
    */
   readonly SteamLang: string;
   /**
    * Windows user name.
    * (AI-written, based on Nucleus GenericContext.cs. Not from the official docs.)
+   * @example var userName = Context.UserName;
    */
   readonly UserName: string;
   /**
@@ -2637,11 +3274,18 @@ interface Context {
   readonly HandlersFolder: string;
   /**
    * Use this in a game handler to get the player's nickname
+   *
+   * In practice: The player's nickname from Nucleus, or Player1, Player2, ... when the profile doesn't use nicknames. Handlers put it into the game's config or a Steam emulator's user name file in `Game.Play`, so each instance shows its player's name.
+   * (AI-written, based on Nucleus GenericGameHandler.cs (player.Nickname = $"Player{i + 1}" without GameProfile.UseNicknames); verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: rarer in Source games.
    * @example Context.Nickname
    */
   readonly Nickname: string;
   /**
    * Local IP address of the computer.
+   *
+   * By engine: more common in Source games.
    * @example Context.LocalIP
    */
   readonly LocalIP: string;
@@ -2652,6 +3296,8 @@ interface Context {
   NucleusUserRoot: string;
   /**
    * Path to current players Nucleus environment.
+   *
+   * By engine: more common in Unreal Engine games, rarer in Unity and Source games.
    * @example Context.EnvironmentPlayer
    */
   EnvironmentPlayer: string;
@@ -2672,6 +3318,8 @@ interface Context {
   readonly DocumentsRoot: string;
   /**
    * Relative path from user profile to game's config path | requires Game.UserProfileConfigPath be set.
+   *
+   * By engine: more common in Unreal Engine games, rarer in Source and Unity games.
    * @example Context.UserProfileConfigPath
    */
   UserProfileConfigPath: string;
@@ -2690,6 +3338,9 @@ interface Context {
    * @example Context.DocumentsSavePath
    */
   DocumentsSavePath: string;
+  /**
+   * @example var userProfileConvertedToDocuments = Context.UserProfileConvertedToDocuments;
+   */
   UserProfileConvertedToDocuments: boolean;
   /**
    * Path to the Nucleus Co-op handlers root folder (Nucleus-Coop\handlers).
@@ -2697,7 +3348,15 @@ interface Context {
    */
   readonly ScriptFolder: string;
   SetProtoInputMultipleControllers(controller1: number, controller2: number, controller3: number, controller4: number): void;
+  /**
+   * From Hub handlers:
+   * @example Context.HideDesktop();
+   */
   HideDesktop(): void;
+  /**
+   * From Hub handlers:
+   * @example Context.HideDesktop();
+   */
   HideDesktop(hideTaskbar: boolean): void;
   /**
    * Copies the folder `source` with all its files and subfolders into `destination` (both full paths), creating the destination folders. Files that already exist at the destination are not overwritten, and files that fail to copy are skipped silently. Throws if `source` doesn't exist; returns true.
@@ -2708,6 +3367,10 @@ interface Context {
   CopyFolder(source: string | number | boolean, destination: string | number | boolean): boolean;
   EditZipFile(sourceZip: string | number | boolean, password: string | number | boolean, savePath: string | number | boolean, itemsToAdd: string[], entriesToRemove: string[]): boolean;
   ExtractZip(sourceZip: string | number | boolean, contentDestination: string | number | boolean, password: string | number | boolean): boolean;
+  /**
+   * From Hub handlers:
+   * @example Context.HideTaskBar();
+   */
   HideTaskBar(): void;
   /**
    * Copies a file to `<name>_NUCLEUS_BACKUP<ext>` next to it; when the session ends Nucleus deletes the original and moves the backup back. Parameters: the full path (or an array of paths), then `overwrite`, whether to replace an existing backup (false throws if one exists). The single-path form only acts for the first player (`PlayerID` 0); the array form acts for every player. A missing file is skipped with a log line; returns true.
@@ -2726,7 +3389,12 @@ interface Context {
   /**
    * Copies the handler's folder (Game.Folder) to the given destination.
    * (AI-written, based on Nucleus GenericContext.cs. Not from the official docs.)
+   *
+   * In practice: Copies the handler's own folder (`handlers/<handler file name>/`, Context.ScriptFolder) into the given folder, folders included. Handlers almost always copy it into the instance's game folder in `Game.Play`, to add DLLs, configs or tools the handler ships with; most often for Unreal Engine games.
+   * (AI-written, based on Nucleus GenericContext.cs (CopyScriptFolder); verified Hub handlers, counted 2026-11-17; Hub game engines.)
    * @param DestinationPath Full path to copy the handler's own folder (handlers\<handler file name>\) into, with subfolders; created if missing, existing files overwritten. (AI-written)
+   * AI-written example:
+   * @example Context.CopyScriptFolder(Context.GetFolder(Nucleus.Folder.InstancedGameFolder));
    */
   CopyScriptFolder(DestinationPath: string | number | boolean): boolean;
   /**
@@ -2744,8 +3412,20 @@ interface Context {
   ConvertToString(str: any): string;
   ToUpperCase(str: any): string;
   ToLowerCase(str: any): string;
+  /**
+   * From Hub handlers:
+   * @example Context.ConvertToBytes(Context.AspectRatioDecimal);
+   */
   ConvertToBytes(num: number): number[];
+  /**
+   * From Hub handlers:
+   * @example Context.ConvertToBytes(Context.AspectRatioDecimal);
+   */
   ConvertToBytes(num: number): number[];
+  /**
+   * From Hub handlers:
+   * @example Context.ConvertToBytes(Context.AspectRatioDecimal);
+   */
   ConvertToBytes(str: string | number | boolean): number[];
   /**
    * Specify additional files to run before launching game. By default will run each additional file once but can specify to run during specific player's instances by prefixing the filepath with #|. Replace # with player number. Can also specify to run files for each player by prefixing filepath with "all|". "bool confirm" will only run the file after clicking "Ok" in the prompt.
@@ -2803,21 +3483,47 @@ interface Context {
   FindFilePartialName(rootFolder: string | number | boolean, partialFileNames: string[]): string[];
   /**
    * NemirtingasEpicEmu.json edition from a handler example:
+   *
+   * In practice: Deletes the file if it exists and writes the lines, one per line (no line break after the last). Handlers call it in `Game.Play` to write a small config, an autoexec or a Steam emulator's user name file for each instance.
+   * (AI-written, based on Nucleus GenericContext.cs (WriteTextFile); verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: more common in Source games.
    * @param path Full path of the file to write; an existing file is deleted first, so its old content is lost. (AI-written)
    * @param lines The text: one or more lines, as separate arguments or an array; each becomes a line, with no line break after the last. (AI-written)
+   * AI-written example:
+   * @example Context.WriteTextFile(Context.GetFolder(Nucleus.Folder.InstancedGameFolder) + "\\autoexec.cfg", [
+  "name " + Context.Nickname,
+  "fullscreen 0"
+]);
    */
   WriteTextFile(path: string | number | boolean, ...lines: (string | number | boolean)[]): boolean;
   /**
    * NemirtingasEpicEmu.json edition from a handler example:
+   *
+   * In practice: Deletes the file if it exists and writes the lines, one per line (no line break after the last). Handlers call it in `Game.Play` to write a small config, an autoexec or a Steam emulator's user name file for each instance.
+   * (AI-written, based on Nucleus GenericContext.cs (WriteTextFile); verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: more common in Source games.
    * @param path Full path of the file to write; an existing file is deleted first, so its old content is lost. (AI-written)
    * @param lines The text: one or more lines, as separate arguments or an array; each becomes a line, with no line break after the last. (AI-written)
+   * AI-written example:
+   * @example Context.WriteTextFile(Context.GetFolder(Nucleus.Folder.InstancedGameFolder) + "\\autoexec.cfg", [
+  "name " + Context.Nickname,
+  "fullscreen 0"
+]);
    */
   WriteTextFile(path: string | number | boolean, lines: (string | number | boolean)[]): boolean;
   /**
    * Returns a line number (int), utilizes a newly created enum SearchType.
+   *
+   * In practice: Returns the 1-based number of the first line that matches (`Nucleus.SearchType.StartsWith`, `Contains` or `Full`), or -1. Handlers almost always use it in `Game.Play` to build `Context.ReplaceLinesInTextFile`'s list: the line number, `|`, then the new line. The file must exist: Nucleus reads it without checking.
+   * (AI-written, based on Nucleus GenericContext.cs (FindLineNumberInTextFile); verified Hub handlers, counted 2026-11-17.)
    * @param path Full path of the text file to search; it must exist (it is read without a check). Returns the first matching line number, counting from 1, or -1. (AI-written)
    * @param searchValue Text to look for, case-sensitive. (AI-written)
    * @param _type How a line must match: Nucleus.SearchType.Contains, Nucleus.SearchType.Full (the whole line equals searchValue) or Nucleus.SearchType.StartsWith. (AI-written)
+   * AI-written example:
+   * @example var cfg = Context.GetFolder(Nucleus.Folder.InstancedGameFolder) + "\\config.cfg";
+var line = Context.FindLineNumberInTextFile(cfg, "resolution", Nucleus.SearchType.StartsWith);
    */
   FindLineNumberInTextFile(path: string | number | boolean, searchValue: string | number | boolean, _type: Nucleus.SearchType | number | boolean): number;
   /**
@@ -2838,15 +3544,37 @@ interface Context {
   RemoveLineInTextFile(path: string | number | boolean, searchValue: string | number | boolean, _type: Nucleus.SearchType | number | boolean, encoder: string | number | boolean): boolean;
   /**
    * Replace an entire line; for string array use the format: "lineNum|newValue", the | is required.
+   *
+   * In practice: Each entry is "<line number>|<new line>" (1-based); entries whose number is outside the file (such as -1 from `Context.FindLineNumberInTextFile` finding nothing) are skipped, and only the text up to a second `|` is kept. The usual pattern, in `Game.Play`, builds the list with `Context.FindLineNumberInTextFile`, often to put the player's nickname or resolution into a game's plain-text config.
+   * (AI-written, based on Nucleus GenericContext.cs (ReplaceLinesInTextFile: line.Split('|')); verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: rarer in Unity games.
    * @param path Full path of the text file to edit; it must exist. The file is read, deleted and written back. (AI-written)
    * @param newLines Array of "N|new text" strings: N is the line number, counting from 1; out-of-range lines are skipped and text after a second | is dropped. (AI-written)
+   * AI-written example:
+   * @example var cfg = Context.GetFolder(Nucleus.Folder.InstancedGameFolder) + "\\config.cfg";
+Context.ReplaceLinesInTextFile(cfg, [
+  Context.FindLineNumberInTextFile(cfg, "name=", Nucleus.SearchType.StartsWith) + "|name=" + Context.Nickname,
+  Context.FindLineNumberInTextFile(cfg, "width=", Nucleus.SearchType.StartsWith) + "|width=" + Context.Width
+]);
    */
   ReplaceLinesInTextFile(path: string | number | boolean, newLines: string[]): boolean;
   /**
    * Replace an entire line; for string array use the format: "lineNum|newValue", the | is required.
+   *
+   * In practice: Each entry is "<line number>|<new line>" (1-based); entries whose number is outside the file (such as -1 from `Context.FindLineNumberInTextFile` finding nothing) are skipped, and only the text up to a second `|` is kept. The usual pattern, in `Game.Play`, builds the list with `Context.FindLineNumberInTextFile`, often to put the player's nickname or resolution into a game's plain-text config.
+   * (AI-written, based on Nucleus GenericContext.cs (ReplaceLinesInTextFile: line.Split('|')); verified Hub handlers, counted 2026-11-17.)
+   *
+   * By engine: rarer in Unity games.
    * @param path Full path of the text file to edit; it must exist. The file is read, deleted and written back. (AI-written)
    * @param newLines Array of "N|new text" strings: N is the line number, counting from 1; out-of-range lines are skipped and text after a second | is dropped. (AI-written)
    * @param encoder Encoding name for .NET Encoding.GetEncoding, e.g. "utf-8" or "utf-16", used to read and write; without it .NET's default (UTF-8) is used. (AI-written)
+   * AI-written example:
+   * @example var cfg = Context.GetFolder(Nucleus.Folder.InstancedGameFolder) + "\\config.cfg";
+Context.ReplaceLinesInTextFile(cfg, [
+  Context.FindLineNumberInTextFile(cfg, "name=", Nucleus.SearchType.StartsWith) + "|name=" + Context.Nickname,
+  Context.FindLineNumberInTextFile(cfg, "width=", Nucleus.SearchType.StartsWith) + "|width=" + Context.Width
+]);
    */
   ReplaceLinesInTextFile(path: string | number | boolean, newLines: string[], encoder: string | number | boolean): boolean;
   /**
@@ -2867,19 +3595,43 @@ interface Context {
   /**
    * Edits keys in an INI/CFG file. Example: `Context.ModifySaveFile(path, path, Nucleus.SaveType.INI, [new Nucleus.IniSaveInfo("Section", "Key", "Value")]);`
    * (AI-written, based on Nucleus GenericContext.cs. Not from the official docs.)
+   *
+   * In practice: For INI files Nucleus writes each `Nucleus.IniSaveInfo` key into the file (copying it from the first path to the second first, when they differ); for CFG files each `Nucleus.CfgSaveInfo`; other entries are skipped. Handlers call it in `Game.Play`, mostly with the same path twice, to set each instance's resolution and window mode in the game's INI file; above all in Unreal Engine games.
+   * (AI-written, based on Nucleus GenericContext.cs (ModifySaveFile: SaveType.INI / SaveType.CFG); verified Hub handlers, counted 2026-11-17; Hub game engines.)
+   *
+   * By engine: rarer in Source games.
    * @param installSavePath Full path of the source file to read. For INI it is copied to saveFullPath first when the two paths differ (the copy fails if saveFullPath already exists). (AI-written)
    * @param saveFullPath Full path where the edited file is written; may be the same as installSavePath to edit in place. (AI-written)
    * @param _type File format: Nucleus.SaveType.INI or Nucleus.SaveType.CFG (Source-engine style cfg); any other value throws. (AI-written)
    * @param info One or more entries to set, new Nucleus.IniSaveInfo(section, key, value) for INI or new Nucleus.CfgSaveInfo(section, key, value) for CFG; other kinds are ignored. (AI-written)
+   * AI-written example:
+   * @example var ini = Context.GetFolder(Nucleus.Folder.InstancedGameFolder) + "\\Settings.ini";
+Context.ModifySaveFile(ini, ini, Nucleus.SaveType.INI, [
+  new Nucleus.IniSaveInfo("Display", "Width", Context.Width),
+  new Nucleus.IniSaveInfo("Display", "Height", Context.Height),
+  new Nucleus.IniSaveInfo("Display", "Fullscreen", "0")
+]);
    */
   ModifySaveFile(installSavePath: string | number | boolean, saveFullPath: string | number | boolean, _type: Nucleus.SaveType | number | boolean, ...info: (Nucleus.SaveInfo)[]): boolean;
   /**
    * Edits keys in an INI/CFG file. Example: `Context.ModifySaveFile(path, path, Nucleus.SaveType.INI, [new Nucleus.IniSaveInfo("Section", "Key", "Value")]);`
    * (AI-written, based on Nucleus GenericContext.cs. Not from the official docs.)
+   *
+   * In practice: For INI files Nucleus writes each `Nucleus.IniSaveInfo` key into the file (copying it from the first path to the second first, when they differ); for CFG files each `Nucleus.CfgSaveInfo`; other entries are skipped. Handlers call it in `Game.Play`, mostly with the same path twice, to set each instance's resolution and window mode in the game's INI file; above all in Unreal Engine games.
+   * (AI-written, based on Nucleus GenericContext.cs (ModifySaveFile: SaveType.INI / SaveType.CFG); verified Hub handlers, counted 2026-11-17; Hub game engines.)
+   *
+   * By engine: rarer in Source games.
    * @param installSavePath Full path of the source file to read. For INI it is copied to saveFullPath first when the two paths differ (the copy fails if saveFullPath already exists). (AI-written)
    * @param saveFullPath Full path where the edited file is written; may be the same as installSavePath to edit in place. (AI-written)
    * @param _type File format: Nucleus.SaveType.INI or Nucleus.SaveType.CFG (Source-engine style cfg); any other value throws. (AI-written)
    * @param info One or more entries to set, new Nucleus.IniSaveInfo(section, key, value) for INI or new Nucleus.CfgSaveInfo(section, key, value) for CFG; other kinds are ignored. (AI-written)
+   * AI-written example:
+   * @example var ini = Context.GetFolder(Nucleus.Folder.InstancedGameFolder) + "\\Settings.ini";
+Context.ModifySaveFile(ini, ini, Nucleus.SaveType.INI, [
+  new Nucleus.IniSaveInfo("Display", "Width", Context.Width),
+  new Nucleus.IniSaveInfo("Display", "Height", Context.Height),
+  new Nucleus.IniSaveInfo("Display", "Fullscreen", "0")
+]);
    */
   ModifySaveFile(installSavePath: string | number | boolean, saveFullPath: string | number | boolean, _type: Nucleus.SaveType | number | boolean, info: (Nucleus.SaveInfo)[]): boolean;
   /**
@@ -2912,6 +3664,8 @@ interface Context {
   /**
    * Patches bytes in a file (copy of the original). The file must be excluded from symlinking (e.g. via `Game.FileSymlinkExclusions`).
    * (AI-written, based on Nucleus GenericContext.cs. Not from the official docs.)
+   *
+   * By engine: more common in Unity games.
    * @param originalFile Full path of the file to read. (AI-written)
    * @param patchedFile Full path the patched bytes are written to; may be the same as originalFile. It is written even if nothing matched. (AI-written)
    * @param patchFind Bytes to find, as an array of numbers 0-255; only the first match is patched (more matches are logged as not unique). (AI-written)
@@ -2921,6 +3675,8 @@ interface Context {
   /**
    * Patches bytes in a file (copy of the original). The file must be excluded from symlinking (e.g. via `Game.FileSymlinkExclusions`).
    * (AI-written, based on Nucleus GenericContext.cs. Not from the official docs.)
+   *
+   * By engine: more common in Unity games.
    * @param originalFile Full path of the file to read. (AI-written)
    * @param patchedFile Full path the patched bytes are written to; may be the same as originalFile. It is written even if nothing matched. (AI-written)
    * @param spatchFind Text to find, converted to ASCII bytes; only the first match is patched. (AI-written)
@@ -2960,11 +3716,18 @@ interface Context {
   /**
    * Edit a registry key for current user, baseKey can either be "HKEY_LOCAL_MACHINE" or "HKEY_CURRENT_USER".
    * EditRegKey uses a custom registry data type to use, by using `Nucleus.RegType.DWord` for example. The last word can be of the same name of RegistryValueKind enum.
+   *
+   * In practice: Before it first changes a key, Nucleus exports it to utils\backup\<key>.reg, which it imports again afterwards (`Context.EditRegKeyNoBackup` skips that); a missing key is created. Only HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE and HKEY_USERS work; anything else, or a null value, is ignored without a word. Handlers use it in `Game.Play` for games that keep their resolution or window mode in the registry, which is mostly Unity games: they keep their screen settings in HKEY_CURRENT_USER\SOFTWARE\<company>\<game>, and handlers set `Screenmanager Resolution Width` and `Height` there (the names end in a hash, `_h182942802`).
+   * (AI-written, based on Nucleus GenericContext.cs (EditRegKey, ExportRegistry), RegistryUtil.cs (the utils\backup .reg files); verified Hub handlers, counted 2026-11-17; Hub game engines (Unity).)
+   *
+   * By engine: more common in Unity games, rarer in Source and Unreal Engine games.
    * @param baseKey Registry root as text: "HKEY_CURRENT_USER", "HKEY_LOCAL_MACHINE" or "HKEY_USERS"; anything else and the call does nothing. (AI-written)
    * @param sKey Key path under the root, e.g. "Software\\Company\\Game"; created if missing. Before the first edit Nucleus exports it to utils\backup\<last part>.reg. (AI-written)
    * @param subKey Name of the value to set inside that key. (AI-written)
    * @param value The data to write; null does nothing. For RegType.Binary the value's text is stored as UTF-8 bytes. (AI-written)
    * @param regType Value type: Nucleus.RegType.String, DWord, QWord, Binary, ExpandString or MultiString (the names of .NET's RegistryValueKind). (AI-written)
+   * AI-written example:
+   * @example Context.EditRegKey("HKEY_CURRENT_USER", "SOFTWARE\\Developer\\Game", "Screenmanager Resolution Width", Context.Width, Nucleus.RegType.DWord);
    */
   EditRegKey(baseKey: string | number | boolean, sKey: string | number | boolean, subKey: string | number | boolean, value: any, regType: Nucleus.RegType | number | boolean): void;
   /**
@@ -2983,6 +3746,11 @@ interface Context {
   /**
    * Pauses the handler for the given number of milliseconds.
    * (AI-written, based on Nucleus GenericContext.cs. Not from the official docs.)
+   *
+   * In practice: Pauses the handler (and Nucleus' setup of this instance) for this many milliseconds. Few handlers need it, often for Unreal Engine games; they usually wait about a second and a half, for example after starting an extra program before changing files.
+   * (AI-written, based on Nucleus GenericContext.cs (Wait: Thread.Sleep); verified Hub handlers, counted 2026-11-17; Hub game engines.)
+   * From Hub handlers:
+   * @example Context.Wait(1500);
    */
   Wait(wait: number): void;
   /**
@@ -2996,164 +3764,309 @@ interface Context {
  * A player (`PlayerInfo`).
  */
 interface PlayerInfo {
+  /**
+   * @example var otherLayout = Player.OtherLayout;
+   */
   OtherLayout: any[];
+  /**
+   * @example var ownerDisplay = Player.OwnerDisplay;
+   */
   OwnerDisplay: Rectangle;
+  /**
+   * @example var ownerUIBounds = Player.OwnerUIBounds;
+   */
   OwnerUIBounds: Rectangle;
+  /**
+   * @example var ownerType = Player.OwnerType;
+   */
   OwnerType: number;
   /**
    * @default 0
+   * @example var currentMaxGuests = Player.CurrentMaxGuests;
    */
   CurrentMaxGuests: number;
+  /**
+   * @example var waitGuests = Player.WaitGuests;
+   */
   readonly WaitGuests: boolean;
+  /**
+   * @example var inputType = Player.InputType;
+   */
   InputType: any;
   /**
    * @default "*"
+   * @example var idealProcessor = Player.IdealProcessor;
    */
   IdealProcessor: string;
   /**
    * @default ""
+   * @example var affinity = Player.Affinity;
    */
   Affinity: string;
   /**
    * @default "Normal"
+   * @example var priorityClass = Player.PriorityClass;
    */
   PriorityClass: string;
+  /**
+   * @example var gamepadName = Player.GamepadName;
+   */
   GamepadName: string;
+  /**
+   * @example var hIDDeviceID = Player.HIDDeviceID;
+   */
   HIDDeviceID: string[];
+  /**
+   * @example var nickname = Player.Nickname;
+   */
   Nickname: string;
+  /**
+   * @example var instanceId = Player.InstanceId;
+   */
   InstanceId: string;
+  /**
+   * @example var rawHID = Player.RawHID;
+   */
   RawHID: string;
+  /**
+   * @example var sID = Player.SID;
+   */
   SID: string;
+  /**
+   * @example var adapter = Player.Adapter;
+   */
   Adapter: string;
+  /**
+   * @example var userProfile = Player.UserProfile;
+   */
   UserProfile: string;
   /**
    * @default new List<PlayerInfo>()
+   * @example var instanceGuests = Player.InstanceGuests;
    */
   InstanceGuests: PlayerInfo[];
   /**
    * @default new List<Guid>()
+   * @example var guestsGuid = Player.GuestsGuid;
    */
   GuestsGuid: any[];
   /**
    * If the player is instance guest
+   * @example var guestBounds = Player.GuestBounds;
    */
   GuestBounds: Rectangle;
+  /**
+   * @example var steamEmu = Player.SteamEmu;
+   */
   SteamEmu: boolean;
+  /**
+   * @example var gotLauncher = Player.GotLauncher;
+   */
   GotLauncher: boolean;
+  /**
+   * @example var gotGame = Player.GotGame;
+   */
   GotGame: boolean;
+  /**
+   * @example var polling = Player.Polling;
+   */
   Polling: boolean;
+  /**
+   * @example var isRawMouse = Player.IsRawMouse;
+   */
   IsRawMouse: boolean;
+  /**
+   * @example var isRawKeyboard = Player.IsRawKeyboard;
+   */
   IsRawKeyboard: boolean;
   /**
    * True for a keyboard/mouse player: the single shared keyboard player Nucleus adds on the setup screen when `Game.SupportsKeyboard` is true, and every player using a raw mouse or keyboard device. False for gamepad players.
    * (AI-written, based on Nucleus PlayerInfo.cs (IsKeyboardPlayer setter), DevicesFunctions.cs (kbPlayer, GamepadId 99), RawInputManager.cs, GameProfile.cs (profile load). Not from the official docs.)
+   * @example var isKeyboardPlayer = Player.IsKeyboardPlayer;
    */
   IsKeyboardPlayer: boolean;
   /**
    * True if this player's gamepad was detected through XInput on the setup screen (done when `Game.Hook.XInputEnabled` is on without `XInputReroute` and `Game.ProtoInput.DinputDeviceHook`, or with `Game.ProtoInput.XinputHook`). False for DirectInput, SDL2 and keyboard/mouse players.
    * (AI-written, based on Nucleus PlayerInfo.cs (IsXInput setter), DevicesFunctions.cs (gamepad polling), GameProfile.cs (profile load). Not from the official docs.)
+   * @example var isXInput = Player.IsXInput;
    */
   IsXInput: boolean;
+  /**
+   * @example var isSDL2 = Player.IsSDL2;
+   */
   IsSDL2: boolean;
+  /**
+   * @example var isDInput = Player.IsDInput;
+   */
   IsDInput: boolean;
+  /**
+   * @example var isFake = Player.IsFake;
+   */
   IsFake: boolean;
+  /**
+   * @example var isInputUsed = Player.IsInputUsed;
+   */
   IsInputUsed: boolean;
   /**
    * Good to do not have to loop both Xinput & DInput
+   * @example var isController = Player.IsController;
    */
   IsController: boolean;
+  /**
+   * @example var vibrate = Player.Vibrate;
+   */
   Vibrate: boolean;
+  /**
+   * @example var gamepadProductGuid = Player.GamepadProductGuid;
+   */
   GamepadProductGuid: any;
+  /**
+   * @example var gamepadGuid = Player.GamepadGuid;
+   */
   GamepadGuid: any;
+  /**
+   * @example var display = Player.Display;
+   */
   Display: any;
   /**
    * The setup-screen screen (a `UserScreen`) this player was placed on, with members such as `MonitorBounds`, `DisplayIndex` and `Type`. Nucleus sets it when the player is dropped onto a screen or loaded from a saved profile, and clears it to null when the player is removed from the screen.
    * (AI-written, based on Nucleus PlayerInfo.cs, UserScreen.cs, BoundsFunctions.cs (player.Owner = Screens[screenIndex] / null), GameProfile.cs (SetProfilePlayerDatas). Not from the official docs.)
+   * @example var owner = Player.Owner;
    */
   Owner: any;
+  /**
+   * @example var dInputJoystick = Player.DInputJoystick;
+   */
   DInputJoystick: any;
+  /**
+   * @example var xInputJoystick = Player.XInputJoystick;
+   */
   XInputJoystick: any;
+  /**
+   * @example var sDL2Joystick = Player.SDL2Joystick;
+   */
   SDL2Joystick: any;
+  /**
+   * @example var rawInputWindow = Player.RawInputWindow;
+   */
   RawInputWindow: any;
   /**
    * "IsMinimzed" used to sync all players window state if the window is not minimized by Nucleus and some other cases.
+   * @example var isMinimized = Player.IsMinimized;
    */
   IsMinimized: boolean;
+  /**
+   * @example var steamID = Player.SteamID;
+   */
   SteamID: number;
   /**
    * Proto Input's handle for this player's game instance. Nucleus sets it when Proto Input injects into the instance (at launch with `Game.ProtoInput.InjectStartup`, or after launch with a runtime injection); it is 0 before that and when Proto Input isn't used. Inside `Game.Play` it is usually still 0, since Proto Input injects after it; use it in callbacks such as `Game.ProtoInput.OnInputLocked`.
    * (AI-written, based on Nucleus PlayerInfo.cs, ProtoInputLauncher.cs (SetupInstance, InjectStartup, InjectRuntime), GenericGameHandler.cs (call order). Not from the official docs.)
    * @default 0
+   * @example var protoInputInstanceHandle = Player.ProtoInputInstanceHandle;
    */
   ProtoInputInstanceHandle: number;
   /**
    * @default 0
+   * @example var currentLayout = Player.CurrentLayout;
    */
   CurrentLayout: number;
+  /**
+   * @example var screenPriority = Player.ScreenPriority;
+   */
   ScreenPriority: number;
   /**
    * @default -1
+   * @example var gamepadId = Player.GamepadId;
    */
   GamepadId: number;
+  /**
+   * @example var gamepadMask = Player.GamepadMask;
+   */
   GamepadMask: number;
   /**
    * @default -1
+   * @example var displayIndex = Player.DisplayIndex;
    */
   DisplayIndex: number;
   /**
    * @default -1
+   * @example var playerID = Player.PlayerID;
    */
   PlayerID: number;
+  /**
+   * @example var processID = Player.ProcessID;
+   */
   ProcessID: number;
   /**
    * First controller index Proto Input gives this player's instance: one-based (1 is the first gamepad, i.e. `GamepadId + 1`), 0 means none. Nucleus sets it for each player right after `Game.Play`, overwriting your value, unless `Game.UseManualProtoControllersSetup` is true. It is only sent to Proto Input when `Game.ProtoInput.MultipleProtoControllers` is true; otherwise Nucleus sends `GamepadId + 1` (0 for raw mouse/keyboard players).
    * (AI-written, based on Nucleus PlayerInfo.cs, ProtoInputLauncher.cs (SetProtoControllersIndex), GenericGameHandler.cs (InjectStartup/InjectRuntime calls). Not from the official docs.)
+   * @example var protoController1 = Player.ProtoController1;
    */
   ProtoController1: number;
   /**
    * Second controller index Proto Input gives this player's instance: one-based, 0 means none. With `Game.ProtoInput.MultipleProtoControllers`, Nucleus sets it right after `Game.Play` to the first guest's `GamepadId + 1`, or to the player's own if there are no guests (otherwise 0), unless `Game.UseManualProtoControllersSetup` is true. Only sent to Proto Input when `MultipleProtoControllers` is true.
    * (AI-written, based on Nucleus PlayerInfo.cs, ProtoInputLauncher.cs (SetProtoControllersIndex), GenericGameHandler.cs. Not from the official docs.)
+   * @example var protoController2 = Player.ProtoController2;
    */
   ProtoController2: number;
   /**
    * Third controller index Proto Input gives this player's instance: one-based, 0 means none. With `Game.ProtoInput.MultipleProtoControllers`, Nucleus sets it right after `Game.Play` to the second guest's `GamepadId + 1`, or to the player's own if there are no guests (otherwise 0), unless `Game.UseManualProtoControllersSetup` is true. Only sent to Proto Input when `MultipleProtoControllers` is true.
    * (AI-written, based on Nucleus PlayerInfo.cs, ProtoInputLauncher.cs (SetProtoControllersIndex), GenericGameHandler.cs. Not from the official docs.)
+   * @example var protoController3 = Player.ProtoController3;
    */
   ProtoController3: number;
   /**
    * Fourth controller index Proto Input gives this player's instance: one-based, 0 means none. With `Game.ProtoInput.MultipleProtoControllers`, Nucleus sets it right after `Game.Play` to the third guest's `GamepadId + 1`, or to the player's own if there are no guests (otherwise 0), unless `Game.UseManualProtoControllersSetup` is true. Only sent to Proto Input when `MultipleProtoControllers` is true.
    * (AI-written, based on Nucleus PlayerInfo.cs, ProtoInputLauncher.cs (SetProtoControllersIndex), GenericGameHandler.cs. Not from the official docs.)
+   * @example var protoController4 = Player.ProtoController4;
    */
   ProtoController4: number;
   /**
    * @default (IntPtr)(-1)
+   * @example var rawMouseDeviceHandle = Player.RawMouseDeviceHandle;
    */
   RawMouseDeviceHandle: number;
   /**
    * @default (IntPtr)(-1)
+   * @example var rawKeyboardDeviceHandle = Player.RawKeyboardDeviceHandle;
    */
   RawKeyboardDeviceHandle: number;
+  /**
+   * @example var gamepadHandle = Player.GamepadHandle;
+   */
   GamepadHandle: number;
   /**
    * The bounds of this player's game screen
+   * @example var monitorBounds = Player.MonitorBounds;
    */
   MonitorBounds: Rectangle;
+  /**
+   * @example var sourceEditBounds = Player.SourceEditBounds;
+   */
   SourceEditBounds: Rectangle;
   /**
    * A temporary rectangle to show the user where the game screen is going to be located
+   * @example var editBounds = Player.EditBounds;
    */
   EditBounds: Rectangle;
+  /**
+   * @example var defaultMonitorBounds = Player.DefaultMonitorBounds;
+   */
   DefaultMonitorBounds: Rectangle;
   /**
    * The index of this player
+   * @example var screenIndex = Player.ScreenIndex;
    */
   ScreenIndex: number;
   /**
    * A custom tag object for handlers to store data in
+   * @example var tag = Player.Tag;
    */
   Tag: any;
   /**
    * Information about the game's process, null if its not running
+   * @example var processData = Player.ProcessData;
    */
   ProcessData: any;
   FlashIcon(): void;
@@ -3218,7 +4131,7 @@ interface ProtoInputRuntime {
   LockInput(lockInput: boolean): number;
   /**
    * Suspends the threads of `explorer.exe` that own the taskbar, start menu, Alt+Tab and desktop menus, so they can't be opened by accident. `ProtoInput.RestartExplorer` must be called afterwards, or the desktop stays broken. Takes no parameters.
-   * (AI-written, based on Nucleus ProtoInput.cs (SuspendExplorer summary), ProtoInputUtil KillExplorer.cpp (SuspendExplorer), protoinpututil.h comment, Nucleus LockInputRuntime.cs (Lock). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SuspendExplorer summary), ProtoInputUtil KillExplorer.cpp (SuspendExplorer), protoinpututil.h (comment), Nucleus LockInputRuntime.cs (Lock). Not from the official docs.)
    */
   SuspendExplorer(): void;
   /**
@@ -3253,29 +4166,40 @@ interface ProtoInputRuntime {
   EasyHookInjectStartup(exePath: string | number | boolean, commandLine: string | number | boolean, processCreationFlags: number, dllFolderPath: string | number | boolean): number;
   /**
    * Assigns a mouse to the game instance, so its raw input drives that instance's fake mouse. Parameters: the instance handle and the mouse's raw input device handle. Can be called more than once to assign several mice.
-   * (AI-written, based on Nucleus ProtoInput.cs (AddSelectedMouseHandle), ProtoInputLoader Inject.cpp (AddSelectedInputHandleImpl), ProtoInputHooks PipeCommunication.cpp (AddSelectedMouseOrKeyboard), ProtoInputHooks RawInput.cpp (ProcessRawInput). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (AddSelectedMouseHandle), ProtoInputLoader Inject.cpp (AddSelectedInputHandleImpl), ProtoInputHooks PipeCommunication.cpp (AddSelectedMouseOrKeyboard), RawInput.cpp (ProcessRawInput). Not from the official docs.)
    */
   AddSelectedMouseHandle(instanceHandle: number, mouseHandle: number): void;
   /**
    * Assigns a keyboard to the game instance, so its raw input drives that instance's fake keyboard. Parameters: the instance handle and the keyboard's raw input device handle. Can be called more than once to assign several keyboards.
-   * (AI-written, based on Nucleus ProtoInput.cs (AddSelectedKeyboardHandle), ProtoInputLoader Inject.cpp (AddSelectedInputHandleImpl), ProtoInputHooks PipeCommunication.cpp, ProtoInputHooks RawInput.cpp (ProcessRawInput). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (AddSelectedKeyboardHandle), ProtoInputLoader Inject.cpp (AddSelectedInputHandleImpl), ProtoInputHooks PipeCommunication.cpp, RawInput.cpp (ProcessRawInput). Not from the official docs.)
    */
   AddSelectedKeyboardHandle(instanceHandle: number, keyboardHandle: number): void;
   /**
    * When `true`, Proto Input turns the instance's controller into mouse and keyboard input for the game. It is switched off again if a mouse or keyboard was already assigned with `ProtoInput.AddSelectedMouseHandle` or `ProtoInput.AddSelectedKeyboardHandle`. Parameters: the instance handle and `true`/`false`.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetTranslateXinputtoMKB), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetTranslateXinputtoMKB, gotkeyboardmouse), ProtoInputHooks TranslateXtoMKB.cpp. Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetTranslateXinputtoMKB), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetTranslateXinputtoMKB, gotkeyboardmouse), TranslateXtoMKB.cpp. Not from the official docs.)
    */
   SetTranslateXinputtoMKB(instanceHandle: number, enable: boolean): void;
   /**
    * Option for the `RegisterRawInputHookID` hook: when `true` and the game registered for raw input without a target window, the game's main window gets the forwarded raw input. Parameters: the instance handle and `true`/`false`. Set it before installing that hook, which reads it on install.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetReregisterinput), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetReregisterinput), ProtoInputHooks RegisterRawInputHook.cpp (FindAlreadySubscribedWindows, InstallImpl). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetReregisterinput), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetReregisterinput), RegisterRawInputHook.cpp (FindAlreadySubscribedWindows, InstallImpl). Not from the official docs.)
    */
   SetReregisterinput(instanceHandle: number, enable: boolean): void;
   /**
    * Installs a Proto Input hook in the game instance. Parameters: the instance handle (`Player.ProtoInputInstanceHandle`) and a hook ID from `ProtoInput.Values` (the `...HookID` values). An unknown handle does nothing, and the call waits until Proto Input in the game has connected.
-   * (AI-written, based on Nucleus ProtoInput.cs (InstallHook), ProtoInputLoader InstallHooks.cpp + InstanceHandling.cpp (WaitClientConnect), ProtoInputHooks HookManager.cpp (InstallHook). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (InstallHook), ProtoInputLoader InstallHooks.cpp, InstanceHandling.cpp (WaitClientConnect), ProtoInputHooks HookManager.cpp (InstallHook). Not from the official docs.)
+   *
+   * In practice: Handlers call it in `Game.ProtoInput.OnInputLocked`, in a loop over `PlayerList`, so a hook acts only while input is locked, and remove it again with `ProtoInput.UninstallHook` in `Game.ProtoInput.OnInputUnlocked`. The cursor and key state hooks are the usual ones: GetCursorPosHookID, SetCursorPosHookID, GetKeyStateHookID, GetAsyncKeyStateHookID, GetKeyboardStateHookID.
+   * (AI-written, based on Nucleus ProtoInput.cs (InstallHook, ExposedValues); verified Hub handlers, counted 2026-11-17.)
    * @param instanceHandle The player's Proto Input instance, Player.ProtoInputInstanceHandle (or PlayerList[i].ProtoInputInstanceHandle); Nucleus sets it when it injects Proto Input, otherwise it is 0. (AI-written)
    * @param hookID Which hook to install: a ProtoInput.Values.*HookID value, e.g. ProtoInput.Values.GetCursorPosHookID or ProtoInput.Values.FocusHooksHookID. (AI-written)
+   * From Hub handlers:
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.InstallHook(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.GetCursorPosHookID
+  );
+}
    */
   InstallHook(instanceHandle: number, hookID: number): void;
   /**
@@ -3283,13 +4207,32 @@ interface ProtoInputRuntime {
    * (AI-written, based on Nucleus ProtoInput.cs (UninstallHook), ProtoInputLoader InstallHooks.cpp, ProtoInputHooks HookManager.cpp (UninstallHook). Not from the official docs.)
    * @param instanceHandle The player's Proto Input instance, Player.ProtoInputInstanceHandle (or PlayerList[i].ProtoInputInstanceHandle). (AI-written)
    * @param hookID Which hook to remove: a ProtoInput.Values.*HookID value, the same one passed to InstallHook. (AI-written)
+   * From Hub handlers:
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.UninstallHook(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.GetCursorPosHookID
+  );
+}
    */
   UninstallHook(instanceHandle: number, hookID: number): void;
   /**
    * Turns on a window message filter in the game instance. Parameters: the instance handle (`Player.ProtoInputInstanceHandle`) and a filter ID from `ProtoInput.Values` (the `...FilterID` values). Filters only act while the `MessageFilterHookID` hook is installed.
-   * (AI-written, based on Nucleus ProtoInput.cs (EnableMessageFilter), ProtoInputLoader InstallMessageFilter.cpp, ProtoInputHooks PipeCommunication.cpp (SetupMessageFilter), ProtoInputHooks MessageFilterHook.cpp (FilterMessage). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (EnableMessageFilter), ProtoInputLoader InstallMessageFilter.cpp, ProtoInputHooks PipeCommunication.cpp (SetupMessageFilter), MessageFilterHook.cpp (FilterMessage). Not from the official docs.)
+   *
+   * In practice: Turns a message filter on for one instance. It only acts with `Game.ProtoInput.MessageFilterHook` on. Handlers call it in `Game.ProtoInput.OnInputLocked` and the matching `ProtoInput.DisableMessageFilter` in `Game.ProtoInput.OnInputUnlocked`; RawInputFilterID and MouseButtonFilterID are the common filters.
+   * (AI-written, based on Nucleus ProtoInput.cs (EnableMessageFilter, ExposedValues), ProtoInputHooks MessageFilterHook.cpp; verified Hub handlers, counted 2026-11-17.)
    * @param instanceHandle The player's Proto Input instance, Player.ProtoInputInstanceHandle (or PlayerList[i].ProtoInputInstanceHandle). (AI-written)
    * @param filterID Which filter to turn on: a ProtoInput.Values.*FilterID value, e.g. ProtoInput.Values.RawInputFilterID or ProtoInput.Values.WindowActivateFilterID. (AI-written)
+   * From Hub handlers:
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.EnableMessageFilter(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.MouseButtonFilterID
+  );
+}
    */
   EnableMessageFilter(instanceHandle: number, filterID: number): void;
   /**
@@ -3297,16 +4240,40 @@ interface ProtoInputRuntime {
    * (AI-written, based on Nucleus ProtoInput.cs (DisableMessageFilter), ProtoInputLoader InstallMessageFilter.cpp, ProtoInputHooks MessageFilterHook.cpp (SetFilterEnabled). Not from the official docs.)
    * @param instanceHandle The player's Proto Input instance, Player.ProtoInputInstanceHandle (or PlayerList[i].ProtoInputInstanceHandle). (AI-written)
    * @param filterID Which filter to turn off: a ProtoInput.Values.*FilterID value, the same one passed to EnableMessageFilter. (AI-written)
+   * From Hub handlers:
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.DisableMessageFilter(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.MouseButtonFilterID
+  );
+}
    */
   DisableMessageFilter(instanceHandle: number, filterID: number): void;
   /**
    * Blocks a window message in the game instance: the game reads it as an empty message (`WM_NULL`). Parameters: the instance handle (`Player.ProtoInputInstanceHandle`) and the message number. Only acts while the `MessageFilterHookID` hook is installed, and the number goes through Proto Input's own message table, so an unlisted number can block a different message.
-   * (AI-written, based on Nucleus ProtoInput.cs (EnableMessageBlock), ProtoInputLoader InstallMessageFilter.cpp, ProtoInputHooks PipeCommunication.cpp (SetupMessageBlock, MessageList::GetBlocked), ProtoInputHooks MessageFilterHook.cpp (FilterMessage). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (EnableMessageBlock), ProtoInputLoader InstallMessageFilter.cpp, ProtoInputHooks PipeCommunication.cpp (SetupMessageBlock, MessageList::GetBlocked), MessageFilterHook.cpp (FilterMessage). Not from the official docs.)
+   * From Hub handlers:
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.EnableMessageBlock(
+    player.ProtoInputInstanceHandle,
+    0x0006
+  );
+}
    */
   EnableMessageBlock(instanceHandle: number, messageID: number): void;
   /**
    * Stops blocking a window message that `ProtoInput.EnableMessageBlock` blocked. Parameters: the instance handle (`Player.ProtoInputInstanceHandle`) and the message number.
    * (AI-written, based on Nucleus ProtoInput.cs (DisableMessageBlock), ProtoInputLoader InstallMessageFilter.cpp, ProtoInputHooks PipeCommunication.cpp (SetupMessageBlock). Not from the official docs.)
+   * From Hub handlers:
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.DisableMessageBlock(
+    player.ProtoInputInstanceHandle,
+    0x0006
+  );
+}
    */
   DisableMessageBlock(instanceHandle: number, messageID: number): void;
   /**
@@ -3316,22 +4283,25 @@ interface ProtoInputRuntime {
   WakeUpProcess(instanceHandle: number): void;
   /**
    * Sets which window Proto Input treats as the game's main window (focus, cursor and input messages target it). Parameters: the instance handle and the window handle; 0 makes Proto Input pick the first visible top-level window of the game itself. After a non-zero handle, Proto Input stops searching for the main window on its own.
-   * (AI-written, based on Nucleus ProtoInput.cs (UpdateMainWindowHandle), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (UpdateMainWindowHandle), ProtoInputHooks HwndSelector.cpp (UpdateMainHwnd, RemoteHwndEnabled). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (UpdateMainWindowHandle), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (UpdateMainWindowHandle), HwndSelector.cpp (UpdateMainHwnd, RemoteHwndEnabled). Not from the official docs.)
    */
   UpdateMainWindowHandle(instanceHandle: number, hwnd: number): void;
   /**
    * Tells Proto Input in the game which instance number it is, starting at 1 (lower values are refused). Parameters: the instance handle and the number. Proto Input uses it for its window shortcut (right Ctrl + right Alt + that number key opens its GUI) and shows it there.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetupState), ProtoInputLoader Inject.cpp (SetupState), ProtoInputHooks PipeCommunication.cpp, ProtoInputHooks RawInput.cpp (ProcessRawInput). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetupState), ProtoInputLoader Inject.cpp (SetupState), ProtoInputHooks PipeCommunication.cpp, RawInput.cpp (ProcessRawInput). Not from the official docs.)
    */
   SetupState(instanceHandle: number, instanceIndex: number): void;
   /**
    * Chooses which window messages Proto Input posts to the game window from the assigned mouse and keyboard. Parameters, in order: the instance handle, then `true`/`false` for mouse wheel, mouse button, mouse move, keyboard key and mouse double-click messages.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetupMessagesToSend), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetupMessagesToSend), ProtoInputHooks RawInput.cpp (rawInputState.send...). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetupMessagesToSend), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetupMessagesToSend), RawInput.cpp (rawInputState.send...). Not from the official docs.)
    */
   SetupMessagesToSend(instanceHandle: number, sendMouseWheelMessages: boolean, sendMouseButtonMessages: boolean, sendMouseMoveMessages: boolean, sendKeyboardPressMessages: boolean, sendMouseDblClkMessages: boolean): void;
   /**
    * Starts posting focus messages to the game's main window in a loop, so the game believes it is focused. Parameters, in order: the instance handle, the interval in milliseconds, then `true`/`false` for `WM_ACTIVATE`, `WM_ACTIVATEAPP`, `WM_NCACTIVATE`, `WM_SETFOCUS` and `WM_MOUSEACTIVATE`.
-   * (AI-written, based on Nucleus ProtoInput.cs (StartFocusMessageLoop), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (StartFocusMessageLoop), ProtoInputHooks FocusMessageLoop.cpp (LoopThread). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (StartFocusMessageLoop), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (StartFocusMessageLoop), FocusMessageLoop.cpp (LoopThread). Not from the official docs.)
+   *
+   * In practice: Starts Proto Input's focus loop for one instance from a callback, instead of `Game.ProtoInput.EnableFocusMessageLoop` at setup. The arguments are the instance, the milliseconds between rounds, then whether to send WM_ACTIVATE, WM_NCACTIVATE, WM_ACTIVATEAPP, WM_SETFOCUS and WM_MOUSEACTIVATE. Handlers mostly call it in `Game.ProtoInput.OnInputLocked`, often right after `ProtoInput.StopFocusMessageLoop`.
+   * (AI-written, based on Nucleus ProtoInput.cs (StartFocusMessageLoop); verified Hub handlers, counted 2026-11-17.)
    * @param instanceHandle The player's Proto Input instance, Player.ProtoInputInstanceHandle (or PlayerList[i].ProtoInputInstanceHandle). (AI-written)
    * @param milliseconds Pause between rounds of fake focus messages, in milliseconds. (AI-written)
    * @param wm_activate true posts WM_ACTIVATE (click-activate) to the game window each round. (AI-written)
@@ -3343,70 +4313,96 @@ interface ProtoInputRuntime {
   StartFocusMessageLoop(instanceHandle: number, milliseconds: number, wm_activate: boolean, wm_activateapp: boolean, wm_ncactivate: boolean, wm_setfocus: boolean, wm_mouseactivate: boolean): void;
   /**
    * Pauses the focus message loop started by `ProtoInput.StartFocusMessageLoop`. Parameter: the instance handle.
-   * (AI-written, based on Nucleus ProtoInput.cs (StopFocusMessageLoop), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (StopFocusMessageLoop), ProtoInputHooks FocusMessageLoop.cpp (PauseMessageLoop). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (StopFocusMessageLoop), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (StopFocusMessageLoop), FocusMessageLoop.cpp (PauseMessageLoop). Not from the official docs.)
    * @param instanceHandle The player's Proto Input instance, Player.ProtoInputInstanceHandle (or PlayerList[i].ProtoInputInstanceHandle). (AI-written)
+   * From Hub handlers:
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.StopFocusMessageLoop(
+    player.ProtoInputInstanceHandle
+  );
+}
    */
   StopFocusMessageLoop(instanceHandle: number): void;
   /**
    * Shows or hides the fake cursor Proto Input draws over the game for this instance. Parameters: the instance handle and `true`/`false`.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetDrawFakeCursor), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetDrawFakeCursor), ProtoInputHooks FakeCursor.cpp (EnableDisableFakeCursor). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetDrawFakeCursor), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetDrawFakeCursor), FakeCursor.cpp (EnableDisableFakeCursor). Not from the official docs.)
+   *
+   * In practice: Shows or hides Proto Input's fake cursor in one instance, for games that have no cursor of their own. Handlers show it in `Game.ProtoInput.OnInputLocked` (with true); some hide it again in `Game.ProtoInput.OnInputUnlocked` (with false).
+   * (AI-written, based on Nucleus ProtoInput.cs (SetDrawFakeCursor); verified Hub handlers, counted 2026-11-17.)
    * @param instanceHandle The player's Proto Input instance, Player.ProtoInputInstanceHandle (or PlayerList[i].ProtoInputInstanceHandle). (AI-written)
    * @param enable true draws Proto Input's fake mouse cursor in that instance, false hides it. (AI-written)
+   * From Hub handlers:
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.SetDrawFakeCursor(
+    player.ProtoInputInstanceHandle,
+    false
+  );
+}
    */
   SetDrawFakeCursor(instanceHandle: number, enable: boolean): void;
   /**
    * Switches the fake cursor to an alternative drawing mode that offsets it by the cursor image's detected hotspot and does not resize it for the monitor scale. It does not turn drawing on: `ProtoInput.SetDrawFakeCursor` does. Parameters: the instance handle and `true`/`false`.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetDrawFakeCursorFix), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetDrawFakeCursorFix), ProtoInputHooks FakeCursor.cpp (setmonitorscale, DrawFakeCursorFix). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetDrawFakeCursorFix), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetDrawFakeCursorFix), FakeCursor.cpp (setmonitorscale, DrawFakeCursorFix). Not from the official docs.)
+   * From Hub handlers:
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.SetDrawFakeCursorFix(
+    player.ProtoInputInstanceHandle,
+    false
+  );
+}
    */
   SetDrawFakeCursorFix(instanceHandle: number, enable: boolean): void;
   /**
    * When `true`, Proto Input stops passing the assigned mouse and keyboard input to the game instance. Parameters: the instance handle and `true`/`false`. Nucleus sets it to `true` while input is not locked when the freeze-external-input option is on.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetExternalFreezeFakeInput), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, ProtoInputHooks RawInput.cpp (externalFreezeInput), Nucleus ProtoInputLauncher.cs (NotifyInputLockChange). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetExternalFreezeFakeInput), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, RawInput.cpp (externalFreezeInput), Nucleus ProtoInputLauncher.cs (NotifyInputLockChange). Not from the official docs.)
    */
   SetExternalFreezeFakeInput(instanceHandle: number, enableFreeze: boolean): void;
   /**
    * Chooses the controllers the game instance sees through the `XinputHookID` hook. Parameters: the instance handle, then the controller for the game's XInput slots 1 to 4, counted from 1; 0 means no controller in that slot. With `ProtoInput.SetTranslateXinputtoMKB` on, the first controller is translated to mouse and keyboard and every slot reports no controller.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetControllerIndex), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetControllerIndex), ProtoInputHooks XinputHook.cpp (GetTargetControllerIndex). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetControllerIndex), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetControllerIndex), XinputHook.cpp (GetTargetControllerIndex). Not from the official docs.)
    */
   SetControllerIndex(instanceHandle: number, controllerIndex: number, controllerIndex2: number, controllerIndex3: number, controllerIndex4: number): void;
   /**
    * When `true`, the `XinputHookID` hook reads a DirectInput controller (the one chosen by `ProtoInput.SetControllerIndex`, among DirectInput devices) and gives it to the game as an XInput controller. Parameters: the instance handle and `true`/`false`. Call it before installing the `XinputHookID` hook.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetUseDinputRedirection), ProtoInputLoader protoloader.h (comment: must be called before InstallHook on the Xinput hook), ProtoInputHooks PipeCommunication.cpp (SetUseDinput), ProtoInputHooks XinputHook.cpp (XInputGetStateDinput_Inline, SelectDinputDevice). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetUseDinputRedirection), ProtoInputLoader protoloader.h (comment: must be called before InstallHook on the Xinput hook), ProtoInputHooks PipeCommunication.cpp (SetUseDinput), XinputHook.cpp (XInputGetStateDinput_Inline, SelectDinputDevice). Not from the official docs.)
    */
   SetUseDinputRedirection(instanceHandle: number, useRedirection: boolean): void;
   /**
    * When `true`, the `XinputHookID` hook reads controllers through OpenXinput instead of `xinput1_3.dll`, which allows controller numbers above 4. Parameters: the instance handle and `true`/`false`.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetUseOpenXinput), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, ProtoInputHooks XinputHook.cpp (XInputGetState_Inline, Hook_XInputGetCapabilities comment). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetUseOpenXinput), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, XinputHook.cpp (XInputGetState_Inline, Hook_XInputGetCapabilities comment). Not from the official docs.)
    */
   SetUseOpenXinput(instanceHandle: number, useOpenXinput: boolean): void;
   /**
    * When `true`, the `XinputHookID` hook presents the instance's mouse and keyboard as an XInput controller in the slots that have no controller. Meanwhile the key state hooks report no keys pressed and raw input is not forwarded to the game. Parameters: the instance handle and `true`/`false`.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetTranslateMKBtoXinput), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (TranslateMKBtoXinput), ProtoInputHooks XinputHook.cpp (Hook_XInputGetState, XInputfromkbm), GetKeyStateHook.cpp, RawInput.cpp. Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetTranslateMKBtoXinput), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (TranslateMKBtoXinput), XinputHook.cpp (Hook_XInputGetState, XInputfromkbm), GetKeyStateHook.cpp, RawInput.cpp. Not from the official docs.)
    */
   SetTranslateMKBtoXinput(instanceHandle: number, TranslateMKBtoXinput: boolean): void;
   /**
    * Option for the `CursorVisibilityStateHookID` hook. When `true`, every `SetCursor` call with a cursor image shows the fake cursor; when `false`, `SetCursor` only hides it (on a null cursor). Parameters: the instance handle and `true`/`false`.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetShowCursorWhenImageUpdated), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, ProtoInputHooks CursorVisibilityHook.cpp (Hook_SetCursor). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetShowCursorWhenImageUpdated), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, CursorVisibilityHook.cpp (Hook_SetCursor). Not from the official docs.)
    */
   SetShowCursorWhenImageUpdated(instanceHandle: number, enable: boolean): void;
   /**
    * When `true`, the fake cursor is kept inside the game window (from 0 to width minus 1) and its drawing window is placed with the game window instead of covering every screen. Parameters: the instance handle and `true`/`false`.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetPutMouseInsideWindow), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, ProtoInputHooks FakeMouseKeyboard.cpp (AddMouseDelta), FakeCursor.cpp (StartInternal). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetPutMouseInsideWindow), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, FakeMouseKeyboard.cpp (AddMouseDelta), FakeCursor.cpp (StartInternal). Not from the official docs.)
    */
   SetPutMouseInsideWindow(instanceHandle: number, enable: boolean): void;
   /**
    * With `ProtoInput.SetPutMouseInsideWindow` on, `true` restores the default top and left limit of the fake cursor (-1 instead of 0). Parameters: the instance handle and `true`/`false`.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetDefaultTopLeftMouseBounds), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, ProtoInputHooks FakeMouseKeyboard.cpp (AddMouseDelta). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetDefaultTopLeftMouseBounds), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, FakeMouseKeyboard.cpp (AddMouseDelta). Not from the official docs.)
    */
   SetDefaultTopLeftMouseBounds(instanceHandle: number, enable: boolean): void;
   /**
    * With `ProtoInput.SetPutMouseInsideWindow` on, `true` restores the default bottom and right limit of the fake cursor (the window width and height instead of one pixel less). Parameters: the instance handle and `true`/`false`.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetDefaultBottomRightMouseBounds), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, ProtoInputHooks FakeMouseKeyboard.cpp (AddMouseDelta). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetDefaultBottomRightMouseBounds), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, FakeMouseKeyboard.cpp (AddMouseDelta). Not from the official docs.)
    */
   SetDefaultBottomRightMouseBounds(instanceHandle: number, enable: boolean): void;
   /**
    * Option for the `RemoveBorderHookID` hook: when `true`, it removes the main window's border right away on install instead of waiting up to 10 seconds for the window to get one. Parameters: the instance handle and `true`/`false`. Set it before installing that hook.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetDontWaitWindowBorder), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, ProtoInputHooks RemoveBorderHook.cpp (InstallImpl, WaitForWindowBorder). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetDontWaitWindowBorder), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, RemoveBorderHook.cpp (InstallImpl, WaitForWindowBorder). Not from the official docs.)
    */
   SetDontWaitWindowBorder(instanceHandle: number, enable: boolean): void;
   /**
@@ -3421,69 +4417,77 @@ interface ProtoInputRuntime {
   AddNamedPipeToRename(instanceHandle: number, name: string | number | boolean): void;
   /**
    * Chooses the DirectInput controller the `DinputOrderHookID` hook opens for every DirectInput device the game creates. Parameters: the instance handle and the controller's GUID (Nucleus passes `player.GamepadGuid`); a second form takes the GUID as 11 numbers (Data1, Data2, Data3, then the 8 bytes of Data4).
-   * (AI-written, based on Nucleus ProtoInput.cs (SetDinputDeviceGUID, both overloads), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetDinputDeviceGuid), ProtoInputHooks DinputOrderHook.cpp (SetControllerGuid, Hook_DinputCreateDevice8W). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetDinputDeviceGUID, both overloads), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetDinputDeviceGuid), DinputOrderHook.cpp (SetControllerGuid, Hook_DinputCreateDevice8W). Not from the official docs.)
    */
   SetDinputDeviceGUID(instanceHandle: number, Data1: number, Data2: number, Data3: number, Data4a: number, Data4b: number, Data4c: number, Data4d: number, Data4e: number, Data4f: number, Data4g: number, Data4h: number): void;
   /**
    * Chooses the DirectInput controller the `DinputOrderHookID` hook opens for every DirectInput device the game creates. Parameters: the instance handle and the controller's GUID (Nucleus passes `player.GamepadGuid`); a second form takes the GUID as 11 numbers (Data1, Data2, Data3, then the 8 bytes of Data4).
-   * (AI-written, based on Nucleus ProtoInput.cs (SetDinputDeviceGUID, both overloads), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetDinputDeviceGuid), ProtoInputHooks DinputOrderHook.cpp (SetControllerGuid, Hook_DinputCreateDevice8W). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetDinputDeviceGUID, both overloads), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetDinputDeviceGuid), DinputOrderHook.cpp (SetControllerGuid, Hook_DinputCreateDevice8W). Not from the official docs.)
    */
   SetDinputDeviceGUID(instanceHandle: number, guid: any): void;
   /**
    * When `true`, the `DinputOrderHookID` hook also hooks the controller's `GetDeviceState`. Parameters: the instance handle and `true`/`false`. Call it before installing the `DinputOrderHookID` hook.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetDinputHookAlsoHooksGetDeviceState), ProtoInputLoader protoloader.h (comment: must be called before InstallHook on the Dinput order hook), ProtoInputHooks PipeCommunication.cpp, ProtoInputHooks DinputOrderHook.cpp (InstallControllerHooks). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetDinputHookAlsoHooksGetDeviceState), ProtoInputLoader protoloader.h (comment: must be called before InstallHook on the Dinput order hook), ProtoInputHooks PipeCommunication.cpp, DinputOrderHook.cpp (InstallControllerHooks). Not from the official docs.)
    */
   SetDinputHookAlsoHooksGetDeviceState(instanceHandle: number, enable: boolean): void;
   /**
    * Sets the position and size the `SetWindowPosHookID` hook applies to every `SetWindowPos` call. Parameters: the instance handle, x, y, width, height (Nucleus passes the player's screen area).
-   * (AI-written, based on Nucleus ProtoInput.cs (SetSetWindowPosSettings), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, ProtoInputHooks SetWindowPosHook.cpp (Hook_SetWindowPos), Nucleus ProtoInputLauncher.cs. Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetSetWindowPosSettings), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, SetWindowPosHook.cpp (Hook_SetWindowPos), Nucleus ProtoInputLauncher.cs. Not from the official docs.)
    */
   SetSetWindowPosSettings(instanceHandle: number, posx: number, posy: number, width: number, height: number): void;
   /**
    * When `true`, the `SetWindowPosHookID` hook keeps the size the game asked for and only forces the position. Parameters: the instance handle and `true`/`false`.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetSetWindowPosDontResize), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, ProtoInputHooks SetWindowPosHook.cpp. Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetSetWindowPosDontResize), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, SetWindowPosHook.cpp. Not from the official docs.)
    */
   SetSetWindowPosDontResize(instanceHandle: number, enable: boolean): void;
   /**
    * When `true`, the `SetWindowPosHookID` hook keeps the position the game asked for and only forces the size. Parameters: the instance handle and `true`/`false`.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetSetWindowPosDontReposition), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, ProtoInputHooks SetWindowPosHook.cpp. Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetSetWindowPosDontReposition), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, SetWindowPosHook.cpp. Not from the official docs.)
    */
   SetSetWindowPosDontReposition(instanceHandle: number, enable: boolean): void;
   /**
    * Sets the one HID device path the `CreateSingleHIDHookID` hook lets the game open; opening any other path containing "HID" or "hid" fails. Parameters: the instance handle and the device path (Nucleus passes `player.RawHID`).
-   * (AI-written, based on Nucleus ProtoInput.cs (SetCreateSingleHIDName), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, ProtoInputHooks CreateSingleHIDHook.cpp (SetRawHidW, Hook_CreateFileW). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetCreateSingleHIDName), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, CreateSingleHIDHook.cpp (SetRawHidW, Hook_CreateFileW). Not from the official docs.)
    */
   SetCreateSingleHIDName(instanceHandle: number, name: string | number | boolean): void;
   /**
    * Option for the `ClipCursorHookID` hook. `true` (the default) turns the game's `ClipCursor` area into a limit for the fake cursor; `false` ignores the game's `ClipCursor` calls. Parameters: the instance handle and `true`/`false`.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetCursorClipOptions), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetClipCursorHookOptions), ProtoInputHooks ClipCursorHook.cpp (Hook_ClipCursor, SetUseFakeCursorClip). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetCursorClipOptions), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetClipCursorHookOptions), ClipCursorHook.cpp (Hook_ClipCursor, SetUseFakeCursorClip). Not from the official docs.)
    */
   SetCursorClipOptions(instanceHandle: number, useFakeClipCursor: boolean): void;
   /**
    * Sets a key that shows or hides the fake cursor when pressed on the instance's keyboard; that key press is not passed to the game. Parameters: the instance handle, `true`/`false` to enable the shortcut, and the virtual-key code.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetToggleFakeCursorVisibilityShortcut), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, ProtoInputHooks RawInput.cpp (SendKeyMessage). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetToggleFakeCursorVisibilityShortcut), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, RawInput.cpp (SendKeyMessage). Not from the official docs.)
    */
   SetToggleFakeCursorVisibilityShortcut(instanceHandle: number, enabled: boolean, vkey: number): void;
   /**
    * Changes how far the fake cursor can move. Parameters: the instance handle, `allowOutOfBounds` (`true`: no limit at all) and `extendBounds` (`true`: the limits reach past the window edges, by 100 pixels or, with `ProtoInput.SetPutMouseInsideWindow`, to twice the window size).
-   * (AI-written, based on Nucleus ProtoInput.cs (AllowFakeCursorOutOfBounds), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetIgnoreMouseBounds, SetExtendMouseBounds), ProtoInputHooks FakeMouseKeyboard.cpp (AddMouseDelta). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (AllowFakeCursorOutOfBounds), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetIgnoreMouseBounds, SetExtendMouseBounds), FakeMouseKeyboard.cpp (AddMouseDelta). Not from the official docs.)
    */
   AllowFakeCursorOutOfBounds(instanceHandle: number, allowOutOfBounds: boolean, extendBounds: boolean): void;
   /**
    * When `true`, raw input from every mouse and keyboard is forwarded to the game unchanged, not only from the assigned devices, and Proto Input's fake mouse and keyboard are not updated from it. Parameters: the instance handle and `true`/`false`.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetRawInputBypass), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetRawInputBypass), ProtoInputHooks RawInput.cpp (ProcessRawInput). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetRawInputBypass), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetRawInputBypass), RawInput.cpp (ProcessRawInput). Not from the official docs.)
    * @param instanceHandle The player's Proto Input instance, Player.ProtoInputInstanceHandle (or PlayerList[i].ProtoInputInstanceHandle). (AI-written)
    * @param enable true passes raw input from every device to the game, not just the player's; false lets Proto Input filter it per device. (AI-written)
+   * From Hub handlers:
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.SetRawInputBypass(
+    player.ProtoInputInstanceHandle,
+    false
+  );
+}
    */
   SetRawInputBypass(instanceHandle: number, enable: boolean): void;
   /**
    * When `true`, Proto Input subclasses the game's main window and turns mouse messages into pointer messages (`WM_POINTERUPDATE`, `WM_POINTERDOWN`, `WM_POINTERUP`, `WM_POINTERWHEEL`) for games that read pointer input. Parameters: the instance handle and `true`/`false`.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetPointerInMouse), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, ProtoInputHooks WindowMsgHook.cpp (PointerInMouse, SubclassProc). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetPointerInMouse), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, WindowMsgHook.cpp (PointerInMouse, SubclassProc). Not from the official docs.)
    */
   SetPointerInMouse(instanceHandle: number, enable: boolean): void;
   /**
    * When `true`, left, middle and right mouse button messages are also posted to the child window under the fake cursor, not only to the main window. Parameters: the instance handle and `true`/`false`.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetSendMessagesToSubWindows), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (MessageAllWindows), ProtoInputHooks RawInput.cpp (SearchAndSendInput). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetSendMessagesToSubWindows), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (MessageAllWindows), RawInput.cpp (SearchAndSendInput). Not from the official docs.)
    */
   SetSendMessagesToSubWindows(instanceHandle: number, enable: boolean): void;
   /**
@@ -3498,37 +4502,37 @@ interface ProtoInputRuntime {
   SetTaskbarAutohide(autohide: boolean): void;
   /**
    * Sets the position and size the `MoveWindowHookID` hook applies to every `MoveWindow` call. Parameters: the instance handle, x, y, width, height (Nucleus passes the player's screen area).
-   * (AI-written, based on Nucleus ProtoInput.cs (SetMoveWindowSettings), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, ProtoInputHooks MoveWindowHook.cpp (Hook_MoveWindow). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetMoveWindowSettings), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, MoveWindowHook.cpp (Hook_MoveWindow). Not from the official docs.)
    */
   SetMoveWindowSettings(instanceHandle: number, posx: number, posy: number, width: number, height: number): void;
   /**
    * When `true`, the `MoveWindowHookID` hook keeps the size the game asked for and only forces the position. Parameters: the instance handle and `true`/`false`.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetMoveWindowDontResize), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, ProtoInputHooks MoveWindowHook.cpp. Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetMoveWindowDontResize), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, MoveWindowHook.cpp. Not from the official docs.)
    */
   SetMoveWindowDontResize(instanceHandle: number, enable: boolean): void;
   /**
    * When `true`, the `MoveWindowHookID` hook keeps the position the game asked for and only forces the size. Parameters: the instance handle and `true`/`false`.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetMoveWindowDontReposition), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, ProtoInputHooks MoveWindowHook.cpp. Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetMoveWindowDontReposition), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, MoveWindowHook.cpp. Not from the official docs.)
    */
   SetMoveWindowDontReposition(instanceHandle: number, enable: boolean): void;
   /**
    * Sets the rectangle the `AdjustWindowRectHookID` hook starts from: every `AdjustWindowRect`/`AdjustWindowRectEx` call computes the window size from this position and size, without a menu. Parameters: the instance handle, x, y, width, height (Nucleus passes the player's screen area).
-   * (AI-written, based on Nucleus ProtoInput.cs (SetAdjustWindowRectSettings), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, ProtoInputHooks AdjustWindowRectHook.cpp (Hook_AdjustWindowRect). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetAdjustWindowRectSettings), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, AdjustWindowRectHook.cpp (Hook_AdjustWindowRect). Not from the official docs.)
    */
   SetAdjustWindowRectSettings(instanceHandle: number, posx: number, posy: number, width: number, height: number): void;
   /**
    * Rescales the mouse position the game sees (mouse messages, `GetCursorPos`, `GetCursorInfo`) by `oldX`/`newX` and `oldY`/`newY`. Parameters: the instance handle, then `oldX`, `oldY`, `newX`, `newY`; it is ignored unless all four are above 5. Nucleus passes the handler's scale-from size and the player's screen size.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetManualScaling), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, ProtoInputHooks WindowMsgHook.cpp (Settings, getfactor), Nucleus ProtoInputLauncher.cs. Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetManualScaling), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp, WindowMsgHook.cpp (Settings, getfactor), Nucleus ProtoInputLauncher.cs. Not from the official docs.)
    */
   SetManualScaling(instanceHandle: number, oldX: number, oldY: number, newX: number, newY: number): void;
   /**
    * Sets the controller-to-keyboard mapping used by `ProtoInput.SetTranslateXinputtoMKB`. Parameters, in order: the instance handle; virtual-key codes for A, B, X, Y, right shoulder, left shoulder, D-pad right, left, up, down, right stick press, left stick press, stick right, left, up, down, Back and Start; then sensitivity, acceleration and deadzone.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetXinputtoMKBkeys), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetXinputtoMKBkeys), ProtoInputHooks TranslateXtoMKB.cpp (ButtonStateImpulse, Sens, Sensmult, Deadzone), Nucleus ProtoInputLauncher.cs (defaults). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetXinputtoMKBkeys), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetXinputtoMKBkeys), TranslateXtoMKB.cpp (ButtonStateImpulse, Sens, Sensmult, Deadzone), Nucleus ProtoInputLauncher.cs (defaults). Not from the official docs.)
    */
   SetXinputtoMKBkeys(instanceHandle: number, XinputtoMKBAkey: number, XinputtoMKBBkey: number, XinputtoMKBXkey: number, XinputtoMKBYkey: number, XinputtoMKBRSkey: number, XinputtoMKBLSkey: number, XinputtoMKBrightkey: number, XinputtoMKBleftkey: number, XinputtoMKBupkey: number, XinputtoMKBdownkey: number, XinputtoMKBstickR: number, XinputtoMKBstickL: number, XinputtoMKBstickright: number, XinputtoMKBstickleft: number, XinputtoMKBstickup: number, XinputtoMKBstickdown: number, XinputtoMKBoption: number, XinputtoMKBstart: number, XinputtoMKBsens: number, XinputtoMKBsensmult: number, XinputtoMKBDeadzone: number): void;
   /**
    * Sets options for `ProtoInput.SetTranslateXinputtoMKB`. Parameters, in order: the instance handle; swap sticks; screen scanning (moves the cursor to points found from .bmp images or static points); shoulder buttons jump to the next point; then for A, B, X and Y in turn: static point, click, move.
-   * (AI-written, based on Nucleus ProtoInput.cs (SetXinputtoMKBCFG), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetXinputtoMKBCFG, scanAtype...), ProtoInputHooks ScanThread.cpp, TranslateXtoMKB.cpp (lefthanded). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SetXinputtoMKBCFG), ProtoInputLoader Inject.cpp, ProtoInputHooks PipeCommunication.cpp (SetXinputtoMKBCFG, scanAtype...), ScanThread.cpp, TranslateXtoMKB.cpp (lefthanded). Not from the official docs.)
    */
   SetXinputtoMKBCFG(instanceHandle: number, stickinvert: boolean, scanoption: boolean, shoulderswap: boolean, astatic: boolean, aclick: boolean, amove: boolean, bstatic: boolean, bclick: boolean, bmove: boolean, xstatic: boolean, xclick: boolean, xmove: boolean, ystatic: boolean, yclick: boolean, ymove: boolean): void;
   /**
@@ -3545,132 +4549,288 @@ interface ProtoInputValues {
    * Selects the RegisterRawInput hook (ID 0): the game's `RegisterRawInputDevices` calls no longer reach Windows, and Proto Input forwards only the assigned mouse and keyboard's raw input to the game's windows. Pair it with `GetRawInputDataHookID`, which decodes the forwarded input. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.
    * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks RegisterRawInputHook.cpp (Hook_RegisterRawInputDevices, InstallImpl), RawInput.cpp (ProcessRawInput). Not from the official docs.)
    * @default (uint)ProtoHookIDs.RegisterRawInputHookID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.InstallHook(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.RegisterRawInputHookID
+  );
+}
    */
   RegisterRawInputHookID: number;
   /**
    * Selects the GetRawInputData hook (ID 1): when the game reads raw input that Proto Input forwarded, it gets the assigned device's data; other raw input passes through unchanged. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.
    * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks GetRawInputDataHook.cpp (Hook_GetRawInputData), RawInput.cpp (inputBuffer, 0xAB000000 signature). Not from the official docs.)
    * @default (uint)ProtoHookIDs.GetRawInputDataHookID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.InstallHook(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.GetRawInputDataHookID
+  );
+}
    */
   GetRawInputDataHookID: number;
   /**
    * Selects the message filter hook (ID 2) on `GetMessage`/`PeekMessage`: messages the game reads carry the fake cursor position, and the enabled filters and blocked messages apply. The `...FilterID` filters and `ProtoInput.EnableMessageBlock` only work while it is installed. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.
    * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks MessageFilterHook.cpp (FilterMessage, InstallImpl). Not from the official docs.)
    * @default (uint)ProtoHookIDs.MessageFilterHookID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.InstallHook(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.MessageFilterHookID
+  );
+}
    */
   MessageFilterHookID: number;
   /**
    * Selects the GetCursorPos hook (ID 3): gives each instance its own cursor position, as `GetCursorPos` returns the instance's fake cursor. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.
    * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks GetCursorPosHook.cpp (Hook_GetCursorPos). Not from the official docs.)
    * @default (uint)ProtoHookIDs.GetCursorPosHookID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.InstallHook(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.GetCursorPosHookID
+  );
+}
    */
   GetCursorPosHookID: number;
   /**
    * Selects the SetCursorPos hook (ID 4): the game's `SetCursorPos` moves only the instance's fake cursor, not the real one. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.
    * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks SetCursorPosHook.cpp (Hook_SetCursorPos). Not from the official docs.)
    * @default (uint)ProtoHookIDs.SetCursorPosHookID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.InstallHook(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.SetCursorPosHookID
+  );
+}
    */
   SetCursorPosHookID: number;
   /**
    * Selects the GetKeyState hook (ID 5): `GetKeyState` reports the keys and buttons of the instance's assigned keyboard and mouse. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.
    * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks GetKeyStateHook.cpp (Hook_GetKeyState). Not from the official docs.)
    * @default (uint)ProtoHookIDs.GetKeyStateHookID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.InstallHook(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.GetKeyStateHookID
+  );
+}
    */
   GetKeyStateHookID: number;
   /**
    * Selects the GetAsyncKeyState hook (ID 6): `GetAsyncKeyState` reports the keys and buttons of the instance's assigned keyboard and mouse. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.
    * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks GetAsyncKeyStateHook.cpp (Hook_GetAsyncKeyState). Not from the official docs.)
    * @default (uint)ProtoHookIDs.GetAsyncKeyStateHookID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.InstallHook(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.GetAsyncKeyStateHookID
+  );
+}
    */
   GetAsyncKeyStateHookID: number;
   /**
    * Selects the GetKeyboardState hook (ID 7): `GetKeyboardState` reports the keys and buttons of the instance's assigned keyboard and mouse. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.
    * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks GetKeyboardStateHook.cpp (Hook_GetKeyboardState). Not from the official docs.)
    * @default (uint)ProtoHookIDs.GetKeyboardStateHookID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.InstallHook(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.GetKeyboardStateHookID
+  );
+}
    */
   GetKeyboardStateHookID: number;
   /**
    * Selects the cursor visibility hook (ID 8): the game's `ShowCursor`, `SetCursor` and `SetSystemCursor` calls show, hide and set the image of the instance's fake cursor. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.
    * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks CursorVisibilityHook.cpp (Hook_ShowCursor, Hook_SetCursor, Hook_SetSystemCursor). Not from the official docs.)
    * @default (uint)ProtoHookIDs.CursorVisibilityStateHookID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.InstallHook(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.CursorVisibilityStateHookID
+  );
+}
    */
   CursorVisibilityStateHookID: number;
   /**
    * Selects the ClipCursor hook (ID 9): the game's `ClipCursor` no longer confines the real cursor; by default it confines the fake cursor instead (see `ProtoInput.SetCursorClipOptions`). Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.
    * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks ClipCursorHook.cpp (Hook_ClipCursor, Hook_GetClipCursor). Not from the official docs.)
    * @default (uint)ProtoHookIDs.ClipCursorHookID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.InstallHook(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.ClipCursorHookID
+  );
+}
    */
   ClipCursorHookID: number;
   /**
    * Selects the focus hooks (ID 10): `GetForegroundWindow`, `GetActiveWindow`, `GetFocus`, `GetCapture` and `WindowFromPoint` return the game's main window, and `SetFocus`, `SetForegroundWindow` and similar calls do nothing, so the game believes it always has focus. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.
    * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks FocusHook.cpp (GetHwnd, InstallImpl). Not from the official docs.)
+   *
+   * By engine: more common in Source games.
    * @default (uint)ProtoHookIDs.FocusHooksHookID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.InstallHook(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.FocusHooksHookID
+  );
+}
    */
   FocusHooksHookID: number;
   /**
    * Selects the rename handles hook (ID 11): mutexes, events, semaphores and named pipes whose names match `ProtoInput.AddHandleToRename` or `ProtoInput.AddNamedPipeToRename` get a unique name, so instances don't block each other. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.
    * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks RenameHandlesHook.cpp (updateName, InstallImpl). Not from the official docs.)
    * @default (uint)ProtoHookIDs.RenameHandlesHookID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.InstallHook(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.RenameHandlesHookID
+  );
+}
    */
   RenameHandlesHookID: number;
   /**
    * Selects the XInput hook (ID 12): each instance sees only the controllers chosen by `ProtoInput.SetControllerIndex`, in the order given. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.
    * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks XinputHook.cpp (Hook_XInputGetState, GetTargetControllerIndex, InstallImpl). Not from the official docs.)
    * @default (uint)ProtoHookIDs.XinputHookID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.InstallHook(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.XinputHookID
+  );
+}
    */
   XinputHookID: number;
   /**
    * Selects the DirectInput order hook (ID 13): every DirectInput device the game creates opens the controller set by `ProtoInput.SetDinputDeviceGUID`; without one set, DirectInput devices fail to open. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.
    * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks DinputOrderHook.cpp (Hook_DinputCreateDevice8W, blockDinput). Not from the official docs.)
    * @default (uint)ProtoHookIDs.DinputOrderHookID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.InstallHook(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.DinputOrderHookID
+  );
+}
    */
   DinputOrderHookID: number;
   /**
    * Selects the SetWindowPos hook (ID 14): every `SetWindowPos` call uses the position and size from `ProtoInput.SetSetWindowPosSettings`. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.
    * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks SetWindowPosHook.cpp (Hook_SetWindowPos). Not from the official docs.)
    * @default (uint)ProtoHookIDs.SetWindowPosHookID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.InstallHook(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.SetWindowPosHookID
+  );
+}
    */
   SetWindowPosHookID: number;
   /**
    * Selects the block raw input hook (ID 15): `GetRawInputDeviceList` and `GetRegisteredRawInputDevices` report no devices to the game. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.
    * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks BlockRawInputHook.cpp. Not from the official docs.)
    * @default (uint)ProtoHookIDs.BlockRawInputHookID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.InstallHook(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.BlockRawInputHookID
+  );
+}
    */
   BlockRawInputHookID: number;
   /**
    * Selects the FindWindow hook (ID 16): `FindWindow` and `FindWindowEx` find nothing and `EnumWindows` lists no windows, so an instance can't find another instance's window. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.
    * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks FindWindowHook.cpp. Not from the official docs.)
    * @default (uint)ProtoHookIDs.FindWindowHookID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.InstallHook(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.FindWindowHookID
+  );
+}
    */
   FindWindowHookID: number;
   /**
    * Selects the single HID hook (ID 17): once `ProtoInput.SetCreateSingleHIDName` is set, the game can open only that HID device path. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.
    * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks CreateSingleHIDHook.cpp (Hook_CreateFileW, SetRawHidW). Not from the official docs.)
    * @default (uint)ProtoHookIDs.CreateSingleHIDHookID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.InstallHook(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.CreateSingleHIDHookID
+  );
+}
    */
   CreateSingleHIDHookID: number;
   /**
    * Selects the window style hook (ID 18): window styles the game sets with `SetWindowLong`/`SetWindowLongPtr` lose the border, system menu and dialog frame. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.
    * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks WindowStyleHook.cpp (FilterStyle). Not from the official docs.)
    * @default (uint)ProtoHookIDs.WindowStyleHookID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.InstallHook(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.WindowStyleHookID
+  );
+}
    */
   WindowStyleHookID: number;
   /**
    * Selects the MoveWindow hook (ID 19): every `MoveWindow` call uses the position and size from `ProtoInput.SetMoveWindowSettings`. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.
    * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks MoveWindowHook.cpp (Hook_MoveWindow). Not from the official docs.)
    * @default (uint)ProtoHookIDs.MoveWindowHookID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.InstallHook(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.MoveWindowHookID
+  );
+}
    */
   MoveWindowHookID: number;
   /**
    * Selects the AdjustWindowRect hook (ID 20): `AdjustWindowRect` and `AdjustWindowRectEx` compute the window size from the rectangle set by `ProtoInput.SetAdjustWindowRectSettings`. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.
    * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks AdjustWindowRectHook.cpp. Not from the official docs.)
    * @default (uint)ProtoHookIDs.AdjustWindowRectHookID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.InstallHook(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.AdjustWindowRectHookID
+  );
+}
    */
   AdjustWindowRectHookID: number;
   /**
    * Selects the remove border hook (ID 21): removes the main window's border and title bar on install (see `ProtoInput.SetDontWaitWindowBorder`), and keeps styles the game sets borderless. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.
    * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks RemoveBorderHook.cpp (RemoveWindowBorder, WaitForWindowBorder, InstallImpl). Not from the official docs.)
    * @default (uint)ProtoHookIDs.RemoveBorderHookID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.InstallHook(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.RemoveBorderHookID
+  );
+}
    */
   RemoveBorderHookID: number;
   /**
@@ -3683,54 +4843,117 @@ interface ProtoInputValues {
    * Selects the SetWindowsHook hook (ID 23): the game's low-level keyboard, low-level mouse and `GetMessage` hooks are not registered with Windows; Proto Input calls them itself with the instance's input and focus messages. Pass it to `ProtoInput.InstallHook` or `ProtoInput.UninstallHook`.
    * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoHookIDs), ProtoInputHooks SetWindowsHookHook.cpp, FakeMouseKeyboard.cpp, FocusMessageLoop.cpp, RawInput.cpp (FireFake...). Not from the official docs.)
    * @default (uint)ProtoHookIDs.SetWindowsHookHookID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.InstallHook(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.SetWindowsHookHookID
+  );
+}
    */
   SetWindowsHookHookID: number;
   /**
    * Selects the raw input filter (ID 0): `WM_INPUT` messages always say they arrived while the game was in the foreground. Only acts while `MessageFilterHookID` is installed. Pass it to `ProtoInput.EnableMessageFilter` or `ProtoInput.DisableMessageFilter`.
-   * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoMessageFilterIDs), ProtoInputHooks RawInputFilter.h, ProtoInputHooks MessageFilterHook.cpp (FilterMessage). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoMessageFilterIDs), ProtoInputHooks RawInputFilter.h, MessageFilterHook.cpp (FilterMessage). Not from the official docs.)
    * @default (uint)ProtoMessageFilterIDs.RawInputFilterID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.EnableMessageFilter(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.RawInputFilterID
+  );
+}
    */
   RawInputFilterID: number;
   /**
    * Selects the mouse move filter (ID 1): `WM_MOUSEMOVE` messages carry the instance's fake cursor position and button and modifier state. Only acts while `MessageFilterHookID` is installed. Pass it to `ProtoInput.EnableMessageFilter` or `ProtoInput.DisableMessageFilter`.
-   * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoMessageFilterIDs), ProtoInputHooks MouseMoveFilter.h, ProtoInputHooks MessageFilterHook.cpp (FilterMessage). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoMessageFilterIDs), ProtoInputHooks MouseMoveFilter.h, MessageFilterHook.cpp (FilterMessage). Not from the official docs.)
    * @default (uint)ProtoMessageFilterIDs.MouseMoveFilterID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.EnableMessageFilter(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.MouseMoveFilterID
+  );
+}
    */
   MouseMoveFilterID: number;
   /**
    * Selects the mouse activate filter (ID 2): `WM_MOUSEACTIVATE` messages always tell the game it is being focused. Only acts while `MessageFilterHookID` is installed. Pass it to `ProtoInput.EnableMessageFilter` or `ProtoInput.DisableMessageFilter`.
-   * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoMessageFilterIDs), ProtoInputHooks MouseActivateFilter.h, ProtoInputHooks MessageFilterHook.cpp (FilterMessage). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoMessageFilterIDs), ProtoInputHooks MouseActivateFilter.h, MessageFilterHook.cpp (FilterMessage). Not from the official docs.)
    * @default (uint)ProtoMessageFilterIDs.MouseActivateFilterID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.EnableMessageFilter(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.MouseActivateFilterID
+  );
+}
    */
   MouseActivateFilterID: number;
   /**
    * Selects the window activate filter (ID 3): `WM_ACTIVATE` messages always say the game window is active. Only acts while `MessageFilterHookID` is installed. Pass it to `ProtoInput.EnableMessageFilter` or `ProtoInput.DisableMessageFilter`.
-   * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoMessageFilterIDs), ProtoInputHooks WindowActivateFilter.h, ProtoInputHooks MessageFilterHook.cpp (FilterMessage). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoMessageFilterIDs), ProtoInputHooks WindowActivateFilter.h, MessageFilterHook.cpp (FilterMessage). Not from the official docs.)
    * @default (uint)ProtoMessageFilterIDs.WindowActivateFilterID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.EnableMessageFilter(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.WindowActivateFilterID
+  );
+}
    */
   WindowActivateFilterID: number;
   /**
    * Selects the window activate app filter (ID 4): `WM_ACTIVATEAPP` messages always say the game is active. Only acts while `MessageFilterHookID` is installed. Pass it to `ProtoInput.EnableMessageFilter` or `ProtoInput.DisableMessageFilter`.
-   * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoMessageFilterIDs), ProtoInputHooks WindowActivateAppFilter.h, ProtoInputHooks MessageFilterHook.cpp (FilterMessage). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoMessageFilterIDs), ProtoInputHooks WindowActivateAppFilter.h, MessageFilterHook.cpp (FilterMessage). Not from the official docs.)
    * @default (uint)ProtoMessageFilterIDs.WindowActivateAppFilterID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.EnableMessageFilter(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.WindowActivateAppFilterID
+  );
+}
    */
   WindowActivateAppFilterID: number;
   /**
    * Selects the mouse wheel filter (ID 5): only `WM_MOUSEWHEEL` messages synthesized by Proto Input reach the game, so scrolling isn't sent twice. Only acts while `MessageFilterHookID` is installed. Pass it to `ProtoInput.EnableMessageFilter` or `ProtoInput.DisableMessageFilter`.
-   * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoMessageFilterIDs), ProtoInputHooks MouseWheelFilter.h, ProtoInputHooks MessageFilterHook.cpp (FilterMessage). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoMessageFilterIDs), ProtoInputHooks MouseWheelFilter.h, MessageFilterHook.cpp (FilterMessage). Not from the official docs.)
    * @default (uint)ProtoMessageFilterIDs.MouseWheelFilterID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.EnableMessageFilter(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.MouseWheelFilterID
+  );
+}
    */
   MouseWheelFilterID: number;
   /**
    * Selects the mouse button filter (ID 6): only mouse button messages synthesized by Proto Input reach the game, so the real mouse doesn't interfere. Only acts while `MessageFilterHookID` is installed. Pass it to `ProtoInput.EnableMessageFilter` or `ProtoInput.DisableMessageFilter`.
-   * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoMessageFilterIDs), ProtoInputHooks MouseButtonFilter.h, ProtoInputHooks MessageFilterHook.cpp (FilterMessage). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoMessageFilterIDs), ProtoInputHooks MouseButtonFilter.h, MessageFilterHook.cpp (FilterMessage). Not from the official docs.)
    * @default (uint)ProtoMessageFilterIDs.MouseButtonFilterID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.EnableMessageFilter(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.MouseButtonFilterID
+  );
+}
    */
   MouseButtonFilterID: number;
   /**
    * Selects the keyboard button filter (ID 7): only `WM_KEYDOWN`/`WM_KEYUP` messages synthesized by Proto Input reach the game, so the real keyboard doesn't interfere. Only acts while `MessageFilterHookID` is installed. Pass it to `ProtoInput.EnableMessageFilter` or `ProtoInput.DisableMessageFilter`.
-   * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoMessageFilterIDs), ProtoInputHooks KeyboardButtonFilter.h, ProtoInputHooks MessageFilterHook.cpp (FilterMessage). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (ExposedValues, ProtoMessageFilterIDs), ProtoInputHooks KeyboardButtonFilter.h, MessageFilterHook.cpp (FilterMessage). Not from the official docs.)
    * @default (uint)ProtoMessageFilterIDs.KeyboardButtonFilterID
+   * @example for (var i = 0; i < PlayerList.Count; i++) {
+  var player = PlayerList[i];
+  ProtoInput.EnableMessageFilter(
+    player.ProtoInputInstanceHandle,
+    ProtoInput.Values.KeyboardButtonFilterID
+  );
+}
    */
   KeyboardButtonFilterID: number;
 }

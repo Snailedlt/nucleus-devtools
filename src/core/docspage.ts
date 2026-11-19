@@ -49,7 +49,8 @@ const firstLine = (s?: string) => {
 const groupOf = (path: string) => DOCS_GROUPS.find((g) => g.match(path));
 
 /** One page. `link(value)` makes a link to another page (a `#docs-…` value). */
-export function docsPage(view: string, link: (value: string) => string): DocsPage {
+/** `slots`: a name's page carries memberMarkdown's docSlot markers (VS Code's Docs panel puts its votes there). */
+export function docsPage(view: string, link: (value: string) => string, slots = false): DocsPage {
   const entries = allEntries(true);
   const line = (e: Entry) => `- [\`${e.path}\`](${link(e.path)})${e.member.kind === 'method' ? '' : ` · ${e.member.ts ?? ''}`}${firstLine(e.member.doc) ? ` — ${firstLine(e.member.doc)}` : ''}`;
   if (view === 'home') {
@@ -69,7 +70,7 @@ export function docsPage(view: string, link: (value: string) => string): DocsPag
     const e = exact.entries[0];
     const g = groupOf(e.path);
     const name = g && e.path.startsWith(g.key + '.') ? e.path.slice(g.key.length + 1) : e.path;
-    return { view, path: e.path, crumbs: [...(g ? [{ label: g.title, view: `group:${g.key}` }] : []), { label: name }], markdown: `## ${e.path}\n\n${memberMarkdown(e.owner, e.name, e.member)}` };
+    return { view, path: e.path, crumbs: [...(g ? [{ label: g.title, view: `group:${g.key}` }] : []), { label: name }], markdown: `## ${e.path}\n\n${memberMarkdown(e.owner, e.name, e.member, slots)}` };
   }
   if (exact.kind === 'enum') {
     const users = entries.filter((e) => e.member.ts?.includes(exact.name) || e.member.ref === exact.name);

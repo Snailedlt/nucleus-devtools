@@ -73,6 +73,9 @@ test('lookup and search', () => {
   assert.equal(none.kind === 'none' && none.didYouMean, 'Game.IgnoreWindowBorderCheck');
   assert.ok(search('mutex').some((e) => e.path === 'Game.KillMutex'));
   assert.ok(search('window title').length > 0);
+  // Game.* first: what a handler sets, before the Context fields that mirror them.
+  assert.deepEqual(search('window title').slice(0, 3).map((e) => e.path.split('.')[0]), ['Game', 'Game', 'Game']);
+  assert.match(search('focus')[0].path, /^Game\./);
 });
 
 test('generated api.md and bundled CLI are up to date', () => {

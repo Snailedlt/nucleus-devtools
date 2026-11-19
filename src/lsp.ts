@@ -13,12 +13,13 @@ import { docsPageUrl } from './core/docspage';
 import { CodeActionEntry, CompletionEntry, documentSymbols, SymbolEntry, CompletionKind, completionsAt, explainLine, packageQuickFix, fixAllCodeAction, formatEdits, hoverAt, inlayHints, isHandlerFile, quickFixes, RULES_URL, SEMANTIC_TOKEN_MODIFIERS, SEMANTIC_TOKEN_TYPES, semanticTokens, signatureHelpAt } from './core/features';
 import { RULE_DOCS, ruleUrl } from './core/ruledocs';
 import { EVERY_KEYBOARD } from './core/sim';
+import { buildReport, DISCORD_THREAD, findDuplicates, handlerHelp, handlerOrigin, simSummary, type ReportInput } from './core/report';
 import { lintPluginsFor } from './plugins';
 import { checkPackage } from './core/pkgcheck';
 import { forgetPackageFiles, packageFilePath, packageFilesFor } from './pkgfiles';
 import fs from 'node:fs';
 import { checkAgainstFolder, folderLists, pickerOptions } from './core/gamefolder';
-import { folderAt } from './gamefolder-node';
+import { folderAt, gameBinariesNow, importProblemsFor } from './gamefolder-node';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { publishedNow } from './published';
@@ -52,7 +53,7 @@ export interface LspSettings {
 }
 const DEFAULTS: LspSettings = { detection: 'auto', handlerGlobs: [], lint: { enable: true, rules: {}, compareWithHub: true, workspace: true }, completion: { enable: true }, gameFolders: {}, format: { quotes: 'double', semicolons: 'add' } };
 
-export const COMMANDS = { tryIt: 'nucleus.tryIt', fixAll: 'nucleus.fixAll', workbenchLink: 'nucleus.workbenchLink', package: 'nucleus.package', install: 'nucleus.install', newHandler: 'nucleus.newHandler', testInNucleus: 'nucleus.testInNucleus', explainLine: 'nucleus.explainLine' } as const;
+export const COMMANDS = { tryIt: 'nucleus.tryIt', fixAll: 'nucleus.fixAll', workbenchLink: 'nucleus.workbenchLink', package: 'nucleus.package', install: 'nucleus.install', newHandler: 'nucleus.newHandler', testInNucleus: 'nucleus.testInNucleus', explainLine: 'nucleus.explainLine', report: 'nucleus.report' } as const;
 const FIX_ALL_KIND = 'source.fixAll.nucleus';
 
 // LSP enums (numbers in the protocol)
@@ -138,6 +139,10 @@ export class Server {
   private nextId = 1;
   private roots: string[] = [];
   private canWatch = false;
+  /** The editor's name (clientInfo), for reports. */
+  private clientName = '';
+  /** The client opens links (window/showDocument, external): reports open the form themselves. */
+  private canShowDocument = false;
   private relativeWatch = false;
   /** <Name>/ folders of the handlers seen so far: their files are watched for the package checks. */
   private handlerDirs = new Set<string>();
@@ -150,9 +155,24 @@ export class Server {
   private notify(method: string, params: unknown) {
     this.send({ jsonrpc: '2.0', method, params });
   }
-  private request(method: string, params: unknown) {
-    this.send({ jsonrpc: '2.0', id: `nucleus-${this.nextId++}`, method, params });
+  /** A request to the client; the promise gets its result (undefined on an error, or after 60 s without an answer). */
+  private request(method: string, params: unknown): Promise<any> {
+    const id = `nucleus-${this.nextId++}`;
+    const answered = new Promise<any>((resolve) => {
+      const t = setTimeout(() => {
+        this.replies.delete(id);
+        resolve(undefined);
+      }, 60_000);
+      t.unref?.();
+      this.replies.set(id, (r) => {
+        clearTimeout(t);
+        resolve(r);
+      });
+    });
+    this.send({ jsonrpc: '2.0', id, method, params });
+    return answered;
   }
+  private replies = new Map<string, (result: any) => void>();
 
   private applySettings(raw: any) {
     if (!raw || typeof raw !== 'object') return;
@@ -218,9 +238,8 @@ export class Server {
       (diagnostics as unknown[]).push({ range: lines.range({ start: p.start, end: p.end ?? p.start }), severity: SEVERITY[p.severity], code: 'package', codeDescription: { href: RULES_URL }, source: 'nucleus', message: `${p.title}. ${p.why}` });
     }
     // The game folder linked to this handler (settings.gameFolders), if any: problems with their fix as data.
-    const folder = this.gameFolderOf(uri);
-    for (const p of folder ? checkAgainstFolder(d.text, folder) : []) {
-      (diagnostics as unknown[]).push({ range: lines.range({ start: p.start, end: Math.max(p.end, p.start) }), severity: SEVERITY[p.severity], code: 'game-folder', source: 'nucleus', message: `${p.title}. ${p.why}`, ...(p.fix ? { data: { fix: p.fix } } : {}) });
+    for (const p of this.folderProblems(d)) {
+      (diagnostics as unknown[]).push({ range: lines.range({ start: p.start, end: Math.max(p.end, p.start) }), severity: p.fact ? 4 : SEVERITY[p.severity], code: 'game-folder', source: 'nucleus', message: `${p.title}. ${p.why}`, ...(p.fix ? { data: { fix: p.fix } } : {}) });
     }
     this.notify('textDocument/publishDiagnostics', { uri, ...(closed ? {} : { version: d.version }), diagnostics });
     // Package problems on the files in <Name>/: publish them, and clear the ones that went away.
@@ -232,6 +251,17 @@ export class Server {
     }
     for (const old of this.pkgUris.get(uri) ?? []) if (!sent.has(old)) this.notify('textDocument/publishDiagnostics', { uri: old, diagnostics: [] });
     this.pkgUris.set(uri, sent);
+  }
+  /** The linked game folder's problems for this text. The game's program files are read in the background; their
+   *  hints come once read: then the open document is checked again, or a closed workspace handler from disk
+   *  (fromDisk keeps its guards). */
+  private folderProblems(d: Doc) {
+    const uri = d.uri;
+    const folder = this.gameFolderOf(uri);
+    if (!folder) return [];
+    const gdir = this.gameFolderDir(uri);
+    const binaries = gdir ? gameBinariesNow(gdir, () => (this.docs.has(uri) ? this.schedule(uri, 0) : void this.fromDisk(uri))) : undefined;
+    return [...checkAgainstFolder(d.text, folder), ...(binaries && gdir ? importProblemsFor(d.text, gdir, binaries) : [])];
   }
   private schedule(uri: string, delay = 200) {
     clearTimeout(this.timers.get(uri));
@@ -256,7 +286,15 @@ export class Server {
    *  for the few requests answered off the main thread. */
   handle(msg: any): unknown | Promise<unknown> | undefined {
     const { id, method, params } = msg ?? {};
-    if (method === undefined) return undefined; // a response to one of our requests (applyEdit)
+    if (method === undefined) {
+      // A response to one of our requests (applyEdit, showDocument).
+      const done = typeof id === 'string' ? this.replies.get(id) : undefined;
+      if (done) {
+        this.replies.delete(id);
+        done(msg.error ? undefined : msg.result);
+      }
+      return undefined;
+    }
     const isRequest = id !== undefined && id !== null;
     const failed = (e: any) => {
       if (isCancelled(e)) return isRequest ? { jsonrpc: '2.0', id, error: { code: -32800, message: 'Request cancelled' } } : undefined;
@@ -292,6 +330,8 @@ export class Server {
       case 'initialize': {
         this.applySettings(p.initializationOptions);
         this.snippets = p.capabilities?.textDocument?.completion?.completionItem?.snippetSupport !== false;
+        this.clientName = typeof p.clientInfo?.name === 'string' ? p.clientInfo.name.slice(0, 40) : '';
+        this.canShowDocument = !!p.capabilities?.window?.showDocument?.support;
         // API names in hovers, hints and suggestion docs link to their docs pages on the site (docs/<name>/), tagged with the
         // editor's name for the anonymous visit counts (clientInfo: "Neovim", "Zed"…; "lsp" when it says none).
         const ref = String(p.clientInfo?.name ?? 'lsp').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 30) || 'lsp';
@@ -326,7 +366,7 @@ export class Server {
         };
       }
       case 'initialized':
-        // Every handler in the workspace, opened or not (like VS Code's Lint All Handlers), and on-disk changes.
+        // Every handler in the workspace, opened or not (like VS Code's Check All Handlers), and on-disk changes.
         this.updateWatchers(0);
         setTimeout(() => this.scanWorkspace(), 0);
         return undefined;
@@ -449,7 +489,17 @@ export class Server {
           };
         }
         const items = completionsAt(doc.text, at, { explicit: p.context?.triggerKind !== 2, docsLink: this.docsLink });
-        return items ? { isIncomplete: false, items: items.map((e) => this.toCompletionItem(l, e)) } : null;
+        if (!items) return null;
+        // Only names that fit what's typed so far (in order, any case, as editors filter): a reply carries every item's docs,
+        // so after `Game.Xin` that's a few items, not all of Game's. isIncomplete makes the editor ask again as you type.
+        const word = (doc.text.slice(Math.max(0, at - 80), at).match(/[A-Za-z0-9_$]+$/) ?? [''])[0].toLowerCase();
+        const fits = (label: string) => {
+          let i = 0;
+          for (const c of label.toLowerCase()) if (c === word[i]) i++;
+          return i === word.length;
+        };
+        const kept = word ? items.filter((e) => fits(e.filterText ?? e.label)) : items;
+        return { isIncomplete: kept.length < items.length, items: kept.map((e) => this.toCompletionItem(l, e)) };
       }
       case 'textDocument/signatureHelp': {
         if (!this.featuresOn(doc)) return null;
@@ -630,9 +680,12 @@ export class Server {
     }
   }
 
-  private gameFolderOf(uri: string) {
+  private gameFolderDir(uri: string) {
     const file = pathOf(uri);
-    const dir = file ? this.settings.gameFolders[path.basename(file)] : undefined;
+    return file ? this.settings.gameFolders[path.basename(file)] : undefined;
+  }
+  private gameFolderOf(uri: string) {
+    const dir = this.gameFolderDir(uri);
     return dir ? folderAt(dir) : undefined;
   }
 
@@ -703,10 +756,25 @@ export class Server {
         if (f) actions.push({ title: f.title, kind: 'quickfix', diagnostics: [cd], isPreferred: true, edit: { changes: { [doc.uri]: f.edits.map((e) => ({ range: l.range(e), newText: e.text })) } } });
       }
     }
-    // Game-folder problems carry their fix (the exe's real name, BinariesFolder…) in `data`.
-    for (const cd of p.context?.diagnostics ?? []) {
-      const f = cd?.code === 'game-folder' ? cd.data?.fix : undefined;
+    // Game-folder problems carry their fix (the exe's real name, BinariesFolder…) in `data`: used only when a fresh
+    // check of the current text still has it, with the fresh offsets (an edit above it moves them).
+    const folderDiags = (p.context?.diagnostics ?? []).filter((cd: any) => cd?.code === 'game-folder' && cd.data?.fix);
+    const freshFolder = folderDiags.length ? this.folderProblems(doc) : [];
+    for (const cd of folderDiags) {
+      const old = cd.data.fix;
+      const same = freshFolder.filter((x) => x.fix && `${x.title}. ${x.why}` === cd.message && x.fix.text === old.text && x.fix.title === old.title);
+      // The one at the diagnostic's own place; else only an unambiguous one (a stale range among several: wait for
+      // the next diagnostics instead of guessing).
+      const s0 = l.offset(cd.range.start), e0 = l.offset(cd.range.end);
+      const f = (same.find((x) => x.start === s0 && Math.max(x.end, x.start) === e0) ?? (same.length === 1 ? same[0] : undefined))?.fix;
       if (f && typeof f.start === 'number') actions.push({ title: f.title, kind: 'quickfix', diagnostics: [cd], isPreferred: true, edit: { changes: { [doc.uri]: [{ range: l.range({ start: f.start, end: f.end }), newText: f.text }] } } } as any);
+    }
+    // "This check is wrong…": after the fixes, once per check on the line (kind quickfix.report: with the fixes, never
+    // preferred). The editor runs nucleus.report, which opens the prefilled form (or returns the choices).
+    for (const [m, cd] of pairs) {
+      if (actions.some((a) => a.kind === 'quickfix.report' && a.command.arguments[0].rule === m.rule)) continue;
+      const r = (cd as any).range;
+      actions.push({ title: `This check is wrong (${m.rule})…`, kind: 'quickfix.report', diagnostics: [cd], command: { title: 'This check is wrong…', command: COMMANDS.report, arguments: [{ kind: 'check', uri: doc.uri, rule: m.rule, message: m.message, line: r.start.line, endLine: r.end.line }] } });
     }
     // Explain this line: on request from the actions menu, never on screen by itself.
     if (!only && p.range?.start && (doc.text.split('\n')[p.range.start.line] ?? '').trim()) actions.push({ title: 'Nucleus: Explain this line', command: { title: 'Explain this line', command: COMMANDS.explainLine, arguments: [{ uri: doc.uri, line: p.range.start.line }] } });
@@ -715,6 +783,78 @@ export class Server {
       if (all) actions.push(toAction(all));
     }
     return only ? actions.filter((a) => only.some((k) => a.kind === k || a.kind.startsWith(`${k}.`))) : actions;
+  }
+
+  /** nucleus.report { kind: problem | feature | check | tryit, uri?, rule?, message?, line?, endLine?, choose? }: the
+   *  report's prefilled form (core/report.ts) and the ways on, as `choices` ({ title, url, copy? }: open the url, after
+   *  putting `copy` on the clipboard), possible duplicates first. A client that opens links (window/showDocument) gets
+   *  the form opened, unless it asks to `choose` itself (the Notepad++ plugin shows the choices as a menu). */
+  private async report(a: any, doc: Doc | undefined) {
+    const kind = ['problem', 'feature', 'check', 'tryit'].includes(a.kind) ? a.kind : 'problem';
+    const text = doc?.text;
+    const lines = text?.split(/\r?\n/) ?? [];
+    const from = Number.isInteger(a.line) ? Math.max(0, a.line) : undefined;
+    // The flagged lines only while the check still flags that line of the current text: an action made before an
+    // edit above it would otherwise send other code.
+    // The excerpt runs from that diagnostic's start to its end now (an edit may have shortened it), at most 20 lines.
+    const flagged = (): { from: number; to: number } | undefined => {
+      if (text === undefined || from === undefined || typeof a.rule !== 'string') return undefined;
+      const lineOf = (o: number) => text.slice(0, o).split('\n').length - 1;
+      const d = this.lintDoc(doc!).find((x) => x.rule === a.rule && (typeof a.message !== 'string' || x.message === a.message) && lineOf(x.start) === from);
+      return d ? { from, to: Math.max(from, lineOf(Math.max(d.start, d.end - 1))) } : undefined;
+    };
+    const span = kind === 'check' ? flagged() : undefined;
+    const code = span ? lines.slice(span.from, Math.min(span.to, span.from + 19) + 1).join('\n') : undefined;
+    let sim: string | undefined;
+    if (kind === 'tryit' && text !== undefined) {
+      const file = pathOf(doc!.uri);
+      const players = Number.isInteger(a.players) && a.players >= 1 && a.players <= 16 ? a.players : 2;
+      const r = await simWorker().simulate(text, { players, width: 1920, height: 1080, keyboardPlayer: 0, plugins: file ? pluginsFor(file) : undefined }, { signal: this.current });
+      sim = simSummary(r, { players, resolution: '1920×1080', keyboard: 'player 1' });
+    }
+    const npp = /notepad\+\+/i.test(this.clientName);
+    const input: ReportInput = {
+      kind,
+      tool: npp ? 'notepad++' : 'lsp',
+      editor: npp ? undefined : this.clientName || 'an LSP editor',
+      version: `ncdev ${VERSION}${npp ? ' (Notepad++ plugin)' : ''}`,
+      details: [`ncdev: ${VERSION}`, `OS: ${process.platform} ${process.arch}`, ...(npp ? ['Editor: Notepad++'] : [])],
+      rule: typeof a.rule === 'string' ? a.rule : undefined,
+      message: typeof a.message === 'string' ? a.message : undefined,
+      line: from !== undefined ? from + 1 : undefined,
+      code,
+      sim,
+      handler: text !== undefined ? handlerOrigin(text) : undefined,
+    };
+    const r = buildReport(input);
+    // Without the flagged code means without the check's message too (some quote the handler's code): its plain title.
+    const plainMessage = input.rule ? RULE_DOCS[input.rule]?.title ?? input.rule : undefined;
+    const withoutCode = code?.trim() ? buildReport({ ...input, code: undefined, message: plainMessage }).url : r.url;
+    const hits = process.env.NCDEV_NO_ISSUE_SEARCH ? [] : await findDuplicates(r, { userAgent: `ncdev/${VERSION}` });
+    const help = kind === 'problem' && input.handler?.hubId ? handlerHelp(input.handler) : undefined;
+    const choices = [
+      ...hits.map((h) => ({ title: `Is it this one? #${h.number} ${h.title} (open it and add a 👍)`, url: h.url })),
+      { title: 'Open the report on GitHub (recommended)', url: r.url },
+      ...(code?.trim() ? [{ title: 'Open the report without the flagged code', url: withoutCode }] : []),
+      { title: "No GitHub account? Copy the report for the testers' Discord thread", url: DISCORD_THREAD, copy: r.text },
+      ...(help ? help.links.map((l) => ({ title: `The problem is in this handler, not the tools: ${l.label}`, url: l.url })) : []),
+    ];
+    if (!a.choose && this.canShowDocument) {
+      // Opened without being asked first: never with the flagged code, the check's message (some quote the handler's
+      // code) or the Try it summary (GitHub would get them before the person chose to share them): the check's plain
+      // title instead. The form says how to add them; the choices (choose) offer the full report.
+      // Nor anything read from the handler (Game.GameName, its Hub id and version): only whether it is a Hub handler.
+      const auto = buildReport({ ...input, code: undefined, sim: undefined, message: plainMessage, handler: input.handler ? { kind: input.handler.kind } : undefined }).url;
+      const named = !!(input.handler?.name || input.handler?.hubId);
+      const left = [code?.trim() ? 'the flagged code' : '', input.message ? "the check's message" : '', sim ? 'the Try it summary' : '', named ? "the handler's name" : ''].filter(Boolean);
+      const more = `${hits.length ? ` Maybe the same: ${hits.map((h) => h.url).join(' ')}` : ''} No GitHub account? Post it in the testers' Discord thread: ${DISCORD_THREAD}${help ? ` A problem in this handler itself? Ask on its Hub page: ${help.links[0].url}` : ''}`;
+      void this.request('window/showDocument', { uri: auto, external: true }).then((res) =>
+        this.notify('window/showMessage', res?.success
+          ? { type: 3, message: `Opened the report on GitHub: check it, then submit.${left.length ? ` ${(left.length > 2 ? left.slice(0, -1).join(', ') + ' and ' + left[left.length - 1] : left.join(' and ')).replace(/^./, (c) => c.toUpperCase())} ${left.length > 1 ? 'were' : 'was'} left out: paste ${left.length > 1 ? 'them' : 'it'} into the form if you want to share ${left.length > 1 ? 'them' : 'it'}.` : ''}${more}` }
+          : { type: 3, message: `Couldn't open the browser. The report: ${auto}${more}` }),
+      );
+    }
+    return { title: r.title, url: r.url, text: r.text, choices };
   }
 
   private executeCommand(command: string, args: any[]): unknown {
@@ -796,6 +936,8 @@ export class Server {
         this.request('window/showDocument', { uri, takeFocus: true });
         return { uri };
       }
+      case COMMANDS.report:
+        return this.report(args[0] ?? {}, doc);
       case COMMANDS.explainLine: {
         if (!doc) throw new Error('nucleus.explainLine: give the uri of an open document and a 0-based line.');
         const line = Number((a as { line?: number }).line ?? 0);
