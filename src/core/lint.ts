@@ -486,7 +486,8 @@ class Analyzer {
         keys.forEach((k: string) => read.add(k));
         return;
       }
-      if (/^(Keys|Values|Count|GetEnumerator)$/.test(key)) return void (unsure = true);
+      // `Keys`, `values`, `Count`… (a dictionary member, not a key): can't tell which options are read through it.
+      if (DICT_MEMBER.test(key)) return void (unsure = true);
       read.add(key);
     });
     if (unsure) return;
