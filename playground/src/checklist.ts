@@ -1,9 +1,14 @@
 // Which checks the problem lists show: the same in the workbench (both modes) and in Learn, and the same as the
-// editors' Problems list (VS Code, the LSP editors): errors, warnings and infos. Hints (outdated options that do no
-// harm) only fade the code; the workbench lists them on request (Advanced mode, the Hints filter).
+// editors' Problems list (VS Code, the LSP editors): errors, warnings and infos, plus unused code as quiet rows (faded
+// in the code, as VS Code fades it). Other hints (outdated options that do no harm) are listed on request (Advanced
+// mode, the Hints filter).
 import type { Diagnostic } from '@core/lint';
 
-export const inProblemList = (d: Diagnostic): boolean => d.severity !== 'hint';
+export const inProblemList = (d: Diagnostic): boolean => d.severity !== 'hint' || quietInCheck(d);
+
+/** Unused code (an option nothing reads, a value only a variable receives): a hint tagged unnecessary. The editor fades
+ *  it without a squiggle, as VS Code does, and Check lists it as a quiet row, not counted. */
+export const quietInCheck = (d: Pick<Diagnostic, 'severity' | 'tags'>): boolean => d.severity === 'hint' && !!d.tags?.includes('unnecessary');
 
 type Sev = 'error' | 'warning' | 'info' | 'hint';
 export type CheckFilter = 'all' | Sev;

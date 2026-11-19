@@ -607,6 +607,8 @@ ul.hl { padding: 4px 8px; border-radius: var(--r-ctl); }
 .CodeMirror-lint-mark-error { --sq: var(--err); }
 .CodeMirror-lint-mark-warning { --sq: var(--warn); }
 .CodeMirror-lint-mark-info { --sq: var(--info); }
+/* Unused code (an option nothing reads), faded as VS Code fades it; a hint gets no squiggle. */
+.cm-unnecessary { opacity: .6; }
 .CodeMirror-lint-mark-info::after { height: 2px; --sq-mask: radial-gradient(circle, #000 0.7px, transparent 1px); -webkit-mask-size: 4px 2px; mask-size: 4px 2px; }
 .CodeMirror-lint-tooltip { background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: var(--r-ctl); font: 12.5px/1.45 var(--font-body); max-width: 460px; box-shadow: 0 6px 20px rgba(0,0,0,.18); z-index: 50; }
 /* Suggestions, as VS Code: dense rows, an icon per kind, the typed letters highlighted, the type dim on the right. */
@@ -1086,6 +1088,7 @@ kbd { font: 11px var(--font-mono); border: 1px solid var(--line); border-bottom-
 .filter span { opacity: .8; font-variant-numeric: tabular-nums; }
 .filter[aria-pressed=true] span { opacity: 1; } /* white on the accent: .8 fell under 4.5:1 */
 .tip-line { font-size: 11.5px; margin-left: auto; }
+.problem.quiet { background: transparent; box-shadow: none; } .problem.quiet .plain-title { color: var(--muted); }
 .problem.current { outline: 2px solid var(--accent); outline-offset: 1px; }
 .fixable { font-size: 11px; color: var(--ok); font-weight: 600; }
 /* Getting started on the home page: its intro unfolds where it lives. */

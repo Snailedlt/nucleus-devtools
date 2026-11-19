@@ -16,6 +16,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 ### ✨ New
 
+- **Options nothing reads are faded.** A `Game.AddOption` whose key the handler never reads (`Context.Options["fps"]`) is faded in the code, as VS Code fades unused code, with no squiggle, and Check lists it as a quiet row that isn't counted as a problem.
 - **A short tour of the workbench.** It points out the parts one at a time (the handler tabs, the code, Check, Try it, Docs, Lines, Files, Save and Settings) with a sentence on each. It starts once on your first visit; Skip remembers where you stopped, and *Take the tour* (Menu, the ? dialog, Settings, the footer or the command palette) continues there or starts over. Arrow keys step, Esc skips.
 
 ### ⚠️ Changed

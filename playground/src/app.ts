@@ -1,5 +1,5 @@
 import { RULE_DOCS, ruleUrl } from '@core/ruledocs';
-import { inProblemList, shownInCheck, countProblems } from './checklist';
+import { inProblemList, quietInCheck, shownInCheck, countProblems } from './checklist';
 import { initKeySettings } from './kbsettings';
 import { openFind } from './findwidget';
 import { hasCredit, withCredit, withoutCredit } from './credit';
@@ -160,6 +160,7 @@ const PLAIN: Record<string, { title: string; why: string }> = {
   'needs-option': { title: 'A setting that needs another one turned on', why: "Nucleus only reads it when the other setting is on, so on its own it does nothing." },
   'blocked-message': { title: "A window message Proto Input can't block as written", why: "It isn't in Proto Input's message list (it blocks something else, or nothing), or it's in the list twice." },
   'missing-builtin': { title: "A JavaScript function Nucleus doesn't have", why: "Nucleus uses an older JavaScript engine that lacks this function, so the handler stops with an error when it reaches this line." },
+  'unused-option': { title: 'An option nothing reads', why: 'Players can pick a value, but nothing in the handler reads it (Context.Options["key"]), so the choice changes nothing. Read it in Game.Play, or remove the option.' },
   deprecated: { title: 'An outdated setting', why: 'It still works, but it has been replaced.' },
 };
 
@@ -301,6 +302,8 @@ function analyze(text: string): Promise<Analysis> {
   });
 }
 const sevClass: Record<string, string> = { error: 'error', warning: 'warning', info: 'info', hint: 'hint' };
+/** The editor's faded ranges (unused code), redrawn with each Check. */
+let fadeMarks: { clear(): void }[] = [];
 
 const editor = CodeMirror($('#editor'), {
   value: initial,
@@ -337,11 +340,14 @@ const editor = CodeMirror($('#editor'), {
         pkgProblems = pkgUI ? pkgUI.problems() : [];
         setFixCount(r.fixable, r.cleanups ?? 0);
         renderProblems(text);
+        // Unused code (tagged unnecessary) is faded, as VS Code fades it; hints among it get no squiggle.
+        for (const m of fadeMarks) m.clear();
+        fadeMarks = current.filter((d) => d.tags?.includes('unnecessary') && d.end > d.start).map((d) => editor.markText(posAt(text, d.start), posAt(text, d.end), { className: 'cm-unnecessary' }));
         if (formView && viewMode === 'form') formView.refresh();
         if (blocksView && viewMode === 'blocks') blocksView.refresh();
         return [
           ...current
-            .filter((d) => d.severity !== 'hint' || (mode === 'dev' && filter === 'hint'))
+            .filter((d) => (d.severity !== 'hint' || (mode === 'dev' && filter === 'hint')) && !quietInCheck(d))
             .map((d) => ({
               from: posAt(text, d.start),
               to: posAt(text, Math.max(d.end, d.start + 1)),
@@ -992,7 +998,8 @@ function renderProblems(text: string) {
   const extraShown = [...pkgProblems, ...folderProblems].filter((x) => shownInCheck(x.severity, simple, filter));
   const rank = { error: 0, warning: 1, info: 2, hint: 3 } as Record<string, number>;
   // Errors first (they stop Nucleus), then in line order.
-  const list = (simple ? current.filter(inProblemList) : current.filter((d) => (filter === 'all' ? d.severity !== 'hint' : d.severity === filter)))
+  // Unused code (quietInCheck) is listed too, quietly and last, but not counted.
+  const list = (simple ? current.filter(inProblemList) : current.filter((d) => (filter === 'all' ? inProblemList(d) : d.severity === filter)))
     .slice()
     .sort((a, b) => rank[a.severity] - rank[b.severity] || a.start - b.start);
   shownProblems = list;
@@ -1064,10 +1071,10 @@ function renderProblems(text: string) {
       // Advanced adds (never replaces): the column, severity, rule id and the technical message expanded.
       const extra = simple ? '' : `<span class="chip ${sevClass[d.severity]}">${d.severity}</span><span class="rule" title="${esc(RULES[d.rule].description)}">${d.rule}</span>`;
       const bodyId = `pb-${i}`;
-      return `<li class="problem ${sevClass[d.severity]}" data-i="${i}"><div class="pcard${open ? ' open' : ''}" data-key="${esc(key)}">
+      return `<li class="problem ${sevClass[d.severity]}${quietInCheck(d) ? ' quiet' : ''}" data-i="${i}"><div class="pcard${open ? ' open' : ''}" data-key="${esc(key)}">
         <div class="prow"><span class="sev-ico" aria-hidden="true">${SEV_ICON[d.severity]}</span><button class="loc" data-jump="${d.start}" type="button" title="Show this line">${g.length > 1 ? `Lines ${line}–${lastLine}` : `Line ${line}${simple ? '' : `:${col}`}`}</button>
           <span class="plain-title">${esc(plain.title)}${about ? `: <code>${esc(g.length > 1 ? rangeOfNames(g) : about)}</code>` : ''}${g.length > 1 ? ` <span class="times" title="${g.length} times">×${g.length}</span>` : ''}</span>
-          <span class="row-fix">${ordered[0] ? fixBtn(ordered[0], true) : ''}</span>
+          <span class="row-fix">${ordered[0] ? fixBtn(ordered[0], !quietInCheck(d)) : ''}</span>
           <button class="ptoggle" type="button" aria-expanded="${open}" aria-controls="${bodyId}" aria-label="More about line ${line}: ${esc(plain.title)}"></button></div>
         <div class="body" id="${bodyId}"${open ? '' : ' hidden'}><p class="plain-why">${esc(plain.why)}</p>
         <div class="meta">${ordered.slice(1).map((o) => fixBtn(o, false)).join('')}<button class="link" type="button" data-jump="${d.start}" data-jump-end="${d.end}" data-tip="1">Show me</button>${RULE_DOCS[d.rule] ? `<a class="link" href="${esc(ruleHref(d.rule))}" target="_blank" rel="noopener">About this check</a>` : ''}${extra}${reportButton('flag', { text: true, className: 'pwrong', attrs: `data-wrong="${i}"` })}</div>
@@ -1186,7 +1193,7 @@ const linePop = $('#line-pop');
 function lineProblems(line: number, all = false): Diagnostic[] {
   const text = editor.getValue();
   const simple = mode === 'simple' && !all;
-  return current.filter((d) => lineOf(text, d.start) === line && (simple ? d.severity === 'error' || d.severity === 'warning' : d.severity !== 'hint'));
+  return current.filter((d) => lineOf(text, d.start) === line && (simple ? d.severity === 'error' || d.severity === 'warning' : inProblemList(d)));
 }
 /** The problems on a line, or with `at`, only those covering that spot plus the docs of the name
  *  there (touch screens: tap a marked word, or hold any name). */
