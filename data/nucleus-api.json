@@ -8435,8 +8435,8 @@
         "project": "Nucleus devtools",
         "file": "AGENTS.md",
         "what": "last player's Context",
-        "url": "https://github.com/Snailedlt/splitscreenme-vscode/blob/94a564ea9147242e53dde63bafec0f9099674d85/AGENTS.md",
-        "commit": "94a564ea9147242e53dde63bafec0f9099674d85"
+        "url": "https://github.com/Snailedlt/nucleus-devtools/blob/dd4f8dd6479b99b62f21e4e5fdf5e732b5c082c4/AGENTS.md",
+        "commit": "dd4f8dd6479b99b62f21e4e5fdf5e732b5c082c4"
        }
       ]
      },
@@ -19853,12 +19853,12 @@
  },
  "basisLinks": {
   "hub": "https://hub.splitscreen.me/",
-  "engines": "https://github.com/Snailedlt/splitscreenme-vscode/blob/32a3aa06b3b25729063d8777725ac7c299f0f41c/data/hub-engines.json"
+  "engines": "https://github.com/Snailedlt/nucleus-devtools/blob/32a3aa06b3b25729063d8777725ac7c299f0f41c/data/hub-engines.json"
  },
  "sourceCommits": {
   "SplitScreen-Me/splitscreenme-nucleus": "3d22c0e8a6dd624f08a5cce286cd594c8abf264d",
   "SplitScreen-Me/splitscreenme-protoInput": "e18e06bb345b86540e7464f7355c649bfdd17f38",
-  "Snailedlt/splitscreenme-vscode": "e6ab07a2a722272416995d7fdc15f32cf13ca74a",
+  "Snailedlt/nucleus-devtools": "d94280313c787e07db4da8ab3ef2b29ce4d4a9fa",
   "SplitScreen-Me/splitscreenme-www": "61870350cbae0d59189f68ec97874b930890d68d"
  }
 }
