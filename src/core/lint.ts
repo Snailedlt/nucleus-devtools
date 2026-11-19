@@ -372,6 +372,9 @@ interface Ctx {
 
 const hasUseStrict = (body: Node[] | undefined) => !!body?.some((st) => st.type === 'ExpressionStatement' && st.directive === 'use strict');
 
+/** Members of `Context.Options` (a .NET Dictionary); Jint matches the first letter in either case. */
+const DICT_MEMBER = /^(?:[Kk]eys|[Vv]alues|[Cc]ount|[Cc]ontainsKey|[Cc]ontainsValue|[Tt]ryGetValue|[Gg]etEnumerator|[Aa]dd|[Rr]emove|[Cc]lear|[Cc]omparer)$/;
+
 class Analyzer {
   private aliases = new Map<string, Resolved | null>();
   private parentOf = new WeakMap<Node, Node>();
@@ -1283,6 +1286,8 @@ class Analyzer {
     if (o.type !== 'MemberExpression' || o.computed || o.property.name !== 'Options' || o.object.type !== 'Identifier' || o.object.name !== 'Context') return;
     const key: string = n.property.value;
     if (this.addedKeys.has(key)) return;
+    // Jint looks a written-out name up as a member first: `Options["ContainsKey"]` is the dictionary's method, not a key.
+    if (DICT_MEMBER.test(key)) return;
     const keys = [...this.addedKeys];
     const s = keys.length ? suggest(key, keys) ?? keys.find((k) => k.toLowerCase() === key.toLowerCase()) : undefined;
     const q = n.property.raw[0];

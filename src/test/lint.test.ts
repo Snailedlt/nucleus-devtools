@@ -579,6 +579,11 @@ test('unused-option: an option nothing reads, faded (hint + unnecessary), quiet 
   // A method written in brackets is still the method: it reads its own key, not one named "ContainsKey".
   assert.equal(only(play('if (Context.Options["ContainsKey"]("fsp")) {}'), 'unused-option').length, 1);
   assert.deepEqual(only(play('var n = Context.Options["Keys"];'), 'unused-option'), []);
+  // Nor does unknown-member take a dictionary member written in brackets for a key; a typo'd key still gets it.
+  for (const body of ['if (Context.Options["ContainsKey"]("fps")) {}', 'var n = Context.Options["Keys"];', 'var n = Context.Options["count"];']) {
+    assert.deepEqual(only(play(body), 'unknown-member'), [], body);
+  }
+  assert.equal(only(play('if (Context.Options["ContainsKey"]("fps")) { var f = Context.Options["fsp"]; }'), 'unknown-member').length, 1);
   // A note with one value (or none) is no choice; ShowOptionAsStep doesn't read it (Nucleus only asks), so no fix.
   assert.deepEqual(only(HEADER + 'var note = ["READ"];\nGame.AddOption("Disband the lobby first", "", "note", note);\n', 'unused-option'), []);
   const step = only(HEADER + opt + 'Game.ShowOptionAsStep("fps", true, "FPS");\n', 'unused-option');
