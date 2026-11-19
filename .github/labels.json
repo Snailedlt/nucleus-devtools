@@ -80,6 +80,11 @@
     "description": "The start page and other pages"
   },
   {
+    "name": "area: workbench",
+    "color": "1d76db",
+    "description": "The browser workbench, Learn and the site (workbench/)"
+  },
+  {
     "name": "feedback",
     "color": "fef2c0",
     "description": "Feedback on any tool, the workbench included (from the issue form)"
