@@ -9,7 +9,7 @@ import { $, esc, md } from './dom';
 import { API_GROUPS, API_GROUP_KEYS, groupOf, unchecked } from './docsgroups';
 import { docsHashOf, docsView } from './links';
 import { memberCard, memberSummary } from './doccard';
-import { mascot } from './mascots';
+import { keepMascots, mascot } from './mascots';
 
 // API names in hovers, parameter hints and suggestion docs are links: a click (or Enter) opens that name in the
 // Reference tab, as VS Code's hovers link to the docs.
@@ -268,8 +268,8 @@ export function initDocs(deps: DocsDeps): DocsUI {
     }
     if (exact.kind === 'none' && exact.didYouMean) head = `<p class="muted">"${esc(q)}" isn't part of the handler API. Did you mean <button class="link" data-q="${esc(exact.didYouMean)}">${esc(exact.didYouMean)}</button>?</p>`;
     entries = entries.slice(0, 30);
-    el.innerHTML = refBar(crumbs) + head
-      + (entries.length || head ? entries.map(hit).join('') : `<p class="empty masc-empty">${mascot('n-calc', { size: 64, zoom: 1.2 })}<span>Nothing matches "${esc(q)}". ${reportButton('idea', { text: 'Ask for this to be documented', tip: 'Ask for this to be documented: opens a request with your search filled in', attrs: `data-report-docs="${esc(q)}"` })}</span></p>`);
+    keepMascots(el, () => el.innerHTML = refBar(crumbs) + head
+      + (entries.length || head ? entries.map(hit).join('') : `<p class="empty masc-empty">${mascot('n-calc', { size: 64, zoom: 1.2 })}<span>Nothing matches "${esc(q)}". ${reportButton('idea', { text: 'Ask for this to be documented', tip: 'Ask for this to be documented: opens a request with your search filled in', attrs: `data-report-docs="${esc(q)}"` })}</span></p>`));
     wireApiLinks(el);
   }
   $('#api-q').addEventListener('input', (e) => {
