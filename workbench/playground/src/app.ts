@@ -606,8 +606,10 @@ onFolderProgress((p) => {
   if (p.phase === 'done' && prev?.phase === 'binaries' && duo) {
     // Done: Duo lets go, the bar turns green and he hops; then the section is drawn again. When he's finished (at once
     // on Still), or after 3 s if he's off screen and never gets there.
+    // Only for this read: if another one has started meanwhile, its own Duo is left alone.
     let once = false;
-    const after = () => { if (once) return; once = true; if (folderProg?.phase === 'done') { pkgUI?.render(); (editor as any).performLint(); } };
+    const mine = p;
+    const after = () => { if (once) return; once = true; if (folderProg === mine) { pkgUI?.render(); (editor as any).performLint(); } };
     barProgress(duo, 1, after);
     setTimeout(after, 3000);
     return;
