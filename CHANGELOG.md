@@ -70,7 +70,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 - **Credit lines are off for people who write code.** In Advanced mode, saved handlers get no credit lines unless you turn them on in Settings; Guided mode keeps them.
 - **Move around with the keyboard, as in VS Code.** F6 and Shift+F6 go from the header to the files, the code and the results; Ctrl+Shift+M goes to Check. Skip links (*Skip to the code*, *Skip to Check*) appear on the first Tab. Press Shift twice to open Open, as in JetBrains editors (Settings › Keyboard shortcuts turns it off). All of them can be changed in Settings.
 - **Settings shows every section.** The dialog is taller, so the last sections are in view.
-- **Long file names in Files wrap** to a second line instead of being cut off.
+- **Long file names in Files wrap.** They go on to a second line instead of being cut off.
 - **Share and Save wait for a handler.** With nothing open they're greyed out and say why.
 - **The start page shows the workbench at work.** *Try it in the browser* opens the handler with common mistakes, so Check has something to show at once, and *Make your first handler* is a button that says what it takes.
 - **Right-click a pane's edge for its layout menu.** Reset that pane's size (double-click still does it too), move Files or Lines to the other side, hide it, reset every size, or switch to the side rail. The Menu key or Shift+F10 opens it on a focused edge.
