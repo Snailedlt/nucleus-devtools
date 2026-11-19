@@ -14,11 +14,15 @@ test('report: a Hub handler is found from its Hub lines; own code says it is not
 
 test('report: each entry point opens its own repository and form', () => {
   const to = (i: report.ReportInput) => { const r = report.buildReport(i); return `${r.repo} ${r.template}`; };
-  assert.equal(to({ kind: 'problem', tool: 'workbench' }), `${report.WORKBENCH_REPO} feedback.yml`);
-  assert.equal(to({ kind: 'problem', tool: 'learn' }), `${report.WORKBENCH_REPO} feedback.yml`);
-  assert.equal(to({ kind: 'error', tool: 'workbench', error: { message: 'x' } }), `${report.WORKBENCH_REPO} feedback.yml`);
-  assert.equal(to({ kind: 'feature', tool: 'workbench' }), `${report.WORKBENCH_REPO} feature-request.yml`);
-  assert.equal(to({ kind: 'stuck', tool: 'learn', lesson: { id: 'l1', title: 'One' } }), `${report.WORKBENCH_REPO} feature-request.yml`);
+  // One repository for every tool: the workbench and Learn use the same forms, with their own Where.
+  assert.equal(report.WORKBENCH_REPO, report.TOOLS_REPO);
+  assert.equal(to({ kind: 'problem', tool: 'workbench' }), `${report.TOOLS_REPO} tester-feedback.yml`);
+  assert.equal(to({ kind: 'problem', tool: 'learn' }), `${report.TOOLS_REPO} tester-feedback.yml`);
+  assert.equal(to({ kind: 'error', tool: 'workbench', error: { message: 'x' } }), `${report.TOOLS_REPO} tester-feedback.yml`);
+  assert.equal(to({ kind: 'feature', tool: 'workbench' }), `${report.TOOLS_REPO} feature-request.yml`);
+  assert.equal(to({ kind: 'stuck', tool: 'learn', lesson: { id: 'l1', title: 'One' } }), `${report.TOOLS_REPO} feature-request.yml`);
+  assert.equal(report.buildReport({ kind: 'problem', tool: 'workbench' }).fields.area, 'Workbench (browser)');
+  assert.equal(report.buildReport({ kind: 'stuck', tool: 'learn', lesson: { id: 'l1', title: 'One' } }).fields.area, 'Learn');
   // Checks, Try it and the docs are the core's, wherever they're used.
   assert.equal(to({ kind: 'check', tool: 'workbench', rule: 'x' }), `${report.TOOLS_REPO} check-wrong.yml`);
   assert.equal(to({ kind: 'tryit', tool: 'workbench' }), `${report.TOOLS_REPO} tester-feedback.yml`);

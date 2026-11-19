@@ -45,7 +45,7 @@ function body(file: string, answers: Record<string, string>): string {
     .join('\n\n');
 }
 
-// A real details block, as the workbench filled it in (splitscreenme-vscode#7). The workbench's own test checks its
+// A real details block, as the workbench filled it in (nucleus-devtools#7). The workbench's own test checks its
 // checksum() gives the same value for these lines, so the two copies of the function can't drift apart.
 const REAL_BLOCK = `Workbench: build 9589434, core 70b4a54
 Page: https://snailedlt.github.io/nucleuscoop-handler-testbench/
@@ -57,7 +57,7 @@ Tester: coding dev, Nucleus some
 Doc: Context.Arch
 Check: 49f16946`;
 
-// splitscreenme-vscode#7, opened from the workbench's "Tell us what's wrong", exactly as GitHub stored it.
+// nucleus-devtools#7, opened from the workbench's "Tell us what's wrong", exactly as GitHub stored it.
 // (Opened before the field was renamed "Details from the tool": the bot still reads the old label.)
 const ISSUE_7 = "### Which name\n\nContext.Arch\n\n### What's the problem\n\nIt's missing something important\n\n### What Nucleus really does\n\nTest\n\n### How you know\n\n_No response_\n\n### Details from the workbench\n\n```text\n" + REAL_BLOCK + '\n```';
 
@@ -150,6 +150,12 @@ test('bots: every report link fills fields its form has, and the copied text use
     { kind: 'problem', tool: 'ncdev' },
     { kind: 'feature', tool: 'lsp', editor: 'Neovim' },
     { kind: 'docs', tool: 'workbench', query: 'save folder' },
+    // The workbench, Learn and the site use the same forms.
+    { kind: 'problem', tool: 'workbench' },
+    { kind: 'problem', tool: 'site' },
+    { kind: 'error', tool: 'learn', error: { message: 'x is undefined', stack: 'at y' } },
+    { kind: 'feature', tool: 'workbench' },
+    { kind: 'stuck', tool: 'learn', lesson: { id: 'l1', title: 'One' }, what: 'The check stays red' },
   ];
   for (const k of kinds) {
     const r = report.buildReport(k);
@@ -195,7 +201,7 @@ test('bots: the release comments only on this repository\'s fixed issues, once',
       },
     },
   };
-  const done = await bots.runFixedComments({ github, context: { repo: { owner: 'Snailedlt', repo: 'splitscreenme-vscode' } }, tag: 'v1.0.0', url: 'u', notes: 'Fixes #3, fixes #5, fixes #9, fixes #404, fixes #500' });
+  const done = await bots.runFixedComments({ github, context: { repo: { owner: 'Snailedlt', repo: 'nucleus-devtools' } }, tag: 'v1.0.0', url: 'u', notes: 'Fixes #3, fixes #5, fixes #9, fixes #404, fixes #500' });
   assert.deepEqual(done, [3, 500]); // #5 is a pull request, #9 already has the comment, #404 fails alone and #500 still gets its
   assert.deepEqual(made, [3, 500]);
   // A reference in passing in parentheses isn't a delivery; a commit subject's "(#12)" (a PR number) isn't either.

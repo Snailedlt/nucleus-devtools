@@ -1,17 +1,17 @@
 name: I want to do…
-description: Something you're trying to do with a check, Try it, the docs, VS Code, Notepad++, ncdev or another editor, and what's in the way. Start from the problem; a solution is optional.
+description: Something you're trying to do with a check, Try it, the docs, VS Code, Notepad++, ncdev, another editor, the browser workbench, Learn or the site, and what's in the way. Start from the problem; a solution is optional.
 title: "I want to: "
 labels: [feature-request]
 body:
   - type: markdown
     attributes:
       value: |
-        Tell us what you're trying to do and what stops you; we'll work out the best way to help. Something in the **browser workbench** or **Learn**? That goes to [the workbench's form](https://github.com/Snailedlt/nucleus-devtools/issues/new?template=feature-request.yml).
+        Tell us what you're trying to do and what stops you; we'll work out the best way to help.
   - type: textarea
     id: goal
     attributes:
       label: What are you trying to do?
-      description: The goal, in your own words, e.g. "make each player's save go to its own folder".
+      description: The goal, in your own words, e.g. "make each player's save go to its own folder", "finish the lesson on save files" or "compare two handlers".
     validations:
       required: true
   - type: textarea
@@ -39,12 +39,16 @@ body:
         - ncdev (command line)
         - Another editor (through ncdev lsp)
         - AI agent kit (Claude Code plugin, MCP)
+        - Workbench (browser)
+        - Learn
+        - Docs and check pages
+        - Home and tools pages
         - Something else
   - type: textarea
     id: code
     attributes:
       label: Code (optional)
-      description: A few lines that show it, if that helps.
+      description: A few lines that show it, if that helps (or your code in a Learn lesson, if you chose to include it).
       render: js
   - type: input
     id: version

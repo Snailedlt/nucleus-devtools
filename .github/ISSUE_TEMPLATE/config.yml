@@ -1,8 +1,5 @@
 blank_issues_enabled: true
 contact_links:
-  - name: Something in the browser workbench, Learn or the site
-    url: https://github.com/Snailedlt/nucleus-devtools/issues/new/choose
-    about: The workbench and Learn have their own forms. (From the workbench, Report a problem in its menu opens the right one.)
   - name: A problem with one Hub handler (a game that doesn't work)
     url: https://hub.splitscreen.me/
     about: That's for the handler's author and the community, not these tools. Comment on its Hub page, or ask on the SplitScreen.Me Discord (https://discord.gg/XxGMkqCf4r) or r/nucleuscoop (https://www.reddit.com/r/nucleuscoop/).
@@ -11,4 +8,4 @@ contact_links:
     about: Ask other handler authors on the SplitScreen.Me Discord, or on r/nucleuscoop (https://www.reddit.com/r/nucleuscoop/).
   - name: No GitHub account? The testers' thread on Discord
     url: https://discord.com/channels/142649962839277568/1568403337613680650/1568777762221588531
-    about: The tools' "Copy the report" gives you the report as text to paste there. GitHub issues are easier for us to work with, so use them if you can.
+    about: The tools' (and the workbench's) "Copy the report" gives you the report as text to paste there. GitHub issues are easier for us to work with, so use them if you can.

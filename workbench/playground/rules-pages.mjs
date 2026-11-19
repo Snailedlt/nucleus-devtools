@@ -90,7 +90,7 @@ ${docsDrawer(up, here, `<li><a href="${up}rules/">Every check</a></li>`)}
 </main>
 </div>
 <script src="${up}docs/nav.js" defer></script>
-<footer class="small"><a href="${up}start/">About these tools</a> · <a href="${up}">Open the workbench</a> · <a href="https://github.com/Snailedlt/nucleus-devtools/issues/new?template=feedback.yml&amp;area=Docs+and+check+pages">Something wrong on this page?</a> · <!--COMMUNITY_FOOTER--></footer>
+<footer class="small"><a href="${up}start/">About these tools</a> · <a href="${up}">Open the workbench</a> · <a href="https://github.com/Snailedlt/nucleus-devtools/issues/new?template=tester-feedback.yml&amp;area=Docs+and+check+pages">Something wrong on this page?</a> · <!--COMMUNITY_FOOTER--></footer>
 </body>
 </html>
 `;

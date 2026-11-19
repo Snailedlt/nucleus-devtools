@@ -2,7 +2,7 @@
 // somewhere. Checks the workbench's #links (playground/src/links.ts), the Docs links the extension, the Language
 // Server and the Notepad++ plugin write (core workbenchDocsUrl), the start page's anchors, and the links into the
 // extension's README and other docs (GitHub's heading slugs). No network.
-// Run: node tools/links.test.mjs (or npm test in playground); the extension from CORE_DIR, ./core or ../splitscreenme-vscode.
+// Run: node tools/links.test.mjs (or npm test in playground); the extension from the repository root (CORE_DIR overrides it).
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import fs from 'node:fs';
@@ -285,19 +285,19 @@ test('learn: the lessons page is built, and the workbench and start page link to
 });
 
 // Feedback forms: every link that fills in "Where" (area=…) names one of that form's options, so a renamed option
-// can't silently leave the field empty. This repo's form for the workbench and the site; the extension's for checks
-// and the editors.
+// can't silently leave the field empty. The same forms for the workbench, the site, the checks and the editors.
 test('feedback links: the Where they fill in is one of the form\'s options', () => {
   const options = (file) => {
     const y = fs.readFileSync(file, 'utf8');
     const block = y.slice(y.indexOf('id: area'), y.indexOf('validations:', y.indexOf('id: area')));
     return [...block.matchAll(/^\s+- (.+)$/gm)].map((m) => m[1].trim());
   };
+  // One repository, one set of forms (the repository root's .github/ISSUE_TEMPLATE), the workbench's Where included.
   const forms = {
-    'nucleuscoop-handler-testbench:feedback.yml': options(path.join(root, '.github/ISSUE_TEMPLATE/feedback.yml')),
-    'splitscreenme-vscode:tester-feedback.yml': options(path.join(coreDir, '.github/ISSUE_TEMPLATE/tester-feedback.yml')),
+    'nucleus-devtools:tester-feedback.yml': options(path.join(coreDir, '.github/ISSUE_TEMPLATE/tester-feedback.yml')),
+    'nucleus-devtools:feature-request.yml': options(path.join(coreDir, '.github/ISSUE_TEMPLATE/feature-request.yml')),
   };
-  assert.ok(forms['nucleuscoop-handler-testbench:feedback.yml'].includes('Workbench'));
+  assert.ok(forms['nucleus-devtools:tester-feedback.yml'].includes('Workbench (browser)'));
   const files = ['playground/src/report.ts', 'playground/rules-pages.mjs', 'playground/src/start.html', 'playground/src/tools.html'];
   let seen = 0;
   for (const f of files) {
@@ -311,8 +311,7 @@ test('feedback links: the Where they fill in is one of the form\'s options', () 
     }
     // Built with URLSearchParams: { template: '<form>', area: '<value>' }
     for (const m of src.matchAll(/template: '([\w-]+\.yml)'[\s\S]{0,200}?area: (?:[^'}]*?\?\? )?'([^']+)'/g)) {
-      const repo = /nucleuscoop-handler-testbench/.test(src.slice(Math.max(0, m.index - 600), m.index)) || m[1] === 'feedback.yml' ? 'nucleuscoop-handler-testbench' : 'splitscreenme-vscode';
-      const opts = forms[`${repo}:${m[1]}`];
+      const opts = forms[`nucleus-devtools:${m[1]}`];
       assert.ok(opts && opts.includes(m[2]), `${f}: area "${m[2]}" isn't an option of ${m[1]}`);
       seen++;
     }

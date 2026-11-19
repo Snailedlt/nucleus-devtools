@@ -3,7 +3,7 @@ import { checksum } from './checksum';
 // Feedback links (the tester feedback and doc review issue forms) filled in with what the workbench knows: the build,
 // browser, screen, settings, the open handler (by name and source, never its code), the tester profile and the test
 // item. It goes in the form's "Details from the workbench" field with a checksum. GitHub can't lock a field, so the
-// bot in splitscreenme-vscode (.github/workflows/report-details.yml) copies the block into a comment the reporter
+// bot in the repository root (.github/workflows/report-details.yml) copies the block into a comment the reporter
 // can't edit or remove, and says whether it was changed before sending.
 declare const BUILD: { bench?: string; core: string };
 
@@ -56,8 +56,8 @@ export function reportContext(extra: Record<string, string | undefined> = {}): s
   return [...lines, `Check: ${checksum(lines)}`].join('\n');
 }
 
-// The workbench's own feedback goes to this repo's form (.github/ISSUE_TEMPLATE/feedback.yml); checks and the editors
-// have theirs in splitscreenme-vscode.
+// The workbench's feedback goes to the same form as every tool's (.github/ISSUE_TEMPLATE/tester-feedback.yml at the
+// repository root), with the workbench's Where.
 const FORM = 'https://github.com/Snailedlt/nucleus-devtools/issues/new';
 /** Phones and tablets only: the GitHub app can catch github.com links, and it opens a blank issue: no form, no details. */
 export const onPhone = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
@@ -74,7 +74,7 @@ export function openReport(url: string): void {
 /** The tester feedback form, filled in. */
 export function feedbackUrl(opts: { title?: string; test?: string; area?: string } = {}): string {
   const s = state();
-  const q = new URLSearchParams({ template: 'feedback.yml', area: opts.area ?? 'Workbench', version: `workbench ${BUILD.bench ?? ''}`.trim() });
+  const q = new URLSearchParams({ template: 'tester-feedback.yml', area: opts.area ?? 'Workbench (browser)', version: `workbench ${BUILD.bench ?? ''}`.trim() });
   if (opts.title) q.set('title', opts.title);
   if (s.handler?.link) q.set('handler', s.handler.link);
   q.set('context', reportContext({ 'Test item': opts.test }));

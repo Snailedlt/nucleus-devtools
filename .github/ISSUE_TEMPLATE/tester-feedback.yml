@@ -1,11 +1,11 @@
 name: Tester feedback
-description: Something wrong, confusing or missing in a check, Try it, the VS Code extension, the Notepad++ plugin, ncdev or another editor.
+description: Something wrong, confusing or missing in a check, Try it, the VS Code extension, the Notepad++ plugin, ncdev, another editor, the browser workbench, Learn or the site (home, tools, docs and check pages).
 labels: [feedback]
 body:
   - type: markdown
     attributes:
       value: |
-        Something in the **browser workbench**, **Learn** or the site's pages? That goes to [the workbench's form](https://github.com/Snailedlt/nucleus-devtools/issues/new?template=feedback.yml). A wrong warning? [This check is wrong](https://github.com/Snailedlt/nucleus-devtools/issues/new?template=check-wrong.yml) asks the right questions. A game that doesn't work with one **Hub handler**? That's for its author: ask on its Hub page, the [Discord](https://discord.gg/XxGMkqCf4r) or [r/nucleuscoop](https://www.reddit.com/r/nucleuscoop/).
+        A wrong warning? [This check is wrong](https://github.com/Snailedlt/nucleus-devtools/issues/new?template=check-wrong.yml) asks the right questions. A game that doesn't work with one **Hub handler**? That's for its author: ask on its Hub page, the [Discord](https://discord.gg/XxGMkqCf4r) or [r/nucleuscoop](https://www.reddit.com/r/nucleuscoop/).
   - type: dropdown
     id: area
     attributes:
@@ -19,6 +19,10 @@ body:
         - ncdev (command line)
         - Another editor (through ncdev lsp)
         - AI agent kit (Claude Code plugin, MCP)
+        - Workbench (browser)
+        - Learn
+        - Docs and check pages
+        - Home and tools pages
         - Something else
     validations:
       required: true
@@ -26,9 +30,15 @@ body:
     id: what
     attributes:
       label: What happened, and what did you expect?
-      description: For a wrong warning, say what Nucleus actually does when you run the handler, if you know. For Try it, what really happened in Nucleus Co-op.
+      description: For a wrong warning, say what Nucleus actually does when you run the handler, if you know. For Try it, what really happened in Nucleus Co-op. A screenshot helps.
     validations:
       required: true
+  - type: textarea
+    id: error
+    attributes:
+      label: The error
+      description: Filled in when you report an error from the workbench's "Something went wrong" note. Leave it empty otherwise.
+      render: text
   - type: textarea
     id: simulated
     attributes:
@@ -45,7 +55,7 @@ body:
     id: version
     attributes:
       label: Version
-      description: The .vsix you installed (e.g. v0.6.0), or `ncdev --version`.
+      description: The .vsix you installed (e.g. v0.6.0), or `ncdev --version`. Filled in from the workbench; otherwise the date you saw it there.
   - type: textarea
     id: context
     attributes:
