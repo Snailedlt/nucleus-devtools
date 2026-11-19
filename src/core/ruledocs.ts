@@ -184,6 +184,13 @@ const NUCLEUS: Record<string, RuleDoc> = {
     good: 'Game.AddOption("Players", "", "players", ["2", "4"]);\nGame.Play = function () {\n  if (Context.Options["players"] == "4") {\n    Context.StartArguments = "-four";\n  }\n};',
     fix: 'Compare with text ("4", "Yes") or with `==`, which matches "4" and 4; give yes/no options text values such as "Yes" and "No". The quick fix changes `===` to `==`.',
   },
+  'unused-option': {
+    title: 'An option nothing reads',
+    why: 'Nucleus shows the option and stores the player\'s choice, but never reads it itself (`Game.ShowOptionAsStep` only asks for it): only the handler\'s own `Context.Options["key"]` does. With no such read, the choice changes nothing, and players think a setting works when it doesn\'t. Shown faded, like unused code.',
+    bad: 'Game.AddOption("FPS cap", "", "fps", ["30", "60"]);\nGame.Play = function () {\n  Context.StartArguments = "-windowed";\n};',
+    good: 'Game.AddOption("FPS cap", "", "fps", ["30", "60"]);\nGame.Play = function () {\n  var fps = Context.Options["fps"];\n  Context.StartArguments = "-windowed -fps " + fps;\n};',
+    fix: 'Read the option where the choice matters (usually in `Game.Play`), check the key is spelled the same in both places, or remove the option. The quick fix removes the line when nothing else names the key.',
+  },
   'guid-changed': {
     title: 'A GUID that differs from the Hub',
     why: 'Nucleus keys a user\'s game, profiles, cover and content folder by Game.GUID. Updating a published handler with another GUID drops the game from their list.',

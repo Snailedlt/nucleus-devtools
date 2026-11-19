@@ -17,6 +17,7 @@ How to write it (people and AI agents read this; the release workflow publishes 
 
 ### ✨ New
 
+- **Options nothing reads are faded.** A `Game.AddOption` whose key the handler never reads (`Context.Options["fps"]`) changes nothing for the players: the key now shows faded, like unused code in VS Code, with no squiggle (VS Code, other editors through `ncdev lsp`, Notepad++ and `ncdev lint --verbose`), and *Remove this option* is offered when nothing else names it. It stays quiet when it can't follow every read.
 - **Which hooks does my game need? Ask its files.** Link the handler to the game's folder (*Nucleus: Game Folder: Link…*, or `gameFolders` in other editors) and the tools read the game's `.exe` and DLLs in the background: what it uses for controllers, the cursor, keys, focus and windows. Quiet hints then suggest the Proto Input hooks and Nucleus options that match and the handler doesn't have yet, each with a fix that adds the line. `ncdev imports <game folder>` (and the MCP tool `nucleus_game_imports`) print the whole picture. It follows a launcher to the game it starts (Warcraft III's), spots SDL built into a game, and was checked against 35 games' Hub handlers and Proto Input's and Nucleus' source. Idea from messenils (#39).
 
   <details><summary>Screenshot</summary>

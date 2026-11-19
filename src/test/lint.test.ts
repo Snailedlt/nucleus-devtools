@@ -546,11 +546,41 @@ test('options: AddOption values, duplicate keys, ShowOptionAsStep', () => {
   const add = (args: string) => HEADER + `Game.AddOption(${args});\n`;
   assert.equal(only(add('"Speed", "", "speed", true'), 'type-mismatch')[0].severity, 'error');
   assert.equal(only(add('"Name", "", "name", "Player"'), 'type-mismatch').length, 1);
-  assert.deepEqual(lint(add('"Speed", "", "speed", ["Low", "High"]') + 'var opts = ["a"];\nGame.AddOption("B", "", "b", opts);\nGame.AddOption("C", "", "c", []);\n'), []);
+  assert.deepEqual(lint(add('"Speed", "", "speed", ["Low", "High"]') + 'Game.Play = function () {\n  Context.StartArguments = Context.Options["speed"];\n};\nvar opts = ["a"];\nGame.AddOption("B", "", "b", opts);\nGame.AddOption("C", "", "c", []);\n'), []);
   const dup = only(add('"A", "", "k", ["x"]') + 'Game.AddOption("B", "", "k", ["y"]);\n', 'duplicate-assignment');
   assert.equal(dup[0].severity, 'error');
   assert.equal(only(HEADER + 'Game.ShowOptionAsStep("k", true, "Pick");\n', 'wrong-arguments').length, 1);
   assert.deepEqual(lint(add('"A", "", "k", [{ Name: "x" }]') + 'Game.ShowOptionAsStep("k", true, "Pick");\n'), []);
+});
+
+test('unused-option: an option nothing reads, faded (hint + unnecessary), quiet when it can\'t tell', () => {
+  const opt = 'Game.AddOption("FPS cap", "", "fps", ["30", "60"]);\n';
+  const play = (body: string) => HEADER + opt + 'Game.Play = function () {\n' + body + '\n};\n';
+  const d = only(play('Context.StartArguments = "-windowed";'), 'unused-option');
+  assert.equal(d.length, 1);
+  assert.equal(d[0].severity, 'hint');
+  assert.deepEqual(d[0].tags, ['unnecessary']);
+  assert.match(d[0].message, /Nothing in this handler reads `Context\.Options\["fps"\]`/);
+  assert.equal(play('').slice(d[0].start, d[0].end), '"fps"');
+  // The fix removes the line, offered (never automatic) only when nothing else names the key.
+  assert.equal(d[0].fixes?.[0].preferred, undefined);
+  assert.equal(only(play('Context.StartArguments = "-windowed";'), 'unused-option')[0].fixes?.[0].title, 'Remove this option');
+  // A key read by a typo'd name: still unused (and unknown-member points at the typo).
+  assert.equal(only(play('var f = Context.Options["fsp"];'), 'unused-option').length, 1);
+  // Read: bracket, dotted, lower-case `options` (Jint), a number key, a method with the key, in a function nothing calls.
+  for (const body of ['var f = Context.Options["fps"];', 'var f = Context.Options.fps;', 'var f = Context.options["fps"];', "var f = Context.Options['fps'];", 'if (Context.Options.ContainsKey("fps")) {}', 'function unused() { return Context.Options["fps"]; }']) {
+    assert.deepEqual(only(play(body), 'unused-option'), [], body);
+  }
+  assert.deepEqual(only(HEADER + 'Game.AddOption("A", "", "0", ["x", "y"]);\nGame.Play = function () {\n  var a = Context.Options[0];\n};\n', 'unused-option'), []);
+  // Can't tell: a key in a variable, Context.Options or Context passed on or aliased, looped over, eval.
+  for (const body of ['var k = "fps";\nvar f = Context.Options[k];', 'var o = Context.Options;', 'var c = Context;', 'show(Context.Options);', 'for (var k in Context.Options) {}', 'var n = Context.Options.Keys;', 'var f = Context["Options"][k];', 'eval("x");']) {
+    assert.deepEqual(only(play(body), 'unused-option'), [], body);
+  }
+  // A note with one value (or none) is no choice; ShowOptionAsStep doesn't read it (Nucleus only asks), so no fix.
+  assert.deepEqual(only(HEADER + 'var note = ["READ"];\nGame.AddOption("Disband the lobby first", "", "note", note);\n', 'unused-option'), []);
+  const step = only(HEADER + opt + 'Game.ShowOptionAsStep("fps", true, "FPS");\n', 'unused-option');
+  assert.equal(step.length, 1);
+  assert.equal(step[0].fixes, undefined);
 });
 
 test('ExecutableName must be a file name, not a path', () => {

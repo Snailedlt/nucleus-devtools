@@ -102,8 +102,9 @@ test('"In practice" parts: real members, labelled, with what they are based on; 
     const pi = /ProtoInput/.test(m.example + where) && !/\bGame\.ProtoInput\.(InjectStartup|InjectRuntime_\w+)\s*=/.test(codeOf(m.example).code) ? 'Game.ProtoInput.InjectStartup = true;\n' : '';
     const handler = 'Game.GUID = "x";\nGame.GameName = "x";\nGame.ExecutableName = "x.exe";\n' + pi + (where === 'top' ? `${m.example}\n` : `${where} = function () {\n${m.example}\n};\n`);
     // Callbacks get no arguments: an example defines what it uses. Nothing flagged at all (info included).
-    // (needs-option: an example shows one option; the one it depends on is in its doc.)
-    const errors = lint(handler).filter((d: any) => d.rule !== 'needs-option');
+    // (needs-option: an example shows one option; the one it depends on is in its doc. unused-option: an AddOption
+    // example shows the option, the read is in Context.Options' docs.)
+    const errors = lint(handler).filter((d: any) => d.rule !== 'needs-option' && d.rule !== 'unused-option');
     assert.deepEqual(errors.map((d: any) => d.message), [], `${o}.${k}: ${m.example}`);
   }
 });

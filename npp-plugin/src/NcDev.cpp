@@ -720,14 +720,22 @@ static void stop() {
 // ---------------------------------------------------------------------------------------------------------------
 // Problems: squiggles in the code and the Problems panel
 
-static int indError = 12, indWarning = 13, indInfo = 14;
+static int indError = 12, indWarning = 13, indInfo = 14, indUnused = 15;
 static bool stylesSet = false;
+// Unused code (the LSP's Unnecessary tag, 1): an option nothing reads. Faded, as VS Code fades it.
+static bool isUnused(const Value& d) {
+  if (!d["tags"].isArr()) return false;
+  for (auto& t : d["tags"].arr())
+    if (t.num() == 1) return true;
+  return false;
+}
 static void setupIndicators() {
   int first = 0;
-  if (SendMessage(npp._nppHandle, NPPM_ALLOCATEINDICATOR, 3, (LPARAM)&first) && first > 0) {
+  if (SendMessage(npp._nppHandle, NPPM_ALLOCATEINDICATOR, 4, (LPARAM)&first) && first > 0) {
     indError = first;
     indWarning = first + 1;
     indInfo = first + 2;
+    indUnused = first + 3;
   }
   for (HWND h : {npp._scintillaMainHandle, npp._scintillaSecondHandle}) {
     sci(h, SCI_INDICSETSTYLE, indError, INDIC_SQUIGGLEPIXMAP);
@@ -736,6 +744,8 @@ static void setupIndicators() {
     sci(h, SCI_INDICSETFORE, indWarning, RGB(215, 150, 0));
     sci(h, SCI_INDICSETSTYLE, indInfo, INDIC_DOTS);
     sci(h, SCI_INDICSETFORE, indInfo, RGB(60, 140, 230));
+    sci(h, SCI_INDICSETSTYLE, indUnused, INDIC_TEXTFORE);
+    sci(h, SCI_INDICSETFORE, indUnused, RGB(140, 140, 140));
     // Hover help needs dwell notifications; Notepad++ leaves them off.
     if (sci(h, SCI_GETMOUSEDWELLTIME) >= SC_TIME_FOREVER) sci(h, SCI_SETMOUSEDWELLTIME, 500);
   }
@@ -762,15 +772,20 @@ static void applyDiagnostics() {
   HWND h = curSci();
   if (!stylesSet) setupIndicators();
   sptr_t len = sci(h, SCI_GETLENGTH);
-  for (int ind : {indError, indWarning, indInfo}) {
+  for (int ind : {indError, indWarning, indInfo, indUnused}) {
     sci(h, SCI_SETINDICATORCURRENT, ind);
     sci(h, SCI_INDICATORCLEARRANGE, 0, len);
   }
   if (d) {
     for (auto& x : diagnostics[d->uri].arr()) {
       int sev = x["severity"].num(1);
-      sci(h, SCI_SETINDICATORCURRENT, sev == 1 ? indError : sev == 2 ? indWarning : indInfo);
       Range r = diagRange(h, x);
+      if (isUnused(x)) {
+        sci(h, SCI_SETINDICATORCURRENT, indUnused);
+        sci(h, SCI_INDICATORFILLRANGE, r.start, r.end - r.start);
+        if (sev == 4) continue;  // a hint: only faded, no underline
+      }
+      sci(h, SCI_SETINDICATORCURRENT, sev == 1 ? indError : sev == 2 ? indWarning : indInfo);
       sci(h, SCI_INDICATORFILLRANGE, r.start, r.end - r.start);
     }
   }
@@ -833,7 +848,7 @@ static void refreshPanel() {
   for (auto& x : panelItems) {
     int sev = x["severity"].num(1);
     std::wstring line = std::to_wstring(x["range"]["start"]["line"].num() + 1);
-    std::wstring kind = sev == 1 ? L"Error" : sev == 2 ? L"Warning" : L"Info";
+    std::wstring kind = sev == 1 ? L"Error" : sev == 2 ? L"Warning" : sev == 4 && isUnused(x) ? L"Unused" : L"Info";
     std::wstring msg = wide(plain(x["message"].str(), 3));
     std::replace(msg.begin(), msg.end(), L'\n', L' ');
     LVITEMW it{};
@@ -858,7 +873,8 @@ static void refreshPanel() {
   SendMessage(list, WM_SETREDRAW, TRUE, 0);
   // "2 errors, 1 warning" next to the panel's name.
   int ne = 0, nw = 0, ni = 0;
-  for (auto& x : panelItems) (x["severity"].num(1) == 1 ? ne : x["severity"].num(1) == 2 ? nw : ni)++;
+  for (auto& x : panelItems)
+    if (!(x["severity"].num(1) == 4 && isUnused(x))) (x["severity"].num(1) == 1 ? ne : x["severity"].num(1) == 2 ? nw : ni)++;
   std::wstring info;
   auto add = [&](int n, const wchar_t* one, const wchar_t* many) {
     if (!n) return;

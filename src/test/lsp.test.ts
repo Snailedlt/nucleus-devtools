@@ -82,6 +82,15 @@ after(async () => {
   assert.equal(await exited, 0);
 });
 
+test('lsp: an option nothing reads is a hint tagged Unnecessary (faded, like unused code)', async () => {
+  const uri = 'file:///tmp/unused-option.js';
+  notify('textDocument/didOpen', { textDocument: { uri, languageId: 'javascript', version: 1, text: HEADER + 'Game.AddOption("FPS", "", "fps", ["30", "60"]);\n' } });
+  const d = (await diagnosticsFor(uri, 1)).params.diagnostics.find((x: any) => x.code === 'unused-option');
+  assert.equal(d.severity, 4);
+  assert.deepEqual(d.tags, [1]);
+  notify('textDocument/didClose', { textDocument: { uri } });
+});
+
 test('lsp: diagnostics with codes, links and tags; quick fixes and fix all', async () => {
   const text = HEADER + 'Game.Hook.ForceFocuss = true;\nGame.HookGetCursorPos = true;\nGame.KillMutex = "M";\n';
   notify('textDocument/didOpen', { textDocument: { uri: URI, languageId: 'javascript', version: 1, text } });

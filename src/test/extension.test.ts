@@ -110,6 +110,17 @@ test('diagnostics are published with codes, tags and positions', async () => {
   m.workspace.textDocuments = [];
 });
 
+test('an option nothing reads is a Hint tagged Unnecessary (faded, no squiggle)', async () => {
+  const doc = m.makeDocument(HEADER + 'Game.AddOption("FPS", "", "fps", ["30", "60"]);\n');
+  m.workspace.textDocuments = [doc];
+  activate({ subscriptions: [] } as any);
+  await tick();
+  const d = m.__diagnostics.get(doc.uri.toString())!.find((x: any) => x.code.value === 'unused-option')!;
+  assert.equal(d.severity, m.DiagnosticSeverity.Hint);
+  assert.deepEqual(d.tags, [m.DiagnosticTag.Unnecessary]);
+  m.workspace.textDocuments = [];
+});
+
 test('completion after Game. offers assignment snippets at line start', () => {
   const { doc, pos } = at(HEADER + 'Game.Symlink|');
   const items = m.__registered.completion[0].provideCompletionItems(doc, pos);

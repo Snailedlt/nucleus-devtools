@@ -193,6 +193,10 @@ export const RULES = {
     severity: 'warning',
     description: 'A `Context.Options["key"]` value compared as if it were a number or a boolean, where only text works: when the player starts from a saved profile, Nucleus gives every option back as text ("4", "True", "False"). So `=== 4`, `== true`, `case 4:` never match, and a "False" option counts as true in an `if`.',
   },
+  'unused-option': {
+    severity: 'hint',
+    description: 'A `Game.AddOption` whose key nothing in the handler reads (`Context.Options["key"]`): players can pick a value, but it changes nothing. Nucleus itself never reads an option\'s value (`Game.ShowOptionAsStep` only asks for it). Shown faded, like unused code; quiet when the handler reads options in a way it can\'t follow (a key in a variable, `Context.Options` passed on).',
+  },
   deprecated: { severity: 'hint', description: 'The option is deprecated (setting it to false is fine).' },
   // General JavaScript mistakes: ESLint's own rules (core/jsrules.ts).
   ...JS_RULE_ENTRIES,
@@ -422,6 +426,90 @@ class Analyzer {
     this.checkEncoding();
     this.checkReplacedObjects();
     this.checkOptionCompare();
+    this.checkUnusedOptions();
+  }
+
+  /**
+   * `Game.AddOption(name, desc, "fps", values)` whose key nothing reads: the player's choice changes nothing. Nucleus
+   * itself reads no option's value (it only stores the choice in the profile; `ShowOptionAsStep` just asks for it,
+   * GenericGameInfo/JSUserInputControl), so the handler's `Context.Options["fps"]` (or `.fps`, or a method such as
+   * `ContainsKey("fps")`) is the only reader. Quiet whenever it can't follow every read: a key that isn't written out,
+   * `Context` or `Context.Options` used any other way (passed, aliased, looped over), `eval`/`Function`/`with`.
+   */
+  private checkUnusedOptions() {
+    if (!/\bAddOption\b/.test(this.text)) return;
+    const adds: Node[] = [];
+    const read = new Set<string>();
+    let unsure = false;
+    const parent = new Map<Node, Node>();
+    const lit = (n: Node | undefined): string | undefined => (n?.type === 'Literal' && typeof n.value === 'string' ? n.value : undefined);
+    const walk = (n: Node, p?: Node) => {
+      if (unsure) return;
+      if (p) parent.set(n, p);
+      if (n.type === 'WithStatement') unsure = true;
+      if (n.type === 'Identifier' && (n.name === 'eval' || n.name === 'Function')) unsure = true;
+      if (n.type === 'CallExpression' && this.chainOf(n.callee) === 'Game.AddOption' && lit(n.arguments[2]) !== undefined) adds.push(n);
+      for (const key of Object.keys(n)) {
+        if (key === 'type' || key === 'start' || key === 'end') continue;
+        const v = n[key];
+        if (Array.isArray(v)) for (const c of v) c && typeof c.type === 'string' && walk(c, n);
+        else if (v && typeof v.type === 'string') walk(v, n);
+      }
+    };
+    walk(this.program);
+    if (unsure || !adds.length) return;
+    // Every reference to `Context`: only `Context.<name>` is followed; `Context.Options` only as `[key]`/`.key`.
+    visit(this.program, (x) => {
+      if (unsure || x.type !== 'Identifier' || x.name !== 'Context') return;
+      const p = parent.get(x);
+      if (p?.type === 'MemberExpression' && p.property === x && !p.computed) return; // `a.Context`
+      if (p?.type === 'Property' && p.key === x && !p.computed) return; // `{ Context: 1 }`
+      if (p?.type !== 'MemberExpression' || p.object !== x) return void (unsure = true);
+      const name = p.computed ? lit(p.property) : p.property.name;
+      if (p.computed && name === undefined) return void (unsure = true);
+      // Jint matches .NET names with the first letter in either case: `Context.options` is the same.
+      if (!/^[Oo]ptions$/.test(name)) return;
+      const m = parent.get(p);
+      if (m?.type !== 'MemberExpression' || m.object !== p) return void (unsure = true);
+      // `Context.Options[0]`: Jint turns the number into the text key "0".
+      const key = m.computed ? (m.property.type === 'Literal' && typeof m.property.value === 'number' ? String(m.property.value) : lit(m.property)) : m.property.name;
+      if (key === undefined) return void (unsure = true);
+      const call = parent.get(m);
+      if (!m.computed && call?.type === 'CallExpression' && call.callee === m) {
+        // `Context.Options.ContainsKey("fps")`: its written-out keys are read; anything else, can't tell.
+        const keys = call.arguments.map(lit).filter((k: string | undefined): k is string => k !== undefined);
+        if (!keys.length) return void (unsure = true);
+        keys.forEach((k: string) => read.add(k));
+        return;
+      }
+      if (!m.computed && /^(Keys|Values|Count|GetEnumerator)$/.test(key)) return void (unsure = true);
+      read.add(key);
+    });
+    if (unsure) return;
+    const sc = analyzeScopes(this.program);
+    for (const c of adds) {
+      const k = c.arguments[2];
+      const key: string = k.value;
+      if (read.has(key)) continue;
+      // One value (`["READ"]`) or none: a note for the players, not a choice.
+      let v = c.arguments[3];
+      if (v?.type === 'Identifier') v = singleValue(sc.bindingOf.get(v)) ?? v;
+      if (v?.type === 'ArrayExpression' && v.elements.length <= 1) continue;
+      // Removing the line is offered only when the key appears nowhere else (`ShowOptionAsStep("fps", ...)` needs it).
+      const stmt = parent.get(c);
+      const ls = stmt ? lineStart(this.text, stmt.start) : 0;
+      const le = stmt ? nextLineStart(this.text, stmt.end) : 0;
+      const alone = stmt?.type === 'ExpressionStatement' && parent.get(stmt) === this.program && this.text.slice(ls, stmt.start).trim() === '' && /^\s*(\/\/.*)?(\r?\n)?$/.test(this.text.slice(stmt.end, le));
+      const elsewhere = this.text.split(JSON.stringify(key)).length + this.text.split(`'${key}'`).length > 3;
+      this.report({
+        rule: 'unused-option',
+        message: `Nothing in this handler reads \`Context.Options[${JSON.stringify(key)}]\`, so the player's choice changes nothing. Read it where the choice matters (usually in \`Game.Play\`), or remove the option.`,
+        start: k.start,
+        end: k.end,
+        tags: ['unnecessary'],
+        fixes: alone && !elsewhere ? [{ title: 'Remove this option', edits: [{ start: ls, end: le, text: '' }] }] : undefined,
+      });
+    }
   }
 
   /**

@@ -982,6 +982,23 @@
                   "Off"
                 ]
               },
+              "unused-option": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning",
+                  "info",
+                  "hint",
+                  "off"
+                ],
+                "enumItemLabels": [
+                  "Error",
+                  "Warning",
+                  "Info",
+                  "Hint",
+                  "Off"
+                ]
+              },
               "no-cond-assign": {
                 "type": "string",
                 "enum": [
