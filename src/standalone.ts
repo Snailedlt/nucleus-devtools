@@ -9,7 +9,7 @@ import { cacheDir } from './hubcache';
 declare const __VERSION__: string;
 export const VERSION = typeof __VERSION__ === 'string' ? __VERSION__ : '0.0.0';
 export const TOOL = 'ncdev';
-const REPO = 'Snailedlt/splitscreenme-vscode';
+const REPO = 'Snailedlt/nucleus-devtools';
 
 /** Running as the standalone ncdev (not `node cli.js`). */
 export function isStandalone(): boolean {
@@ -98,7 +98,8 @@ interface UpdateCache {
   latest?: Latest;
 }
 
-/** The newest release with ncdev in it, old pre-release tags (v0.x.y-beta.N) included. At most once a day unless `force`.
+/** The newest release with ncdev in it, old pre-release tags (v0.x.y-beta.N) included (the workbench's updates and the
+ *  test-build pre-release in the same repository have no SHA256SUMS.txt, so they never match). At most once a day unless `force`.
  *  null: GitHub answered but no release has ncdev yet; undefined: GitHub couldn't be reached (and nothing is known). */
 export async function latestRelease(force = false, fetchImpl: typeof fetch = fetch, dir = cacheDir(), now = Date.now()): Promise<Latest | null | undefined> {
   const file = path.join(dir, 'update.json');
@@ -109,7 +110,7 @@ export async function latestRelease(force = false, fetchImpl: typeof fetch = fet
     /* first time */
   }
   if (!force && cache.latest && now - cache.checkedAt < 24 * 3600 * 1000) return cache.latest;
-  const res = await fetchImpl(`https://api.github.com/repos/${REPO}/releases?per_page=20`, {
+  const res = await fetchImpl(`https://api.github.com/repos/${REPO}/releases?per_page=50`, {
     headers: { accept: 'application/vnd.github+json', 'user-agent': `${TOOL}/${VERSION}`, ...(cache.etag && cache.latest ? { 'if-none-match': cache.etag } : {}) },
   }).catch(() => undefined);
   if (res?.status === 304 && cache.latest) {

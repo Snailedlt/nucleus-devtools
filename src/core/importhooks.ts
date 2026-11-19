@@ -2,7 +2,7 @@
 // Which Proto Input hook covers which Windows function: Proto Input's source (ProtoInputHooks/*.cpp, InstallNamedHook);
 // what each hook does: checked in that source and Nucleus' (ProtoInputLauncher.cs, SDL2Dll.cs); how often working Hub
 // handlers turn each hook on: the verified Hub handlers that use Proto Input, options and runtime ProtoInput.InstallHook
-// calls, counted 2026-11-18. Compared with 35 games' Hub handlers (splitscreenme-vscode#39).
+// calls, counted 2026-11-18. Compared with 35 games' Hub handlers (nucleus-devtools#39).
 // Pure (no Node, no DOM): shared by ncdev, VS Code, `ncdev lsp` and the workbench. Tests: src/test/importhooks.test.ts.
 import { XINPUT_DLLS, type PeFile } from './pe';
 

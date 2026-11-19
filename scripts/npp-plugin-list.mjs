@@ -16,7 +16,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.join(path.dirname(fileURLToPath(import.meta.url)), '..');
 const pkg = JSON.parse(fs.readFileSync(path.join(root, 'package.json'), 'utf8'));
-const REPO = 'https://github.com/Snailedlt/splitscreenme-vscode';
+const REPO = 'https://github.com/Snailedlt/nucleus-devtools';
 
 const arg = (name, def) => {
   const i = process.argv.indexOf(name);

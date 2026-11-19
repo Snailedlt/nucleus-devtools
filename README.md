@@ -1,8 +1,8 @@
 # SplitScreen.Me / Nucleus Co-op Handler Tools for VS Code
 
-Tooling for writing [Nucleus Co-op](https://github.com/SplitScreen-Me/splitscreenme-nucleus) game handlers: the JavaScript files that tell Nucleus how to run several copies of a game side by side. In VS Code, [Notepad++](#notepad), [any editor with LSP](#other-editors), on the [command line](#the-command-line-tool-ncdev) and in the [browser workbench](https://snailedlt.github.io/nucleuscoop-handler-testbench/?ref=vscode-readme-md): one engine, the same checks everywhere.
+Tooling for writing [Nucleus Co-op](https://github.com/SplitScreen-Me/splitscreenme-nucleus) game handlers: the JavaScript files that tell Nucleus how to run several copies of a game side by side. In VS Code, [Notepad++](#notepad), [any editor with LSP](#other-editors), on the [command line](#the-command-line-tool-ncdev) and in the [browser workbench](https://snailedlt.github.io/nucleus-devtools/?ref=vscode-readme-md): one engine, the same checks everywhere.
 
-> **Beta, testers wanted.** Intro, screenshots and a 5-minute install: **https://snailedlt.github.io/nucleuscoop-handler-testbench/start/?ref=vscode-readme-md**
+> **Beta, testers wanted.** Intro, screenshots and a 5-minute install: **https://snailedlt.github.io/nucleus-devtools/start/?ref=vscode-readme-md**
 
 <p>
   <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/gallery/vscode-problems-quickfix-dark.webp"><img src="docs/images/gallery/vscode-problems-quickfix-light.webp" width="49%" alt="VS Code: a handler with common mistakes, each underlined, the Problems panel explaining every one, and the quick fix that wraps Game.KillMutex's value in an array"></picture>
@@ -14,7 +14,7 @@ Tooling for writing [Nucleus Co-op](https://github.com/SplitScreen-Me/splitscree
   <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/gallery/vscode-debugger-dark.webp"><img src="docs/images/gallery/vscode-debugger-light.webp" width="32%" alt="VS Code: Run and Debug paused at a breakpoint in Game.Play, with the handler's variables for player 1"></picture>
 </p>
 
-*Problems and quick fixes, the **Try it** panel, hover, completion and the debugger, in VS Code (the status bar shows the handler's own language mode, **Nucleus Co-op handler**). The same checks run in the [browser workbench](https://snailedlt.github.io/nucleuscoop-handler-testbench/?ref=vscode-readme-md). Testing it? See [TESTING.md](TESTING.md).*
+*Problems and quick fixes, the **Try it** panel, hover, completion and the debugger, in VS Code (the status bar shows the handler's own language mode, **Nucleus Co-op handler**). The same checks run in the [browser workbench](https://snailedlt.github.io/nucleus-devtools/?ref=vscode-readme-md). Testing it? See [TESTING.md](TESTING.md).*
 
 **In motion** (a minute or two each, captioned, no sound; click to play):
 
@@ -23,7 +23,7 @@ Tooling for writing [Nucleus Co-op](https://github.com/SplitScreen-Me/splitscree
   <a href="docs/videos/notepadpp.mp4"><img src="docs/videos/notepadpp-poster.jpg" width="49%" alt="Video: Notepad++ with the plugin, showing the same checks, fixes, suggestions, docs and Try it"></a>
 </p>
 
-The browser workbench has [its own](https://github.com/Snailedlt/nucleuscoop-handler-testbench/blob/main/docs/videos/workbench.mp4).
+The browser workbench has [its own](https://github.com/Snailedlt/nucleus-devtools/blob/main/workbench/docs/videos/workbench.mp4).
 
 - **Its own language mode.** Handlers open as **Nucleus Co-op handler**: JavaScript's colours, brackets and folding, but only the suggestions Nucleus can use (no browser globals, no newer methods its engine lacks). See [Handler language mode](#handler-language-mode).
 - **Colours that tell Nucleus names apart**, in your theme's own JavaScript colours: option groups (`Game.Hook`), fixed choices (`Nucleus.Folder.InstancedGameFolder`) and callbacks (`Game.Play`) each get one, so a name Nucleus doesn't know stands out.
@@ -53,7 +53,7 @@ The API model is **generated from the Nucleus C# sources** (`GenericGameInfo`, `
 
 One engine runs underneath all of them, so the checks, suggestions and docs are the same; what differs is what each editor can show.
 
-| | VS Code | [Notepad++](#notepad) | [Browser workbench](https://snailedlt.github.io/nucleuscoop-handler-testbench/?ref=vscode-readme-md) | [Other editors (LSP)](#your-own-editor-for-experienced-developers) |
+| | VS Code | [Notepad++](#notepad) | [Browser workbench](https://snailedlt.github.io/nucleus-devtools/?ref=vscode-readme-md) | [Other editors (LSP)](#your-own-editor-for-experienced-developers) |
 |---|:-:|:-:|:-:|:-:|
 | Problems as you type, with the why | ✅ | ✅ | ✅ | ✅ |
 | Quick fixes and Fix all | ✅ | ✅ Alt+Enter | ✅ | ✅ |
@@ -75,7 +75,7 @@ One engine runs underneath all of them, so the checks, suggestions and docs are 
 
 ## Getting started
 
-1. Install the extension. Until it is on the Marketplace, download the `.vsix` from the [releases](https://github.com/Snailedlt/splitscreenme-vscode/releases) (or run `npm ci && npm run package`), then **Extensions: Install from VSIX…**. Testing it? See [TESTING.md](TESTING.md).
+1. Install the extension. Until it is on the Marketplace, download the `.vsix` from the [releases](https://github.com/Snailedlt/nucleus-devtools/releases) (or run `npm ci && npm run package`), then **Extensions: Install from VSIX…**. Testing it? See [TESTING.md](TESTING.md).
 2. Open the folder where you keep your handlers. Any `.js` file that sets `Game.GUID`, `Game.GameName`, `Game.ExecutableName` or `Game.Play`, or lives in a `handlers` folder, opens as **Nucleus Co-op handler** (shown in the status bar) and gets handler features. Other JavaScript files are left alone.
 3. Run **Nucleus: New Handler…** from the Command Palette, or type `handler` in an empty `.js` file. New to handlers? *Help › Welcome › Make a Nucleus Co-op handler* walks you through it.
 
@@ -95,7 +95,7 @@ One engine runs underneath all of them, so the checks, suggestions and docs are 
 | **Nucleus: Docs: Open (Every Option and Function)** | Opens the **Docs** beside the editor: every option and function with its docs, by group or by search (**Nucleus: Docs: Search…**), and on its main page the links to the guides, Proto Input, FAQ, Hub, PCGamingWiki and where to ask for help. API names in hovers, parameter hints and suggestions open their page here; *Open on the web* shows the same page in the browser. |
 | **Nucleus: Debug Handler** | Steps through the handler the way Nucleus Co-op runs it, simulated (also F5, and Debug in the Run button). Without a breakpoint it pauses on the first line. |
 | **Nucleus: Report a Problem…** / **Request a Feature…** | Opens the right GitHub form, filled in (versions, where the handler is from, never its code), after showing open reports that may be the same. No GitHub account? *Copy the report* and paste it in the testers' Discord thread. See [Reporting problems and asking for features](#reporting-problems-and-asking-for-features). |
-| **Nucleus: Open in the Browser Workbench** | The handler you're editing, in the [browser workbench](https://snailedlt.github.io/nucleuscoop-handler-testbench/?ref=vscode-readme-md) (its visual editor, Lines, Test all), through a share link. |
+| **Nucleus: Open in the Browser Workbench** | The handler you're editing, in the [browser workbench](https://snailedlt.github.io/nucleus-devtools/?ref=vscode-readme-md) (its visual editor, Lines, Test all), through a share link. |
 
 On any problem, **Ctrl+.** (the light bulb) also has **This check is wrong (rule)…**, after the fixes, and the Try it panel's report button (*Nucleus did something different*) sends what Try it showed next to what really happened.
 
@@ -139,7 +139,7 @@ The repo also ships an agent kit, so coding agents (Claude Code, Copilot, Codex,
 ### Claude Code
 
 ```
-/plugin marketplace add Snailedlt/splitscreenme-vscode
+/plugin marketplace add Snailedlt/nucleus-devtools
 /plugin install nucleus-coop@splitscreenme
 ```
 
@@ -166,7 +166,7 @@ The skill loads automatically when you ask about Nucleus handlers.
 It also offers the skill's guide as the `nucleus-handler` prompt, and gives every client the hard rules (ES5, real option names, callbacks, types) in its instructions: the same rules the workbench's Fix with AI and Explain with AI use (`src/core/airules.ts`).
 
 - **VS Code (Copilot agent mode):** nothing to set up. The extension registers the server (VS Code 1.101 or newer); turn it on under **MCP Servers** in the Extensions view or in the agent's tool picker.
-- **Anywhere else:** download `nucleus.js` from the [latest release](https://github.com/Snailedlt/splitscreenme-vscode/releases) (one file, needs Node 18+), and add it to your client. For Claude Desktop (`claude_desktop_config.json`) or Cursor (`.cursor/mcp.json`):
+- **Anywhere else:** download `nucleus.js` from the [latest release](https://github.com/Snailedlt/nucleus-devtools/releases) (one file, needs Node 18+), and add it to your client. For Claude Desktop (`claude_desktop_config.json`) or Cursor (`.cursor/mcp.json`):
 
   ```json
   { "mcpServers": { "nucleus": { "command": "node", "args": ["/path/to/nucleus.js", "mcp"] } } }
@@ -206,7 +206,7 @@ Contributors' agents: see [AGENTS.md](AGENTS.md).
 
 ## Lint rules
 
-Every check has its own page, with why it matters, a wrong and a right example and the fix: [all checks](https://snailedlt.github.io/nucleuscoop-handler-testbench/rules/). Each problem in VS Code and other editors links to its page.
+Every check has its own page, with why it matters, a wrong and a right example and the fix: [all checks](https://snailedlt.github.io/nucleus-devtools/rules/). Each problem in VS Code and other editors links to its page.
 
 | Rule | Default | What it catches |
 | --- | --- | --- |
@@ -311,11 +311,11 @@ Handlers open in a language mode of their own, **Nucleus Co-op handler**. It use
 - **Nucleus: Set Up Type Definitions** sets that for its folder, because `// @ts-check` needs the TypeScript service.
 - Formatters, linters, snippets and keybindings you set up for `javascript` (Prettier, ESLint, …) don't apply to handler files. Add `nucleus-handler` to their languages, or use JavaScript mode. The extension's own formatter, snippets and debugger work in both.
 
-**What the Hub sees.** The Hub's handler list comes from our daily copy on GitHub, checked at most once an hour; hub.splitscreen.me is asked only when that copy is missing or out of date, and each package is downloaded once per version. Every request says it comes from these devtools, which tool and which feature sent it (`User-Agent: SplitScreenMe-DevTools/0.7.0 (ncdev-cli; hub-search; +https://github.com/Snailedlt/splitscreenme-vscode)` and the same in `X-Requested-With`), and nothing else: no search text, file names, code, user or computer names.
+**What the Hub sees.** The Hub's handler list comes from our daily copy on GitHub, checked at most once an hour; hub.splitscreen.me is asked only when that copy is missing or out of date, and each package is downloaded once per version. Every request says it comes from these devtools, which tool and which feature sent it (`User-Agent: SplitScreenMe-DevTools/0.7.0 (ncdev-cli; hub-search; +https://github.com/Snailedlt/nucleus-devtools)` and the same in `X-Requested-With`), and nothing else: no search text, file names, code, user or computer names.
 
 ## Try it
 
-**Nucleus: Try It** and `ncdev simulate` load the handler and run `Game.Play` once per player, the way Nucleus does, without Nucleus or the game. They emulate the rules of Nucleus' engine (Jint 2.11.58): unknown options are skipped, only the first letter of a name is case-insensitive, list and enum values are converted the same way, wrong argument counts throw, and ES2015+ built-ins such as `.includes()` fail. The emulation is checked against the real engine: it predicts the same outcome on all 121 probes of the [testbench](https://github.com/Snailedlt/nucleuscoop-handler-testbench), launch arguments included.
+**Nucleus: Try It** and `ncdev simulate` load the handler and run `Game.Play` once per player, the way Nucleus does, without Nucleus or the game. They emulate the rules of Nucleus' engine (Jint 2.11.58): unknown options are skipped, only the first letter of a name is case-insensitive, list and enum values are converted the same way, wrong argument counts throw, and ES2015+ built-ins such as `.includes()` fail. The emulation is checked against the real engine: it predicts the same outcome on all 121 probes of the [testbench](https://github.com/Snailedlt/nucleus-devtools), launch arguments included.
 
 It also follows Nucleus' session flow: an error in `Game.Play` ends the session (later players are never set up), `Game.OnFinishedSetup` and `Game.OnStop` run with the last player's `Context`, `Game.GamePlayAfterLaunch` makes `Context.StartArguments` irrelevant, and paths (`Context.ExePath`, `GetFolder`, ...) depend on `Game.SymlinkGame`/`HardcopyGame`/`HardlinkGame` and `Game.BinariesFolder` as in Nucleus. Plugin globals listed in the handler folder's `pluginsInfo.txt` record their calls.
 
@@ -337,7 +337,7 @@ node dist/cli.js debug MyGame.js --break "14 if Context.PlayerID == 1" --watch C
 
 `ncdev` (Nucleus Co-op dev tools) is the same engine as the extension, on the command line: lint, fix, format, Try it (`simulate`), the debugger (`debug`), API lookup, Hub search, new handlers from templates, packages, and the servers for other editors and AI agents (`lsp`, `dap`, `mcp`). `ncdev --help` lists everything. `nucleus` is its old name and still works.
 
-**Standalone (Windows, nothing else to install):** download `ncdev.exe` from the [newest release](https://github.com/Snailedlt/splitscreenme-vscode/releases) and run it from a terminal:
+**Standalone (Windows, nothing else to install):** download `ncdev.exe` from the [newest release](https://github.com/Snailedlt/nucleus-devtools/releases) and run it from a terminal:
 
 ```
 ncdev lint MyGame.js
@@ -358,11 +358,11 @@ node dist/cli.js path/to/handlers   # or `ncdev` / `nucleus-lint` once the packa
 
 ## Other editors
 
-Most people are best served by **VS Code**, **[Notepad++](#notepad)** or the **[browser workbench](https://snailedlt.github.io/nucleuscoop-handler-testbench/?ref=vscode-readme-md)**: they're set up in a few clicks and tested before every release. If you already live in another editor, read on.
+Most people are best served by **VS Code**, **[Notepad++](#notepad)** or the **[browser workbench](https://snailedlt.github.io/nucleus-devtools/?ref=vscode-readme-md)**: they're set up in a few clicks and tested before every release. If you already live in another editor, read on.
 
 ### Notepad++
 
-1. Download `ncdev.exe` from the [newest release](https://github.com/Snailedlt/splitscreenme-vscode/releases).
+1. Download `ncdev.exe` from the [newest release](https://github.com/Snailedlt/nucleus-devtools/releases).
 2. Close Notepad++, double-click `ncdev.exe` and choose **1 Set up Notepad++**. When Windows asks for permission (Notepad++ is in Program Files), allow it.
 3. Start Notepad++ and open a handler.
 
@@ -398,7 +398,7 @@ This installs the **Nucleus Co-op handlers** plugin and puts `ncdev` in `%LOCALA
 
 `ncdev lsp` is a Language Server with the same features: problems and quick fixes, hover, completion with your own names and snippets, signature help, go to definition, rename, outline, Format Document, window-message hints, Try it, and *Package*, *Install*, *New handler* and *Test in Nucleus* as code actions and commands. `ncdev dap` brings the debugger. Any editor with an LSP client can use it; most need only a few lines of config.
 
-1. **Get the server.** Windows: `ncdev.exe` from the [newest release](https://github.com/Snailedlt/splitscreenme-vscode/releases) (no Node needed; `ncdev update` keeps it current). Anywhere with Node.js 18+: `nucleus.js` from the same release.
+1. **Get the server.** Windows: `ncdev.exe` from the [newest release](https://github.com/Snailedlt/nucleus-devtools/releases) (no Node needed; `ncdev update` keeps it current). Anywhere with Node.js 18+: `nucleus.js` from the same release.
 2. **Point your editor's LSP client at it** for JavaScript files, over stdio: `ncdev lsp`, or `node /path/to/nucleus.js lsp`. It only answers for handler files, so your usual JavaScript server keeps working beside it.
 3. **Open a handler.** Problems should show within a second.
 
@@ -412,7 +412,7 @@ This installs the **Nucleus Co-op handlers** plugin and puts `ncdev` in `%LOCALA
 | JetBrains IDEs | the [LSP4IJ](https://plugins.jetbrains.com/plugin/23257-lsp4ij) plugin, a server added in Settings ([PORTING.md](PORTING.md#jetbrains-ides-lsp4ij)) | not yet | not yet |
 | Zed | needs a small Zed extension first ([PORTING.md](PORTING.md#zed-settingsjson)) | not yet | not yet |
 
-*Tested by AI* means an AI agent ran the editor with this setup and checked that problems, hovers and quick fixes come through; *tested by people* means a handler author used it for real. Tried one? A line in the [feedback form](https://github.com/Snailedlt/splitscreenme-vscode/issues/new?template=tester-feedback.yml) (it worked, or what didn't) helps the next person.
+*Tested by AI* means an AI agent ran the editor with this setup and checked that problems, hovers and quick fixes come through; *tested by people* means a handler author used it for real. Tried one? A line in the [feedback form](https://github.com/Snailedlt/nucleus-devtools/issues/new?template=tester-feedback.yml) (it worked, or what didn't) helps the next person.
 
 #### Neovim
 
@@ -488,7 +488,7 @@ src/core/lint.ts        the linter (acorn AST, no VS Code dependency)
 src/core/scopes.ts      the handler's own variables and what's assigned to them (option-compare)
 src/core/features.ts    hover, completion, quick fixes, formatting edits as plain data for every editor
 src/core/complete.ts    text-based resolution for completion/hover/signature help
-src/core/sim.ts         "Try it": runs a handler per player, emulating Jint (also used by the testbench workbench)
+src/core/sim.ts         "Try it": runs a handler per player, emulating Jint (also used by the browser workbench)
 src/sandbox.ts          runs sim.ts isolated in a vm context for Node hosts (CLI, extension)
 src/tryit.ts            the Try it panel
 src/core/templates.ts   New Handler templates
@@ -501,11 +501,21 @@ src/cli.ts              the ncdev CLI (nucleus is its old name, nucleus-lint an 
 src/lsp.ts              ncdev lsp: the Language Server for other editors
 src/mcp.ts              ncdev mcp: the tools as an MCP server
 scripts/generate-api.mjs
+workbench/              the browser workbench and site (playground/) and the Jint testbench (src/, probes/): workbench/README.md
+```
+
+## The browser workbench
+
+**https://snailedlt.github.io/nucleus-devtools/?ref=vscode-readme-md**: the same checks, Try it, docs and debugger in the browser, with Learn (lessons for a first handler), the docs and check pages, and nothing to install. It lives in [`workbench/`](workbench/README.md) and is built from this repository's core, so the workbench and the editors always run the same checks; its changes are in [workbench/CHANGELOG.md](workbench/CHANGELOG.md) (it updates whenever `main` changes). The same folder has the Jint testbench, which runs handlers in Nucleus' real script engine (Jint 2.11.58) and pins down its behaviour with probes that Try it is checked against.
+
+```bash
+npm ci && cd workbench/playground && npm ci
+node build.mjs --preview   # the site in dist/pages
 ```
 
 ## Reporting problems and asking for features
 
-Every tool knows where its report belongs, so you never pick a repository: the workbench and Learn open the workbench's forms; checks, Try it, the docs, VS Code, Notepad++, ncdev and other editors open this repository's. Each report is filled in with what the tool knows (versions, the check, where the handler came from: a Hub id and version, an example or your own code) and you see all of it before you submit. Code is only included when it's the flagged line(s) of a check, and you can leave it out.
+Every tool knows which form its report belongs in, so you never pick one: the workbench, Learn, checks, Try it, the docs, VS Code, Notepad++, ncdev and other editors all open this repository's forms, with the right one and its *Where* filled in. Each report is filled in with what the tool knows (versions, the check, where the handler came from: a Hub id and version, an example or your own code) and you see all of it before you submit. Code is only included when it's the flagged line(s) of a check, and you can leave it out.
 
 - **Report a problem**: VS Code's command palette or the language status (*Feedback*), Notepad++'s plugin menu, `ncdev report`, the workbench's menu.
 - **This check is wrong**: on every check's problem (not on the game folder's or package's): Ctrl+. in VS Code, Alt+Enter in Notepad++, the code actions of any LSP editor, `ncdev report --check <rule> <file>`, the problem's flag in the workbench.

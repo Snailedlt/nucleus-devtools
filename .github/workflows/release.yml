@@ -51,8 +51,7 @@ jobs:
         run: git diff --exit-code -- plugin/
       - name: Build the offline workbench (workbench.html)
         run: |
-          git clone --quiet --depth 1 https://github.com/Snailedlt/nucleuscoop-handler-testbench testbench
-          cd testbench/playground && npm ci && node build.mjs --core ../.. --refresh-hub
+          cd workbench/playground && npm ci && node build.mjs --refresh-hub
           cp dist/workbench-standalone.html "$GITHUB_WORKSPACE/workbench.html"
       - name: Package
         run: npx vsce package --no-dependencies -o "splitscreenme-vscode-${{ steps.version.outputs.tag }}.vsix"

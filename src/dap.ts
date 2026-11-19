@@ -1,4 +1,4 @@
-// A Debug Adapter (DAP) for handlers (splitscreenme-vscode#11): VS Code's own Run and Debug view, breakpoints, stepping,
+// A Debug Adapter (DAP) for handlers (nucleus-devtools#11): VS Code's own Run and Debug view, breakpoints, stepping,
 // Variables, Watch and the Debug Console, over the debugger the workbench and `nucleus debug` use (core/debug.ts).
 // The handler runs once, in the sandbox (in the simulator's worker thread, src/simworker.ts, so a looping handler
 // never blocks the editor), recording every statement; stepping then moves through that

@@ -15,8 +15,8 @@ test('ruledocs: every check has a page with a title, why and fix', () => {
     assert.ok((d.bad && d.good) || d.noExample, `${id}: examples, or why not`);
   }
   for (const id of Object.keys(RULE_DOCS)) assert.ok(id in RULES, `a page for a rule that doesn't exist: ${id}`);
-  assert.equal(ruleUrl('es5-only'), 'https://snailedlt.github.io/nucleuscoop-handler-testbench/rules/es5-only/');
-  assert.equal(ruleUrl('es5-only', 'vscode'), 'https://snailedlt.github.io/nucleuscoop-handler-testbench/rules/es5-only/?ref=vscode');
+  assert.equal(ruleUrl('es5-only'), 'https://snailedlt.github.io/nucleus-devtools/rules/es5-only/');
+  assert.equal(ruleUrl('es5-only', 'vscode'), 'https://snailedlt.github.io/nucleus-devtools/rules/es5-only/?ref=vscode');
 });
 
 test('ruledocs: the wrong example triggers the rule, the right one does not', () => {

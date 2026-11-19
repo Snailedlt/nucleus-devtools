@@ -119,7 +119,7 @@ test('lsp: diagnostics with codes, links and tags; quick fixes and fix all', asy
   assert.ok((await request('textDocument/codeAction', { textDocument: { uri: URI }, range: unknown.range, context: { diagnostics: [unknown], only: ['quickfix'] } })).result.some((a: any) => a.kind === 'quickfix.report'), 'a quickfix filter keeps it');
   const rep = (await request('workspace/executeCommand', { command: wrong.command.command, arguments: [{ ...wrong.command.arguments[0], choose: true }] })).result;
   const form = new URL(rep.url);
-  assert.equal(form.pathname, '/Snailedlt/splitscreenme-vscode/issues/new');
+  assert.equal(form.pathname, '/Snailedlt/nucleus-devtools/issues/new');
   assert.equal(form.searchParams.get('template'), 'check-wrong.yml');
   assert.equal(form.searchParams.get('rule'), 'unknown-member');
   assert.equal(form.searchParams.get('code'), 'Game.Hook.ForceFocuss = true;', 'only the flagged line');
@@ -146,7 +146,7 @@ test('lsp: hover, completion, value suggestions, signature help, inlay hints', a
   assert.equal(hover.contents.kind, 'markdown');
   assert.match(hover.contents.value, /Game\.Hook\.ForceFocus: boolean/);
   // The name's docs in the workbench, one click away (no clientInfo: tagged "lsp").
-  assert.ok(hover.contents.value.endsWith('[Full docs](https://snailedlt.github.io/nucleuscoop-handler-testbench/docs/Game.Hook.ForceFocus/?ref=lsp)'), hover.contents.value);
+  assert.ok(hover.contents.value.endsWith('[Full docs](https://snailedlt.github.io/nucleus-devtools/docs/Game.Hook.ForceFocus/?ref=lsp)'), hover.contents.value);
   // Short: no "In practice", examples or votes (those are in the docs the link opens).
   assert.doesNotMatch(hover.contents.value, /In practice|```js|Default:/);
 

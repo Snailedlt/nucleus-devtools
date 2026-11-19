@@ -29,7 +29,7 @@ export function field(body, label) {
   return v === '_No response_' ? '' : v;
 }
 
-/** FNV-1a over the lines, the same as checksum() in the workbench (playground/src/report.ts in nucleuscoop-handler-testbench). */
+/** FNV-1a over the lines, the same as checksum() in the workbench (workbench/playground/src/checksum.ts). */
 export function checksum(lines) {
   let h = 0x811c9dc5;
   for (const ch of lines.map((l) => l.trim()).filter(Boolean).join('\n')) {

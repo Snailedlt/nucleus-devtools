@@ -20,7 +20,7 @@ This skill ships a self-contained Node CLI at `${CLAUDE_SKILL_DIR}/scripts/nucle
 | `node .../nucleus.js format <file.js> --write` | Tidy indentation and spacing after editing. It never moves a line or changes a token (it checks), so it can't change what the handler does. |
 | `node .../nucleus.js simulate <file.js> [--players 4]` | **Run after lint is clean.** Loads the handler and runs `Game.Play` for each player the way Nucleus would (emulating its Jint engine), without Nucleus or the game: each player's window, launch arguments, the file/registry changes it would make, settings Nucleus skips, and errors a player would hit (for example an ES2015 method that Jint lacks). Check the output matches what you intended. It runs isolated and touches nothing. |
 | `node .../nucleus.js debug <file.js> --break 14 [--watch Context.Width]` | When `simulate` shows a wrong value or an error: stop at a line (optionally `--break "14 if Context.PlayerID == 1"`) and see the variables, the call stack and what the handler did so far. Isolated like `simulate`. |
-| `node .../nucleus.js rules <id>` | A check you don't understand, by the rule id `lint` printed: why Nucleus cares, the fix, a wrong and a right example. Each has a page too (`https://snailedlt.github.io/nucleuscoop-handler-testbench/rules/<id>/`), worth linking for the user. |
+| `node .../nucleus.js rules <id>` | A check you don't understand, by the rule id `lint` printed: why Nucleus cares, the fix, a wrong and a right example. Each has a page too (`https://snailedlt.github.io/nucleus-devtools/rules/<id>/`), worth linking for the user. |
 | `node .../nucleus.js explain <file.js> --line N` | What a line of an unfamiliar handler does: the docs of each name on it and its problems. |
 | `node .../nucleus.js api <name>` | Check an option/method before using it: `api Game.KillMutex`, `api Context.ModifySaveFile`, `api ForceFocus`, `api Nucleus.Folder`. |
 | `node .../nucleus.js api --search <words>` | Find the right option: `api --search mutex`, `api --search window title`, `api --search steam emulator`. |
@@ -80,7 +80,7 @@ See [reference/recipes.md](reference/recipes.md) for tested patterns: INI/XML/te
 When you create a handler, or change one, put these lines at its very top (refresh them after each change you make), so the people who support handler authors see at a glance that an AI agent wrote it and what was and wasn't checked:
 
 ```
-// Made with Claude Code (AI agent) and the Nucleus Co-op handler tools: https://snailedlt.github.io/nucleuscoop-handler-testbench/?ref=handler-comment-agent
+// Made with Claude Code (AI agent) and the Nucleus Co-op handler tools: https://snailedlt.github.io/nucleus-devtools/?ref=handler-comment-agent
 // - Checked with ncdev lint: no problems found.
 // - Try it (simulated with ncdev simulate, not the real game): run on this version (2 and 4 players), the handler loaded. Not run in Nucleus Co-op by the agent.
 // - AI: written by an AI agent (Claude Code) on 2026-11-09; not reviewed by a person yet.

@@ -1,6 +1,6 @@
 # Changelog
 
-What changed in each release of the SplitScreen.Me / Nucleus Co-op handler tools for VS Code (and the `nucleus` command-line tool and MCP server that ship with it). Newest first.
+What changed in each release of the SplitScreen.Me / Nucleus Co-op handler tools for VS Code (and the `nucleus` command-line tool and MCP server that ship with it). Newest first. The browser workbench has its own: [workbench/CHANGELOG.md](workbench/CHANGELOG.md).
 
 <!--
 How to write it (people and AI agents read this; the release workflow publishes each section as the release notes and refuses to release without one):
@@ -8,10 +8,18 @@ How to write it (people and AI agents read this; the release workflow publishes 
   ### ✨ New · ### 🛠️ Improved · ### 🐛 Fixed · ### ⚡ Faster · ### ⚠️ Changed (what users must do differently) · ### 🙏 Thanks
 - 🙏 Thanks: one line per person who tested, reported a bug or contributed to this release, e.g. "- **Horah** for reporting …". When it came through GitHub (an issue, a pull request, a review), link their profile: "- **[name](https://github.com/name)** for …". Credit them inline too ("Reported by Horah.").
 - One line per change: a **short summary** in bold (the update note and the Discord post show only that), then one or two plain sentences.
-- A screenshot (or other media) for big, visible changes, folded away in a `<details><summary>Screenshot</summary>` block indented under its line, with a blank line before and after the image and the closing `  </details>`; the image line: `  ![What it shows](https://raw.githubusercontent.com/Snailedlt/splitscreenme-vscode/main/docs/images/changelog/<version>-<name>.png)` (≈1000 px wide, docs/images/changelog/).
+- A screenshot (or other media) for big, visible changes, folded away in a `<details><summary>Screenshot</summary>` block indented under its line, with a blank line before and after the image and the closing `  </details>`; the image line: `  ![What it shows](https://raw.githubusercontent.com/Snailedlt/nucleus-devtools/main/docs/images/changelog/<version>-<name>.png)` (≈1000 px wide, docs/images/changelog/).
 - At release: rename "## Unreleased" to "## <version> · <yyyy-mm-dd>". A `---` line separates releases.
-- A bug fixed or a request done from an issue in this repository: end that change's own line with "(#12)" (several: "(#12, #14)"), or say "Fixes #12" in the commit. On release the issue gets a short comment, "Fixed in vX.Y.Z" (under 🐛 Fixed) or "Added in vX.Y.Z" (elsewhere), with a link to the release notes and a thanks to whoever reported or asked (scripts/issue-bots.mjs in splitscreenme-vscode). Only "(#12)" counts: a number mentioned in passing ("see #12") or on a Thanks line doesn't.
+- A bug fixed or a request done from an issue in this repository: end that change's own line with "(#12)" (several: "(#12, #14)"), or say "Fixes #12" in the commit. On release the issue gets a short comment, "Fixed in vX.Y.Z" (under 🐛 Fixed) or "Added in vX.Y.Z" (elsewhere), with a link to the release notes and a thanks to whoever reported or asked (scripts/issue-bots.mjs). Only "(#12)" counts: a number mentioned in passing ("see #12") or on a Thanks line doesn't.
 -->
+
+## Unreleased
+
+### ⚠️ Changed
+
+- **One home for the tools: nucleus-devtools.** This repository is now [Snailedlt/nucleus-devtools](https://github.com/Snailedlt/nucleus-devtools) (old links redirect), and the browser workbench moved into it: its address is now https://snailedlt.github.io/nucleus-devtools/, which every tool's links (Open in the Browser Workbench, the docs and check pages) now use. Reports from every tool, the workbench included, go to the same forms here.
+
+---
 
 ## 0.9.0 · 2026-11-19
 

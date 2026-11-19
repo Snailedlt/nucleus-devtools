@@ -39,6 +39,41 @@ jobs:
     outputs:
       vsix: ${{ steps.vsix.outputs.artifact-url }}
 
+  workbench:
+    # The browser workbench (workbench/), with the core of the same commit: its typecheck, unit tests, the links that
+    # must live for ever, the report links against the issue forms, and Try it against the recorded Jint probes. The
+    # full browser smoke test (Playwright) runs in pages.yml before every deploy.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            workbench/playground/package-lock.json
+      - run: npm ci # the core, at the repository root
+      - run: npm ci
+        working-directory: workbench/playground
+      - name: Typecheck the workbench
+        run: npx tsc --noEmit -p .
+        working-directory: workbench/playground
+      - name: Workbench unit tests and links (tools/workbench-units.test.mjs, tools/links.test.mjs)
+        run: npm test
+        working-directory: workbench/playground
+      - name: Unit tests (Hub package files and client, report links and forms, credits, votes)
+        working-directory: workbench
+        run: |
+          node tools/hub-files.test.mjs
+          node tools/hub-client.test.mjs
+          node tools/report-links.test.mjs
+          node tools/credit.test.mjs
+          node tools/votes-report.test.mjs
+      - name: Try it matches Jint on every probe
+        run: node sim-parity.mjs
+        working-directory: workbench/playground
+
   standalone:
     # ncdev (#18) with the Notepad++ plugin inside (#19): the plugin compiles, and the Linux build passes the smoke test.
     runs-on: ubuntu-latest

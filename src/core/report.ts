@@ -6,8 +6,9 @@
 // No imports: the workbench's tools/report-links.test.mjs loads this file on its own. Plain data and fetch only, so it
 // runs in the browser, in Node and in VS Code.
 
-export const TOOLS_REPO = 'Snailedlt/splitscreenme-vscode';
-export const WORKBENCH_REPO = 'Snailedlt/nucleuscoop-handler-testbench';
+export const TOOLS_REPO = 'Snailedlt/nucleus-devtools';
+/** The workbench moved into this repository (workbench/): its reports go to the same forms. Kept as a name for old imports. */
+export const WORKBENCH_REPO = TOOLS_REPO;
 /** The testers' thread on the SplitScreen.Me Discord: for people without a GitHub account. */
 export const DISCORD_THREAD = 'https://discord.com/channels/142649962839277568/1568403337613680650/1568777762221588531';
 export const DISCORD = 'https://discord.gg/XxGMkqCf4r';
@@ -112,18 +113,14 @@ export interface Report {
 }
 
 /** The forms these links fill: their field labels by id (the form's own words, for the copied text; src/test/bots.test.ts
- *  checks them against .github/ISSUE_TEMPLATE in both repositories). */
+ *  checks them against .github/ISSUE_TEMPLATE). Every tool, the workbench and Learn included, uses these forms. */
 export const FORMS: Record<string, { repo: string; name: string; labels: Record<string, string> }> = {
-  'tester-feedback.yml': { repo: TOOLS_REPO, name: 'Tester feedback', labels: { area: 'Where', what: 'What happened, and what did you expect?', simulated: 'What Try it showed', handler: 'Handler', version: 'Version', context: 'Details from the tool' } },
+  'tester-feedback.yml': { repo: TOOLS_REPO, name: 'Tester feedback', labels: { area: 'Where', what: 'What happened, and what did you expect?', error: 'The error', simulated: 'What Try it showed', handler: 'Handler', version: 'Version', context: 'Details from the tool' } },
   'check-wrong.yml': { repo: TOOLS_REPO, name: 'This check is wrong', labels: { rule: 'Which check', message: 'What it said', verdict: "What's wrong", what: 'What Nucleus really does', code: 'The flagged code', handler: 'Where the handler is from', version: 'Version', context: 'Details from the tool' } },
   'feature-request.yml': { repo: TOOLS_REPO, name: 'I want to do…', labels: { goal: 'What are you trying to do?', blocker: "What's in the way?", idea: 'How could it work? (optional)', area: 'Where', code: 'Code (optional)', version: 'Version', context: 'Details from the tool' } },
-  'feedback.yml': { repo: WORKBENCH_REPO, name: 'Feedback', labels: { area: 'Where', what: 'What happened, and what did you expect?', error: 'The error', handler: 'Handler', version: 'Version', context: 'Details from the tool' } },
-  'wb-feature-request.yml': { repo: WORKBENCH_REPO, name: 'I want to do…', labels: { goal: 'What are you trying to do?', blocker: "What's in the way?", idea: 'How could it work? (optional)', area: 'Where', code: 'Code (optional)', version: 'Version', context: 'Details from the tool' } },
 };
-/** The workbench's feature request form has the same file name as the tools' one; FORMS keys it apart. */
-const fileOf = (key: string) => key.replace(/^wb-/, '');
 
-/** The "Where" choices of the tools' forms (tester-feedback.yml and feature-request.yml). */
+/** The "Where" choices of the forms (tester-feedback.yml and feature-request.yml), in their order. */
 export const TOOLS_AREAS = {
   checks: 'Checks (a wrong or missing warning)',
   tryit: 'Try it or the debugger (what it says Nucleus does is wrong)',
@@ -133,10 +130,14 @@ export const TOOLS_AREAS = {
   ncdev: 'ncdev (command line)',
   lsp: 'Another editor (through ncdev lsp)',
   agents: 'AI agent kit (Claude Code plugin, MCP)',
+  workbench: 'Workbench (browser)',
+  learn: 'Learn',
+  pages: 'Docs and check pages',
+  home: 'Home and tools pages',
   other: 'Something else',
 } as const;
-/** The "Where" choices of the workbench's forms (feedback.yml and feature-request.yml there). */
-export const WORKBENCH_AREAS = { workbench: 'Workbench', learn: 'Learn', pages: 'Docs and check pages', home: 'Home and tools pages', other: 'Something else' } as const;
+/** The workbench's and the site's "Where" choices (the same forms' entries for them). */
+export const WORKBENCH_AREAS = { workbench: TOOLS_AREAS.workbench, learn: TOOLS_AREAS.learn, pages: TOOLS_AREAS.pages, home: TOOLS_AREAS.home, other: TOOLS_AREAS.other } as const;
 /** check-wrong.yml's "What's wrong" choices. */
 export const CHECK_VERDICTS = ["It's a false alarm (the handler works in Nucleus)", 'The explanation or the fix is wrong', 'Something else'] as const;
 
@@ -223,7 +224,7 @@ export function buildReport(r: ReportInput): Report {
       extra.push('Report: Nucleus did something different from Try it');
       break;
     case 'error': {
-      key = 'feedback.yml';
+      key = 'tester-feedback.yml';
       const id = errorId(r.error?.message ?? '', r.error?.stack);
       title ||= `${r.tool === 'learn' ? 'Learn' : 'Workbench'} error: ${one(r.error?.message ?? 'unknown', 80)}`;
       Object.assign(f, { area: webArea(r.tool), what: r.what ?? '', error: `${r.error?.message ?? ''}\n${r.error?.stack ?? ''}`.trim() });
@@ -239,19 +240,19 @@ export function buildReport(r: ReportInput): Report {
       if (r.query?.trim()) search = `"${one(r.query, 60).replace(/"/g, '')}" in:title`;
       break;
     case 'stuck':
-      key = 'wb-feature-request.yml';
+      key = 'feature-request.yml';
       title ||= `Stuck in Learn: ${r.lesson?.title ?? '?'}`;
       Object.assign(f, { area: WORKBENCH_AREAS.learn, goal: `Finish the lesson "${r.lesson?.title ?? '?'}".`, blocker: r.what ?? '', code: r.code ?? '' });
       extra.push(`Report: stuck in a Learn lesson`, `Lesson: ${r.lesson?.id ?? '?'}`);
       if (r.lesson) search = `"Stuck in Learn: ${r.lesson.title.replace(/"/g, '')}" in:title`;
       break;
     case 'feature':
-      key = web(r.tool) ? 'wb-feature-request.yml' : 'feature-request.yml';
+      key = 'feature-request.yml';
       Object.assign(f, { area: r.area ?? (web(r.tool) ? webArea(r.tool) : toolArea(r.tool)), goal: r.what ?? '', code: r.code ?? '' });
       extra.push('Report: a feature request');
       break;
     default:
-      key = web(r.tool) ? 'feedback.yml' : 'tester-feedback.yml';
+      key = 'tester-feedback.yml';
       Object.assign(f, { area: r.area ?? (web(r.tool) ? webArea(r.tool) : toolArea(r.tool)), what: r.what ?? '', handler: origin });
       extra.push('Report: a problem');
   }
@@ -261,7 +262,7 @@ export function buildReport(r: ReportInput): Report {
   f.context = details;
   for (const k of Object.keys(f)) if (!f[k]) delete f[k];
   // Room on the link: GitHub refuses very long addresses, so the biggest free-text fields are cut first.
-  const size = () => formUrl(form.repo, fileOf(key), title, f).length;
+  const size = () => formUrl(form.repo, key, title, f).length;
   const fit = (budget: number) => {
     for (const k of ['code', 'error', 'simulated', 'what', 'blocker']) {
       for (let i = 0; i < 6 && f[k] && f[k].length > 200 && size() > budget; i++) {
@@ -276,8 +277,8 @@ export function buildReport(r: ReportInput): Report {
   for (const k of ['goal', 'idea', ...Object.keys(f).filter((k) => k !== 'context' && k !== 'area' && k !== 'verdict')]) {
     for (let i = 0; i < 6 && f[k] && f[k].length > 40 && size() > 7000; i++) f[k] = cut(f[k], Math.max(40, Math.floor(f[k].length * (7000 / size()) * 0.8)));
   }
-  const url = formUrl(form.repo, fileOf(key), title, f);
-  return { repo: form.repo, template: fileOf(key), title, fields: f, url, text: reportText(key, title, f), search, details };
+  const url = formUrl(form.repo, key, title, f);
+  return { repo: form.repo, template: key, title, fields: f, url, text: reportText(key, title, f), search, details };
 }
 
 function formUrl(repo: string, template: string, title: string, fields: Record<string, string>): string {

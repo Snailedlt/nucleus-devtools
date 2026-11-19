@@ -1,4 +1,4 @@
-// Notepad++ support (splitscreenme-vscode#19, step 1): Nucleus names and call tips in Notepad++'s own auto-completion
+// Notepad++ support (nucleus-devtools#19, step 1): Nucleus names and call tips in Notepad++'s own auto-completion
 // file for JavaScript (`autoCompletion/javascript.xml` in Notepad++'s folder). Tried in Notepad++ 8.9.9.
 // Notepad++ reads one file per language, so ours is merged into its own list (its JavaScript words stay). The merge
 // happens on the user's PC (`nucleus setup notepad++`), from Notepad++'s original file: we don't ship a copy of it.

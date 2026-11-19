@@ -56,7 +56,7 @@ function optionKeyAt(text: string, offset: number): { key: string; start: number
 }
 
 /** Where the lint rules are documented (the README table). */
-export const RULES_URL = 'https://github.com/Snailedlt/splitscreenme-vscode#lint-rules';
+export const RULES_URL = 'https://github.com/Snailedlt/nucleus-devtools#lint-rules';
 
 export interface Span {
   start: number;
@@ -713,7 +713,7 @@ export { lineOf };
 
 // ---------------------------------------------------------------------------
 // Outline (document symbols): a map of the handler for VS Code's Outline, breadcrumbs and Go to Symbol, and
-// `textDocument/documentSymbol` in `nucleus lsp` (splitscreenme-vscode#15).
+// `textDocument/documentSymbol` in `nucleus lsp` (nucleus-devtools#15).
 
 export type SymbolKind = 'namespace' | 'property' | 'function' | 'variable';
 export interface SymbolEntry {

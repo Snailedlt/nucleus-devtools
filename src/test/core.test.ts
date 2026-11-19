@@ -201,7 +201,7 @@ test('Open in the Browser Workbench: the share link decodes to the handler, as t
   const text = 'Game.GameName = "Ünïcode";\n'.repeat(20);
   const { url, withHandler } = workbenchLinkFor(text, 'vscode');
   assert.ok(withHandler);
-  assert.match(url, /^https:\/\/snailedlt\.github\.io\/nucleuscoop-handler-testbench\/\?ref=vscode#share-[0-9A-Za-z]+$/);
+  assert.match(url, /^https:\/\/snailedlt\.github\.io\/nucleus-devtools\/\?ref=vscode#share-[0-9A-Za-z]+$/);
   // The workbench's decoder (core/sharelink.ts fromBase62, which playground/src/share.ts imports), then inflate.
   const { fromBase62 } = require('../core/sharelink');
   const bytes = fromBase62(url.split('#share-')[1]);
@@ -209,7 +209,7 @@ test('Open in the Browser Workbench: the share link decodes to the handler, as t
   // Too large for a link: the workbench without it.
   const big = workbenchLinkFor(Array.from({ length: 40000 }, (_, i) => `var v${i} = ${Math.random()};`).join('\n'), 'vscode');
   assert.equal(big.withHandler, false);
-  assert.equal(big.url, 'https://snailedlt.github.io/nucleuscoop-handler-testbench/?ref=vscode');
+  assert.equal(big.url, 'https://snailedlt.github.io/nucleus-devtools/?ref=vscode');
 });
 
 test('completion: nothing in comments or strings, but the deliberate string suggestions stay', () => {

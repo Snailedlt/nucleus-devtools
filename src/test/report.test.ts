@@ -14,11 +14,15 @@ test('report: a Hub handler is found from its Hub lines; own code says it is not
 
 test('report: each entry point opens its own repository and form', () => {
   const to = (i: report.ReportInput) => { const r = report.buildReport(i); return `${r.repo} ${r.template}`; };
-  assert.equal(to({ kind: 'problem', tool: 'workbench' }), `${report.WORKBENCH_REPO} feedback.yml`);
-  assert.equal(to({ kind: 'problem', tool: 'learn' }), `${report.WORKBENCH_REPO} feedback.yml`);
-  assert.equal(to({ kind: 'error', tool: 'workbench', error: { message: 'x' } }), `${report.WORKBENCH_REPO} feedback.yml`);
-  assert.equal(to({ kind: 'feature', tool: 'workbench' }), `${report.WORKBENCH_REPO} feature-request.yml`);
-  assert.equal(to({ kind: 'stuck', tool: 'learn', lesson: { id: 'l1', title: 'One' } }), `${report.WORKBENCH_REPO} feature-request.yml`);
+  // One repository for every tool: the workbench and Learn use the same forms, with their own Where.
+  assert.equal(report.WORKBENCH_REPO, report.TOOLS_REPO);
+  assert.equal(to({ kind: 'problem', tool: 'workbench' }), `${report.TOOLS_REPO} tester-feedback.yml`);
+  assert.equal(to({ kind: 'problem', tool: 'learn' }), `${report.TOOLS_REPO} tester-feedback.yml`);
+  assert.equal(to({ kind: 'error', tool: 'workbench', error: { message: 'x' } }), `${report.TOOLS_REPO} tester-feedback.yml`);
+  assert.equal(to({ kind: 'feature', tool: 'workbench' }), `${report.TOOLS_REPO} feature-request.yml`);
+  assert.equal(to({ kind: 'stuck', tool: 'learn', lesson: { id: 'l1', title: 'One' } }), `${report.TOOLS_REPO} feature-request.yml`);
+  assert.equal(report.buildReport({ kind: 'problem', tool: 'workbench' }).fields.area, 'Workbench (browser)');
+  assert.equal(report.buildReport({ kind: 'stuck', tool: 'learn', lesson: { id: 'l1', title: 'One' } }).fields.area, 'Learn');
   // Checks, Try it and the docs are the core's, wherever they're used.
   assert.equal(to({ kind: 'check', tool: 'workbench', rule: 'x' }), `${report.TOOLS_REPO} check-wrong.yml`);
   assert.equal(to({ kind: 'tryit', tool: 'workbench' }), `${report.TOOLS_REPO} tester-feedback.yml`);
@@ -68,10 +72,10 @@ test('report: the same error groups (numbers and addresses aside), a different o
 test('report: possible duplicates come from GitHub search; failures and pull requests give nothing', async () => {
   const r = report.buildReport({ kind: 'check', tool: 'vscode', rule: 'dup-test-rule' });
   let asked = '';
-  const ok = (async (url: string) => { asked = url; return { ok: true, json: async () => ({ items: [{ number: 4, title: 'Check is wrong: dup-test-rule', html_url: 'https://github.com/Snailedlt/splitscreenme-vscode/issues/4', reactions: { '+1': 2 }, comments: 1 }, { number: 5, title: 'pr', html_url: 'https://github.com/Snailedlt/splitscreenme-vscode/pull/5', pull_request: {} }] }) }; }) as unknown as typeof fetch;
+  const ok = (async (url: string) => { asked = url; return { ok: true, json: async () => ({ items: [{ number: 4, title: 'Check is wrong: dup-test-rule', html_url: 'https://github.com/Snailedlt/nucleus-devtools/issues/4', reactions: { '+1': 2 }, comments: 1 }, { number: 5, title: 'pr', html_url: 'https://github.com/Snailedlt/nucleus-devtools/pull/5', pull_request: {} }] }) }; }) as unknown as typeof fetch;
   const hits = await report.findDuplicates(r, { fetch: ok });
-  assert.deepEqual(hits, [{ number: 4, title: 'Check is wrong: dup-test-rule', url: 'https://github.com/Snailedlt/splitscreenme-vscode/issues/4', thumbs: 2, comments: 1 }]);
-  assert.match(decodeURIComponent(asked), /repo:Snailedlt\/splitscreenme-vscode is:issue is:open "Check is wrong: dup-test-rule" in:title/);
+  assert.deepEqual(hits, [{ number: 4, title: 'Check is wrong: dup-test-rule', url: 'https://github.com/Snailedlt/nucleus-devtools/issues/4', thumbs: 2, comments: 1 }]);
+  assert.match(decodeURIComponent(asked), /repo:Snailedlt\/nucleus-devtools is:issue is:open "Check is wrong: dup-test-rule" in:title/);
   // Kept: a second look-up doesn't ask again.
   asked = '';
   await report.findDuplicates(r, { fetch: ok });

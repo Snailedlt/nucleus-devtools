@@ -59,8 +59,8 @@ Positions in core are offsets into the text, counted in UTF-16 code units (what 
 
 `ncdev lsp` is a subcommand of the `ncdev` CLI. Any of these work:
 
-- **Standalone, nothing to install (Windows):** `ncdev.exe` from the [newest release](https://github.com/Snailedlt/splitscreenme-vscode/releases), then `ncdev lsp` (`ncdev update` keeps it current). In the snippets, use `ncdev` in place of `node /path/to/nucleus.js`.
-- **One file, with Node.js 18+:** [`plugin/skills/nucleus-handler/scripts/nucleus.js`](https://raw.githubusercontent.com/Snailedlt/splitscreenme-vscode/main/plugin/skills/nucleus-handler/scripts/nucleus.js) is the whole CLI bundled. Save it anywhere and run `node /path/to/nucleus.js lsp`.
+- **Standalone, nothing to install (Windows):** `ncdev.exe` from the [newest release](https://github.com/Snailedlt/nucleus-devtools/releases), then `ncdev lsp` (`ncdev update` keeps it current). In the snippets, use `ncdev` in place of `node /path/to/nucleus.js`.
+- **One file, with Node.js 18+:** [`plugin/skills/nucleus-handler/scripts/nucleus.js`](https://raw.githubusercontent.com/Snailedlt/nucleus-devtools/main/plugin/skills/nucleus-handler/scripts/nucleus.js) is the whole CLI bundled. Save it anywhere and run `node /path/to/nucleus.js lsp`.
 - **From a clone:** `npm ci && npm run build`, then `node dist/cli.js lsp`.
 - **With the VS Code extension installed:** its `dist/cli.js` (in `~/.vscode/extensions/splitscreenme.*/dist/`).
 

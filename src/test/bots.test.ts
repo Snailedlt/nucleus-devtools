@@ -45,7 +45,7 @@ function body(file: string, answers: Record<string, string>): string {
     .join('\n\n');
 }
 
-// A real details block, as the workbench filled it in (splitscreenme-vscode#7). The workbench's own test checks its
+// A real details block, as the workbench filled it in (nucleus-devtools#7). The workbench's own test checks its
 // checksum() gives the same value for these lines, so the two copies of the function can't drift apart.
 const REAL_BLOCK = `Workbench: build 9589434, core 70b4a54
 Page: https://snailedlt.github.io/nucleuscoop-handler-testbench/
@@ -57,7 +57,7 @@ Tester: coding dev, Nucleus some
 Doc: Context.Arch
 Check: 49f16946`;
 
-// splitscreenme-vscode#7, opened from the workbench's "Tell us what's wrong", exactly as GitHub stored it.
+// nucleus-devtools#7, opened from the workbench's "Tell us what's wrong", exactly as GitHub stored it.
 // (Opened before the field was renamed "Details from the tool": the bot still reads the old label.)
 const ISSUE_7 = "### Which name\n\nContext.Arch\n\n### What's the problem\n\nIt's missing something important\n\n### What Nucleus really does\n\nTest\n\n### How you know\n\n_No response_\n\n### Details from the workbench\n\n```text\n" + REAL_BLOCK + '\n```';
 
@@ -150,6 +150,12 @@ test('bots: every report link fills fields its form has, and the copied text use
     { kind: 'problem', tool: 'ncdev' },
     { kind: 'feature', tool: 'lsp', editor: 'Neovim' },
     { kind: 'docs', tool: 'workbench', query: 'save folder' },
+    // The workbench, Learn and the site use the same forms.
+    { kind: 'problem', tool: 'workbench' },
+    { kind: 'problem', tool: 'site' },
+    { kind: 'error', tool: 'learn', error: { message: 'x is undefined', stack: 'at y' } },
+    { kind: 'feature', tool: 'workbench' },
+    { kind: 'stuck', tool: 'learn', lesson: { id: 'l1', title: 'One' }, what: 'The check stays red' },
   ];
   for (const k of kinds) {
     const r = report.buildReport(k);
@@ -175,11 +181,11 @@ test('bots: every report link fills fields its form has, and the copied text use
 
 test('bots: the release comments only on this repository\'s fixed issues, once', async () => {
   const notes = '### ✨ New\n- **A thing.** What it does. (#3)\n- **Another.** Related to the old idea in #4.\n### 🐛 Fixed\n- **Bug.** Gone. (#9, Other/repo#7)\n- **Another bug.** #11 in passing\n### 🙏 Thanks\n- **Ann** for reporting it (#10)';
-  assert.deepEqual(bots.deliveredIssues(notes, 'Snailedlt/splitscreenme-vscode'), [{ n: 3, kind: 'added' }, { n: 9, kind: 'fixed' }]);
-  assert.deepEqual(bots.fixedIssueNumbers(notes, 'Snailedlt/splitscreenme-vscode'), [3, 9]);
+  assert.deepEqual(bots.deliveredIssues(notes, 'Snailedlt/nucleus-devtools'), [{ n: 3, kind: 'added' }, { n: 9, kind: 'fixed' }]);
+  assert.deepEqual(bots.fixedIssueNumbers(notes, 'Snailedlt/nucleus-devtools'), [3, 9]);
   assert.match(bots.fixedComment({ tag: 'v1.2.0', url: 'U', reporter: 'ann', owner: 'Snailedlt', kind: 'added' }), /✅ Added in \*\*v1\.2\.0\*\* \(\[release notes\]\(U\)\)\. Thanks @ann for asking for it!/);
   assert.match(bots.fixedComment({ tag: 'v1.2.0', url: 'U', reporter: 'ann', owner: 'Snailedlt' }), /✅ Fixed in .* Thanks @ann for reporting it!/);
-  assert.deepEqual(bots.fixedIssueNumbers('Fixes #12\ncloses Snailedlt/splitscreenme-vscode#13 and Snailedlt/nucleuscoop-handler-testbench#14', 'Snailedlt/splitscreenme-vscode'), [12, 13]);
+  assert.deepEqual(bots.fixedIssueNumbers('Fixes #12\ncloses Snailedlt/nucleus-devtools#13 and Snailedlt/nucleuscoop-handler-testbench#14', 'Snailedlt/nucleus-devtools'), [12, 13]);
   const made: number[] = [];
   const github = {
     // #9: the bot's own comment; #3: the same text from someone else (doesn't count: only the author differs).
@@ -195,14 +201,14 @@ test('bots: the release comments only on this repository\'s fixed issues, once',
       },
     },
   };
-  const done = await bots.runFixedComments({ github, context: { repo: { owner: 'Snailedlt', repo: 'splitscreenme-vscode' } }, tag: 'v1.0.0', url: 'u', notes: 'Fixes #3, fixes #5, fixes #9, fixes #404, fixes #500' });
+  const done = await bots.runFixedComments({ github, context: { repo: { owner: 'Snailedlt', repo: 'nucleus-devtools' } }, tag: 'v1.0.0', url: 'u', notes: 'Fixes #3, fixes #5, fixes #9, fixes #404, fixes #500' });
   assert.deepEqual(done, [3, 500]); // #5 is a pull request, #9 already has the comment, #404 fails alone and #500 still gets its
   assert.deepEqual(made, [3, 500]);
   // A reference in passing in parentheses isn't a delivery; a commit subject's "(#12)" (a PR number) isn't either.
-  assert.deepEqual(bots.deliveredIssues('### 🛠️ Improved\n- **X.** Better (see #12). (#13, #14)', 'Snailedlt/splitscreenme-vscode').map((x) => x.n), [13, 14]);
-  assert.deepEqual(bots.deliveredIssues('Tidy the docs (#15)\n\nFixes #16', 'Snailedlt/splitscreenme-vscode', { commits: true }).map((x) => x.n), [16]);
+  assert.deepEqual(bots.deliveredIssues('### 🛠️ Improved\n- **X.** Better (see #12). (#13, #14)', 'Snailedlt/nucleus-devtools').map((x) => x.n), [13, 14]);
+  assert.deepEqual(bots.deliveredIssues('Tidy the docs (#15)\n\nFixes #16', 'Snailedlt/nucleus-devtools', { commits: true }).map((x) => x.n), [16]);
   // A subsection of Thanks is Thanks too; references in a code block deliver nothing; the next group counts again.
-  assert.deepEqual(bots.deliveredIssues('### 🙏 Thanks\n#### Testers\n- Ann (#12)\n### 🐛 Fixed\n```md\n- **X.** Y. (#20)\n```\n- **Z.** W. (#21)', 'Snailedlt/splitscreenme-vscode').map((x) => x.n), [21]);
+  assert.deepEqual(bots.deliveredIssues('### 🙏 Thanks\n#### Testers\n- Ann (#12)\n### 🐛 Fixed\n```md\n- **X.** Y. (#20)\n```\n- **Z.** W. (#21)', 'Snailedlt/nucleus-devtools').map((x) => x.n), [21]);
   assert.doesNotMatch(bots.fixedComment({ tag: 'v1', url: 'u', reporter: 'Snailedlt', owner: 'Snailedlt' }), /Thanks/);
 });
 

@@ -220,7 +220,7 @@ export function engineLine(use, n, totals, handlers) {
   return `By engine: ${parts.join(', ')}.`;
 }
 
-const UA = 'ncdev-hub-engines/1.0 (Nucleus Co-op handler tools; https://github.com/Snailedlt/splitscreenme-vscode)';
+const UA = 'ncdev-hub-engines/1.0 (Nucleus Co-op handler tools; https://github.com/Snailedlt/nucleus-devtools)';
 /** Per id (a Steam app id for P1733, an IGDB slug for P5794), the engines Wikidata lists for the game, and in
  *  `igdbOf` the game's IGDB ids (to catch a Steam ID copied from another game's handler). */
 async function queryWikidata(prop, ids, igdbOf = null) {

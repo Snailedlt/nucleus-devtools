@@ -716,16 +716,16 @@ async function cmdWorkbench(args: Args, json: boolean): Promise<number> {
   if (fs.existsSync(out) && !has(args, '--force')) throw new Error(`${out} already exists (use --force to overwrite)`);
   // The newest release with the file, pre-releases included. If the API is unavailable (rate
   // limits), fall back to the newest full release's download link.
-  let rel = { tag_name: 'the latest release', url: 'https://github.com/Snailedlt/splitscreenme-vscode/releases/latest/download/workbench.html' };
-  const res = await fetch('https://api.github.com/repos/Snailedlt/splitscreenme-vscode/releases?per_page=20', { headers: { accept: 'application/vnd.github+json' } }).catch(() => undefined);
+  let rel = { tag_name: 'the latest release', url: 'https://github.com/Snailedlt/nucleus-devtools/releases/latest/download/workbench.html' };
+  const res = await fetch('https://api.github.com/repos/Snailedlt/nucleus-devtools/releases?per_page=50', { headers: { accept: 'application/vnd.github+json' } }).catch(() => undefined);
   if (res?.ok) {
     const releases = (await res.json()) as { tag_name: string; draft: boolean; assets: { name: string; browser_download_url: string }[] }[];
     const r = releases.find((x) => !x.draft && x.assets.some((a) => a.name === 'workbench.html'));
-    if (!r) throw new Error('No release has a workbench.html yet. Use https://snailedlt.github.io/nucleuscoop-handler-testbench/ for now.');
+    if (!r) throw new Error('No release has a workbench.html yet. Use https://snailedlt.github.io/nucleus-devtools/ for now.');
     rel = { tag_name: r.tag_name, url: r.assets.find((a) => a.name === 'workbench.html')!.browser_download_url };
   }
   const page = await fetch(rel.url);
-  if (page.status === 404) throw new Error('No release has a workbench.html yet. Use https://snailedlt.github.io/nucleuscoop-handler-testbench/ for now.');
+  if (page.status === 404) throw new Error('No release has a workbench.html yet. Use https://snailedlt.github.io/nucleus-devtools/ for now.');
   if (!page.ok) throw new Error(`Download failed (${page.status})`);
   const html = await page.text();
   if (!/^<!doctype html>/i.test(html.trimStart())) throw new Error('The download is not an HTML page.');

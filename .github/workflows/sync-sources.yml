@@ -53,7 +53,7 @@ jobs:
         id: data
         run: |
           node scripts/doc-votes.mjs || echo "::warning::No votes report: data/doc-votes.json stays."
-          if git clone -q --depth 1 --branch data --filter=blob:none https://github.com/Snailedlt/nucleuscoop-handler-testbench.git ../hubdata; then
+          if git clone -q --depth 1 --branch data --filter=blob:none https://github.com/Snailedlt/nucleus-devtools.git ../hubdata; then
             npm ci --ignore-scripts --no-audit --no-fund >/dev/null
             # The two Hub snapshots go together: if either fails, both stay as they were.
             if node scripts/hub-engines.mjs --hub ../hubdata && node scripts/hub-examples.mjs --hub ../hubdata; then echo "hubok=true" >> "$GITHUB_OUTPUT"; else
@@ -137,11 +137,19 @@ jobs:
             if [ -s ../source-changes.md ]; then cat ../source-changes.md; echo; fi
             echo "If users will notice the change, add a line to \`CHANGELOG.md\` under Unreleased before merging."; } > ../pr-body.md
           # Actions may not be allowed to open pull requests (the repository's setting): then the branch is pushed
-          # and the run summary links where to open it, with the text to paste, instead of failing.
+          # and the run summary links where to open it, with the text to paste, instead of failing. Only that refusal
+          # takes this route: any other error (auth, network, a bad branch) still fails the step, with its message.
           title="Sync the API model with Nucleus and the docs"
           if gh pr view "$branch" >/dev/null 2>&1; then
             gh pr edit "$branch" --body-file ../pr-body.md || echo "::warning::Couldn't update the open sync pull request's text."
-          elif ! gh pr create --head "$branch" --base main --title "$title" --body-file ../pr-body.md; then
+          elif gh pr create --head "$branch" --base main --title "$title" --body-file ../pr-body.md 2> ../pr-create.err; then
+            cat ../pr-create.err >&2
+          else
+            cat ../pr-create.err >&2
+            if ! grep -q "GitHub Actions is not permitted to create or approve pull requests" ../pr-create.err; then
+              echo "::error::Couldn't open the sync pull request: $(tr '\n' ' ' < ../pr-create.err | head -c 500)"
+              exit 1
+            fi
             echo "::warning::GitHub Actions may not open pull requests here: open it from $branch (link in the run summary)."
             { echo "## Open the sync pull request"; echo
               echo "Actions isn't allowed to open pull requests in this repository, so the branch \`$branch\` is pushed and waits for one:"

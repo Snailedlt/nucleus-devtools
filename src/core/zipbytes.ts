@@ -1,5 +1,5 @@
 // The bytes of a zip file (no dependencies, no Node APIs: only Uint8Array and DataView), for Nucleus handler
-// packages (.nc, .zip). Shared with the browser workbench (nucleuscoop-handler-testbench playground/src/package.ts),
+// packages (.nc, .zip). Shared with the browser workbench (workbench/playground/src/package.ts),
 // which compresses with the browser's CompressionStream. Node code uses zip.ts (writeZip, readZip with zlib), which
 // re-exports all of this.
 
