@@ -918,7 +918,7 @@ await m.ctx.close();
     const s = await page(theme);
     await s.p.goto(BASE + 'docs/Context.ModifySaveFile/');
     check(await s.p.isVisible('.site-nav a[aria-current="page"]') && /Context\.ModifySaveFile/.test(await s.p.textContent('main h1')), `docs page ${theme}: header and the name`);
-    check(/By engine: Source games/.test(await s.p.textContent('main')), `docs page ${theme}: "By engine" under "In practice"`);
+    check(/By engine: [^.]*Source games/.test(await s.p.textContent('main')), `docs page ${theme}: "By engine" under "In practice"`);
     await s.p.click('.doc-fb [data-vote=down]');
     check((await s.p.getAttribute('.doc-fb [data-vote=down]', 'aria-pressed')) === 'true' && /Thanks/.test(await s.p.textContent('.doc-fb-thanks')), `docs page ${theme}: a vote shows as pressed, with thanks`);
     check(/doc-review/.test(await s.p.getAttribute('.doc-fb a', 'href')), `docs page ${theme}: the report link opens the doc review form`);

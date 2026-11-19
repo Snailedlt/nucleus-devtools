@@ -609,7 +609,7 @@ ul.hl { padding: 4px 8px; border-radius: var(--r-ctl); }
 .CodeMirror-lint-mark-warning { --sq: var(--warn); }
 .CodeMirror-lint-mark-info { --sq: var(--info); }
 /* Unused code (an option nothing reads), faded as VS Code fades it; a hint gets no squiggle. */
-.cm-unnecessary { opacity: .6; }
+.cm-unnecessary, .cm-unnecessary * { color: var(--muted) !important; } /* muted, not opacity: keeps 4.5:1 contrast */
 .CodeMirror-lint-mark-info::after { height: 2px; --sq-mask: radial-gradient(circle, #000 0.7px, transparent 1px); -webkit-mask-size: 4px 2px; mask-size: 4px 2px; }
 .CodeMirror-lint-tooltip { background: var(--surface); color: var(--fg); border: 1px solid var(--line); border-radius: var(--r-ctl); font: 12.5px/1.45 var(--font-body); max-width: 460px; box-shadow: 0 6px 20px rgba(0,0,0,.18); z-index: 50; }
 /* Suggestions, as VS Code: dense rows, an icon per kind, the typed letters highlighted, the type dim on the right. */
