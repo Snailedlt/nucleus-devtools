@@ -86,11 +86,21 @@ function reactMs(m: HTMLElement): number | undefined {
 }
 
 function watch(m: HTMLElement) {
-  if (m.dataset.io) return;
+  // A copy keepMascots() already swapped back out is gone by now: nothing to watch.
+  if (m.dataset.io || !m.isConnected) return;
   m.dataset.io = '1';
   m.classList.add('masc-wait');
   io?.observe(m);
   smil(m);
+}
+
+function unwatch(m: HTMLElement) {
+  // Still in the page (keepMascots() put it back): keep it.
+  if (m.isConnected || !m.dataset.io) return;
+  io?.unobserve(m);
+  delete m.dataset.io;
+  const svg = m.firstElementChild as MSvg | null;
+  if (svg) { clearTimeout(svg._t); svg._since = undefined; }
 }
 
 function setup() {
@@ -109,12 +119,17 @@ function setup() {
       smil(m);
     }), { rootMargin: '64px' })
     : null;
-  // New mascots, wherever they're put: the check is cheap for everything else that's added (the editor's lines).
+  // New mascots, wherever they're put, and ones taken out for good (so the observer doesn't keep them): the check is
+  // cheap for everything else that comes and goes (the editor's lines).
+  const each = (nd: Node, f: (m: HTMLElement) => void) => {
+    if (!(nd instanceof Element)) return;
+    if (nd.classList.contains('masc')) f(nd as HTMLElement);
+    else if (nd.getElementsByClassName('masc').length) for (const m of [...nd.getElementsByClassName('masc')]) f(m as HTMLElement);
+  };
   new MutationObserver((ms) => {
-    for (const r of ms) for (const nd of r.addedNodes) {
-      if (!(nd instanceof Element)) continue;
-      if (nd.classList.contains('masc')) watch(nd as HTMLElement);
-      else if (nd.getElementsByClassName('masc').length) for (const m of nd.getElementsByClassName('masc')) watch(m as HTMLElement);
+    for (const r of ms) {
+      for (const nd of r.removedNodes) each(nd, unwatch);
+      for (const nd of r.addedNodes) each(nd, watch);
     }
   }).observe(document.body, { childList: true, subtree: true });
   document.querySelectorAll<HTMLElement>('.masc').forEach(watch);
