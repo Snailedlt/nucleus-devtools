@@ -29,7 +29,10 @@ export function onFolderProgress(f: (p: FolderProgress) => void) { progress = f;
 type ReadToken = { cancelled: boolean };
 const reading: ReadToken[] = [];
 const newRead = (): ReadToken => { const t = { cancelled: false }; reading.push(t); return t; };
-const endRead = (t: ReadToken) => { const i = reading.indexOf(t); if (i >= 0) reading.splice(i, 1); };
+// Progress shows only the newest read, the one Cancel stops; an older read (another tab's) reads on quietly.
+const say = (t: ReadToken, p: FolderProgress) => { if (reading[reading.length - 1] === t) progress?.(p); };
+/** Ends a read; with `done`, hides the progress if this read was the one shown. */
+const endRead = (t: ReadToken, done: boolean) => { const top = reading[reading.length - 1] === t; const i = reading.indexOf(t); if (i >= 0) reading.splice(i, 1); if (top && done) progress?.({ phase: 'done' }); };
 export function cancelFolderRead() { const t = reading[reading.length - 1]; if (t) t.cancelled = true; }
 /** True while the folder's program files are still being read (Check's "Reading your game's files…"). */
 export const gameBinariesPending = (folder: GameFolder) => !!peHandles.get(folder)?.length && !peDone.has(folder);
@@ -49,14 +52,13 @@ function readBinaries(folder: GameFolder): Promise<PeFile[]> {
       try {
         let bytes = 0;
         for (const [i, { path, file }] of todo.entries()) {
-          if (read.cancelled) { progress?.({ phase: 'done' }); return []; } // no hints from half the files
-          progress?.({ phase: 'binaries', name: folder.name, done: i, total: todo.length, bytes, totalBytes: total });
+          if (read.cancelled) return []; // no hints from half the files (endRead says done)
+          say(read, { phase: 'binaries', name: folder.name, done: i, total: todo.length, bytes, totalBytes: total });
           try { out.push(parsePE(new Uint8Array(await file.arrayBuffer()), path)); } catch { /* not a program */ }
           bytes += file.size;
           await new Promise((r) => setTimeout(r)); // keep the page responsive between files
         }
-      } finally { endRead(read); }
-      progress?.({ phase: 'done' });
+      } finally { endRead(read, true); }
       return out;
     })();
     peRead.set(folder, p);
@@ -82,7 +84,7 @@ async function walkHandle(root: FsDirHandle): Promise<GameFolder> {
   let count = 0, truncated = false;
   const read = newRead();
   try {
-    progress?.({ phase: 'listing', name: root.name, files: 0 });
+    say(read, { phase: 'listing', name: root.name, files: 0 });
     const queue: { h: FsDirHandle; path: string; depth: number }[] = [{ h: root, path: '', depth: 0 }];
     while (queue.length) { // breadth first: the top folders are complete before a limit cuts deep ones
       const { h, path, depth } = queue.shift()!;
@@ -100,11 +102,11 @@ async function walkHandle(root: FsDirHandle): Promise<GameFolder> {
         }
       }
       await Promise.all(pending);
-      if (read.cancelled) { progress?.({ phase: 'done' }); throw new DOMException('Cancelled', 'AbortError'); }
-      progress?.({ phase: 'listing', name: root.name, files: files.length });
+      if (read.cancelled) throw new DOMException('Cancelled', 'AbortError'); // endRead says done
+      say(read, { phase: 'listing', name: root.name, files: files.length });
       if (truncated && count > MAX_ENTRIES) break;
     }
-  } finally { endRead(read); }
+  } finally { endRead(read, read.cancelled); }
   files.sort((a, b) => a.path.localeCompare(b.path));
   dirs.sort((a, b) => a.localeCompare(b));
   const folder: GameFolder = { name: root.name, files, dirs, truncated: truncated || undefined };

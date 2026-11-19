@@ -778,6 +778,12 @@ test("game folder: Cancel stops only the read the progress shows, not another ta
     const last = (name) => seen.filter((p) => p.phase === 'binaries' && p.name === name).map((p) => p.done).pop();
     assert.equal(last('A'), 4, "A's read went on to its last file");
     assert.ok(last('B') < 4, "B's read stopped");
+    // While B is shown, A's read goes on quietly: no A progress between B's first update and B's done, so Cancel
+    // always stops the read on screen. A shows again once B is gone.
+    const bFirst = seen.findIndex((p) => p.phase === 'binaries' && p.name === 'B');
+    const bEnd = seen.findIndex((p, i) => i > bFirst && p.phase === 'done');
+    assert.ok(bFirst >= 0 && bEnd > bFirst);
+    assert.ok(!seen.slice(bFirst, bEnd).some((p) => p.name === 'A'), 'no A progress while B is shown');
   } finally {
     delete globalThis.window.showDirectoryPicker;
   }
