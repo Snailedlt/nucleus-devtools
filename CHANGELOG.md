@@ -12,19 +12,38 @@ How to write it (people and AI agents read this, and the workbench shows it):
 - When it goes live: rename "## Unreleased" to "## <yyyy-mm-dd>" (add " HH:MM", UTC, for a second release on the same day). A `---` line separates releases.
 -->
 
-## Unreleased
-
+## 2026-11-19
 ### ✨ New
-
 - **Options nothing reads are faded.** A `Game.AddOption` whose key the handler never reads (`Context.Options["fps"]`) is faded in the code, as VS Code fades unused code, with no squiggle, and Check lists it as a quiet row that isn't counted as a problem.
 - **A short tour of the workbench.** It points out the parts one at a time (the handler tabs, the code, Check, Try it, Docs, Lines, Files, Save and Settings) with a sentence on each. It starts once on your first visit; Skip remembers where you stopped, and *Take the tour* (Menu, the ? dialog, Settings, the footer or the command palette) continues there or starts over. Arrow keys step, Esc skips.
 
-### ⚠️ Changed
 
+- **Which hooks does your game need? Its files say.** With the game's folder linked (Files › *Your game on this PC*), Check reads the game's .exe and DLLs on this device and suggests the Proto Input hooks they call for (XInput, the cursor clip, raw input), each with one button to add it and how many Hub handlers use it. Nothing is uploaded. Suggested by messenils.
+- **Learn has a second chapter: launch options and config files.** Nine short lessons build a handler for Codename CURE, a free Source engine co-op game on Steam: launch arguments, each window's size in `Game.Play`, a choice the players make (and why saved choices come back as text), a config file for each player, a "fix the mistakes" quiz checked by the real Check, a test in Nucleus Co-op and a comparison with the Hub handler.
+- **A Hint button in Learn.** Next to *Show me*, *Hint* says what the lesson's check still misses and where to look (the line under `// The game`, say), and follows your code as you type. Nothing shows until you press it.
+- **Each chapter starts with an overview.** What you'll build, what you need first, and every lesson with its minutes, marking the ones done on your PC.
+- **Report from where you are.** *Report a problem* and *Request a feature* (menu, Ctrl+Shift+P) open the right form, workbench or extension, filled in with the build, your settings and where the handler came from, never your code. You see everything before it's sent, and you never pick a repository.
+- **"This check is wrong" on every problem.** In Check (open a problem) and as the flag in the hover: the check, its message and the flagged line are filled in, and you can leave the code out.
+- **"Nucleus did something different" in Try it.** The icon in the corner of Try it's result sends a short summary of what it showed (windows, arguments, file changes) next to what really happened.
+- **Ask for what's missing.** A Docs search with no results offers *Ask for this to be documented*, and Learn has *I'm stuck here* (under a task's hint and in the lesson list), with the lesson and, if you want, your code.
+- **Errors aren't silent any more.** When the workbench itself hits an error, a small note asks "Something went wrong. Report it?" with the error filled in. Nothing is sent by itself, and the same error shows once with a count.
+- **Possible duplicates first, and no account needed.** Before a new report, the workbench shows open reports that may be the same, to 👍 instead. No GitHub account? *Copy the report* and paste it in the testers' Discord thread. A problem with one Hub handler goes to its Hub page, Discord or Reddit instead of our forms.
+- **"In practice" and an example in Docs.** The most used options and calls have a second part, written by AI from Nucleus Co-op's source and the Hub handlers: what the option really does and how Hub handlers use it, labelled AI-written apart from the doc. Most names have an example too, saying where it comes from (the official docs, the value most Hub handlers use, AI-written, or made from the type).
+- **"In practice" says where game engines differ.** Where handlers for Unreal Engine, Unity or Source games use an option notably more or less than all Hub handlers, Docs and the docs pages add a counted line ("By engine: Unity games 74% of 203 handlers (all Hub handlers 20%)"), also for options with no AI-written part yet. Engines come from Wikidata (by the game's Steam ID or IGDB page) and the handlers' own code.
+- **Insert into handler.** Under a doc's example, *Insert into handler* puts it where it belongs: an option at the top with the others (or *Update in handler* when the handler sets it already: only the value changes), a call at the end of `Game.Play` or the Proto Input callback it goes in, inside the loop over `PlayerList`. One Ctrl+Z undoes it, and the changed line lights up.
+- **Vote on both parts of a doc.** 👍/👎 on the doc and on its "In practice" part, here and on the docs pages, with the votes so far. AI-written parts that at least 10 people voted on, 90% 👍, say *Verified by people*; AI agents' votes show apart and never count towards it. A browser driven by a program no longer sends votes.
+
+### ⚠️ Changed
 - **The welcome page is gone.** With nothing open, the workbench now opens a new handler from the template, so the code is always there; closing the last handler does the same (Undo brings it back). *Getting started* is now *Take the tour*.
 
-### 🛠️ Improved
 
+- **Changing a vote from 👍 to 👎 counts once.** Before, the old vote stayed counted too.
+- **Docs in the workbench shows the same vote control as the docs pages.** [👍] score [👎], with people's and AIs' votes apart on hover, counted live.
+- **Vote scores update within a minute.** The /docs pages read the counts live from GoatCounter instead of waiting for the daily snapshot (which stays as the fallback); previews show the real site's scores.
+- **Previews are built by Vercel itself.** Every pushed branch gets one, with the extension's branch of the same name; the next release's site is rebuilt after each test build.
+- **Form and Blocks are hidden for now.** The visual editor is being reworked and may not come back in this form, so the workbench shows only Code. A handler you had open in Form or Blocks opens in Code, unchanged; Lines still lists every name a handler can use.
+
+### 🛠️ Improved
 - **The tour is done by doing, at your pace.** Where a part opens something (+, Try it, Docs, Lines, Files, the Save arrow, the menu), the step asks you to click it and keeps what opened in view until you press Next; parts that are always on screen (the code, Check) are just pointed out. It never moves on by itself, puts back what it opened when you go on, never saves a file or changes a setting, and Next, Back and Skip always work. A last step shows how to help test the beta, and *Help test this beta* has a new task, *Take the tour*, ticked when you finish it.
 - **Icons in the Menu.** Every Menu entry has a small icon in one column, so the labels line up: one plain set of line icons (Lucide) in the text colour, with the report flag and the feature bulb for reports. *Take the tour* has its compass in the footer, Settings and the ? dialog too, and *Help test this beta* its flask in the side rail.
 - **Shortcuts look like keys everywhere.** Tips, What's new, notes in the code, Docs, the debugger and Learn draw shortcuts such as Ctrl+Z, Alt+Enter and F8 as keys, as the Keyboard shortcuts list does.
@@ -43,41 +62,6 @@ How to write it (people and AI agents read this, and the workbench shows it):
 - **The flag means "report" everywhere.** *Tell us what's wrong* in Docs and on the docs and checks pages, *Nucleus did something different* in Try it, *Report it* after an error, *Report what you found* in Help test this beta, and Learn's report links all show the same flag as *This check is wrong*.
 - **Hub examples say "From Hub handlers".** An example's source is a short label in Docs and on the docs pages, without counts that go stale.
 
-### 🐛 Fixed
-
-- **Undo no longer jumps around the code.** Ctrl+Z and Ctrl+Y (or Ctrl+Shift+Z) put the cursor where the code changed and scroll only when that's off screen, as VS Code does. Before, undoing Format Document or a fix jumped to the top of the file or back to where the cursor had been.
-- **Taking a vote back hides its link again.** Pressing the same 👍 or 👎 a second time no longer leaves *Tell us what's wrong* on screen.
-
-### ⚠️ Changed
-
-- **Changing a vote from 👍 to 👎 counts once.** Before, the old vote stayed counted too.
-- **Docs in the workbench shows the same vote control as the docs pages.** [👍] score [👎], with people's and AIs' votes apart on hover, counted live.
-- **Vote scores update within a minute.** The /docs pages read the counts live from GoatCounter instead of waiting for the daily snapshot (which stays as the fallback); previews show the real site's scores.
-- **Previews are built by Vercel itself.** Every pushed branch gets one, with the extension's branch of the same name; the next release's site is rebuilt after each test build.
-- **Form and Blocks are hidden for now.** The visual editor is being reworked and may not come back in this form, so the workbench shows only Code. A handler you had open in Form or Blocks opens in Code, unchanged; Lines still lists every name a handler can use.
-
----
-
-## 2026-11-18
-
-### ✨ New
-
-- **Which hooks does your game need? Its files say.** With the game's folder linked (Files › *Your game on this PC*), Check reads the game's .exe and DLLs on this device and suggests the Proto Input hooks they call for (XInput, the cursor clip, raw input), each with one button to add it and how many Hub handlers use it. Nothing is uploaded. Suggested by messenils.
-- **Learn has a second chapter: launch options and config files.** Nine short lessons build a handler for Codename CURE, a free Source engine co-op game on Steam: launch arguments, each window's size in `Game.Play`, a choice the players make (and why saved choices come back as text), a config file for each player, a "fix the mistakes" quiz checked by the real Check, a test in Nucleus Co-op and a comparison with the Hub handler.
-- **A Hint button in Learn.** Next to *Show me*, *Hint* says what the lesson's check still misses and where to look (the line under `// The game`, say), and follows your code as you type. Nothing shows until you press it.
-- **Each chapter starts with an overview.** What you'll build, what you need first, and every lesson with its minutes, marking the ones done on your PC.
-- **Report from where you are.** *Report a problem* and *Request a feature* (menu, Ctrl+Shift+P) open the right form, workbench or extension, filled in with the build, your settings and where the handler came from, never your code. You see everything before it's sent, and you never pick a repository.
-- **"This check is wrong" on every problem.** In Check (open a problem) and as the flag in the hover: the check, its message and the flagged line are filled in, and you can leave the code out.
-- **"Nucleus did something different" in Try it.** The icon in the corner of Try it's result sends a short summary of what it showed (windows, arguments, file changes) next to what really happened.
-- **Ask for what's missing.** A Docs search with no results offers *Ask for this to be documented*, and Learn has *I'm stuck here* (under a task's hint and in the lesson list), with the lesson and, if you want, your code.
-- **Errors aren't silent any more.** When the workbench itself hits an error, a small note asks "Something went wrong. Report it?" with the error filled in. Nothing is sent by itself, and the same error shows once with a count.
-- **Possible duplicates first, and no account needed.** Before a new report, the workbench shows open reports that may be the same, to 👍 instead. No GitHub account? *Copy the report* and paste it in the testers' Discord thread. A problem with one Hub handler goes to its Hub page, Discord or Reddit instead of our forms.
-- **"In practice" and an example in Docs.** The most used options and calls have a second part, written by AI from Nucleus Co-op's source and the Hub handlers: what the option really does and how Hub handlers use it, labelled AI-written apart from the doc. Most names have an example too, saying where it comes from (the official docs, the value most Hub handlers use, AI-written, or made from the type).
-- **"In practice" says where game engines differ.** Where handlers for Unreal Engine, Unity or Source games use an option notably more or less than all Hub handlers, Docs and the docs pages add a counted line ("By engine: Unity games 74% of 203 handlers (all Hub handlers 20%)"), also for options with no AI-written part yet. Engines come from Wikidata (by the game's Steam ID or IGDB page) and the handlers' own code.
-- **Insert into handler.** Under a doc's example, *Insert into handler* puts it where it belongs: an option at the top with the others (or *Update in handler* when the handler sets it already: only the value changes), a call at the end of `Game.Play` or the Proto Input callback it goes in, inside the loop over `PlayerList`. One Ctrl+Z undoes it, and the changed line lights up.
-- **Vote on both parts of a doc.** 👍/👎 on the doc and on its "In practice" part, here and on the docs pages, with the votes so far. AI-written parts that at least 10 people voted on, 90% 👍, say *Verified by people*; AI agents' votes show apart and never count towards it. A browser driven by a program no longer sends votes.
-
-### 🛠️ Improved
 
 - **Linking your game's folder shows its progress.** While the folder is read, Files › *Your game on this PC* shows how far it is (the files listed, then the game's .exe and DLLs, n of m), with Cancel, and Check says it's still reading them until their hints arrive.
 - **A short hover, and parameter hints when you ask.** Hovering a name shows its signature, the doc's first sentence and *More in Docs*, which opens the whole card (In practice, votes, the example); *Explain this line* stays in the line's menu and Ctrl+Alt+E. Parameter hints open as you type `(` or `,`, pick a call from the suggestions or press Ctrl+Shift+Space, not when you click into a call.
@@ -111,6 +95,9 @@ How to write it (people and AI agents read this, and the workbench shows it):
 - **The handler has Nucleus Co-op's logo as its file icon.** In the Files panel and the file tabs, `handler.js` shows the logo with a JS tag, as handlers do in VS Code; other files keep their type badge.
 
 ### 🐛 Fixed
+- **Undo no longer jumps around the code.** Ctrl+Z and Ctrl+Y (or Ctrl+Shift+Z) put the cursor where the code changed and scroll only when that's off screen, as VS Code does. Before, undoing Format Document or a fix jumped to the top of the file or back to where the cursor had been.
+- **Taking a vote back hides its link again.** Pressing the same 👍 or 👎 a second time no longer leaves *Tell us what's wrong* on screen.
+
 
 - **A long fix button in Check stays in its row.** It ends in … and its tooltip has the whole title.
 - **Learn's step numbers count steps only.** A step after a *Not working?* list no longer skips numbers, and a function's own variables in Learn's code are readable in dark mode.
@@ -136,7 +123,6 @@ How to write it (people and AI agents read this, and the workbench shows it):
 - **Insert into handler, Learn's checks and a few smaller things behave as expected.** *Insert into handler* compares string values exactly, updates the assignment that counts, never lands inside a callback or after a `return;`, and finds a `Game.Play` set by name; Learn's checks no longer accept partial launch arguments, conflicting joystick lines or commented-out code. Problem reports never carry a `#share-` link (it holds your code), a vote made by an automated browser isn't saved, Blocks keeps the state of moved steps, and Esc closes a comment's popup.
 
 ### 🙏 Thanks
-
 - **messenils** for the idea of reading the game's own program files to suggest hooks.
 
 ---
