@@ -24,7 +24,7 @@ The workbench can send WakaTime heartbeats for the person using it (off by defau
 - [Docs](https://snailedlt.github.io/nucleus-devtools/docs/): one page per option, Context member, enum and .NET call (`docs/Context.ModifySaveFile/`), from the same model the tools use.
 - [Every check](https://snailedlt.github.io/nucleus-devtools/rules/): one page per lint rule: what it means, why, an example and the fix.
 - [VS Code extension](https://github.com/Snailedlt/nucleus-devtools/releases)
-- [Jint testbench](https://github.com/Snailedlt/nucleus-devtools): runs handlers in the real Jint 2.11.58; probes of engine behaviour.
+- [Jint testbench](https://github.com/Snailedlt/nucleus-devtools/tree/main/workbench): runs handlers in the real Jint 2.11.58; probes of engine behaviour.
 
 ## Ask people
 

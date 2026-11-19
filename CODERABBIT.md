@@ -118,4 +118,4 @@ Write these as a comment on the pull request:
 
 - Review behaviour, rules per folder, ignored files: edit `.coderabbit.yaml` (the editor validates it against the schema named on its first line).
 - A new verified fact about Nucleus: add it to `AGENTS.md`; CodeRabbit reads it from the next review.
-- A new related repo: add it to the DeepWiki prompt guidance (step 3) and to *Related repositories* in `AGENTS.md`.
+- A new related repo: add it to the DeepWiki prompt guidance (section 2) and to *Related repositories* in `AGENTS.md`.
