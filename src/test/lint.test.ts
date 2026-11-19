@@ -306,7 +306,10 @@ Game.Play = function () {
   const d = only(src, 'option-compare');
   assert.equal(d.length, 6);
   assert.match(d[0].message, /option's values are text.*never true/);
-  assert.equal(apply(src, d[0].fixes![0]).includes('if (p == 4)'), true);
+  assert.equal(apply(src, d[0].fixes![0]).includes('if (p === "4")'), true, 'text values: compare with text first');
+  assert.equal(apply(src, d[0].fixes![1]).includes('if (p == 4)'), true, 'then the loose compare');
+  assert.match(d[0].message, /Compare with text, `=== "4"`; `== 4` also works/);
+  assert.equal(d[1].fixes!.length, 1, 'numbers in the list: only the loose compare fits a fresh pick too');
   assert.match(d[1].message, /saved profile.*always true then/);
   assert.match(d[2].message, /never equals `true`/);
   assert.match(d[3].message, /"False", which counts as true/);

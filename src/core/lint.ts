@@ -515,10 +515,16 @@ class Analyzer {
             const between = this.text.slice(x.left.end, x.right.start).replace(/\/\*[\s\S]*?\*\/|\/\/[^\n]*/g, (c) => ' '.repeat(c.length));
             const i = between.indexOf(x.operator);
             const opAt = i < 0 ? -1 : x.left.end + i;
+            // All the option's values are text: compare with text (`=== "144"`), the exact match, first; `==` (it turns
+            // the text into a number first) second. Otherwise a fresh pick may be a number, so only `==` fits both.
+            const asText = allText(o.key) && b.type === 'Literal' && typeof b.value === 'number' ? JSON.stringify(String(b.value)) : undefined;
+            const cmpFixes: Fix[] = [];
+            if (asText) cmpFixes.push({ title: `Change to \`${x.operator} ${asText}\``, edits: [{ start: b.start, end: b.end, text: asText }] });
+            if (opAt >= 0) cmpFixes.push({ title: `Change \`${x.operator}\` to \`${loose}\``, edits: [{ start: opAt, end: opAt + 3, text: loose }] });
             report(
               x,
-              `\`${src(a)}\` is text${allText(o.key) ? ' (the option\'s values are text)' : ' when the player starts from a saved profile'}, and \`${x.operator}\` never matches text with a number, so \`${src(x)}\` is ${x.operator === '===' ? 'never true' : 'always true'}${allText(o.key) ? '' : ' then'}. With \`${loose}\` it matches both "${src(b)}" and ${src(b)}.`,
-              opAt >= 0 ? [{ title: `Change \`${x.operator}\` to \`${loose}\``, edits: [{ start: opAt, end: opAt + 3, text: loose }] }] : undefined,
+              `\`${src(a)}\` is text${allText(o.key) ? ' (the option\'s values are text)' : ' when the player starts from a saved profile'}, and \`${x.operator}\` never matches text with a number, so \`${src(x)}\` is ${x.operator === '===' ? 'never true' : 'always true'}${allText(o.key) ? '' : ' then'}. ${asText ? `Compare with text, \`${x.operator} ${asText}\`; \`${loose} ${src(b)}\` also works (it turns the text into a number first).` : `With \`${loose}\` it matches both "${src(b)}" and ${src(b)}.`}`,
+              cmpFixes,
             );
           }
         }
