@@ -604,17 +604,28 @@ onFolderProgress((p) => {
   const bar = document.getElementById('gf-prog-bar') as HTMLProgressElement | null;
   const duo = document.querySelector<HTMLElement>('.fp-duo');
   if (p.phase === 'done' && prev?.phase === 'binaries' && duo) {
-    // Done: Duo lets go, the bar turns green and he hops; then the section is drawn again.
-    barProgress(duo, 1);
-    setTimeout(() => { if (folderProg?.phase === 'done') { pkgUI?.render(); (editor as any).performLint(); } }, 900);
+    // Done: Duo lets go, the bar turns green and he hops; then the section is drawn again. When he's finished (at once
+    // on Still), or after 3 s if he's off screen and never gets there.
+    let once = false;
+    const after = () => { if (once) return; once = true; if (folderProg?.phase === 'done') { pkgUI?.render(); (editor as any).performLint(); } };
+    barProgress(duo, 1, after);
+    setTimeout(after, 3000);
     return;
   }
-  if (changed || !bar) { pkgUI?.render(); if (p.phase === 'binaries') barProgress(document.querySelector('.fp-duo') ?? document, p.bytes / Math.max(1, p.totalBytes)); if (p.phase === 'done') (editor as any).performLint(); return; }
-  if (p.phase === 'binaries') { bar.max = Math.max(1, p.totalBytes); bar.value = p.bytes; if (duo) barProgress(duo, p.bytes / Math.max(1, p.totalBytes)); }
+  if (changed || !bar) { pkgUI?.render(); if (p.phase === 'done') (editor as any).performLint(); return; }
+  if (p.phase === 'binaries') { bar.max = Math.max(1, p.totalBytes); bar.value = p.bytes; if (duo) barProgress(duo, folderShare(p)); }
   const n = document.getElementById('gf-prog-n');
   if (n) n.textContent = folderProgText(p);
 });
+const folderShare = (p: FolderProgress) => (p.phase === 'binaries' ? p.bytes / Math.max(1, p.totalBytes) : 0);
+// Whenever the Files panel is drawn while the program files are read (a new step, a file opened, the package changed),
+// the new Duo is put at the current progress: without it he'd play his demo loop until the next update.
+function syncDuo() {
+  const d = document.querySelector<HTMLElement>('.fp-duo');
+  if (d && folderProg?.phase === 'binaries') barProgress(d, folderShare(folderProg));
+}
 function gameSection(): string {
+  if (folderProg?.phase === 'binaries') queueMicrotask(syncDuo); // after the section is in the page
   return `<section class="fp-game" aria-label="Your game on this PC"><div class="fp-head">Your game on this PC</div>${folderProgHtml()}${gameFolder
     ? `<div class="fp-gname"><span class="fi-badge fi-dir" aria-hidden="true">▸</span>${esc(gameFolder.name)}</div><p>Check compares the handler's paths and file names with this folder, and the symlink options get a file picker. Nothing is uploaded.</p><div class="fp-gacts"><button class="btn" type="button" data-gf="show">What's in it</button><button class="btn" type="button" data-gf="pick">Pick another</button><button class="btn" type="button" data-gf="forget">Unlink</button></div>`
     : `<p>Link the folder your game is installed in, and Check tells you when <code>ExecutableName</code>, <code>BinariesFolder</code> or a symlink option names a file that isn't there. Only names and sizes are read, and the game's .exe and DLLs for hints about hooks, on this device.</p><div class="fp-gacts"><button class="btn" type="button" data-gf="pick">Link the game's folder…</button></div>`}</section>`;

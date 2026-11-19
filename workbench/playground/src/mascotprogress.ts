@@ -9,7 +9,7 @@
 // its state (it lives on the element). "Still" (and reduced motion) shows the pose for that progress, nothing moving.
 import { motion } from './motion';
 
-type Sim = { raf: number; last: number; [k: string]: unknown };
+type Sim = { raf: number; last: number; rest?: () => void; [k: string]: unknown };
 type El = HTMLElement & { _prog?: Sim };
 const still = () => motion().mascots !== 'loop' && motion().mascots !== 'once';
 const loader = (root: ParentNode, cls: string): El | null =>
@@ -24,6 +24,8 @@ function run(m: El, step: (dt: number) => boolean) {
     s.last = now;
     // Off screen or taken out of the page: stop until the next update.
     if (!m.isConnected || m.classList.contains('masc-off')) { s.raf = 0; return; }
+    // Motion turned down meanwhile (Still, or the device asks for less): the pose for this progress, and stop.
+    if (still()) { s.raf = 0; s.rest?.(); return; }
     s.raf = step(dt) ? requestAnimationFrame(tick) : 0;
   };
   s.last = performance.now();
@@ -52,11 +54,9 @@ export function ringProgress(root: ParentNode, p: number): void {
     }
     q('.n-core')?.style.setProperty('transform', Math.max(...s.sq) > 0.12 ? 'scale(1.025, .975)' : 'none');
   };
-  if (still()) {
-    // The pose for this progress: the arc to it, the electrons lined up behind its tip.
-    s.head = p; s.x = s.x.map((_, k) => p - CAP - k * GAP); s.v = [0, 0, 0, 0]; s.sq = [0, 0, 0, 0];
-    return draw();
-  }
+  // The pose for this progress: the arc to it, the electrons lined up behind its tip.
+  s.rest = () => { s.head = s.p; s.x = s.x.map((_, k) => s.p - CAP - k * GAP); s.v = [0, 0, 0, 0]; s.sq = [0, 0, 0, 0]; draw(); };
+  if (still()) return s.rest();
   run(m, (dt) => {
     // Small steps, so the springs and the bumps stay stable at any frame rate.
     for (let t = 0; t < dt; t += 1 / 600) {
@@ -94,10 +94,10 @@ export function ringProgress(root: ParentNode, p: number): void {
 
 // ---- The bar ----
 const X0 = 18.5, L = 83, XMAX = 84, SC = 0.46;
-type Bar = Sim & { p: number; shown: number; ph: number; still: number; t: number; done: number };
+type Bar = Sim & { p: number; shown: number; ph: number; still: number; t: number; done: number; onDone?: () => void };
 
-/** Duo's bar (load) under `root` shows `p` (0..1). */
-export function barProgress(root: ParentNode, p: number): void {
+/** Duo's bar (load) under `root` shows `p` (0..1). `onDone` runs once he has finished at 100 % (at once on Still). */
+export function barProgress(root: ParentNode, p: number, onDone?: () => void): void {
   const m = loader(root, 'masc-load');
   if (!m) return;
   p = Math.max(0, Math.min(1, p));
@@ -105,8 +105,10 @@ export function barProgress(root: ParentNode, p: number): void {
   const s = (m._prog ??= { raf: 0, last: 0, p, shown: p, ph: 0, still: 0, t: 0, done: 0 }) as Bar;
   if (p !== s.p) s.still = 0; // it moved: no longer stalled
   s.p = p;
-  const q = (sel: string) => m.querySelector<SVGElement>(sel);
-  const set = (sel: string, prop: string, v: string) => q(sel)?.style.setProperty(prop, v);
+  if (onDone) s.onDone = onDone;
+  const finish = () => { const f = s.onDone; s.onDone = undefined; f?.(); };
+  // Every match: Duo's face is drawn in two halves, each with its own expressions.
+  const set = (sel: string, prop: string, v: string) => m.querySelectorAll<SVGElement>(sel).forEach((e) => e.style.setProperty(prop, v));
   const draw = () => {
     const x = Math.min(X0 + L * s.shown + 4.5 - 10, XMAX);
     const moving = !s.done && s.still < 0.6;
@@ -141,10 +143,8 @@ export function barProgress(root: ParentNode, p: number): void {
     set('.fb', 'opacity', s.done ? '1' : '0');
     set('.look', 'transform', s.done ? 'none' : 'translate(2.6px, .4px)');
   };
-  if (still()) {
-    s.shown = p; s.done = p >= 1 ? 1 : 0; s.still = 0;
-    return draw();
-  }
+  s.rest = () => { s.shown = s.p; s.done = s.p >= 1 ? 1 : 0; s.still = 0; draw(); if (s.done) finish(); };
+  if (still()) return s.rest();
   run(m, (dt) => {
     s.t += dt;
     const before = s.shown;
@@ -156,6 +156,7 @@ export function barProgress(root: ParentNode, p: number): void {
     if (s.shown >= 1) s.done += dt;
     draw();
     // Done and landed: stop. A stall keeps him straining (until the next update or he's off screen).
-    return !(s.done > 0.8);
+    if (s.done > 0.8) { finish(); return false; }
+    return true;
   });
 }

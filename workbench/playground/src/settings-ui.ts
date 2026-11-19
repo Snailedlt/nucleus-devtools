@@ -407,8 +407,10 @@ export function initSettings(d: Deps) {
     save();
     applyEditor();
     ($('#set-wrap') as HTMLInputElement).checked = ed.wrap;
-    // Said in the code, where the lines just changed (Alt+Z is pressed there).
-    codeNote(d.editor, d.editor.getCursor().line, ed.wrap ? 'Word wrap on: long lines wrap (Alt+Z turns it off).' : 'Word wrap off: long lines scroll sideways (Alt+Z turns it on).', { mood: 'info' });
+    // Said in the code, where the lines just changed; a toast when the code isn't shown (Form or Blocks).
+    const msg = ed.wrap ? 'Word wrap on: long lines wrap (Alt+Z turns it off).' : 'Word wrap off: long lines scroll sideways (Alt+Z turns it on).';
+    if (d.editor.getWrapperElement().offsetParent) codeNote(d.editor, d.editor.getCursor().line, msg, { mood: 'info' });
+    else d.toast(msg);
   }
   return { open, toggleWrap };
 }
