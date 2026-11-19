@@ -123,6 +123,11 @@ test('bots: the doc review link opens the form and fills fields that exist', () 
   }
   // The workbench adds its details to this link as ?context=… (withContext in playground/src/report.ts).
   assert.ok(ids.has('context'));
+  // "In practice" is named in the title; the name stays plain, so the bot still finds the member.
+  const p = new URL(docReviewUrl('Context.Arch', 'practice'));
+  assert.equal(p.searchParams.get('title'), 'Doc review: Context.Arch (In practice)');
+  assert.equal(bots.docReviewMember(`### Which name\n\n${p.searchParams.get('member')}\n`), 'Context.Arch');
+  assert.equal(u.searchParams.get('title'), 'Doc review: Context.Arch');
 });
 
 test('bots: the workflows use the tested module', () => {

@@ -1,8 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import * as acorn from 'acorn';
-import { lint } from '../core/lint';
-import { fixAll } from '../core/fix';
+import { lint, type Diagnostic } from '../core/lint';
+import { fixAll, matchLeftAfterFix } from '../core/fix';
 
 const HEADER = 'Game.GUID = "A";\nGame.GameName = "A";\nGame.ExecutableName = "a.exe";\n';
 const es5 = (code: string) => acorn.parse(code, { ecmaVersion: 5, allowReturnOutsideFunction: true });
@@ -128,4 +128,26 @@ test('cleanups: false leaves harmless lines that do nothing, and counts them', (
   // A deletion that also removes an error is a fix, not a cleanup.
   const err = HEADER + 'Game.MaxPlayers = missingCount;\nGame.MaxPlayers = 4;\n';
   assert.equal(fixAll(err, { cleanups: false }).code, HEADER + 'Game.MaxPlayers = 4;\n');
+});
+
+test('--fix-dry-run keeps an error whose message a fix changed, and one with no match at all', () => {
+  const text = 'a\nb\nc\n';
+  const d = (rule: string, message: string, start: number, severity: 'error' | 'warning' = 'error') => ({ rule: rule as Diagnostic['rule'], message, start, end: start + 1, severity });
+  const found = [d('undefined-name', '`x` ... the handler fails to load', 0), d('arrow-function', 'arrow', 2), d('same', 'same', 4, 'warning')];
+  const left = [d('undefined-name', '`x` ... that ends the session', 9), d('same', 'same', 7, 'warning'), d('no-var', 'new one', 3)];
+  const r = matchLeftAfterFix(text, found, [{ rule: 'arrow-function', line: 2 }], left);
+  // The fixed arrow is gone; undefined-name is kept at its own position with the message it has now.
+  assert.deepEqual(
+    r.kept.map((k) => [k.rule, k.start, k.message]),
+    [
+      ['undefined-name', 0, '`x` ... that ends the session'],
+      ['same', 4, 'same'],
+    ],
+  );
+  // An error left with nothing to match still shows, so the dry run still fails.
+  assert.deepEqual(r.extra.map((k) => k.rule), ['no-var']);
+  // Nothing changed by the fixes: everything is kept as it was.
+  const same = matchLeftAfterFix(text, found, [], found.map((f) => ({ ...f })));
+  assert.equal(same.kept.length, 3);
+  assert.equal(same.extra.length, 0);
 });

@@ -876,7 +876,9 @@
    "text": "This is the switch that makes Proto Input read each player's own keyboard and mouse: installing it is the only place Proto Input registers its raw input window, and it takes raw input away from the game (the game's own registrations are redirected to Proto Input). Everything per-player for keyboards and mice depends on it: the Send…Messages options post each player's input to their window, and the cursor and key state hooks (GetCursorPosHook, GetKeyStateHook, …) answer from the state it fills. Without it those hooks see no keys pressed and a frozen cursor. Most Proto Input handlers turn it on, many of them from Game.ProtoInput.OnInputLocked with ProtoInput.InstallHook.",
    "basis": {
     "source": [
-     { "project": "ProtoInputHooks", "file": "RegisterRawInputHook.cpp", "what": "(InstallImpl: FindAlreadySubscribedWindows, RawInput::UnregisterGameFromRawInput, RawInput::RegisterProtoForRawInput), RawInput.cpp (ProcessRawInput, Send…Messages), FakeMouseKeyboard" },
+     { "project": "ProtoInputHooks", "file": "RegisterRawInputHook.cpp", "what": "InstallImpl: FindAlreadySubscribedWindows, RawInput::UnregisterGameFromRawInput, RawInput::RegisterProtoForRawInput" },
+     { "project": "ProtoInputHooks", "file": "RawInput.cpp", "what": "ProcessRawInput, Send…Messages" },
+     { "project": "ProtoInputHooks", "file": "FakeMouseKeyboard.cpp" },
      { "project": "Nucleus", "file": "ProtoInputLauncher.cs" }
     ],
     "hub": { "counted": "2026-11-18" }

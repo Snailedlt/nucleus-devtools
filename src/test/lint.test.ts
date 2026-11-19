@@ -568,7 +568,7 @@ test('unused-option: an option nothing reads, faded (hint + unnecessary), quiet 
   // A key read by a typo'd name: still unused (and unknown-member points at the typo).
   assert.equal(only(play('var f = Context.Options["fsp"];'), 'unused-option').length, 1);
   // Read: bracket, dotted, lower-case `options` (Jint), a number key, a method with the key, in a function nothing calls.
-  for (const body of ['var f = Context.Options["fps"];', 'var f = Context.Options.fps;', 'var f = Context.options["fps"];', "var f = Context.Options['fps'];", 'if (Context.Options.ContainsKey("fps")) {}', 'function unused() { return Context.Options["fps"]; }']) {
+  for (const body of ['var f = Context.Options["fps"];', 'var f = Context.Options.fps;', 'var f = Context.options["fps"];', "var f = Context.Options['fps'];", 'if (Context.Options.ContainsKey("fps")) {}', 'if (Context.Options["ContainsKey"]("fps")) {}', 'function unused() { return Context.Options["fps"]; }']) {
     assert.deepEqual(only(play(body), 'unused-option'), [], body);
   }
   assert.deepEqual(only(HEADER + 'Game.AddOption("A", "", "0", ["x", "y"]);\nGame.Play = function () {\n  var a = Context.Options[0];\n};\n', 'unused-option'), []);
@@ -576,6 +576,9 @@ test('unused-option: an option nothing reads, faded (hint + unnecessary), quiet 
   for (const body of ['var k = "fps";\nvar f = Context.Options[k];', 'var o = Context.Options;', 'var c = Context;', 'show(Context.Options);', 'for (var k in Context.Options) {}', 'var n = Context.Options.Keys;', 'var f = Context["Options"][k];', 'eval("x");']) {
     assert.deepEqual(only(play(body), 'unused-option'), [], body);
   }
+  // A method written in brackets is still the method: it reads its own key, not one named "ContainsKey".
+  assert.equal(only(play('if (Context.Options["ContainsKey"]("fsp")) {}'), 'unused-option').length, 1);
+  assert.deepEqual(only(play('var n = Context.Options["Keys"];'), 'unused-option'), []);
   // A note with one value (or none) is no choice; ShowOptionAsStep doesn't read it (Nucleus only asks), so no fix.
   assert.deepEqual(only(HEADER + 'var note = ["READ"];\nGame.AddOption("Disband the lobby first", "", "note", note);\n', 'unused-option'), []);
   const step = only(HEADER + opt + 'Game.ShowOptionAsStep("fps", true, "FPS");\n', 'unused-option');

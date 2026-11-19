@@ -447,11 +447,13 @@ test('Docs panel: 👍/👎 inside each part as command links; the follow-up lin
   assert.match(up, /class="vote on"[^>]*aria-label="The doc: you said Right\. Activate to take it back"[^>]*title="You said: Right/);
   assert.doesNotMatch(up, /role="button"/, 'links, as they behave (no script for Space)');
   assert.match(up, />Give feedback</);
-  assert.match(up, /title=Doc%20feedback%3A%20Game\.KillMutex/);
+  assert.match(up, /title=Doc%20feedback%3A%20Game\.KillMutex&amp;/, 'the doc keeps the plain title');
   assert.doesNotMatch(up, /Tell us what's wrong/);
   const down = voteLine('Game.KillMutex', 'practice', '"In practice" (AI-written)', { 'practice/Game.KillMutex': 'down' }, true);
   assert.match(down, /Tell us what's wrong/);
-  assert.match(down, /title=Doc%20review%3A%20Game\.KillMutex/);
+  // The part is in the report: a 👎 on "In practice" says so in the title (the name stays plain for the bot).
+  assert.match(down, /title=Doc%20review%3A%20Game\.KillMutex%20\(In%20practice\)&amp;member=Game\.KillMutex"/);
+  assert.match(voteLine('Game.KillMutex', 'practice', 'p', { 'practice/Game.KillMutex': 'up' }, true), /title=Doc%20feedback%3A%20Game\.KillMutex%20\(In%20practice\)/);
   // No vote (or one taken back): no follow-up link.
   assert.doesNotMatch(voteLine('Game.KillMutex', 'doc', 'The doc', {}, true), /class="follow"/);
   assert.match(voteLine('Game.KillMutex', 'doc', 'The doc', {}, false), /telemetry is off/);

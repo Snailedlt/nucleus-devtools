@@ -11,7 +11,7 @@ import { publishedFor } from './published';
 import fs from 'node:fs';
 import path from 'node:path';
 import { lint, lineOf, lineStart, RULES, RuleId, Severity, LintOptions, looksLikeHandler } from './core/lint';
-import { fixAll } from './core/fix';
+import { fixAll, matchLeftAfterFix } from './core/fix';
 import { formatHandler } from './core/format';
 import { lookup, search, formatEntry, formatObject, markdownReference } from './core/lookup';
 import { handlerPageUrl, HubHandler } from './core/hub';
@@ -312,24 +312,13 @@ async function cmdLint(args: Args, json: boolean): Promise<number> {
         text = r.code;
       }
     }
-    // A dry run leaves the file as it is, so what's left is shown at the file's own line numbers: the fixed text is
-    // checked in memory, and each problem it still has is matched (rule and message) to one of the file's own,
-    // those on lines no fix touches first. So an error the fixes leave on a fixed line still shows.
+    // A dry run leaves the file as it is: what's left is shown at the file's own lines (core/fix.ts matchLeftAfterFix).
     let found = lint(text, fileOptions);
+    let extra: ((typeof found)[number] & { line: number; column: number })[] = [];
     if (fixMode === 'dry' && fixedText !== undefined && fixed.length) {
-      const key = (d: { rule: string; message: string }) => d.rule + '\0' + d.message;
-      const left = new Map<string, number>();
-      for (const d of lint(fixedText, fileOptions)) left.set(key(d), (left.get(key(d)) ?? 0) + 1);
-      const touched = (d: { rule: string; start: number }) => fixed.some((f) => f.rule === d.rule && f.line === lineOf(text, d.start) + 1);
-      const keep = new Set<(typeof found)[number]>();
-      for (const d of [...found.filter((d) => !touched(d)), ...found.filter(touched)]) {
-        const n = left.get(key(d)) ?? 0;
-        if (n > 0) {
-          keep.add(d);
-          left.set(key(d), n - 1);
-        }
-      }
-      found = found.filter((d) => keep.has(d));
+      const r = matchLeftAfterFix(text, found, fixed, lint(fixedText, fileOptions));
+      found = r.kept;
+      extra = r.extra.map((l) => ({ ...l, line: lineOf(fixedText!, l.start) + 1, column: l.start - lineStart(fixedText!, l.start) + 1 }));
     }
     const diags = found.filter((d) => (quiet ? d.severity === 'error' : verbose || d.severity !== 'hint'));
     for (const d of diags) {
@@ -337,6 +326,11 @@ async function cmdLint(args: Args, json: boolean): Promise<number> {
       else if (d.severity === 'warning') warnings++;
     }
     const withPos = diags.map((d) => ({ ...d, line: lineOf(text, d.start) + 1, column: d.start - lineStart(text, d.start) + 1 }));
+    for (const d of extra.filter((d) => (quiet ? d.severity === 'error' : verbose || d.severity !== 'hint'))) {
+      if (d.severity === 'error') errors++;
+      else if (d.severity === 'warning') warnings++;
+      withPos.push(d);
+    }
     // The handler's folder (<Name>/ next to <Name>.js), as it goes into the .nc: core/pkgcheck.ts.
     const pkgFiles = packageFilesFor(file, 0);
     const pkg = (pkgFiles ? checkPackage(text, pkgFiles) : []).filter((p) => (quiet ? p.severity === 'error' : true));
@@ -350,7 +344,7 @@ async function cmdLint(args: Args, json: boolean): Promise<number> {
       out.push({ file, ...(fixMode ? { fixed } : {}), diagnostics: withPos, ...(pkgOut.length ? { package: pkgOut } : {}) });
       continue;
     }
-    if (!diags.length && !fixed.length && !pkgOut.length) continue;
+    if (!withPos.length && !fixed.length && !pkgOut.length) continue;
     console.log(file);
     for (const f of fixed) console.log(`  ${`${f.line}`.padEnd(9)} ${(fixMode === 'dry' ? 'would fix' : 'fixed').padEnd(8)} ${f.title}  [${f.rule}]`);
     for (const d of withPos) {

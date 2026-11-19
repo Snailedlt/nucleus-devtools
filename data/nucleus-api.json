@@ -6918,9 +6918,22 @@
        {
         "project": "ProtoInputHooks",
         "file": "RegisterRawInputHook.cpp",
-        "what": "(InstallImpl: FindAlreadySubscribedWindows, RawInput::UnregisterGameFromRawInput, RawInput::RegisterProtoForRawInput), RawInput.cpp (ProcessRawInput, Send…Messages), FakeMouseKeyboard",
+        "what": "InstallImpl: FindAlreadySubscribedWindows, RawInput::UnregisterGameFromRawInput, RawInput::RegisterProtoForRawInput",
         "url": "https://github.com/SplitScreen-Me/splitscreenme-protoInput/blob/8dccabe27e14f3dee7eeceb16f91d7d2a85e2fc4/src/ProtoInput/ProtoInputHooks/RegisterRawInputHook.cpp",
         "commit": "8dccabe27e14f3dee7eeceb16f91d7d2a85e2fc4"
+       },
+       {
+        "project": "ProtoInputHooks",
+        "file": "RawInput.cpp",
+        "what": "ProcessRawInput, Send…Messages",
+        "url": "https://github.com/SplitScreen-Me/splitscreenme-protoInput/blob/ed71caab904545b9cb1f42148944bf0c818a5734/src/ProtoInput/ProtoInputHooks/RawInput.cpp",
+        "commit": "ed71caab904545b9cb1f42148944bf0c818a5734"
+       },
+       {
+        "project": "ProtoInputHooks",
+        "file": "FakeMouseKeyboard.cpp",
+        "url": "https://github.com/SplitScreen-Me/splitscreenme-protoInput/blob/ed71caab904545b9cb1f42148944bf0c818a5734/src/ProtoInput/ProtoInputHooks/FakeMouseKeyboard.cpp",
+        "commit": "ed71caab904545b9cb1f42148944bf0c818a5734"
        },
        {
         "project": "Nucleus",
@@ -8424,8 +8437,8 @@
         "project": "Nucleus devtools",
         "file": "AGENTS.md",
         "what": "last player's Context",
-        "url": "https://github.com/Snailedlt/splitscreenme-vscode/blob/ae1c71838323e2237d602cc445f3aee860718222/AGENTS.md",
-        "commit": "ae1c71838323e2237d602cc445f3aee860718222"
+        "url": "https://github.com/Snailedlt/splitscreenme-vscode/blob/8e6d10dc3435f6521cbe9d4f619ba10e485ca5f1/AGENTS.md",
+        "commit": "8e6d10dc3435f6521cbe9d4f619ba10e485ca5f1"
        }
       ]
      },
@@ -14542,9 +14555,30 @@
        {
         "project": "Nucleus",
         "file": "ProtoInput.cs",
-        "what": "SuspendExplorer summary), ProtoInputUtil KillExplorer.cpp (SuspendExplorer), protoinpututil.h comment, Nucleus LockInputRuntime.cs (Lock",
+        "what": "SuspendExplorer summary",
         "url": "https://github.com/SplitScreen-Me/splitscreenme-nucleus/blob/132a19aec0f5c22ebbce8efc1d555d6a154f95ed/Master/NucleusGaming/Coop/ProtoInput/ProtoInput.cs",
         "commit": "132a19aec0f5c22ebbce8efc1d555d6a154f95ed"
+       },
+       {
+        "project": "ProtoInputUtil",
+        "file": "KillExplorer.cpp",
+        "what": "SuspendExplorer",
+        "url": "https://github.com/SplitScreen-Me/splitscreenme-protoInput/blob/d1585a98ff9510db2e2841e2d325714965c4ac1d/src/ProtoInput/ProtoInputUtil/KillExplorer.cpp",
+        "commit": "d1585a98ff9510db2e2841e2d325714965c4ac1d"
+       },
+       {
+        "project": "ProtoInputUtil",
+        "file": "protoinpututil.h",
+        "what": "comment",
+        "url": "https://github.com/SplitScreen-Me/splitscreenme-protoInput/blob/067617c71293b592016e3d6b1164926fddad5948/src/ProtoInput/ProtoInputUtil/include/protoinpututil.h",
+        "commit": "067617c71293b592016e3d6b1164926fddad5948"
+       },
+       {
+        "project": "Nucleus",
+        "file": "LockInputRuntime.cs",
+        "what": "Lock",
+        "url": "https://github.com/SplitScreen-Me/splitscreenme-nucleus/blob/46a7fce7cdaf81f0f8f3dc531c49438a687b4ba6/Master/NucleusGaming/Coop/InputManagement/LockInputRuntime.cs",
+        "commit": "46a7fce7cdaf81f0f8f3dc531c49438a687b4ba6"
        }
       ]
      },
@@ -19826,7 +19860,7 @@
  "sourceCommits": {
   "SplitScreen-Me/splitscreenme-nucleus": "3d22c0e8a6dd624f08a5cce286cd594c8abf264d",
   "SplitScreen-Me/splitscreenme-protoInput": "e18e06bb345b86540e7464f7355c649bfdd17f38",
-  "Snailedlt/splitscreenme-vscode": "ae1c71838323e2237d602cc445f3aee860718222",
+  "Snailedlt/splitscreenme-vscode": "8e6d10dc3435f6521cbe9d4f619ba10e485ca5f1",
   "SplitScreen-Me/splitscreenme-www": "61870350cbae0d59189f68ec97874b930890d68d"
  }
 }

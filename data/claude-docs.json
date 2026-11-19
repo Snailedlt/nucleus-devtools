@@ -1011,7 +1011,10 @@
    "doc": "Suspends the threads of `explorer.exe` that own the taskbar, start menu, Alt+Tab and desktop menus, so they can't be opened by accident. `ProtoInput.RestartExplorer` must be called afterwards, or the desktop stays broken. Takes no parameters.",
    "basis": {
     "source": [
-     { "project": "Nucleus", "file": "ProtoInput.cs", "what": "SuspendExplorer summary), ProtoInputUtil KillExplorer.cpp (SuspendExplorer), protoinpututil.h comment, Nucleus LockInputRuntime.cs (Lock" }
+     { "project": "Nucleus", "file": "ProtoInput.cs", "what": "SuspendExplorer summary" },
+     { "project": "ProtoInputUtil", "file": "KillExplorer.cpp", "what": "SuspendExplorer" },
+     { "project": "ProtoInputUtil", "file": "protoinpututil.h", "what": "comment" },
+     { "project": "Nucleus", "file": "LockInputRuntime.cs", "what": "Lock" }
     ]
    }
   },

@@ -56,3 +56,30 @@ export function fixAll(text: string, options: LintOptions & { maxPasses?: number
     cleanups: after.filter((d) => isCleanup(d) && d.fixes?.some((f) => f.preferred)).length,
   };
 }
+
+/**
+ * `--fix-dry-run`: which of the file's own problems (`found`, in `text`) are still there after the fixes (`left`,
+ * linted from the fixed text), so they show at the file's own lines. Each problem left is matched to one of the
+ * file's by rule and message, those on lines no fix touched first; then by rule alone, since a fix can change the
+ * message of one it leaves (undefined-name's depends on where the name is), and the kept one takes the new message.
+ * `extra` is what's left with no match at all: still shown (at its line in the fixed text), so the dry run fails
+ * whenever `--fix` would.
+ */
+export function matchLeftAfterFix<D extends Pick<Diagnostic, 'rule' | 'message' | 'severity' | 'start'>>(text: string, found: D[], applied: Pick<AppliedFix, 'rule' | 'line'>[], left: D[]): { kept: D[]; extra: D[] } {
+  const rest = [...left];
+  const touched = (d: D) => applied.some((f) => f.rule === d.rule && f.line === lineOf(text, d.start) + 1);
+  const ordered = [...found.filter((d) => !touched(d)), ...found.filter(touched)];
+  const kept = new Map<D, D>();
+  const sameMessage = (d: D, l: D) => d.rule === l.rule && d.message === l.message;
+  const sameRule = (d: D, l: D) => d.rule === l.rule && d.severity === l.severity;
+  for (const same of [sameMessage, sameRule]) {
+    for (const d of ordered) {
+      if (kept.has(d)) continue;
+      const i = rest.findIndex((l) => same(d, l));
+      if (i < 0) continue;
+      kept.set(d, { ...d, message: rest[i].message });
+      rest.splice(i, 1);
+    }
+  }
+  return { kept: found.flatMap((d) => kept.get(d) ?? []), extra: rest };
+}

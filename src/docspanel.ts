@@ -51,8 +51,8 @@ export function voteLine(path: string, part: DocPart, label: string, mine: Recor
     const what = cur === v ? `${label}: you said ${name}. Activate to take it back` : `${label}: vote ${name}`;
     return `<a class="vote${cur === v ? ' on' : ''}" href="${esc(link(v))}" aria-label="${esc(what)}" title="${esc(cur === v ? `You said: ${name}. Click again to take it back.` : name)}">${icon}</a>`;
   };
-  const follow = cur === 'down' ? `<a class="follow" href="${esc(docReviewUrl(path))}">Tell us what's wrong</a>`
-    : cur === 'up' ? `<a class="follow" href="${esc(docFeedbackUrl(path))}">Give feedback</a>` : '';
+  const follow = cur === 'down' ? `<a class="follow" href="${esc(docReviewUrl(path, part))}">Tell us what's wrong</a>`
+    : cur === 'up' ? `<a class="follow" href="${esc(docFeedbackUrl(path, part))}">Give feedback</a>` : '';
   const note = canSend ? '' : '<span class="note">Votes are off because VS Code telemetry is off (Settings › Telemetry).</span>';
   const ask = part === 'practice' ? 'Is this right?' : 'Is this doc right?';
   return `<div class="votes" role="group" aria-label="${esc(`${label}: is it right?`)}"><span title="Anonymous counts, no account: they show in the docs after their next build. People's votes decide &quot;Verified by people&quot;.">${ask}</span> ${btn('up', '👍', 'Right')} ${btn('down', '👎', 'Wrong or unclear')}${follow ? ` ${follow}` : ''}${note ? ` ${note}` : ''}</div>`;

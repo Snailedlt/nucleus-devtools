@@ -2005,7 +2005,7 @@ interface GameProtoInput {
    * This hook will unsubscribe the game from Raw Input (if it has already subscribed to it), and then subscribes Proto Input to receive raw input instead. Raw input received is forwarded back to the game if it uses raw input. Proto Input receives all keyboard/mouse input from this hook so it always needs to be enabled.
    *
    * In practice: This is the switch that makes Proto Input read each player's own keyboard and mouse: installing it is the only place Proto Input registers its raw input window, and it takes raw input away from the game (the game's own registrations are redirected to Proto Input). Everything per-player for keyboards and mice depends on it: the Send…Messages options post each player's input to their window, and the cursor and key state hooks (GetCursorPosHook, GetKeyStateHook, …) answer from the state it fills. Without it those hooks see no keys pressed and a frozen cursor. Most Proto Input handlers turn it on, many of them from Game.ProtoInput.OnInputLocked with ProtoInput.InstallHook.
-   * (AI-written, based on ProtoInputHooks RegisterRawInputHook.cpp ((InstallImpl: FindAlreadySubscribedWindows, RawInput::UnregisterGameFromRawInput, RawInput::RegisterProtoForRawInput), RawInput.cpp (ProcessRawInput, Send…Messages), FakeMouseKeyboard), Nucleus ProtoInputLauncher.cs; verified Hub handlers, counted 2026-11-18.)
+   * (AI-written, based on ProtoInputHooks RegisterRawInputHook.cpp (InstallImpl: FindAlreadySubscribedWindows, RawInput::UnregisterGameFromRawInput, RawInput::RegisterProtoForRawInput), RawInput.cpp (ProcessRawInput, Send…Messages), FakeMouseKeyboard.cpp, Nucleus ProtoInputLauncher.cs; verified Hub handlers, counted 2026-11-18.)
    * @example Game.ProtoInput.RegisterRawInputHook = true;
    */
   RegisterRawInputHook: boolean;
@@ -4131,7 +4131,7 @@ interface ProtoInputRuntime {
   LockInput(lockInput: boolean): number;
   /**
    * Suspends the threads of `explorer.exe` that own the taskbar, start menu, Alt+Tab and desktop menus, so they can't be opened by accident. `ProtoInput.RestartExplorer` must be called afterwards, or the desktop stays broken. Takes no parameters.
-   * (AI-written, based on Nucleus ProtoInput.cs (SuspendExplorer summary), ProtoInputUtil KillExplorer.cpp (SuspendExplorer), protoinpututil.h comment, Nucleus LockInputRuntime.cs (Lock). Not from the official docs.)
+   * (AI-written, based on Nucleus ProtoInput.cs (SuspendExplorer summary), ProtoInputUtil KillExplorer.cpp (SuspendExplorer), protoinpututil.h (comment), Nucleus LockInputRuntime.cs (Lock). Not from the official docs.)
    */
   SuspendExplorer(): void;
   /**

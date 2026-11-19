@@ -475,14 +475,15 @@ class Analyzer {
       const key = m.computed ? (m.property.type === 'Literal' && typeof m.property.value === 'number' ? String(m.property.value) : lit(m.property)) : m.property.name;
       if (key === undefined) return void (unsure = true);
       const call = parent.get(m);
-      if (!m.computed && call?.type === 'CallExpression' && call.callee === m) {
+      // Jint looks a written-out name up as a member first, so `Options["ContainsKey"]` is the method, like `.ContainsKey`.
+      if (call?.type === 'CallExpression' && call.callee === m) {
         // `Context.Options.ContainsKey("fps")`: its written-out keys are read; anything else, can't tell.
         const keys = call.arguments.map(lit).filter((k: string | undefined): k is string => k !== undefined);
         if (!keys.length) return void (unsure = true);
         keys.forEach((k: string) => read.add(k));
         return;
       }
-      if (!m.computed && /^(Keys|Values|Count|GetEnumerator)$/.test(key)) return void (unsure = true);
+      if (/^(Keys|Values|Count|GetEnumerator)$/.test(key)) return void (unsure = true);
       read.add(key);
     });
     if (unsure) return;

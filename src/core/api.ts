@@ -419,12 +419,13 @@ export const claudeNote = (m: { docBy?: string; docBasis?: AiBasis; docCheckedBy
   : `AI-written, based on ${aiBasisWords(m.docBasis)}. Not from the official docs.`;
 
 /** The "Doc review" issue form for a Claude-written doc, with its name filled in (.github/ISSUE_TEMPLATE/doc-review.yml;
- *  the doc-review workflow adds the doc itself as a comment the reporter can't remove). */
-export const docReviewUrl = (path: string) =>
-  `https://github.com/Snailedlt/splitscreenme-vscode/issues/new?template=doc-review.yml&title=${encodeURIComponent(`Doc review: ${path}`)}&member=${encodeURIComponent(path)}`;
+ *  the doc-review workflow adds the doc itself as a comment the reporter can't remove). `part`: which part the vote was on;
+ *  "In practice" says so in the title (`Doc review: Game.KillMutex (In practice)`), the doc keeps the plain title. */
+export const docReviewUrl = (path: string, part: DocPart = 'doc') => docFormUrl('Doc review', path, part);
 /** The same form for feedback after a 👍 (something to add, a better example): titled as feedback. */
-export const docFeedbackUrl = (path: string) =>
-  `https://github.com/Snailedlt/splitscreenme-vscode/issues/new?template=doc-review.yml&title=${encodeURIComponent(`Doc feedback: ${path}`)}&member=${encodeURIComponent(path)}`;
+export const docFeedbackUrl = (path: string, part: DocPart = 'doc') => docFormUrl('Doc feedback', path, part);
+const docFormUrl = (kind: string, path: string, part: DocPart) =>
+  `https://github.com/Snailedlt/splitscreenme-vscode/issues/new?template=doc-review.yml&title=${encodeURIComponent(`${kind}: ${path}${part === 'practice' ? ' (In practice)' : ''}`)}&member=${encodeURIComponent(path)}`;
 
 /** The label of an AI-written "In practice" part (empty without one). */
 export const practiceNote = (m: Member) =>

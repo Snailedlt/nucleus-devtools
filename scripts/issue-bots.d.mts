@@ -10,7 +10,7 @@ export function detailsComment(body: string): string | null;
 export function docReviewMember(body: string): string;
 export function docReviewComment(member: string, d: { doc: string; basis: AiBasis } | undefined, sha: string): string;
 export function runReportDetails(args: { github: any; context: any }): Promise<void>;
-export function runDocReview(args: { github: any; context: any; docs: Record<string, { doc: string; basis: string }> }): Promise<void>;
+export function runDocReview(args: { github: any; context: any; docs: Record<string, { doc: string; basis: AiBasis }> }): Promise<void>;
 export const DETAILS: string;
 export const DETAILS_OLD: string;
 export const FIXED_MARKER: string;

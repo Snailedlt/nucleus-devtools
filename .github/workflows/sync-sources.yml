@@ -95,12 +95,14 @@ jobs:
             done
             npm run generate
           fi
-          # The engines data is linked at its last commit on GitHub: a new snapshot is committed and pushed to the pull
-          # request's branch first, then the model is made again, so its link shows this version.
+          # The engines data is linked at its last commit on GitHub: a new snapshot is committed and pushed first, then the
+          # model is made again, so its link shows this version. It goes to a staging branch, not the pull request's: an
+          # open sync pull request keeps its complete update until this run has built, tested and checked the links (the
+          # next step puts the final commit, a child of this one, on sync/upstream and deletes the staging branch).
           if ! git diff --quiet -- data/hub-engines.json; then
             git switch -C sync/upstream
             git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -qm "Hub game engines from the testbench's data branch" -- data/hub-engines.json
-            git push -qf origin sync/upstream
+            git push -qf origin HEAD:refs/heads/sync/upstream-staging
             npm run generate
           fi
           npm run build
@@ -124,6 +126,8 @@ jobs:
           git switch -C "$branch"
           git -c user.name='github-actions[bot]' -c user.email='41898282+github-actions[bot]@users.noreply.github.com' commit -qam "API model from Nucleus ${{ steps.check.outputs.nucleus }} and docs ${{ steps.check.outputs.www }}, with the docs' votes and Hub usage"
           git push -qf origin "$branch"
+          # The staging branch of the engines snapshot (Regenerate), if any: its commit is in sync/upstream now.
+          git push -q origin --delete sync/upstream-staging 2>/dev/null || true
           what=""
           [ "${{ steps.check.outputs.changed }}" = true ] && what="Nucleus Co-op's source or the splitscreen.me docs changed: review the diff of \`data/nucleus-api.json\` for new, removed or renamed options. "
           [ "$hubdiff" = true ] && what="$what The Hub handlers' usage changed (\`data/hub-examples.json\`, \`data/hub-engines.json\`): examples and counts in the docs. "
