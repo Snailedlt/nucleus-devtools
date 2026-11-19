@@ -594,11 +594,12 @@ function folderProgHtml(): string {
   return `<div class="fp-prog"><div class="fp-prog-row"><span id="gf-prog-text" role="status" aria-live="polite">${esc(p.phase === 'listing' ? `Reading ${p.name}…` : `Reading ${p.name}'s program files…`)}</span><button class="link" type="button" data-gf="cancel">Cancel</button></div>${bar}<div class="fp-prog-n muted" id="gf-prog-n">${esc(folderProgText(p))}</div></div>`;
 }
 onFolderProgress((p) => {
-  const phaseChanged = (folderProg?.phase ?? 'done') !== p.phase;
+  const prev = folderProg;
+  // A new step or another folder (the label names it): draw the section again; else only the numbers move.
+  const changed = (prev?.phase ?? 'done') !== p.phase || (p.phase !== 'done' && prev?.phase !== 'done' && prev?.name !== p.name);
   folderProg = p;
   const bar = document.getElementById('gf-prog-bar') as HTMLProgressElement | null;
-  // A new step (or nothing drawn yet): draw the section again; else only the numbers move.
-  if (phaseChanged || !bar) { pkgUI?.render(); if (p.phase === 'done') (editor as any).performLint(); return; }
+  if (changed || !bar) { pkgUI?.render(); if (p.phase === 'done') (editor as any).performLint(); return; }
   if (p.phase === 'binaries') { bar.max = Math.max(1, p.totalBytes); bar.value = p.bytes; }
   const n = document.getElementById('gf-prog-n');
   if (n) n.textContent = folderProgText(p);

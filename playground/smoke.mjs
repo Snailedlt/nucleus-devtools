@@ -972,6 +972,36 @@ await m.ctx.close();
   await s.ctx.close();
 }
 {
+  // Two reads at once (a second folder picked while the first's program files are still being read): the label names
+  // the newest read, the one Cancel stops; after Cancel the first read shows again and runs to its end.
+  const s = await page('light');
+  await s.ctx.addInitScript(() => {
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const file = (name, size) => ({ kind: 'file', name, getFile: async () => ({ name, size, arrayBuffer: async () => (await wait(500), new ArrayBuffer(64)) }) });
+    const dir = (name) => ({ kind: 'directory', name, async *values() { for (let i = 0; i < 16; i++) yield file(`m${i}.dll`, 1e6); } });
+    let n = 0;
+    window.showDirectoryPicker = async () => dir(n++ ? 'SecondGame' : 'FirstGame');
+  });
+  await s.p.goto(BASE + '#example-mistakes');
+  await s.p.waitForTimeout(900);
+  await s.p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
+  if (await s.p.$eval('#files-panel', (e) => e.hidden)) await s.p.click('#files-toggle');
+  await s.p.waitForTimeout(300);
+  await s.p.click('#files-panel [data-gf=pick]');
+  await s.p.waitForTimeout(1300);
+  const first = await s.p.evaluate(() => document.getElementById('gf-prog-text')?.textContent ?? '');
+  await s.p.click('#files-panel [data-gf=pick]');
+  await s.p.waitForTimeout(1300);
+  const second = await s.p.evaluate(() => document.getElementById('gf-prog-text')?.textContent ?? '');
+  check(/FirstGame/.test(first) && /SecondGame/.test(second), `game folder: with two reads the label names the newest (${first} | ${second})`);
+  await s.p.click('#files-panel [data-gf=cancel]');
+  await s.p.waitForTimeout(1300);
+  const after = await s.p.evaluate(() => document.getElementById('gf-prog-text')?.textContent ?? '');
+  check(/FirstGame/.test(after), `game folder: after Cancel the other read shows again (${after})`);
+  check(!s.errors.length, `game folder, two reads: no page errors ${s.errors.join(' ')}`);
+  await s.ctx.close();
+}
+{
   // Two tabs with the same code but different package files (pluginsInfo.txt in one): a Check still running when the
   // tab changes is dropped, so each tab shows its own result (the plugin known in one tab, flagged in the other).
   const s = await page('light');
