@@ -20,8 +20,8 @@ export type MascotId = 'n-sleep' | 'n-ok' | 'n-bad' | 'n-fix' | 'n-ring' | 'n-sp
 /** Scenes that are an event: played once and held at their end, the share HOLD of their cycle (ms, from the sheet's CSS). */
 const REACT: Partial<Record<MascotId, number>> = { 'n-ok': 3000, 'n-bad': 3400, 'n-fix': 3400 };
 const HOLD = 0.88;
-/** How long "once" lets an ambient scene's electrons run (CSS plays one cycle by itself). */
-const ONCE_MS = 5000;
+/** How long "once" lets an ambient scene run: a little over its longest cycle (n-idle's 5.2 s), then it's done. */
+const ONCE_MS = 5400;
 
 /** On unless they're turned off (a toast then keeps its plain icon). */
 export const mascotsOn = () => motion().mascots !== 'off';
@@ -39,32 +39,43 @@ const LOCAL = `.masc { display: inline-block; flex: none; line-height: 0; vertic
 :root :is(${reactSel}):not(.busy) svg :not(.eye) { animation-iteration-count: ${HOLD} !important; animation-fill-mode: forwards !important; }
 /* Still: the designed pose. A reaction jumps straight to its ending; the rest take no animation at all. */
 :root[data-mascots="still"] .masc:not(${reactSel}) *, :root[data-mascots="still"] :is(${reactSel}) .eye { animation: none !important; }
-:root[data-mascots="still"] :is(${reactSel}) svg :not(.eye) { animation-duration: 1ms !important; animation-delay: 0s !important; }`;
+:root[data-mascots="still"] :is(${reactSel}) svg :not(.eye) { animation-duration: 1ms !important; animation-delay: 0s !important; }
+/* Done (a reaction played, or "once" ran its cycle): if anything restarts it (a panel hidden with display: none and
+   shown again), it starts at its end instead of playing again. */
+.masc.masc-done svg :not(.eye), :root[data-mascots="once"] .masc.masc-done .eye { animation-delay: -1000s !important; }`;
 
 type MSvg = SVGSVGElement & { _left?: number; _t?: number; _since?: number };
 let ready = false;
 let n = 0;
 let io: IntersectionObserver | null = null;
 
-// SMIL (Nucli's electrons) ignores CSS: run it only while the mascot is on screen, and for "once", only until it has
-// been seen for ONCE_MS (or a reaction's length).
+// Runs while the mascot is on screen. SMIL (Nucli's electrons) ignores CSS, so it's paused and resumed here. A
+// reaction, and on "once" every scene that isn't loading, has a budget of time on screen (its length, or ONCE_MS):
+// once that's spent it's marked done, and on "once" its electrons stop too.
 function smil(m: HTMLElement) {
   const svg = m.firstElementChild as MSvg | null;
   if (!svg || typeof svg.pauseAnimations !== 'function') return;
   const mode = motion().mascots;
   const seen = !m.classList.contains('masc-wait') && !m.classList.contains('masc-off');
+  const busy = m.classList.contains('busy');
   clearTimeout(svg._t);
   if (svg._since !== undefined && svg._left !== undefined) svg._left -= performance.now() - svg._since;
   svg._since = undefined;
   try {
     if (mode === 'still' || mode === 'off') { svg.pauseAnimations(); svg.setCurrentTime(0); return; }
-    const forever = mode === 'loop' || m.classList.contains('busy');
-    if (!seen || (!forever && (svg._left ?? 1) <= 0)) { svg.pauseAnimations(); return; }
+    const stopSmil = mode === 'once' && !busy;
+    const budget = busy ? undefined : reactMs(m) ?? (mode === 'once' ? ONCE_MS : undefined);
+    const done = m.classList.contains('masc-done');
+    if (!seen || (done && stopSmil)) { svg.pauseAnimations(); return; }
     svg.unpauseAnimations();
-    if (forever) return;
-    svg._left ??= reactMs(m) ?? ONCE_MS;
+    if (budget === undefined || done) return;
+    svg._left ??= budget;
     svg._since = performance.now();
-    svg._t = window.setTimeout(() => { svg._left = 0; svg._since = undefined; try { svg.pauseAnimations(); } catch { /* gone */ } }, svg._left);
+    svg._t = window.setTimeout(() => {
+      svg._left = 0; svg._since = undefined;
+      m.classList.add('masc-done');
+      if (stopSmil) try { svg.pauseAnimations(); } catch { /* gone */ }
+    }, Math.max(0, svg._left));
   } catch { /* not ready */ }
 }
 
@@ -109,7 +120,8 @@ function setup() {
   document.querySelectorAll<HTMLElement>('.masc').forEach(watch);
   onMotion(() => document.querySelectorAll<HTMLElement>('.masc').forEach((m) => {
     const svg = m.firstElementChild as MSvg | null;
-    if (svg) svg._left = undefined; // a new mode starts "once" afresh
+    if (svg) { svg._left = undefined; svg._since = undefined; } // a new mode starts afresh
+    m.classList.remove('masc-done');
     smil(m);
   }));
 }
@@ -137,12 +149,41 @@ export function mascot(id: MascotId, opts: { size?: number; label?: string; clas
  */
 export function keepMascots(el: Element, draw: () => void): void {
   const old = [...el.querySelectorAll<HTMLElement>('.masc[data-m]')];
+  // Taking a node out of the page ends its CSS animations and resets its SMIL clock, so note where each one was.
+  const at = old.map(snapshot);
   draw();
   if (!old.length) return;
   for (const m of el.querySelectorAll<HTMLElement>('.masc[data-m]')) {
     const i = old.findIndex((o) => o.dataset.m === m.dataset.m);
     if (i < 0) continue;
     m.replaceWith(old[i]);
+    restore(old[i], at[i]);
     old.splice(i, 1);
+    at.splice(i, 1);
   }
+}
+
+type Snap = { css: Map<Element, Map<string, number>>; smil?: number; paused?: boolean };
+function snapshot(m: HTMLElement): Snap {
+  const css = new Map<Element, Map<string, number>>();
+  for (const a of m.getAnimations({ subtree: true })) {
+    const t = (a.effect as KeyframeEffect | null)?.target;
+    const name = (a as CSSAnimation).animationName;
+    if (!t || !name || typeof a.currentTime !== 'number') continue;
+    if (!css.has(t)) css.set(t, new Map());
+    css.get(t)!.set(name, a.currentTime);
+  }
+  const svg = m.firstElementChild as SVGSVGElement | null;
+  try { return { css, smil: svg?.getCurrentTime(), paused: svg?.animationsPaused() }; } catch { return { css }; }
+}
+function restore(m: HTMLElement, s: Snap) {
+  for (const a of m.getAnimations({ subtree: true })) {
+    const t = (a.effect as KeyframeEffect | null)?.target;
+    const was = t ? s.css.get(t)?.get((a as CSSAnimation).animationName) : undefined;
+    if (was !== undefined) a.currentTime = was;
+  }
+  const svg = m.firstElementChild as SVGSVGElement | null;
+  try {
+    if (svg && s.smil !== undefined) { svg.setCurrentTime(s.smil); if (s.paused) svg.pauseAnimations(); }
+  } catch { /* not ready */ }
 }
