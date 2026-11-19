@@ -1,9 +1,9 @@
 // Builds dist/workbench.html: one self-contained page (no CDN needed) with the
-// splitscreenme-vscode linter/API core, CodeMirror 5, the probes and their Jint results.
+// linter/API core (this repository's src/core), CodeMirror 5, the probes and their Jint results.
 //
-//   node build.mjs [--core ../../splitscreenme-vscode]
+//   node build.mjs [--core <repo root>]
 //
-// The core is imported from a checkout of splitscreenme-vscode (src/core), so the
+// The core is imported from the repository root (src/core; run `npm ci` there first), so the
 // page always runs the same linter as the extension.
 import { siteHeader, SITE_HEADER_CSS, siteVisitScript, COPY_CSS, COPY_SCRIPT, COMMUNITY, COMMUNITY_CSS, withCommunity, setReportFlag } from './site-chrome.mjs';
 import fs from 'node:fs';
@@ -27,13 +27,13 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 // A Windows checkout made before .gitattributes (eol=lf) has CRLF files, which the build's line-based parsing
 // can't read. Say how to fix it instead of failing somewhere deep inside.
 if (fs.readFileSync(path.join(here, '..', 'probes', 'expected.txt'), 'utf8').includes('\r')) {
-  console.error('This checkout has Windows (CRLF) line endings; the build needs LF. Fix it once, in nucleuscoop-handler-testbench\n(this discards uncommitted changes there):\n\n  git rm -r -q --cached . && git reset -q --hard\n');
+  console.error('This checkout has Windows (CRLF) line endings; the build needs LF. Fix it once, in nucleus-devtools\n(this discards uncommitted changes there):\n\n  git rm -r -q --cached . && git reset -q --hard\n');
   process.exit(1);
 }
 const argCore = process.argv.indexOf('--core');
-const coreRepo = path.resolve(argCore > 0 ? process.argv[argCore + 1] : process.env.SPLITSCREENME_VSCODE ?? path.join(here, '..', '..', 'splitscreenme-vscode'));
+const coreRepo = path.resolve(argCore > 0 ? process.argv[argCore + 1] : process.env.CORE_DIR ?? path.join(here, '..', '..'));
 if (!fs.existsSync(path.join(coreRepo, 'src', 'core', 'lint.ts'))) {
-  console.error(`splitscreenme-vscode not found at ${coreRepo}. Pass --core <path>.`);
+  console.error(`The extension's core (src/core) not found at ${coreRepo}. Pass --core <repo root>.`);
   process.exit(1);
 }
 if (!fs.existsSync(path.join(coreRepo, 'node_modules', 'acorn'))) {
@@ -706,7 +706,7 @@ fs.writeFileSync(path.join(startDir, 'index.html'), renderSitePage(startSrc, 'st
 fs.writeFileSync(path.join(toolsDir, 'index.html'), renderSitePage(toolsSrc, 'tools/'));
 // The gallery's screenshots (<tool>-<view>-light/dark.webp, the workbench's looks as workbench-look-<look>-…): each
 // view in light and dark, compared with the slider on the page. One set, also shown by the READMEs: the workbench's
-// (workbench-*) from this repo's docs/images/gallery, the editors' (vscode-*, notepadpp-*) from splitscreenme-vscode's.
+// (workbench-*) from this repo's docs/images/gallery, the editors' (vscode-*, notepadpp-*) from the repository root's docs/images/gallery.
 fs.rmSync(path.join(startDir, 'gallery'), { recursive: true, force: true });
 fs.mkdirSync(path.join(startDir, 'gallery'), { recursive: true });
 {
@@ -806,7 +806,7 @@ fs.mkdirSync(path.join(startDir, 'videos'), { recursive: true });
 for (const [dir, names] of [[path.join(here, '..', 'docs', 'videos'), ['workbench']], [path.join(coreRepo, 'docs', 'videos'), ['vscode', 'notepadpp']]])
   for (const n of names) for (const f of [`${n}.mp4`, `${n}-poster.jpg`]) {
     // The start page plays each of these: a missing one would ship as a broken player, so stop here.
-    if (!fs.existsSync(path.join(dir, f))) throw new Error(`build: ${path.join(dir, f)} is missing (the start page shows it). The editors' videos come from splitscreenme-vscode's docs/videos.`);
+    if (!fs.existsSync(path.join(dir, f))) throw new Error(`build: ${path.join(dir, f)} is missing (the start page shows it). The editors' videos come from the repository root's docs/videos.`);
     fs.copyFileSync(path.join(dir, f), path.join(startDir, 'videos', f));
   }
 // The editor icons ("Works in your editor"): Devicon's where it has one, a neutral stand-in where it doesn't.

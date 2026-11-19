@@ -1,6 +1,6 @@
 // Unit tests for the workbench's pure modules (playground/src): share links, packages, theme files, looks, key
 // bindings and the saved file's name. Run: node tools/workbench-units.test.mjs (or npm test in playground).
-// The extension's core is found as in tools/bundle-ts.mjs (CORE_DIR, ./core, ../splitscreenme-vscode).
+// The extension's core is found as in tools/bundle-ts.mjs (the repository root; CORE_DIR overrides it).
 import assert from 'node:assert/strict';
 import test from 'node:test';
 import fs from 'node:fs';

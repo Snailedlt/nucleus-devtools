@@ -2,7 +2,7 @@
 // Reads already-downloaded handlers (folders with a handler.js, or the weekly check's <id>-v<N>.js)
 // and writes only the counts: no handler code leaves this machine. The weekly check runs it on the
 // verified Hub handlers it downloads anyway, and publishes the result on the `data` branch.
-//   node tools/usage-counts.mjs <handlers-dir> [--core ../splitscreenme-vscode] [--out file]
+//   node tools/usage-counts.mjs <handlers-dir> [--core <repo root>] [--out file]
 // Writes playground/src/usage.json (or --out).
 import fs from 'node:fs';
 import path from 'node:path';
@@ -11,8 +11,8 @@ const here = path.dirname(new URL(import.meta.url).pathname);
 const args = process.argv.slice(2);
 const dir = args[0];
 const coreAt = args.indexOf('--core');
-const core = path.resolve(coreAt >= 0 ? args[coreAt + 1] : path.join(here, '..', '..', 'splitscreenme-vscode'));
-if (!dir) throw new Error('usage: node tools/usage-counts.mjs <handlers-dir> [--core <splitscreenme-vscode>]');
+const core = path.resolve(coreAt >= 0 ? args[coreAt + 1] : path.join(here, '..', '..'));
+if (!dir) throw new Error('usage: node tools/usage-counts.mjs <handlers-dir> [--core <repo root>]');
 const api = JSON.parse(fs.readFileSync(path.join(core, 'data', 'nucleus-api.json'), 'utf8'));
 
 // Root object -> how handlers write it (Jint: only the first letter of a member is case-insensitive).

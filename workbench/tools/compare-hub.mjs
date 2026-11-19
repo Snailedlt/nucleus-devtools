@@ -1,8 +1,8 @@
 // Nightly differential check on real handlers: for every verified Hub handler, compares what the
-// real engine (run.sh --verified, Jint 2.11.58) did with what Try it (splitscreenme-vscode's
-// `nucleus simulate`) predicts, and lints it. Exit 1 when they disagree or a handler has lint errors.
+// real engine (run.sh --verified, Jint 2.11.58) did with what Try it (the repository root's
+// `ncdev simulate`) predicts, and lints it. Exit 1 when they disagree or a handler has lint errors.
 //
-//   node tools/compare-hub.mjs <run.sh --verified output> <path to splitscreenme-vscode>
+//   node tools/compare-hub.mjs <run.sh --verified output> <repo root>
 //
 // ENV results (the handler touched real files, which the Linux harness can't provide) are listed
 // but not compared.
@@ -12,7 +12,7 @@ import { execFileSync } from 'node:child_process';
 
 const [jintOut, core] = process.argv.slice(2);
 if (!jintOut || !core) {
-  console.error('usage: node tools/compare-hub.mjs <run.sh output> <splitscreenme-vscode>');
+  console.error('usage: node tools/compare-hub.mjs <run.sh output> <repo root>');
   process.exit(2);
 }
 const cli = path.join(core, 'dist', 'cli.js');

@@ -1,6 +1,5 @@
 // Loads a workbench module (playground/src/*.ts) in Node for a test: bundled with esbuild the way build.mjs does it,
-// with `@core` pointing at splitscreenme-vscode's src/core (CORE_DIR, ./core as in pages.yml, or
-// ../splitscreenme-vscode) and CodeMirror stubbed out. Browser globals a module reads (localStorage, CSS) are the
+// with `@core` pointing at the repository root's src/core (CORE_DIR overrides it) and CodeMirror stubbed out. Browser globals a module reads (localStorage, CSS) are the
 // test's to set before loading.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -10,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const esbuild = createRequire(path.join(root, 'playground/package.json'))('esbuild');
 
-export const coreDir = [process.env.CORE_DIR, process.env.SPLITSCREENME_VSCODE, path.join(root, 'core'), path.join(root, '../splitscreenme-vscode')]
+export const coreDir = [process.env.CORE_DIR, path.join(root, '..')]
   .filter(Boolean)
   .map((d) => path.resolve(d))
   .find((d) => fs.existsSync(path.join(d, 'src/core/lint.ts')));
@@ -25,7 +24,7 @@ const stub = {
 
 /** The module's exports. `file`: relative to the repository root, or absolute. */
 export async function load(file) {
-  if (!coreDir) throw new Error('splitscreenme-vscode not found: set CORE_DIR');
+  if (!coreDir) throw new Error('The extension\'s core (src/core) not found at the repository root: set CORE_DIR');
   const r = await esbuild.build({
     entryPoints: [path.isAbsolute(file) ? file : path.join(root, file)],
     bundle: true,

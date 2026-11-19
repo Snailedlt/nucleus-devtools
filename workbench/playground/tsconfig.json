@@ -2,7 +2,7 @@
   "compilerOptions": {
     "target": "ES2020", "module": "esnext", "moduleResolution": "node", "strict": true, "noEmit": true,
     "lib": ["ES2020", "DOM"], "resolveJsonModule": true, "esModuleInterop": true, "skipLibCheck": true,
-    "baseUrl": ".", "paths": { "@core/*": ["../../splitscreenme-vscode/src/core/*"], "acorn": ["../../splitscreenme-vscode/node_modules/acorn"] },
+    "baseUrl": ".", "paths": { "@core/*": ["../../src/core/*"], "acorn": ["../../node_modules/acorn"] },
     "types": [], "ignoreDeprecations": "6.0"
   },
   "include": ["src/**/*.ts"]

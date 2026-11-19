@@ -1,10 +1,10 @@
-// Differential check: the "Try it" simulation (src/core/sim.ts in splitscreenme-vscode, also
+// Differential check: the "Try it" simulation (src/core/sim.ts at the repository root, also
 // used by this workbench) against real Jint 2.11.58.
 // Runs every probe through the simulation and compares the outcome (and, for probes that
 // run, Context.StartArguments of player 1) with probes/expected.txt, which test-probes.sh
 // records from the real engine.
 //
-//   node sim-parity.mjs [--core ../../splitscreenme-vscode] [--isolated]
+//   node sim-parity.mjs [--core <repo root>] [--isolated]
 //
 // --isolated runs each probe through `nucleus simulate --json` (the core's dist/cli.js, so run
 // `npm run build` there first): the sandboxed path the CLI and VS Code use.
@@ -16,7 +16,7 @@ import * as esbuild from 'esbuild';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const argCore = process.argv.indexOf('--core');
-const coreRepo = path.resolve(argCore > 0 ? process.argv[argCore + 1] : process.env.SPLITSCREENME_VSCODE ?? path.join(here, '..', '..', 'splitscreenme-vscode'));
+const coreRepo = path.resolve(argCore > 0 ? process.argv[argCore + 1] : process.env.CORE_DIR ?? path.join(here, '..', '..'));
 const out = await esbuild.build({
   stdin: { contents: "export * from '@core/sim';", resolveDir: here, loader: 'ts' },
   bundle: true,
