@@ -1,7 +1,7 @@
 blank_issues_enabled: true
 contact_links:
   - name: A wrong or missing check, Try it, the docs, VS Code, Notepad++, ncdev or another editor
-    url: https://github.com/Snailedlt/splitscreenme-vscode/issues/new/choose
+    url: https://github.com/Snailedlt/nucleus-devtools/issues/new/choose
     about: The checks, Try it and the editor tools live in splitscreenme-vscode. (In the workbench, "This check is wrong" on a problem and the report button in Try it open the right form.)
   - name: A problem with one Hub handler (a game that doesn't work)
     url: https://hub.splitscreen.me/

@@ -425,7 +425,7 @@ export const docReviewUrl = (path: string, part: DocPart = 'doc') => docFormUrl(
 /** The same form for feedback after a 👍 (something to add, a better example): titled as feedback. */
 export const docFeedbackUrl = (path: string, part: DocPart = 'doc') => docFormUrl('Doc feedback', path, part);
 const docFormUrl = (kind: string, path: string, part: DocPart) =>
-  `https://github.com/Snailedlt/splitscreenme-vscode/issues/new?template=doc-review.yml&title=${encodeURIComponent(`${kind}: ${path}${part === 'practice' ? ' (In practice)' : ''}`)}&member=${encodeURIComponent(path)}`;
+  `https://github.com/Snailedlt/nucleus-devtools/issues/new?template=doc-review.yml&title=${encodeURIComponent(`${kind}: ${path}${part === 'practice' ? ' (In practice)' : ''}`)}&member=${encodeURIComponent(path)}`;
 
 /** The label of an AI-written "In practice" part (empty without one). */
 export const practiceNote = (m: Member) =>

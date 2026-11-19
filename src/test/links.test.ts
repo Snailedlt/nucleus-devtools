@@ -59,7 +59,7 @@ test('links: every README, PORTING and TESTING anchor the tools and docs use exi
     const found: [string, string][] = [];
     for (const m of text.matchAll(/\b(README|PORTING|TESTING)\.md#([\w%-]+)/g)) found.push([`${m[1]}.md`, m[2]]);
     // The repository's own page is its README.
-    for (const m of text.matchAll(/github\.com\/Snailedlt\/splitscreenme-vscode\/?#([\w%-]+)/g)) found.push(['README.md', m[1]]);
+    for (const m of text.matchAll(/github\.com\/Snailedlt\/nucleus-devtools\/?#([\w%-]+)/g)) found.push(['README.md', m[1]]);
     for (const m of text.matchAll(/\$\{repo\}#([\w-]+)/g)) found.push(['README.md', m[1]]);
     for (const [file, anchor] of found) {
       checked++;

@@ -58,7 +58,7 @@ export function reportContext(extra: Record<string, string | undefined> = {}): s
 
 // The workbench's own feedback goes to this repo's form (.github/ISSUE_TEMPLATE/feedback.yml); checks and the editors
 // have theirs in splitscreenme-vscode.
-const FORM = 'https://github.com/Snailedlt/nucleuscoop-handler-testbench/issues/new';
+const FORM = 'https://github.com/Snailedlt/nucleus-devtools/issues/new';
 /** Phones and tablets only: the GitHub app can catch github.com links, and it opens a blank issue: no form, no details. */
 export const onPhone = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
 export const GH_APP_NOTE = 'Opens GitHub. Use your browser, not the GitHub app: the app leaves out the form and its details.';

@@ -149,7 +149,7 @@ export function setupNotepadPP(opts: SetupOptions): SetupResult {
       if (!fs.existsSync(backup)) fs.copyFileSync(file, backup);
       fs.writeFileSync(file, mergeNotepadPP(fs.readFileSync(backup, 'utf8'), VERSION));
       lines.push(`Added the Nucleus names and call tips to Notepad++ (${file}); its own JavaScript words are kept. Restart Notepad++ to use them.`);
-      if (opts.plugins && !plugin) lines.push(`There's no plugin for ${arch} Notepad++ yet, so it gets the names and call tips instead. Ask for one: https://github.com/Snailedlt/splitscreenme-vscode/issues`);
+      if (opts.plugins && !plugin) lines.push(`There's no plugin for ${arch} Notepad++ yet, so it gets the names and call tips instead. Ask for one: https://github.com/Snailedlt/nucleus-devtools/issues`);
     }
   } catch (e: any) {
     if (e?.code === 'EACCES' || e?.code === 'EPERM') return { ok: false, denied: true, lines: [`Notepad++'s folder isn't writable (${dir}). Run this once from a terminal opened as administrator (right-click › Run as administrator), or use a portable Notepad++ with --path.`] };

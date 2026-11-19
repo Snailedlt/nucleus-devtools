@@ -232,7 +232,7 @@ const SOURCES = [
 const found = (re) => SOURCES.flatMap((f) => [...fs.readFileSync(path.join(root, f), 'utf8').matchAll(re)].map((m) => ({ file: f, m })));
 
 test('links into the extension repository match its files and headings', () => {
-  const repo = /https:\/\/github\.com\/Snailedlt\/splitscreenme-vscode((?:\/(?:blob|tree)\/main\/[^\s"'`)<>#?]+)?)(?:#([^\s"'`)<>]+))?/g;
+  const repo = /https:\/\/github\.com\/Snailedlt\/nucleus-devtools((?:\/(?:blob|tree)\/main\/[^\s"'`)<>#?]+)?)(?:#([^\s"'`)<>]+))?/g;
   const anchors = new Map();
   const anchorsOf = (rel) => {
     if (!anchors.has(rel)) anchors.set(rel, markdownAnchors(path.join(coreDir, rel)));

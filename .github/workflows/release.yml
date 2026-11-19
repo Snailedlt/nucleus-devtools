@@ -51,7 +51,7 @@ jobs:
         run: git diff --exit-code -- plugin/
       - name: Build the offline workbench (workbench.html)
         run: |
-          git clone --quiet --depth 1 https://github.com/Snailedlt/nucleuscoop-handler-testbench testbench
+          git clone --quiet --depth 1 https://github.com/Snailedlt/nucleus-devtools testbench
           cd testbench/playground && npm ci && node build.mjs --core ../.. --refresh-hub
           cp dist/workbench-standalone.html "$GITHUB_WORKSPACE/workbench.html"
       - name: Package

@@ -4,7 +4,7 @@
   "nucleus": { "github": "SplitScreen-Me/splitscreenme-nucleus", "branch": "master", "clones": ["../splitscreenme-nucleus"], "env": "NUCLEUS_REPO" },
   "protoinput": { "github": "SplitScreen-Me/splitscreenme-protoInput", "branch": "master", "clones": ["../splitscreenme-protoInput", "../protoinput-src"], "env": "PROTOINPUT_REPO" },
   "www": { "github": "SplitScreen-Me/splitscreenme-www", "branch": "master", "clones": ["../splitscreenme-www"], "env": "WWW_REPO", "site": { "dir": "docs", "url": "https://www.splitscreen.me/docs/" } },
-  "devtools": { "github": "Snailedlt/splitscreenme-vscode", "branch": "main", "clones": ["."], "ref": "head" }
+  "devtools": { "github": "Snailedlt/nucleus-devtools", "branch": "main", "clones": ["."], "ref": "head" }
  },
  "projects": {
   "Nucleus": { "repo": "nucleus" },

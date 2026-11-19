@@ -6,7 +6,7 @@ import { hlHtml } from './codehl';
 import { kbdify } from './kbd';
 import { aboutVisual, VISUAL } from './visual';
 
-const REPO = 'https://github.com/Snailedlt/nucleuscoop-handler-testbench';
+const REPO = 'https://github.com/Snailedlt/nucleus-devtools';
 declare const CHANGES: { id: string; n?: number; intro?: string; items: { group: string; summary: string; details: string; images?: { alt: string; file: string; dark?: string; still?: string; stillDark?: string }[] }[] }[];
 // Form and Blocks are hidden for now (visual.ts): What's new and the update note leave out the lines about them, and
 // the parts of an intro that name them. CHANGELOG.md keeps them.

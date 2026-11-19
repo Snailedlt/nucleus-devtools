@@ -12,7 +12,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const src = process.argv[2] ?? 'https://raw.githubusercontent.com/Snailedlt/nucleuscoop-handler-testbench/data/votes.json';
+const src = process.argv[2] ?? 'https://raw.githubusercontent.com/Snailedlt/nucleus-devtools/data/votes.json';
 let text;
 if (/^https?:/.test(src)) {
   const res = await fetch(src);

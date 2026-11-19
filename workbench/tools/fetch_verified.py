@@ -31,10 +31,10 @@ OUT = os.path.join(ROOT, 'downloads')
 
 
 # Name the tool, so the Hub's maintainers can see who is asking (and reach us).
-UA = 'nucleus-handler-testbench (+https://github.com/Snailedlt/nucleuscoop-handler-testbench)'
+UA = 'nucleus-handler-testbench (+https://github.com/Snailedlt/nucleus-devtools)'
 
 
-INDEX = 'https://raw.githubusercontent.com/Snailedlt/nucleuscoop-handler-testbench/data/hub-index.json'
+INDEX = 'https://raw.githubusercontent.com/Snailedlt/nucleus-devtools/data/hub-index.json'
 
 
 def get(url, binary=False):

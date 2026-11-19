@@ -31,7 +31,7 @@ permissions: {}
 
 # The extension repository the test build comes from (change it here if the tools move upstream).
 env:
-  EXT_REPO: Snailedlt/splitscreenme-vscode
+  EXT_REPO: Snailedlt/nucleus-devtools
 
 concurrency:
   group: test-build

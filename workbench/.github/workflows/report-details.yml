@@ -16,7 +16,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          repository: Snailedlt/splitscreenme-vscode
+          repository: Snailedlt/nucleus-devtools
           ref: main
           sparse-checkout: scripts/issue-bots.mjs
           sparse-checkout-cone-mode: false

@@ -7,14 +7,14 @@
   "license": "MIT",
   "preview": true,
   "pricing": "Free",
-  "homepage": "https://github.com/Snailedlt/splitscreenme-vscode",
+  "homepage": "https://github.com/Snailedlt/nucleus-devtools",
   "bugs": {
-    "url": "https://github.com/Snailedlt/splitscreenme-vscode/issues"
+    "url": "https://github.com/Snailedlt/nucleus-devtools/issues"
   },
-  "qna": "https://github.com/Snailedlt/splitscreenme-vscode/issues",
+  "qna": "https://github.com/Snailedlt/nucleus-devtools/issues",
   "repository": {
     "type": "git",
-    "url": "https://github.com/Snailedlt/splitscreenme-vscode"
+    "url": "https://github.com/Snailedlt/nucleus-devtools"
   },
   "engines": {
     "vscode": "^1.85.0"
@@ -504,7 +504,7 @@
               "SplitScreen.Me"
             ],
             "default": {},
-            "markdownDescription": "Override the severity of individual checks on Nucleus Co-op handlers, e.g. `{ \"deprecated\": \"off\", \"unknown-member\": \"error\" }`. See the [rule list](https://github.com/Snailedlt/splitscreenme-vscode#lint-rules).",
+            "markdownDescription": "Override the severity of individual checks on Nucleus Co-op handlers, e.g. `{ \"deprecated\": \"off\", \"unknown-member\": \"error\" }`. See the [rule list](https://github.com/Snailedlt/nucleus-devtools#lint-rules).",
             "properties": {
               "syntax-error": {
                 "type": "string",

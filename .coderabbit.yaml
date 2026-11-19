@@ -72,7 +72,7 @@ knowledge_base:
   mcp:
     usage: enabled
   linked_repositories:
-    - repository: "Snailedlt/nucleuscoop-handler-testbench"
+    - repository: "Snailedlt/nucleus-devtools"
       instructions: "The browser workbench and site (playground/), which imports this repo's src/core (lint, sim, features, pkgcheck, gamefolder, airules) through its @core alias, and the Jint testbench whose probes record how the real engine behaves. A change to src/core's exports, rule ids or docs URLs can break it."
   code_guidelines:
     enabled: true

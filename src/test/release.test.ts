@@ -75,7 +75,7 @@ test('release-notes: the section, the GitHub notes and the Discord posts', async
   assert.ok(gh.startsWith(body) && gh.includes('splitscreenme-vscode-v1.2.0.vsix'));
   assert.equal(
     discordText(body, 'v1.2.0'),
-    '**v1.2.0 is out** 🛠️\n• First\n• Second\n• Third\n\n<https://github.com/Snailedlt/splitscreenme-vscode/releases/tag/v1.2.0>\nThanks Ann, Bob 🙏',
+    '**v1.2.0 is out** 🛠️\n• First\n• Second\n• Third\n\n<https://github.com/Snailedlt/nucleus-devtools/releases/tag/v1.2.0>\nThanks Ann, Bob 🙏',
   );
   const p = discordPayload(body, 'v1.2.0', new Date('2026-01-02T00:00:00Z'));
   const e = p.embeds[0];

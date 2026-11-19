@@ -53,7 +53,7 @@ jobs:
         id: data
         run: |
           node scripts/doc-votes.mjs || echo "::warning::No votes report: data/doc-votes.json stays."
-          if git clone -q --depth 1 --branch data --filter=blob:none https://github.com/Snailedlt/nucleuscoop-handler-testbench.git ../hubdata; then
+          if git clone -q --depth 1 --branch data --filter=blob:none https://github.com/Snailedlt/nucleus-devtools.git ../hubdata; then
             npm ci --ignore-scripts --no-audit --no-fund >/dev/null
             # The two Hub snapshots go together: if either fails, both stay as they were.
             if node scripts/hub-engines.mjs --hub ../hubdata && node scripts/hub-examples.mjs --hub ../hubdata; then echo "hubok=true" >> "$GITHUB_OUTPUT"; else

@@ -56,7 +56,7 @@ function optionKeyAt(text: string, offset: number): { key: string; start: number
 }
 
 /** Where the lint rules are documented (the README table). */
-export const RULES_URL = 'https://github.com/Snailedlt/splitscreenme-vscode#lint-rules';
+export const RULES_URL = 'https://github.com/Snailedlt/nucleus-devtools#lint-rules';
 
 export interface Span {
   start: number;

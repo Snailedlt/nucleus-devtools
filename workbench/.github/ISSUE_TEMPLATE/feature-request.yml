@@ -6,7 +6,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        Tell us what you're trying to do and what stops you; we'll work out the best way to help. About the **checks, Try it, the docs, VS Code, Notepad++ or ncdev**? That goes to [the extension's form](https://github.com/Snailedlt/splitscreenme-vscode/issues/new?template=feature-request.yml).
+        Tell us what you're trying to do and what stops you; we'll work out the best way to help. About the **checks, Try it, the docs, VS Code, Notepad++ or ncdev**? That goes to [the extension's form](https://github.com/Snailedlt/nucleus-devtools/issues/new?template=feature-request.yml).
   - type: textarea
     id: goal
     attributes:

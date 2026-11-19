@@ -2,7 +2,7 @@
 // deflate-raw and written in base-62 (every 5 bytes become 7 letters or digits), after "#share-". Used by "Open in
 // the Browser Workbench" in VS Code, the Language Server and the Notepad++ plugin. The compressing is the host's
 // (zlib in Node, CompressionStream in the browser); this part is pure, and the workbench imports it.
-export const WORKBENCH_URL = 'https://snailedlt.github.io/nucleuscoop-handler-testbench/';
+export const WORKBENCH_URL = 'https://snailedlt.github.io/nucleus-devtools/';
 export const ALPHABET = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 /** Characters for a tail of n bytes (every 5 bytes become 7: 62^7 > 2^40). */
 export const TAIL_CHARS = [0, 2, 3, 5, 6, 7];

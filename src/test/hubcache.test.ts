@@ -168,7 +168,7 @@ test('hub cache: searching filters the cached list without new requests', async 
 
 test('hub headers: our devtools, the tool and the feature, nothing personal', async () => {
   const h = hubClientHeaders('ncdev-cli', 'hub-search', '0.6.0');
-  assert.equal(h['user-agent'], 'SplitScreenMe-DevTools/0.6.0 (ncdev-cli; hub-search; +https://github.com/Snailedlt/splitscreenme-vscode)');
+  assert.equal(h['user-agent'], 'SplitScreenMe-DevTools/0.6.0 (ncdev-cli; hub-search; +https://github.com/Snailedlt/nucleus-devtools)');
   assert.equal(h['x-requested-with'], 'SplitScreenMe-DevTools/0.6.0 ncdev-cli hub-search');
   // A browser caller can't set User-Agent: only X-Requested-With (the one custom header the Hub's CORS allows).
   assert.deepEqual(Object.keys(hubClientHeaders('workbench', 'hub-browse', '1.0', { browser: true })), ['x-requested-with']);
@@ -193,7 +193,7 @@ test('hub headers: our devtools, the tool and the feature, nothing personal', as
   const { f, calls } = fakeFetch({ index: 'down' });
   await hubHandlers({ dir, fetch: f, feature: 'package-compare' });
   await hubPackage(H as any, { dir, fetch: f, feature: 'package-compare' });
-  assert.match(calls.find(isIndex)!.ua!, /^SplitScreenMe-DevTools\/\d+\.\d+\.\d+ \(ncdev-lsp\/helix; package-compare\/index; \+https:\/\/github\.com\/Snailedlt\/splitscreenme-vscode\)$/);
+  assert.match(calls.find(isIndex)!.ua!, /^SplitScreenMe-DevTools\/\d+\.\d+\.\d+ \(ncdev-lsp\/helix; package-compare\/index; \+https:\/\/github\.com\/Snailedlt\/nucleus-devtools\)$/);
   assert.match(calls.find(isHub)!.xrw!, / ncdev-lsp\/helix package-compare\/index-fallback$/);
   assert.match(calls.find(isPkg)!.xrw!, / ncdev-lsp\/helix package-compare$/);
   assert.equal(headersFor('hub-fetch')['user-agent'].includes('ncdev-lsp/helix'), true);

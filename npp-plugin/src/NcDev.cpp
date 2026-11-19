@@ -501,7 +501,7 @@ static void downloadTool() {
     std::wstring dest = localTool();
     CreateDirectoryW(dest.substr(0, dest.find_last_of(L'\\')).c_str(), nullptr);
     std::wstring part = dest + L".part";
-    if (URLDownloadToFileW(nullptr, L"https://api.github.com/repos/Snailedlt/splitscreenme-vscode/releases?per_page=20", list.c_str(), 0, nullptr) != S_OK) err = L"Couldn't reach GitHub.";
+    if (URLDownloadToFileW(nullptr, L"https://api.github.com/repos/Snailedlt/nucleus-devtools/releases?per_page=20", list.c_str(), 0, nullptr) != S_OK) err = L"Couldn't reach GitHub.";
     std::string exeUrl, sumsUrl;
     if (err.empty()) {
       Value releases;
@@ -1512,7 +1512,7 @@ static void runReport(const Value& args) {
   if (!lsp::running) {
     // No ncdev yet: the tools' form, for the plugin (a feature request's own form for a feature).
     bool feature = args.isObj() && args["kind"].isStr() && args["kind"].str() == "feature";
-    ShellExecuteW(npp._nppHandle, L"open", feature ? L"https://github.com/Snailedlt/splitscreenme-vscode/issues/new?template=feature-request.yml" : L"https://github.com/Snailedlt/splitscreenme-vscode/issues/new?template=tester-feedback.yml&area=Notepad%2B%2B+plugin", nullptr, nullptr, SW_SHOWNORMAL);
+    ShellExecuteW(npp._nppHandle, L"open", feature ? L"https://github.com/Snailedlt/nucleus-devtools/issues/new?template=feature-request.yml" : L"https://github.com/Snailedlt/nucleus-devtools/issues/new?template=tester-feedback.yml&area=Notepad%2B%2B+plugin", nullptr, nullptr, SW_SHOWNORMAL);
     return;
   }
   Object o = args.isObj() ? *args.o : Object{};
@@ -1673,7 +1673,7 @@ static void cmdReferences() {
 static void cmdWorkbench() {
   Doc* d = active();
   if (!d) {
-    ShellExecuteW(npp._nppHandle, L"open", L"https://snailedlt.github.io/nucleuscoop-handler-testbench/?ref=notepadpp", nullptr, nullptr, SW_SHOWNORMAL);
+    ShellExecuteW(npp._nppHandle, L"open", L"https://snailedlt.github.io/nucleus-devtools/?ref=notepadpp", nullptr, nullptr, SW_SHOWNORMAL);
     return;
   }
   lsp::request("workspace/executeCommand", Value(Object{{"command", "nucleus.workbenchLink"}, {"arguments", Value(Array{Value(Object{{"uri", d->uri}, {"ref", "notepadpp"}})})}}), [](const Value& r) {
@@ -2476,7 +2476,7 @@ static void cmdAbout() {
   std::string v = tool.empty() ? "not installed" : runTool(L"--version");
   while (!v.empty() && (v.back() == '\n' || v.back() == '\r')) v.pop_back();
   std::wstring text = std::wstring(L"Nucleus Co-op handlers for Notepad++, plugin ") + wide(PLUGIN_VERSION) + L"\nTools: " + wide(v) + (tool.empty() ? L"" : L"\n(" + tool + L")") +
-                      L"\n\nIn a handler (.js):\n• Problems are underlined; hover one, or a name, for help.\n• Suggestions appear as you type (after a dot, =, a quote…).\n• Alt+Enter: fixes for the line. Plugins › Nucleus Co-op handlers has the rest.\n\nhttps://github.com/Snailedlt/splitscreenme-vscode";
+                      L"\n\nIn a handler (.js):\n• Problems are underlined; hover one, or a name, for help.\n• Suggestions appear as you type (after a dot, =, a quote…).\n• Alt+Enter: fixes for the line. Plugins › Nucleus Co-op handlers has the rest.\n\nhttps://github.com/Snailedlt/nucleus-devtools";
   MessageBoxW(npp._nppHandle, text.c_str(), PLUGIN_NAME, MB_OK | MB_ICONINFORMATION);
 }
 
@@ -2585,7 +2585,7 @@ static LRESULT CALLBACK msgProc(HWND hw, UINT m, WPARAM w, LPARAM l) {
         status(L"Nucleus: handler tools installed");
         if (currentDoc()) lsp::start();
       } else
-        MessageBoxW(npp._nppHandle, (L"Couldn't download the handler tools: " + *err + L"\n\nDownload ncdev.exe from https://github.com/Snailedlt/splitscreenme-vscode/releases and run: ncdev setup notepad++").c_str(), PLUGIN_NAME, MB_OK | MB_ICONWARNING);
+        MessageBoxW(npp._nppHandle, (L"Couldn't download the handler tools: " + *err + L"\n\nDownload ncdev.exe from https://github.com/Snailedlt/nucleus-devtools/releases and run: ncdev setup notepad++").c_str(), PLUGIN_NAME, MB_OK | MB_ICONWARNING);
       delete err;
       return 0;
     }

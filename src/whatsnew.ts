@@ -18,8 +18,8 @@ export function highlights(changelog: string, version: string): string[] {
     .map((l) => (l.match(/^- \*\*(.+?)\*\*/)?.[1] ?? l.slice(2)).replace(/\.$/, ''));
 }
 
-const REPO_FILES = 'https://github.com/Snailedlt/splitscreenme-vscode/blob/main/';
-const REPO_RAW = 'https://raw.githubusercontent.com/Snailedlt/splitscreenme-vscode/main/';
+const REPO_FILES = 'https://github.com/Snailedlt/nucleus-devtools/blob/main/';
+const REPO_RAW = 'https://raw.githubusercontent.com/Snailedlt/nucleus-devtools/main/';
 
 /** The changelog as What's New shows it: from the installed version down, without "Unreleased" (and anything newer
  *  than this version) or the notes for whoever writes it. Exported for tests. */

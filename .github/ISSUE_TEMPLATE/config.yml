@@ -1,7 +1,7 @@
 blank_issues_enabled: true
 contact_links:
   - name: Something in the browser workbench, Learn or the site
-    url: https://github.com/Snailedlt/nucleuscoop-handler-testbench/issues/new/choose
+    url: https://github.com/Snailedlt/nucleus-devtools/issues/new/choose
     about: The workbench and Learn have their own forms. (From the workbench, Report a problem in its menu opens the right one.)
   - name: A problem with one Hub handler (a game that doesn't work)
     url: https://hub.splitscreen.me/

@@ -5,7 +5,7 @@ body:
   - type: markdown
     attributes:
       value: |
-        A wrong or missing **check**, **Try it**, or something in **VS Code, Notepad++, ncdev** or another editor? That goes to [the extension's form](https://github.com/Snailedlt/splitscreenme-vscode/issues/new?template=tester-feedback.yml) (from the workbench, the report buttons open the right one). A game that doesn't work with one **Hub handler**? That's for its author: ask on its Hub page, the [Discord](https://discord.gg/XxGMkqCf4r) or [r/nucleuscoop](https://www.reddit.com/r/nucleuscoop/).
+        A wrong or missing **check**, **Try it**, or something in **VS Code, Notepad++, ncdev** or another editor? That goes to [the extension's form](https://github.com/Snailedlt/nucleus-devtools/issues/new?template=tester-feedback.yml) (from the workbench, the report buttons open the right one). A game that doesn't work with one **Hub handler**? That's for its author: ask on its Hub page, the [Discord](https://discord.gg/XxGMkqCf4r) or [r/nucleuscoop](https://www.reddit.com/r/nucleuscoop/).
   - type: dropdown
     id: area
     attributes:

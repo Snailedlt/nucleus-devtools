@@ -2,7 +2,7 @@ name: Hub sync
 # Once a day: the only place our tools read the Hub's handler list. The index goes to the `data`
 # branch (one commit, replaced each time), and the CLI, MCP server, VS Code, the workbench build and the
 # weekly check read it from there:
-#   https://raw.githubusercontent.com/Snailedlt/nucleuscoop-handler-testbench/data/hub-index.json
+#   https://raw.githubusercontent.com/Snailedlt/nucleus-devtools/data/hub-index.json
 # so people using the tools add no load to hub.splitscreen.me's API.
 on:
   schedule:

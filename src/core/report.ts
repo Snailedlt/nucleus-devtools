@@ -6,8 +6,8 @@
 // No imports: the workbench's tools/report-links.test.mjs loads this file on its own. Plain data and fetch only, so it
 // runs in the browser, in Node and in VS Code.
 
-export const TOOLS_REPO = 'Snailedlt/splitscreenme-vscode';
-export const WORKBENCH_REPO = 'Snailedlt/nucleuscoop-handler-testbench';
+export const TOOLS_REPO = 'Snailedlt/nucleus-devtools';
+export const WORKBENCH_REPO = 'Snailedlt/nucleus-devtools';
 /** The testers' thread on the SplitScreen.Me Discord: for people without a GitHub account. */
 export const DISCORD_THREAD = 'https://discord.com/channels/142649962839277568/1568403337613680650/1568777762221588531';
 export const DISCORD = 'https://discord.gg/XxGMkqCf4r';

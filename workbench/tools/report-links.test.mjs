@@ -57,14 +57,14 @@ test('the report dialog\'s links (core/report.ts) open the right repository and 
   const { checksum } = await load('playground/src/checksum.ts');
   assert.equal(report.checksum(REAL_BLOCK.split('\n')), checksum(REAL_BLOCK.split('\n')), 'core and the workbench agree on the checksum');
   const cases = [
-    [{ kind: 'problem', tool: 'workbench' }, 'Snailedlt/nucleuscoop-handler-testbench'],
-    [{ kind: 'problem', tool: 'learn' }, 'Snailedlt/nucleuscoop-handler-testbench'],
-    [{ kind: 'error', tool: 'workbench', error: { message: 'x', stack: 'at f (a.js:1:1)' } }, 'Snailedlt/nucleuscoop-handler-testbench'],
-    [{ kind: 'feature', tool: 'workbench', what: 'do a thing' }, 'Snailedlt/nucleuscoop-handler-testbench'],
-    [{ kind: 'stuck', tool: 'learn', lesson: { id: 'first/l1', title: 'One' }, code: 'Game.GUID = "x";' }, 'Snailedlt/nucleuscoop-handler-testbench'],
-    [{ kind: 'check', tool: 'workbench', rule: 'unknown-member', code: 'Game.Foo = 1;' }, 'Snailedlt/splitscreenme-vscode'],
-    [{ kind: 'tryit', tool: 'workbench', sim: 'Try it: 2 players' }, 'Snailedlt/splitscreenme-vscode'],
-    [{ kind: 'docs', tool: 'workbench', query: 'save folder' }, 'Snailedlt/splitscreenme-vscode'],
+    [{ kind: 'problem', tool: 'workbench' }, 'Snailedlt/nucleus-devtools'],
+    [{ kind: 'problem', tool: 'learn' }, 'Snailedlt/nucleus-devtools'],
+    [{ kind: 'error', tool: 'workbench', error: { message: 'x', stack: 'at f (a.js:1:1)' } }, 'Snailedlt/nucleus-devtools'],
+    [{ kind: 'feature', tool: 'workbench', what: 'do a thing' }, 'Snailedlt/nucleus-devtools'],
+    [{ kind: 'stuck', tool: 'learn', lesson: { id: 'first/l1', title: 'One' }, code: 'Game.GUID = "x";' }, 'Snailedlt/nucleus-devtools'],
+    [{ kind: 'check', tool: 'workbench', rule: 'unknown-member', code: 'Game.Foo = 1;' }, 'Snailedlt/nucleus-devtools'],
+    [{ kind: 'tryit', tool: 'workbench', sim: 'Try it: 2 players' }, 'Snailedlt/nucleus-devtools'],
+    [{ kind: 'docs', tool: 'workbench', query: 'save folder' }, 'Snailedlt/nucleus-devtools'],
   ];
   for (const [input, repo] of cases) {
     const r = report.buildReport({ ...input, details: ['Workbench: build x, core y'] });

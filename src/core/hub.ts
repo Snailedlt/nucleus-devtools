@@ -37,7 +37,7 @@ export function handlerPageUrl(id: string): string {
 }
 
 /** The repository named in our User-Agent, so the Hub's maintainers can reach us. */
-export const DEVTOOLS_URL = 'https://github.com/Snailedlt/splitscreenme-vscode';
+export const DEVTOOLS_URL = 'https://github.com/Snailedlt/nucleus-devtools';
 /** Which of our tools sent a request: `vscode-extension`, `ncdev-cli`, `ncdev-lsp` (`ncdev-lsp/<editor>`),
  *  `ncdev-mcp`, `notepadpp-plugin`, `claude-skill`, `workbench`. */
 export type HubTool = string;

@@ -6,7 +6,7 @@
 set -euo pipefail
 cd "$(dirname "$0")"
 BRANCH="${VERCEL_GIT_COMMIT_REF:-main}"
-CORE_URL=https://github.com/Snailedlt/splitscreenme-vscode.git
+CORE_URL=https://github.com/Snailedlt/nucleus-devtools.git
 # The exact branch: compare the ref field (ls-remote also matches refs that only end in the name).
 if git ls-remote --heads "$CORE_URL" | awk -v r="refs/heads/$BRANCH" '$2 == r { f = 1 } END { exit !f }'; then CORE="$BRANCH"; else CORE=main; fi
 echo "Building $BRANCH with splitscreenme-vscode@$CORE"
@@ -15,7 +15,7 @@ git clone -q --depth 1 --branch "$CORE" "$CORE_URL" .core
 (cd .core && npm ci --no-audit --no-fund)
 npm ci --no-audit --no-fund
 # Every Hub handler, from our own copy (the data branch).
-git clone -q --depth 1 --branch data https://github.com/Snailedlt/nucleuscoop-handler-testbench.git .hubdata
+git clone -q --depth 1 --branch data https://github.com/Snailedlt/nucleus-devtools.git .hubdata
 EXTRA=()
 [ "$BRANCH" = claude/next-release ] && EXTRA=(--test-build)
 # Live vote counts from the real site (read only: previews never send votes).

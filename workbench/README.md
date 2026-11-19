@@ -1,10 +1,10 @@
 # Nucleus handler testbench
 
-> **Beta, testers wanted.** Intro, screenshots and a 5-minute install: **https://snailedlt.github.io/nucleuscoop-handler-testbench/start/?ref=workbench-readme-md**
+> **Beta, testers wanted.** Intro, screenshots and a 5-minute install: **https://snailedlt.github.io/nucleus-devtools/start/?ref=workbench-readme-md**
 
 Runs [Nucleus Co-op](https://github.com/SplitScreen-Me/splitscreenme-nucleus) game handlers outside Nucleus, on Linux or macOS with Mono, using **the same JavaScript engine version Nucleus ships (Jint 2.11.58), set up the same way**. Use it to check that a handler loads and that its `Game.Play` logic runs for each player, without Windows, the game or controllers.
 
-**Browser workbench: https://snailedlt.github.io/nucleuscoop-handler-testbench/?ref=workbench-readme-md** (from `playground/`): check a handler, fix it, and see what Nucleus sets up for each player, in the browser. Nothing to install.
+**Browser workbench: https://snailedlt.github.io/nucleus-devtools/?ref=workbench-readme-md** (from `playground/`): check a handler, fix it, and see what Nucleus sets up for each player, in the browser. Nothing to install.
 
 <p>
   <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/gallery/workbench-check-dark.webp"><img src="docs/images/gallery/workbench-check-light.webp" width="49%" alt="Check: the example handler with common mistakes, each problem listed with a fix, and a hover explaining the call to Context.GetFolder"></picture>
@@ -15,9 +15,9 @@ Runs [Nucleus Co-op](https://github.com/SplitScreen-Me/splitscreenme-nucleus) ga
   <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/gallery/workbench-phone-dark.webp"><img src="docs/images/gallery/workbench-phone-light.webp" width="24%" alt="The workbench on a phone: the Check results for the example handler"></picture>
 </p>
 
-More views (suggestions, the debugger, Test all, the visual editor, the four looks) are in the [start page's gallery](https://snailedlt.github.io/nucleuscoop-handler-testbench/start/?ref=workbench-readme-md#see-it).
+More views (suggestions, the debugger, Test all, the visual editor, the four looks) are in the [start page's gallery](https://snailedlt.github.io/nucleus-devtools/start/?ref=workbench-readme-md#see-it).
 
-**In motion** (a minute or two each, captioned, no sound): [▶ the workbench](docs/videos/workbench.mp4) · [▶ VS Code](https://github.com/Snailedlt/splitscreenme-vscode/blob/main/docs/videos/vscode.mp4) · [▶ Notepad++](https://github.com/Snailedlt/splitscreenme-vscode/blob/main/docs/videos/notepadpp.mp4)
+**In motion** (a minute or two each, captioned, no sound): [▶ the workbench](docs/videos/workbench.mp4) · [▶ VS Code](https://github.com/Snailedlt/nucleus-devtools/blob/main/docs/videos/vscode.mp4) · [▶ Notepad++](https://github.com/Snailedlt/nucleus-devtools/blob/main/docs/videos/notepadpp.mp4)
 
 [![The workbench in motion: code colours, checks, fixes, suggestions, Docs, Try it, the visual editor, the debugger and the settings](docs/videos/workbench-poster.jpg)](docs/videos/workbench.mp4)
 
@@ -75,7 +75,7 @@ python3 -I tools/fetch_verified.py --limit 150        # or: --id <handlerId>
 ./test-probes.sh
 ```
 
-**Hub index** (`.github/workflows/hub-sync.yml`, daily): the only place that reads hub.splitscreen.me's handler list. `tools/hub-sync.mjs` writes `hub-index.json` to the `data` branch (<https://raw.githubusercontent.com/Snailedlt/nucleuscoop-handler-testbench/data/hub-index.json>), and the workbench build, the weekly check and the extension's CLI, MCP server and Browse the Hub read that instead of the Hub API (which stays the fallback). Each entry keeps the fields the tools use, including the game's IGDB link (`gameUrl`), which the extension's `scripts/hub-engines.mjs` uses to find the game's engine on Wikidata. Handler packages come from the Hub's storage, once per version. The same run mirrors every handler for the workbench (`tools/hub-mirror.mjs`): `hub/<id>.js`, `hub/packages.json`, the covers, and each package's other files (`hub/<id>.files.json` from `tools/hub-files.mjs`: small files with content, big ones by name and size; `HUB_MIRROR_PKG_MAX` package downloads a run, default 60), so Hub handlers open in the workbench with their whole package listed.
+**Hub index** (`.github/workflows/hub-sync.yml`, daily): the only place that reads hub.splitscreen.me's handler list. `tools/hub-sync.mjs` writes `hub-index.json` to the `data` branch (<https://raw.githubusercontent.com/Snailedlt/nucleus-devtools/data/hub-index.json>), and the workbench build, the weekly check and the extension's CLI, MCP server and Browse the Hub read that instead of the Hub API (which stays the fallback). Each entry keeps the fields the tools use, including the game's IGDB link (`gameUrl`), which the extension's `scripts/hub-engines.mjs` uses to find the game's engine on Wikidata. Handler packages come from the Hub's storage, once per version. The same run mirrors every handler for the workbench (`tools/hub-mirror.mjs`): `hub/<id>.js`, `hub/packages.json`, the covers, and each package's other files (`hub/<id>.files.json` from `tools/hub-files.mjs`: small files with content, big ones by name and size; `HUB_MIRROR_PKG_MAX` package downloads a run, default 60), so Hub handlers open in the workbench with their whole package listed.
 
 **Lines column usage counts** (`playground/src/usage.json`): how many Hub handlers use each API name, shown in the workbench's Lines column. Regenerate from handlers you already downloaded (`ncdev hub fetch`, one folder per handler) with `node tools/usage-counts.mjs <dir>`; only the counts are saved. Last taken from the 600 most-starred Hub handlers (before the index had all of them; rerun it to count every one).
 
@@ -96,7 +96,7 @@ Handlers get .NET access through Jint (`System.IO`, `System.Diagnostics`, …), 
 
 ## Workbench (browser GUI)
 
-`playground/` builds a single self-contained page for testing by hand. It's published at **https://snailedlt.github.io/nucleuscoop-handler-testbench/?ref=workbench-readme-md** (`.github/workflows/pages.yml`: on every push and daily, against splitscreenme-vscode's `main`; one-time setup: Settings > Pages > Source: GitHub Actions). It has:
+`playground/` builds a single self-contained page for testing by hand. It's published at **https://snailedlt.github.io/nucleus-devtools/?ref=workbench-readme-md** (`.github/workflows/pages.yml`: on every push and daily, against splitscreenme-vscode's `main`; one-time setup: Settings > Pages > Source: GitHub Actions). It has:
 
 - a short guided tour of the workbench on a first visit (skip it, take it again from the menu), and **Learn** (`learn/`): lessons that walk you through a first handler, with Check beside the code;
 - a code editor with the same features as the VS Code extension: live squiggles and quick fixes, suggestions (API members, option values, your own functions and variables, `Context.Options` keys, snippets, the template in an empty file), hovers and parameter hints styled like VS Code's, F12, rename (F2), find and replace, folding, Format Document, and VS Code's shortcuts (all rebindable); its code colours, *Nucleus (follows the look)*, give `Game`/`Context`/`Nucleus`, option groups (`Game.Hook`), fixed choices (`Nucleus.Folder.InstancedGameFolder`) and callbacks (`Game.Play`) colours of their own, or pick VS Code's, Notepad++'s and other editors' colours in Settings;
@@ -138,7 +138,7 @@ In Advanced mode everything is keyboard-driven:
 
 Links like `#hub-<id>`, `#probe-17`, `#template-basic` or `#example-mistakes` open that example directly, and `#docs-<name>` opens a name in Docs (over the handler you have open). The page also remembers your draft, the active tab and the simulation settings in your browser.
 
-It uses the same core code as the extension, from a checkout of [splitscreenme-vscode](https://github.com/Snailedlt/splitscreenme-vscode). That checkout needs `npm ci` run in it first.
+It uses the same core code as the extension, from a checkout of [splitscreenme-vscode](https://github.com/Snailedlt/nucleus-devtools). That checkout needs `npm ci` run in it first.
 
 ```bash
 cd playground && npm install && node build.mjs --core ../../splitscreenme-vscode   # → dist/workbench.html

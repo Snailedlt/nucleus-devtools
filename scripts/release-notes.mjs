@@ -9,7 +9,7 @@
 import fs from 'node:fs';
 import { pathToFileURL } from 'node:url';
 
-const repo = 'https://github.com/Snailedlt/splitscreenme-vscode';
+const repo = 'https://github.com/Snailedlt/nucleus-devtools';
 
 export function section(changelog, v) {
   const lines = changelog.split('\n');
@@ -46,14 +46,14 @@ export function discordPayload(body, tag, now = new Date()) {
     ...shown.map((s) => `• ${s}`),
     ...(items.length > shown.length ? [`…and ${items.length - shown.length} more in the release notes`] : []),
     '',
-    `[Release notes](${url}) · [Download the .vsix](${repo}/releases/download/${tag}/splitscreenme-vscode-${tag}.vsix) · [Install guide](https://snailedlt.github.io/nucleuscoop-handler-testbench/start/?ref=discord)`,
+    `[Release notes](${url}) · [Download the .vsix](${repo}/releases/download/${tag}/splitscreenme-vscode-${tag}.vsix) · [Install guide](https://snailedlt.github.io/nucleus-devtools/start/?ref=discord)`,
   ].join('\n');
   return {
     username: 'Nucleus Tools · VS Code extension',
-    avatar_url: 'https://raw.githubusercontent.com/Snailedlt/splitscreenme-vscode/main/media/discord-avatar.png',
+    avatar_url: 'https://raw.githubusercontent.com/Snailedlt/nucleus-devtools/main/media/discord-avatar.png',
     embeds: [
       {
-        author: { name: 'VS Code extension', url: repo, icon_url: 'https://raw.githubusercontent.com/Snailedlt/splitscreenme-vscode/main/media/icon.png' },
+        author: { name: 'VS Code extension', url: repo, icon_url: 'https://raw.githubusercontent.com/Snailedlt/nucleus-devtools/main/media/icon.png' },
         title: `🧩 SplitScreen.Me for VS Code v${version}`,
         url,
         description,
@@ -81,7 +81,7 @@ export function githubNotes(body, tag) {
 
 ---
 
-📦 **Install:** download \`splitscreenme-vscode-${tag}.vsix\` below, then in VS Code run **Extensions: Install from VSIX…** (Ctrl+Shift+P). New to the tools? Start with the [intro and install guide](https://snailedlt.github.io/nucleuscoop-handler-testbench/start/?ref=github-release) and [TESTING.md](${repo}/blob/main/TESTING.md).
+📦 **Install:** download \`splitscreenme-vscode-${tag}.vsix\` below, then in VS Code run **Extensions: Install from VSIX…** (Ctrl+Shift+P). New to the tools? Start with the [intro and install guide](https://snailedlt.github.io/nucleus-devtools/start/?ref=github-release) and [TESTING.md](${repo}/blob/main/TESTING.md).
 🤖 **AI agents:** \`nucleus.js\` (below) is the command-line tool and MCP server: \`node nucleus.js mcp\`. See the [README](${repo}#ai-agents).
 🌐 **Offline workbench:** \`workbench.html\` (below) is the whole browser workbench in one file; open it locally or host it yourself.
 💬 **Feedback:** [tester feedback form](${repo}/issues/new?template=tester-feedback.yml).`;

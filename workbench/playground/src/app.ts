@@ -3393,7 +3393,7 @@ async function shareFile(trigger: HTMLElement) {
   if (!downloads) return notice("Saving files isn't available here. Share › Copy the code, and paste it into a .js file.", { kind: 'error' });
   const filename = `${handlerFileName()}.zip`;
   // The public site, not this page's own address, inside a Claude artifact or from a file on disk.
-  const site = (window as any).claude || !/^https?:$/.test(location.protocol) ? 'https://snailedlt.github.io/nucleuscoop-handler-testbench/' : location.href.replace(/[?#].*$/, '');
+  const site = (window as any).claude || !/^https?:$/.test(location.protocol) ? 'https://snailedlt.github.io/nucleus-devtools/' : location.href.replace(/[?#].*$/, '');
   const game = editor.getValue().match(/^\s*Game\.GameName\s*=\s*"([^"]*)"/m)?.[1] ?? '';
   // What's open now, before anything waits: the person may switch tab or edit while the clipboard answers.
   let data: Uint8Array;

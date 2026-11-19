@@ -7,7 +7,7 @@
 // pages.yml runs it after a deploy whose newest section the live site didn't have yet.
 import fs from 'node:fs';
 
-const SITE = 'https://snailedlt.github.io/nucleuscoop-handler-testbench/';
+const SITE = 'https://snailedlt.github.io/nucleus-devtools/';
 // Links people follow carry where they were posted, for the anonymous counts' Campaigns (feedback.ts).
 const via = (where, path = '') => `${SITE}${path.split('#')[0]}?ref=${where}${path.includes('#') ? `#${path.split('#')[1]}` : ''}`;
 const text = fs.readFileSync(new URL('../CHANGELOG.md', import.meta.url), 'utf8').replace(/<!--[\s\S]*?-->/g, '');
@@ -40,7 +40,7 @@ if (process.argv.includes('--tag')) {
 }
 if (process.argv.includes('--notes')) {
   // The section as it is in CHANGELOG.md, with its images pointing at the repository, and links to try it.
-  const RAW = 'https://raw.githubusercontent.com/Snailedlt/nucleuscoop-handler-testbench/main/';
+  const RAW = 'https://raw.githubusercontent.com/Snailedlt/nucleus-devtools/main/workbench/';
   // The section ends with the `---` that separates releases in CHANGELOG.md: drop it, the links add their own.
   const notes = body.trim().replace(/(\n+---)+$/, '').replace(/\]\((docs\/[^)\s]+)\)/g, (_, path) => `](${RAW}${path})`);
   console.log(`${notes}\n\n---\n\n**Try it:** [open the workbench](${via('github-release')}) · [What's new](${via('github-release', '#whats-new')}) · [what it is](${via('github-release', 'start/')})`);

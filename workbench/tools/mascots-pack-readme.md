@@ -4,7 +4,7 @@
 (a cross for four players). **Nucli** is the mascot of the handler tools: a quiet atom who checks your code.
 
 Concept art, made for the SplitScreen.Me / Nucleus Co-op community. Source and history:
-https://github.com/Snailedlt/nucleuscoop-handler-testbench/tree/main/design/mascots
+https://github.com/Snailedlt/nucleus-devtools/tree/main/workbench/design/mascots
 
 ## What's in a pack
 

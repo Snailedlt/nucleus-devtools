@@ -17,8 +17,8 @@ Each repo has a `.coderabbit.yaml` (checked against CodeRabbit's schema). A repo
 
 1. Go to [app.coderabbit.ai](https://app.coderabbit.ai) and sign in with GitHub.
 2. Install the CodeRabbit GitHub app, choose **Only select repositories**, and pick:
-   - `Snailedlt/splitscreenme-vscode`
-   - `Snailedlt/nucleuscoop-handler-testbench`
+   - `Snailedlt/nucleus-devtools`
+   - `Snailedlt/nucleus-devtools`
 
    Leave your other repos out: their own reviews won't need any of this.
 
@@ -55,8 +55,8 @@ Current code (trust these first):
 - sebastienros/jint: the JavaScript engine. Nucleus uses Jint 2.11.58: ES5 plus let/const acting as var, no arrow functions or template literals.
 
 Our tools:
-- Snailedlt/splitscreenme-vscode: the linter, simulator and API model (VS Code, Notepad++, ncdev CLI, MCP, agent skill).
-- Snailedlt/nucleuscoop-handler-testbench: the browser workbench and site, and the Jint testbench whose probes record how the real engine behaves.
+- Snailedlt/nucleus-devtools: the linter, simulator and API model (VS Code, Notepad++, ncdev CLI, MCP, agent skill).
+- Snailedlt/nucleus-devtools: the browser workbench and site, and the Jint testbench whose probes record how the real engine behaves.
 
 History (only for why something is the way it is, or old handlers; current code wins):
 - lucasassislar/nucleuscoop: the original Nucleus Co-op.

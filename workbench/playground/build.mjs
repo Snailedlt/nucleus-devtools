@@ -16,7 +16,7 @@ import * as esbuild from 'esbuild';
 import { fetchPackageFiles, slimFiles } from '../tools/hub-files.mjs';
 import { hubClientHeaders } from '../tools/hub-client.mjs';
 
-const PAGES_BASE = 'https://snailedlt.github.io/nucleuscoop-handler-testbench/';
+const PAGES_BASE = 'https://snailedlt.github.io/nucleus-devtools/';
 // A preview build (the Claude artifact, the raw.githack test address) is served somewhere else: its
 // links are relative, so they stay in that environment, it names no canonical address, and asks not
 // to be indexed. Only the Pages deploy (no --preview) uses absolute links to the live site.
@@ -84,7 +84,7 @@ if (hubData && !fs.existsSync(path.join(hubData, 'hub', 'packages.json'))) {
   hubData = null;
 }
 // Our daily index (data branch), read at most once per build.
-const INDEX_URL = 'https://raw.githubusercontent.com/Snailedlt/nucleuscoop-handler-testbench/data/hub-index.json';
+const INDEX_URL = 'https://raw.githubusercontent.com/Snailedlt/nucleus-devtools/data/hub-index.json';
 let rawIndexP = null;
 const rawIndex = () => (rawIndexP ??= fetch(INDEX_URL).then((r) => { if (!r.ok) throw new Error(`${INDEX_URL}: ${r.status}`); return r.json(); }));
 function hubFromData(dir) {
@@ -558,10 +558,10 @@ fs.mkdirSync(startDir, { recursive: true });
 // its .vsix and ncdev.exe. --test-build links the unreleased test build instead (this repo's `test-build` pre-release,
 // made by .github/workflows/test-build.yml from an extension branch), so a local site hands out what will be released.
 const TEST_BUILD = process.argv.includes('--test-build');
-let vsix = { url: 'https://github.com/Snailedlt/splitscreenme-vscode/releases', name: 'the .vsix', tag: 'latest release' };
-let ncdevUrl = 'https://github.com/Snailedlt/splitscreenme-vscode/releases';
+let vsix = { url: 'https://github.com/Snailedlt/nucleus-devtools/releases', name: 'the .vsix', tag: 'latest release' };
+let ncdevUrl = 'https://github.com/Snailedlt/nucleus-devtools/releases';
 try {
-  const api = TEST_BUILD ? 'https://api.github.com/repos/Snailedlt/nucleuscoop-handler-testbench/releases/tags/test-build' : 'https://api.github.com/repos/Snailedlt/splitscreenme-vscode/releases?per_page=10';
+  const api = TEST_BUILD ? 'https://api.github.com/repos/Snailedlt/nucleus-devtools/releases/tags/test-build' : 'https://api.github.com/repos/Snailedlt/nucleus-devtools/releases?per_page=10';
   const res = await fetch(api, {
     headers: { accept: 'application/vnd.github+json', ...(process.env.GITHUB_TOKEN ? { authorization: `Bearer ${process.env.GITHUB_TOKEN}` } : {}) },
   });

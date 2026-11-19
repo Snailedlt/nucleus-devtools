@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/checkout@v4
         with:
-          repository: Snailedlt/splitscreenme-vscode
+          repository: Snailedlt/nucleus-devtools
           ref: main
           path: core
       - uses: actions/setup-node@v4

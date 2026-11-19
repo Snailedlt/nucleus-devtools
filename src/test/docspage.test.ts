@@ -21,7 +21,7 @@ test('docs links: API names in Markdown become links; code blocks, existing link
   assert.match(out, /not `path`/);
   assert.match(out, /```js\nContext\.Width\n```/, 'code blocks untouched');
   assert.match(out, /\[`Game\.Play`\]\(x\)/, 'an existing link untouched');
-  assert.equal(workbenchDocsUrl('Context.ModifySaveFile', 'neovim'), 'https://snailedlt.github.io/nucleuscoop-handler-testbench/?ref=neovim#docs-Context.ModifySaveFile');
+  assert.equal(workbenchDocsUrl('Context.ModifySaveFile', 'neovim'), 'https://snailedlt.github.io/nucleus-devtools/?ref=neovim#docs-Context.ModifySaveFile');
 });
 
 test('docs links: hover ends with "Full docs" for the name (and the web page beside it); signature docs link names; nothing without docsLink', () => {
@@ -29,7 +29,7 @@ test('docs links: hover ends with "Full docs" for the name (and the web page bes
   const at = text.indexOf('ModifySaveFile') + 3;
   assert.match(hoverAt(text, at, { docsLink: link })!.markdown, /\[Full docs\]\(L\(Context\.ModifySaveFile\)\)$/);
   assert.match(hoverAt(text, at, { docsLink: link, webDocsLink: (p) => docsPageUrl(p, 'vscode') })!.markdown,
-    /\[Full docs\]\(L\(Context\.ModifySaveFile\)\) · \[On the web\]\(https:\/\/snailedlt\.github\.io\/nucleuscoop-handler-testbench\/docs\/Context\.ModifySaveFile\/\?ref=vscode\)$/);
+    /\[Full docs\]\(L\(Context\.ModifySaveFile\)\) · \[On the web\]\(https:\/\/snailedlt\.github\.io\/nucleus-devtools\/docs\/Context\.ModifySaveFile\/\?ref=vscode\)$/);
   assert.doesNotMatch(hoverAt(text, at)!.markdown, /Full docs/);
   const own = 'function go() {}\ngo();';
   assert.doesNotMatch(hoverAt(own, own.lastIndexOf('go') + 1, { docsLink: link })?.markdown ?? '', /Full docs/, 'own functions have no API docs');
@@ -67,9 +67,9 @@ test('firstSentence: stops at the first full stop outside code and abbreviations
 });
 
 test('docsPageUrl: a name with a page goes to it, anything else to the workbench', () => {
-  assert.equal(docsPageUrl('Context.ModifySaveFile', 'neovim'), 'https://snailedlt.github.io/nucleuscoop-handler-testbench/docs/Context.ModifySaveFile/?ref=neovim');
-  assert.equal(docsPageUrl('Nucleus.SaveType', 'x'), 'https://snailedlt.github.io/nucleuscoop-handler-testbench/docs/Nucleus.SaveType/?ref=x');
-  assert.equal(docsPageUrl('', 'x'), 'https://snailedlt.github.io/nucleuscoop-handler-testbench/docs/?ref=x');
+  assert.equal(docsPageUrl('Context.ModifySaveFile', 'neovim'), 'https://snailedlt.github.io/nucleus-devtools/docs/Context.ModifySaveFile/?ref=neovim');
+  assert.equal(docsPageUrl('Nucleus.SaveType', 'x'), 'https://snailedlt.github.io/nucleus-devtools/docs/Nucleus.SaveType/?ref=x');
+  assert.equal(docsPageUrl('', 'x'), 'https://snailedlt.github.io/nucleus-devtools/docs/?ref=x');
   assert.match(docsPageUrl('mutex', 'x'), /\?ref=x#docs-mutex$/);
 });
 

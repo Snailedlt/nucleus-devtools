@@ -175,11 +175,11 @@ test('bots: every report link fills fields its form has, and the copied text use
 
 test('bots: the release comments only on this repository\'s fixed issues, once', async () => {
   const notes = '### ✨ New\n- **A thing.** What it does. (#3)\n- **Another.** Related to the old idea in #4.\n### 🐛 Fixed\n- **Bug.** Gone. (#9, Other/repo#7)\n- **Another bug.** #11 in passing\n### 🙏 Thanks\n- **Ann** for reporting it (#10)';
-  assert.deepEqual(bots.deliveredIssues(notes, 'Snailedlt/splitscreenme-vscode'), [{ n: 3, kind: 'added' }, { n: 9, kind: 'fixed' }]);
-  assert.deepEqual(bots.fixedIssueNumbers(notes, 'Snailedlt/splitscreenme-vscode'), [3, 9]);
+  assert.deepEqual(bots.deliveredIssues(notes, 'Snailedlt/nucleus-devtools'), [{ n: 3, kind: 'added' }, { n: 9, kind: 'fixed' }]);
+  assert.deepEqual(bots.fixedIssueNumbers(notes, 'Snailedlt/nucleus-devtools'), [3, 9]);
   assert.match(bots.fixedComment({ tag: 'v1.2.0', url: 'U', reporter: 'ann', owner: 'Snailedlt', kind: 'added' }), /✅ Added in \*\*v1\.2\.0\*\* \(\[release notes\]\(U\)\)\. Thanks @ann for asking for it!/);
   assert.match(bots.fixedComment({ tag: 'v1.2.0', url: 'U', reporter: 'ann', owner: 'Snailedlt' }), /✅ Fixed in .* Thanks @ann for reporting it!/);
-  assert.deepEqual(bots.fixedIssueNumbers('Fixes #12\ncloses Snailedlt/splitscreenme-vscode#13 and Snailedlt/nucleuscoop-handler-testbench#14', 'Snailedlt/splitscreenme-vscode'), [12, 13]);
+  assert.deepEqual(bots.fixedIssueNumbers('Fixes #12\ncloses Snailedlt/nucleus-devtools#13 and Snailedlt/nucleuscoop-handler-testbench#14', 'Snailedlt/nucleus-devtools'), [12, 13]);
   const made: number[] = [];
   const github = {
     // #9: the bot's own comment; #3: the same text from someone else (doesn't count: only the author differs).
@@ -199,10 +199,10 @@ test('bots: the release comments only on this repository\'s fixed issues, once',
   assert.deepEqual(done, [3, 500]); // #5 is a pull request, #9 already has the comment, #404 fails alone and #500 still gets its
   assert.deepEqual(made, [3, 500]);
   // A reference in passing in parentheses isn't a delivery; a commit subject's "(#12)" (a PR number) isn't either.
-  assert.deepEqual(bots.deliveredIssues('### 🛠️ Improved\n- **X.** Better (see #12). (#13, #14)', 'Snailedlt/splitscreenme-vscode').map((x) => x.n), [13, 14]);
-  assert.deepEqual(bots.deliveredIssues('Tidy the docs (#15)\n\nFixes #16', 'Snailedlt/splitscreenme-vscode', { commits: true }).map((x) => x.n), [16]);
+  assert.deepEqual(bots.deliveredIssues('### 🛠️ Improved\n- **X.** Better (see #12). (#13, #14)', 'Snailedlt/nucleus-devtools').map((x) => x.n), [13, 14]);
+  assert.deepEqual(bots.deliveredIssues('Tidy the docs (#15)\n\nFixes #16', 'Snailedlt/nucleus-devtools', { commits: true }).map((x) => x.n), [16]);
   // A subsection of Thanks is Thanks too; references in a code block deliver nothing; the next group counts again.
-  assert.deepEqual(bots.deliveredIssues('### 🙏 Thanks\n#### Testers\n- Ann (#12)\n### 🐛 Fixed\n```md\n- **X.** Y. (#20)\n```\n- **Z.** W. (#21)', 'Snailedlt/splitscreenme-vscode').map((x) => x.n), [21]);
+  assert.deepEqual(bots.deliveredIssues('### 🙏 Thanks\n#### Testers\n- Ann (#12)\n### 🐛 Fixed\n```md\n- **X.** Y. (#20)\n```\n- **Z.** W. (#21)', 'Snailedlt/nucleus-devtools').map((x) => x.n), [21]);
   assert.doesNotMatch(bots.fixedComment({ tag: 'v1', url: 'u', reporter: 'Snailedlt', owner: 'Snailedlt' }), /Thanks/);
 });
 

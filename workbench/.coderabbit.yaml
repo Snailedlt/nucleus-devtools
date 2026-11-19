@@ -59,7 +59,7 @@ knowledge_base:
   mcp:
     usage: enabled
   linked_repositories:
-    - repository: "Snailedlt/splitscreenme-vscode"
+    - repository: "Snailedlt/nucleus-devtools"
       instructions: "The checks, Try it, the API model and the editor features this workbench imports as @core (its src/core), plus the VS Code extension, ncdev CLI, LSP/MCP servers and the agent skill. Its AGENTS.md has the verified facts about Nucleus Co-op and Jint."
   code_guidelines:
     enabled: true

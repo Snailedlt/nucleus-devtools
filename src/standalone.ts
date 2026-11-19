@@ -9,7 +9,7 @@ import { cacheDir } from './hubcache';
 declare const __VERSION__: string;
 export const VERSION = typeof __VERSION__ === 'string' ? __VERSION__ : '0.0.0';
 export const TOOL = 'ncdev';
-const REPO = 'Snailedlt/splitscreenme-vscode';
+const REPO = 'Snailedlt/nucleus-devtools';
 
 /** Running as the standalone ncdev (not `node cli.js`). */
 export function isStandalone(): boolean {
