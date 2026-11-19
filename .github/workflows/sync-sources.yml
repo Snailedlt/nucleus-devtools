@@ -136,4 +136,15 @@ jobs:
           { echo "The generated API model, type definitions and skill reference were regenerated (tests pass). $what"; echo
             if [ -s ../source-changes.md ]; then cat ../source-changes.md; echo; fi
             echo "If users will notice the change, add a line to \`CHANGELOG.md\` under Unreleased before merging."; } > ../pr-body.md
-          gh pr view "$branch" >/dev/null 2>&1 && gh pr edit "$branch" --body-file ../pr-body.md || gh pr create --head "$branch" --base main --title "Sync the API model with Nucleus and the docs" --body-file ../pr-body.md
+          # Actions may not be allowed to open pull requests (the repository's setting): then the branch is pushed
+          # and the run summary links where to open it, with the text to paste, instead of failing.
+          title="Sync the API model with Nucleus and the docs"
+          if gh pr view "$branch" >/dev/null 2>&1; then
+            gh pr edit "$branch" --body-file ../pr-body.md || echo "::warning::Couldn't update the open sync pull request's text."
+          elif ! gh pr create --head "$branch" --base main --title "$title" --body-file ../pr-body.md; then
+            echo "::warning::GitHub Actions may not open pull requests here: open it from $branch (link in the run summary)."
+            { echo "## Open the sync pull request"; echo
+              echo "Actions isn't allowed to open pull requests in this repository, so the branch \`$branch\` is pushed and waits for one:"
+              echo "https://github.com/$GITHUB_REPOSITORY/compare/main...$branch?expand=1"; echo
+              echo "Title: $title"; echo; echo "Text:"; echo; cat ../pr-body.md; } >> "$GITHUB_STEP_SUMMARY"
+          fi
