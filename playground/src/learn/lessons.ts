@@ -1010,7 +1010,6 @@ const CURE: Lesson[] = [
     task: 'Fix the three mistakes Check finds.',
     hint: 'Press `F8` to jump to the first mistake Check marks, and open *Why?* on it to see what Nucleus would do. One is `Game.GameName` in single quotes (the Hub install fails on that line), one is a `Context` name missing its last letter, and one compares `Context.Options["fps"]` with `===`, though a saved choice comes back as text.',
     notes: [
-      { kind: 'why', text: 'Why `"144"`? A saved choice comes back as text, and `===` compares the value and the type, so text never equals the number `144`. `=== "144"` compares text with text. `== 144` works too: `==` compares only the value, turning `"144"` into `144` first. Where an option\'s values are numbers, a fresh pick is a number and a saved one text: `== 144` (or `== "144"`) matches both.' },
       { kind: 'why', text: 'None of these stops the handler from loading: Nucleus would start every copy, and you\'d only find out by playing (or, for the Hub one, when someone installs it). That\'s what Check is for.' },
     ],
     start: C_QUIZ,
