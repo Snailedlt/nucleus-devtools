@@ -15,7 +15,7 @@
 import { MASCOT_CSS, MASCOT_SVG } from './mascots.gen';
 import { motion, onMotion } from './motion';
 
-export type MascotId = 'n-sleep' | 'n-ok' | 'n-bad' | 'n-fix' | 'n-ring' | 'n-spin' | 'n-idle' | 'n-scan' | 'n-calc';
+export type MascotId = 'n-sleep' | 'n-ok' | 'n-bad' | 'n-fix' | 'n-ring' | 'n-spin' | 'n-idle' | 'n-scan' | 'n-calc' | 'load';
 
 /** Scenes that are an event: played once and held at their end, the share HOLD of their cycle (ms, from the sheet's CSS). */
 const REACT: Partial<Record<MascotId, number>> = { 'n-ok': 3000, 'n-bad': 3400, 'n-fix': 3400 };
@@ -42,7 +42,9 @@ const LOCAL = `.masc { display: inline-block; flex: none; line-height: 0; vertic
 :root[data-mascots="still"] :is(${reactSel}) svg :not(.eye) { animation-duration: 1ms !important; animation-delay: 0s !important; }
 /* Done (a reaction played, or "once" ran its cycle): if anything restarts it (a panel hidden with display: none and
    shown again), it starts at its end instead of playing again. */
-.masc.masc-done svg :not(.eye), :root[data-mascots="once"] .masc.masc-done .eye { animation-delay: -1000s !important; }`;
+.masc.masc-done svg :not(.eye), :root[data-mascots="once"] .masc.masc-done .eye { animation-delay: -1000s !important; }
+/* A loader that follows real progress (mascotprogress.ts) moves by script, not by its demo keyframes; it still blinks. */
+.masc.prog svg :not(.eye) { animation: none !important; }`;
 
 type MSvg = SVGSVGElement & { _left?: number; _t?: number; _since?: number };
 let ready = false;
@@ -142,7 +144,7 @@ function setup() {
 }
 
 /** A mascot scene as HTML. With a label it's an image for screen readers; without one it's decoration. */
-export function mascot(id: MascotId, opts: { size?: number; label?: string; className?: string; zoom?: number; busy?: boolean } = {}): string {
+export function mascot(id: MascotId, opts: { size?: number; label?: string; className?: string; zoom?: number; busy?: boolean; view?: [number, number, number, number] } = {}): string {
   setup();
   // Each copy gets its own ids, so a hidden copy can't take another's gradients with it.
   const k = `m${id}-`;
@@ -150,11 +152,14 @@ export function mascot(id: MascotId, opts: { size?: number; label?: string; clas
   const size = opts.size ?? 48;
   // Small spots (a toast, a header) zoom in on the character: the scenes leave room for sparkles and jumps.
   const z = opts.zoom ?? (size <= 48 ? 1.5 : 1);
-  const view = z === 1 ? svg : svg.replace(/viewBox="0 0 120 120"/, `viewBox="${(60 - 60 / z).toFixed(1)} ${(60 - 60 / z).toFixed(1)} ${(120 / z).toFixed(1)} ${(120 / z).toFixed(1)}"`);
+  // A wide scene (Duo's bar) shows only its part of the square: `view` crops it, and the height follows.
+  const view = opts.view ? svg.replace(/viewBox="0 0 120 120"/, `viewBox="${opts.view.join(' ')}"`)
+    : z === 1 ? svg : svg.replace(/viewBox="0 0 120 120"/, `viewBox="${(60 - 60 / z).toFixed(1)} ${(60 - 60 / z).toFixed(1)} ${(120 / z).toFixed(1)} ${(120 / z).toFixed(1)}"`);
+  const height = opts.view ? Math.round((size * opts.view[3]) / opts.view[2]) : size;
   const a11y = opts.label ? `role="img" aria-label="${opts.label.replace(/"/g, '&quot;')}"` : 'aria-hidden="true"';
   // The key says when two mascots are the same scene, drawn the same way (keepMascots).
-  const key = [id, size, z, opts.busy ? 'busy' : '', opts.className ?? '', opts.label ?? ''].join('|').replace(/"/g, '');
-  return `<span class="masc masc-${id}${opts.busy ? ' busy' : ''}${opts.className ? ' ' + opts.className : ''}" data-m="${key}" ${a11y} style="width:${size}px;height:${size}px">${view}</span>`;
+  const key = [id, size, z, opts.busy ? 'busy' : '', opts.className ?? '', opts.label ?? '', opts.view?.join(' ') ?? ''].join('|').replace(/"/g, '');
+  return `<span class="masc masc-${id}${opts.busy ? ' busy' : ''}${opts.className ? ' ' + opts.className : ''}" data-m="${key}" ${a11y} style="width:${size}px;height:${height}px">${view}</span>`;
 }
 
 /**

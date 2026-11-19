@@ -286,6 +286,29 @@ export function confirmOn(btn: HTMLElement | null | undefined, label: string, to
   );
 }
 
+/**
+ * A short note right under `el` (the button that was pressed), where the person is looking, instead of a toast: it
+ * closes after a while, on the next click or with Esc. When `el` isn't on screen any more, a toast says it instead.
+ */
+export function noteNear(el: HTMLElement | null | undefined, text: string, kind: ToastKind = 'info') {
+  if (!el || !el.offsetParent || el.closest('dialog:not([open])')) return toast(text, { kind });
+  document.querySelectorAll('.near-note').forEach((n) => n.remove());
+  const n = document.createElement('p');
+  n.className = `near-note ${kind}`;
+  n.setAttribute('role', kind === 'error' || kind === 'warning' ? 'alert' : 'status');
+  n.innerHTML = `<svg class="toast-icon" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${ICONS[kind]}</svg><span></span>`;
+  n.querySelector('span')!.textContent = text;
+  // After the button's own line (an inline button in a sentence: after that sentence's block).
+  const anchor = el.closest('p, li, .row, .api-actions, .ex-actions, div') ?? el;
+  anchor.insertAdjacentElement('afterend', n);
+  const close = () => { n.remove(); document.removeEventListener('pointerdown', away, true); document.removeEventListener('keydown', esc, true); };
+  const away = (e: Event) => { if (!n.contains(e.target as Node)) close(); };
+  const esc = (e: KeyboardEvent) => { if (e.key === 'Escape') close(); };
+  setTimeout(() => { document.addEventListener('pointerdown', away, true); document.addEventListener('keydown', esc, true); }, 0);
+  const ms = noteDuration(8000);
+  if (Number.isFinite(ms)) setTimeout(close, ms);
+}
+
 /** Says something to screen readers only (a label that changes isn't read out by itself). */
 let sr: HTMLElement | null = null;
 export function announce(text: string) {

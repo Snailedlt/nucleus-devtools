@@ -4,6 +4,7 @@ import { simulate, sessionSummary, groupIgnored } from '@core/sim';
 import { MATRIX_RESOLUTIONS, planMatrix, failureOf, jobOptions } from '@core/matrix';
 import { $, esc } from './dom';
 import { keepMascots, mascot } from './mascots';
+import { ringProgress } from './mascotprogress';
 import { reportButton } from '@core/reporticons';
 import { simSummary } from '@core/report';
 import { openReportFlow } from './reportflow';
@@ -159,6 +160,8 @@ export function initTryIt(deps: TryItDeps): { run: () => void; options: () => Si
         <div class="mx-wrap"><table><thead><tr><th></th>${modes.map((m) => `<th>${m.label}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div>
         ${fails.length ? `<ul class="mx-fails">${fails.slice(0, 8).map((f) => { const [p, kb] = f.k.split('|'); return `<li>${p} player${p === '1' ? '' : 's'}, ${modes.find((m) => String(m.kb) === kb)!.label.toLowerCase()}, ${f.res.replace('x', '×')}: ${esc(f.why)}</li>`; }).join('')}${fails.length > 8 ? `<li>…and ${fails.length - 8} more</li>` : ''}</ul>` : ''}
         <p class="muted small" style="margin:6px 0 0">Pick a cell to see that run below.</p>`);
+      // The ring shows how far the run is: its electrons chase the progress (mascotprogress.ts).
+      if (!finished) ringProgress(box, done / Math.max(1, jobs.length));
       document.documentElement.classList.toggle('busy', !finished); // the logo beats while it runs
       box.querySelector('#mx-stop')?.addEventListener('click', () => (mxRun++, draw(true, true)));
       box.querySelector('#mx-close')?.addEventListener('click', () => ((mxRun++, (box.hidden = true), document.documentElement.classList.remove('busy'))));

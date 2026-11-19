@@ -965,7 +965,10 @@ await m.ctx.close();
   await s.p.waitForTimeout(900);
   const bins = await s.p.evaluate(() => ({ n: document.getElementById('gf-prog-n')?.textContent ?? '', check: document.querySelector('#status .st-reading')?.textContent ?? '' }));
   check(/of 3/.test(bins.n) && /Reading your game/.test(bins.check), `game folder: the program files show n of m, and Check says it's reading them (${bins.n} | ${bins.check})`);
-  await s.p.waitForTimeout(2200);
+  // Duo pushes the bar (mascotprogress.ts), standing in for it; the <progress> stays for screen readers.
+  const duo = await s.p.evaluate(() => { const d = document.querySelector('.fp-duo'); const bar = document.getElementById('gf-prog-bar'); return { duo: !!d?.classList.contains('prog'), fill: d?.querySelector('.ld-fill')?.style.strokeDashoffset ?? '', hidden: bar ? bar.getBoundingClientRect().width <= 1 : false }; });
+  check(duo.duo && duo.fill !== '' && duo.hidden, `game folder: Duo pushes the bar while the program files are read (${JSON.stringify(duo)})`);
+  await s.p.waitForTimeout(3200);
   const done = await s.p.evaluate(() => ({ prog: !!document.querySelector('.fp-prog'), check: !!document.querySelector('#status .st-reading') }));
   check(!done.prog && !done.check, `game folder: the progress is gone when done (${JSON.stringify(done)})`);
   check(!s.errors.length, `game folder progress: no page errors ${s.errors.join(' ')}`);

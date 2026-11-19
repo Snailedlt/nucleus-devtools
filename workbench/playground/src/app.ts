@@ -39,7 +39,8 @@ import { announceLine, hoverDelay, initA11y } from './a11y';
 import { initNews } from './news';
 import { initPanels, type PanelEdge } from './panels-ui';
 import { initTouchTitles } from './touch-titles';
-import { keepMascots, mascot } from './mascots';
+import { keepMascots, mascot, mascotsOn } from './mascots';
+import { barProgress } from './mascotprogress';
 import { fixWithNucli, applyEditsToText } from './fixfx';
 import { placeExample } from './lines';
 import { prettyCode } from '@core/pretty';
@@ -589,7 +590,9 @@ function folderProgText(p: FolderProgress): string {
 function folderProgHtml(): string {
   const p = folderProg;
   if (!p || p.phase === 'done') return '';
-  const bar = p.phase === 'binaries' ? `<progress id="gf-prog-bar" max="${Math.max(1, p.totalBytes)}" value="${p.bytes}" aria-label="Reading the game's program files"></progress>` : '<progress id="gf-prog-bar" aria-label="Listing the game\'s files"></progress>';
+  // Reading the program files has a real progress: Duo pushes the bar (the <progress> stays for screen readers).
+  const duo = p.phase === 'binaries' && mascotsOn() ? mascot('load', { size: 168, view: [10, 40, 102, 72], className: 'fp-duo' }) : '';
+  const bar = p.phase === 'binaries' ? `${duo}<progress id="gf-prog-bar" max="${Math.max(1, p.totalBytes)}" value="${p.bytes}" aria-label="Reading the game's program files"></progress>` : '<progress id="gf-prog-bar" aria-label="Listing the game\'s files"></progress>';
   // The status text is read out when the step changes (aria-live), not at every file.
   return `<div class="fp-prog"><div class="fp-prog-row"><span id="gf-prog-text" role="status" aria-live="polite">${esc(p.phase === 'listing' ? `Reading ${p.name}…` : `Reading ${p.name}'s program files…`)}</span><button class="link" type="button" data-gf="cancel">Cancel</button></div>${bar}<div class="fp-prog-n muted" id="gf-prog-n">${esc(folderProgText(p))}</div></div>`;
 }
@@ -599,8 +602,15 @@ onFolderProgress((p) => {
   const changed = (prev?.phase ?? 'done') !== p.phase || (p.phase !== 'done' && prev?.phase !== 'done' && prev?.name !== p.name);
   folderProg = p;
   const bar = document.getElementById('gf-prog-bar') as HTMLProgressElement | null;
-  if (changed || !bar) { pkgUI?.render(); if (p.phase === 'done') (editor as any).performLint(); return; }
-  if (p.phase === 'binaries') { bar.max = Math.max(1, p.totalBytes); bar.value = p.bytes; }
+  const duo = document.querySelector<HTMLElement>('.fp-duo');
+  if (p.phase === 'done' && prev?.phase === 'binaries' && duo) {
+    // Done: Duo lets go, the bar turns green and he hops; then the section is drawn again.
+    barProgress(duo, 1);
+    setTimeout(() => { if (folderProg?.phase === 'done') { pkgUI?.render(); (editor as any).performLint(); } }, 900);
+    return;
+  }
+  if (changed || !bar) { pkgUI?.render(); if (p.phase === 'binaries') barProgress(document.querySelector('.fp-duo') ?? document, p.bytes / Math.max(1, p.totalBytes)); if (p.phase === 'done') (editor as any).performLint(); return; }
+  if (p.phase === 'binaries') { bar.max = Math.max(1, p.totalBytes); bar.value = p.bytes; if (duo) barProgress(duo, p.bytes / Math.max(1, p.totalBytes)); }
   const n = document.getElementById('gf-prog-n');
   if (n) n.textContent = folderProgText(p);
 });
@@ -1447,9 +1457,10 @@ const docs = initDocs({ selectTab, handlerHash: () => doc.hash, used: use, pageU
 function placeDocExample(path: string, m: Member) {
   return m.example ? placeExample(editor.getValue(), path, prettyCode(m.example), m.exampleIn ?? 'top') : undefined;
 }
-function insertExample(path: string, m: Member, replace = false) {
+/** Puts the example in; when it can't, says why (Docs shows it under the button). */
+function insertExample(path: string, m: Member, replace = false): string | undefined {
   const r = placeDocExample(path, m);
-  if (!r) return toast("There's no telling where the example goes: the handler doesn't parse (Check lists what's wrong), or its callback is set to a function made elsewhere. Add it by hand.");
+  if (!r) return "There's no telling where the example goes: the handler doesn't parse (Check lists what's wrong), or its callback is set to a function made elsewhere. Add it by hand.";
   // Set already: "Show in handler" goes to that line and keeps the value; only "Replace with the example's value" changes it.
   if (r.action === 'same' || (r.action === 'update' && !replace)) {
     // Shown in the Code view (Form or Blocks would leave it hidden), as Check's "Show me" does.
