@@ -2,7 +2,13 @@
 // does and its keys. Works in both modes, so the common shortcuts are findable without Advanced mode, but stays out
 // of sight until you look. Replaces the button's plain title tooltip (kept as aria-keyshortcuts for screen readers).
 const MAC = /Mac|iPhone|iPad/.test(navigator.platform);
-const show = (keys: string) => keys.split(' ').map((k) => `<kbd>${k === 'Ctrl' && MAC ? '⌘' : k === 'Alt' && MAC ? '⌥' : k}</kbd>`).join('');
+const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]!);
+// Fixed hints write "Ctrl" for the main modifier (⌘ on a Mac). A rebindable action's keys come from keybindings.ts as
+// they are (canonical): there "Cmd" is ⌘ and "Ctrl" the Control key, also on a Mac.
+const shown = (k: string, canon: boolean) => k === 'Cmd' ? '⌘' : k === 'Ctrl' ? (MAC ? (canon ? '⌃' : '⌘') : 'Ctrl') : k === 'Alt' && MAC ? '⌥' : k;
+const ariaName = (k: string, canon: boolean) => k === 'Cmd' ? 'Meta' : k === 'Ctrl' ? (MAC && !canon ? 'Meta' : 'Control') : k;
+// Keys can come from an imported settings file: text only, never markup.
+const show = (keys: string, canon: boolean) => keys.split(' ').filter(Boolean).map((k) => `<kbd>${esc(shown(k, canon))}</kbd>`).join('');
 
 /** `keys` is "Ctrl B" (space between keys), or a function for a rebindable action, read when the hint shows; call the
  *  returned `refresh` when bindings change so aria-keyshortcuts follows. */
@@ -14,8 +20,8 @@ export function initKeyHints(list: { el: HTMLElement | null; what?: string; keys
   document.body.append(tip);
   let timer = 0;
   const hide = () => { clearTimeout(timer); tip.hidden = true; };
-  const aria = (el: HTMLElement, k: string) => {
-    if (k) el.setAttribute('aria-keyshortcuts', k.replace(/ /g, '+').replace('Ctrl', MAC ? 'Meta' : 'Control'));
+  const aria = (el: HTMLElement, k: string, canon: boolean) => {
+    if (k) el.setAttribute('aria-keyshortcuts', k.split(' ').filter(Boolean).map((t) => ariaName(t, canon)).join('+'));
     else el.removeAttribute('aria-keyshortcuts');
   };
   const now = (keys: string | (() => string)) => (typeof keys === 'function' ? keys() : keys);
@@ -23,13 +29,13 @@ export function initKeyHints(list: { el: HTMLElement | null; what?: string; keys
     if (!el) continue;
     const label = what ?? (el.getAttribute('title') || el.getAttribute('aria-label') || el.textContent || '').replace(/\s*\((Ctrl|⌘|F\d|\?)[^)]*\)\s*$/, '').trim();
     el.removeAttribute('title');
-    aria(el, now(given));
+    aria(el, now(given), typeof given === 'function');
     const open = (delay: number) => {
       clearTimeout(timer);
       timer = window.setTimeout(() => {
         if (!el.isConnected || el.offsetParent === null) return;
         const keys = now(given);
-        tip.innerHTML = `<span>${label.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]!)}</span>${keys ? `<span class="kh-keys">${show(keys)}</span>` : ''}`;
+        tip.innerHTML = `<span>${label.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]!)}</span>${keys ? `<span class="kh-keys">${show(keys, typeof given === 'function')}</span>` : ''}`;
         tip.hidden = false;
         const r = el.getBoundingClientRect();
         const w = tip.offsetWidth, h = tip.offsetHeight;
@@ -51,5 +57,5 @@ export function initKeyHints(list: { el: HTMLElement | null; what?: string; keys
   }
   document.addEventListener('keydown', (e) => e.key === 'Escape' && hide());
   addEventListener('scroll', hide, true);
-  return { refresh: () => list.forEach(({ el, keys }) => el && aria(el, now(keys))) };
+  return { refresh: () => list.forEach(({ el, keys }) => el && aria(el, now(keys), typeof keys === 'function')) };
 }
