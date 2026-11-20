@@ -221,6 +221,30 @@ test('start page as built: each heading carries its link', { skip: !fs.existsSyn
   for (const m of html.matchAll(/href="#([^"]*)"/g)) if (m[1]) assert.ok(ids.has(m[1]), `#${m[1]}`);
 });
 
+test('AI guide as built: preview stays unindexed and the live page advertises its own URL', { skip: !fs.existsSync(builtStart) && 'not built' }, () => {
+  const pages = path.join(root, 'playground/dist/pages');
+  const start = fs.readFileSync(builtStart, 'utf8');
+  const ai = fs.readFileSync(path.join(pages, 'ai/index.html'), 'utf8');
+  const tools = fs.readFileSync(path.join(pages, 'tools/index.html'), 'utf8');
+  assert.match(ai, /<title>[^<]*Nucleus Co-op handler with AI[^<]*<\/title>/);
+  for (const html of [start, tools]) assert.match(html, /href="\.\.\/ai\/"/);
+  assert.match(tools, /id="ai-agents"/, 'published tools-page bookmark still works');
+  assert.doesNotMatch(ai, /__BASE__/);
+
+  if (start.includes('<meta name="robots" content="noindex, nofollow">')) {
+    assert.match(ai, /<meta name="robots" content="noindex, nofollow">/);
+    assert.doesNotMatch(ai, /rel="canonical"|property="og:url"/);
+  } else {
+    const base = 'https://snailedlt.github.io/nucleus-devtools/';
+    assert.ok(ai.includes(`<link rel="canonical" href="${base}ai/">`));
+    assert.ok(ai.includes(`<meta property="og:url" content="${base}ai/">`));
+    for (const meta of ['property="og:image"', 'name="twitter:image"']) {
+      assert.ok(ai.includes(`<meta ${meta} content="${base}start/og.png">`), meta);
+    }
+    assert.ok(fs.readFileSync(path.join(pages, 'sitemap.xml'), 'utf8').includes(`<loc>${base}ai/</loc>`));
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Links into the extension's repository, and the forms of the others
 
