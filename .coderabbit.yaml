@@ -17,6 +17,9 @@ reviews:
   auto_review:
     enabled: true
     drafts: false
+    # Work goes into the next release first (AGENTS.md); main is the release. Review pull requests into either.
+    base_branches:
+      - claude/next-release
 
   # Generated or vendored: never edited by hand (AGENTS.md "Generated files"). Review the generator instead.
   path_filters:
