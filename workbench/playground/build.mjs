@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import * as esbuild from 'esbuild';
 import { fetchPackageFiles, slimFiles } from '../tools/hub-files.mjs';
@@ -667,15 +667,23 @@ const sitePageSrc = (file, slug, title, desc, shareTitle) => {
     // Its <script> stays as written (hlLangBlocks only on the HTML around it).
     + '<body>\n' + fs.readFileSync(path.join(here, 'src', file), 'utf8').split(/(<script\b[\s\S]*?<\/script>)/i).map((part, i) => (i % 2 ? part : hlLangBlocks(part))).join('');
 };
-const toolsSrc = sitePageSrc('tools.html', 'tools',
+// Parts of the site made from the same data as the README's (scripts/readme-blocks.mjs): the comparison table
+// (data/tools-compare.json) and the Claude Code plugin's commands (.claude-plugin/marketplace.json).
+const RB = await import(pathToFileURL(path.join(coreRepo, 'scripts', 'readme-blocks.mjs')).href);
+const plugin = RB.claudePlugin();
+const fromData = (src) => src.replace('<!--COMPARE-->', () => RB.compareHtml()).replaceAll('__CLAUDE_MARKETPLACE__', plugin.marketplace).replaceAll('__CLAUDE_PLUGIN__', plugin.plugin);
+const toolsSrc = fromData(sitePageSrc('tools.html', 'tools',
   'Get the tools: Nucleus Co-op handlers in VS Code, Notepad++, the browser and more',
   'Every Nucleus Co-op handler tool in one place: the browser workbench, VS Code, Notepad++, other editors through a language server, the ncdev command line and AI agents.',
-  'Get the tools: Nucleus Co-op handler tools');
+  'Get the tools: Nucleus Co-op handler tools'));
 // ai/: making a handler with ChatGPT, Claude, Copilot and other AI, chat or agent, checked by the tools.
-const aiSrc = sitePageSrc('ai.html', 'ai',
-  'Make a Nucleus Co-op handler with AI: ChatGPT, Claude, Copilot, Cursor',
-  'How to make a Nucleus Co-op handler with an AI chat or agent and check it before you trust it: a starter prompt, the write-check-fix loop, and what AI gets wrong.',
-  'Make a Nucleus Co-op handler with AI');
+// The chatbot prompt's rules are the core's (core/airules.ts AI_HARD_RULES), the same ones Fix with AI and the MCP
+// server give an AI, so the page can't say less or something else.
+const { AI_HARD_RULES } = await import('data:text/javascript;base64,' + Buffer.from((await esbuild.build({ entryPoints: [path.join(coreRepo, 'src', 'core', 'airules.ts')], bundle: true, format: 'esm', platform: 'node', write: false, nodePaths: [path.join(coreRepo, 'node_modules')], logLevel: 'error', banner: { js: `import { createRequire as __cr } from 'node:module'; const require = __cr(${JSON.stringify(import.meta.url)});` } })).outputFiles[0].text).toString('base64'));
+const aiSrc = fromData(sitePageSrc('ai.html', 'ai',
+  'Make a Nucleus Co-op handler with AI: Claude Code, Codex, Cursor, ChatGPT',
+  'Set up an AI to write Nucleus Co-op handlers with our tools: prompts to copy for Claude Code, other AI agents and chatbots.',
+  'Make a Nucleus Co-op handler with AI')).replace('__AI_HARD_RULES__', () => AI_HARD_RULES.map((r, i) => `${i + 1}. ${r.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}`).join('\n'));
 const toolsDir = path.join(here, 'dist', 'pages', 'tools');
 fs.mkdirSync(toolsDir, { recursive: true });
 const renderSitePage = (src, section) =>

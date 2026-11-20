@@ -28,3 +28,34 @@ test('tool docs: the Notepad++ menu is read in order, with its keys and separato
   assert.equal(menu.find((m) => m.label === 'Go to definition').keys, 'Alt+F12');
   assert.ok(menu.some((m) => m.label === ''), 'separators');
 });
+
+// What the README and the site still name by hand must exist in the tools; what's generated must be current. A
+// command may be named by its title's start ("Nucleus: Try It" for "Nucleus: Try It (Simulate Each Player)").
+const { updatedReadme } = await import('../../scripts/readme-blocks.mjs');
+const PAGES = ['README.md', 'PORTING.md', 'TESTING.md', 'workbench/playground/src/tools.html', 'workbench/playground/src/ai.html', 'workbench/playground/src/llms.txt'];
+
+test('docs sync: README.md\'s generated parts are current (node scripts/readme-blocks.mjs)', () => {
+  assert.equal(read('README.md'), updatedReadme(read('README.md')), 'README.md is out of date: run node scripts/readme-blocks.mjs');
+});
+
+test('docs sync: every `ncdev <command>` the docs name is a real command', () => {
+  const src = read('src/clihelp.ts');
+  const real = new Set(parseHelp(src.slice(src.indexOf('`', src.indexOf('helpText')) + 1, src.lastIndexOf('`')).replace(/\$\{[^}]*\}/g, 'x')).commands.flatMap((c) => c.use.map((u) => u.split(' ')[0])));
+  const bad = [];
+  for (const p of PAGES) for (const m of read(p).matchAll(/(?:`|<code[^>]*>)(?:\.\\)?(?:ncdev|node nucleus\.js) ([a-z][\w-]*)/g)) if (!real.has(m[1])) bad.push(`${p}: ncdev ${m[1]}`);
+  assert.deepEqual(bad, []);
+});
+
+test('docs sync: every "Nucleus: …" command the README names is in the extension', () => {
+  const pkg = JSON.parse(read('package.json'));
+  const titles = new Set(pkg.contributes.commands.map((c) => `${c.category}: ${c.title}`));
+  const bad = [...read('README.md').matchAll(/\*\*(Nucleus: [^*]+)\*\*/g)].map((m) => m[1]).filter((t) => ![...titles].some((x) => x === t || x.startsWith(`${t} (`)) && !/^Nucleus: check this handler$/.test(t));
+  assert.deepEqual(bad, []);
+});
+
+test('docs sync: the Notepad++ menu is named as the plugin names it', () => {
+  const name = /PLUGIN_NAME = L"([^"]+)"/.exec(read('npp-plugin/src/NcDev.cpp'))[1];
+  const bad = [];
+  for (const p of PAGES) for (const m of read(p).matchAll(/Plugins (?:›|&rsaquo;) (?:<strong>)?([A-Z][\w+ -]*?)(?:<\/strong>|\*\*|[,.:)])/g)) if (m[1].trim().replace(/ menu$/, '') !== name) bad.push(`${p}: ${m[1]}`);
+  assert.deepEqual(bad, []);
+});

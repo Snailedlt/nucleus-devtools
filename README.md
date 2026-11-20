@@ -56,25 +56,27 @@ Every tool is on one page, with the install steps: **[the tools page](https://sn
 
 One engine runs underneath all of them, so the checks, suggestions and docs are the same; what differs is what each editor can show.
 
-| | VS Code | [Notepad++](#notepad) | [Browser workbench](https://snailedlt.github.io/nucleus-devtools/?ref=readme-md) | [Other editors (LSP)](#your-own-editor-for-experienced-developers) |
+<!-- generated:compare -->
+| | [VS Code](#vs-code) | [Notepad++](#notepad) | [Workbench](https://snailedlt.github.io/nucleus-devtools/?ref=readme-md) | [Other editors (LSP)](#your-own-editor-for-experienced-developers) |
 |---|:-:|:-:|:-:|:-:|
 | Problems as you type, with the why | ✅ | ✅ | ✅ | ✅ |
-| Quick fixes and Fix all | ✅ | ✅ Alt+Enter | ✅ | ✅ |
-| Suggestions, snippets, the New Handler template | ✅ | ✅ | ✅ | ✅ |
+| Quick fixes and Fix all | ✅ | ✅ | ✅ | ✅ |
+| Suggestions, snippets, New handler | ✅ | ✅ | ✅ | ✅ |
 | Hover docs and parameter hints | ✅ | ✅ | ✅ | ✅ |
-| Docs for every option and function | ✅ panel | ✅ API reference | ✅ Docs tab | ✅ links to the workbench |
+| Docs for every option and function | ✅ panel | ✅ API reference | ✅ Docs tab | ✅ links to the docs |
 | Format (never moves a line) | ✅ | ✅ | ✅ | ✅ |
 | Go to definition, references, rename | ✅ | ✅ | ✅ | ✅ |
 | Outline | ✅ | ✅ panel | — | ✅ |
-| Try it (what Nucleus does per player) | ✅ | ✅ | ✅ | ✅ command |
-| Debugger (step through, per player) | ✅ | — | ✅ | ✅ `ncdev dap` |
-| Visual editor (Form, Blocks, Lines) | — | — | ✅ | — |
+| Try it (each player's setup) | ✅ | ✅ | ✅ | ✅ command |
+| Debugger, per player | ✅ | — | ✅ | ✅ `ncdev dap` |
+| Lines (every name, one click to insert) | — | — | ✅ | — |
 | Checks against the game's folder | ✅ | ✅ | ✅ | ✅ |
 | Browse and open Hub handlers | ✅ | ✅ | ✅ | `ncdev hub` |
-| Package as `.nc` for the Hub | ✅ | ✅ | ✅ | ✅ command |
-| Install into Nucleus Co-op (Windows) | ✅ | ✅ | ✅ Chrome, Edge | ✅ command |
-| Test in Nucleus Co-op (starts it) | ✅ | ✅ | — (a browser can't) | ✅ command |
-| Install needed | the extension | `ncdev setup notepad++` | nothing | `ncdev` |
+| Package as .nc for the Hub | ✅ | ✅ | ✅ | ✅ command |
+| Install into Nucleus Co-op | ✅ | ✅ | ✅ Chrome, Edge | ✅ command |
+| Test in Nucleus Co-op (starts it) | ✅ | ✅ | — a browser can't | ✅ command |
+| What to install | the extension | `ncdev setup notepad++` | nothing | `ncdev` |
+<!-- /generated:compare -->
 
 ## The browser workbench
 
@@ -97,7 +99,7 @@ The extension for VS Code (and VSCodium).
 - **Snippets** for what most handlers do (`iniset`, `replacelines`, `regkey`, `startargs`, `ifoption`, `eachplayer`…), offered where a statement starts; in an empty file, `handler` writes the whole template.
 - **Linting** for the mistakes that make handlers fail, often silently. See [Lint rules](#lint-rules).
 - **Fix all**, deterministic and offline: applies every fix that keeps the handler's behaviour or repairs code Nucleus can't load. It runs as a command, on save, or as `ncdev lint --fix`. Fixes that change behaviour or need your input stay one-click quick fixes. On the 41 engine probes, it takes 11 of the 16 that fail in Jint 2.11.58 to working.
-- **Format Document** (Shift+Alt+F, also a selection, and as you type): indentation, spacing, double quotes and semicolons (both [configurable](#settings)). No line moves (Nucleus runs handlers line by line), and the result is checked to parse to exactly the same program, so formatting never changes what the handler does. Also `ncdev format`.
+- **Format Document** (also a selection, and as you type): indentation, spacing, double quotes and semicolons (both [configurable](#settings)). No line moves (Nucleus runs handlers line by line), and the result is checked to parse to exactly the same program, so formatting never changes what the handler does. Also `ncdev format`.
 - **Quick fixes**: did-you-mean for typos, `"true"` → `true`, template string → concatenation, wrap a value in an array, add missing required options, and more.
 - **New Handler** wizard that generates a handler which passes the linter, with optional Proto Input, Goldberg, INI resolution and user-option sections.
 - **Package for the Hub**: builds a `.nc` package laid out the way Nucleus' installer expects.
@@ -211,13 +213,14 @@ This installs the **Nucleus Co-op handlers** plugin and puts `ncdev` in `%LOCALA
 - **Problems are underlined** as you type (red: Nucleus would fail; orange: probably wrong; dotted: worth knowing). Hover one, or any name, for an explanation and the docs.
 - **Suggestions as you type** after a dot, `=`, a quote…: the members that exist there, the values an option takes (`true`/`false`, `Nucleus.DPIHandling.True`…), the game's own files once its folder is linked. The selected one's type and docs show in the status bar. Parameter hints after `(`.
 - **The handler's own functions and variables** are suggested too, with the comment above them as their docs, and their parameters show after `(`. `Context.Options["` suggests the keys your `Game.AddOption` lines add, and `== "` their choices.
-- **Alt+F12**: go to where a function, variable or option is defined; *Find references* lists every use; *Rename…* changes a variable or function everywhere in the handler.
-- **Alt+Enter**: the fixes for the line. **Plugins › Nucleus Co-op handlers** has *Fix all*, *Format handler*, *Try it* (what Nucleus would set up for 1–4 players, in a new tab), a *Problems panel* (double-click to jump, right-click for the fixes), *Link the game's folder…*, *Open in the browser workbench* (this handler, in the workbench's visual editor and Test all), the *API reference*, *Check for updates*, and *Report a problem…* / *Request a feature…* (Alt+Enter on a problem also has *This check is wrong*). Every command can get a shortcut in *Settings › Shortcut Mapper*.
+- **Go to definition**: where a function, variable or option is defined; *Find references* lists every use; *Rename…* changes a variable or function everywhere in the handler.
+- **Quick fix**: the fixes for the line. **Plugins › Nucleus Co-op handlers** has *Fix all*, *Format handler*, *Try it* (what Nucleus would set up for 1–4 players, in a new tab), a *Problems panel* (double-click to jump, right-click for the fixes), *Link the game's folder…*, *Open in the browser workbench* (this handler, in the workbench's visual editor and Test all), the *API reference*, *Check for updates*, and *Report a problem…* / *Request a feature…* (the quick fix on a problem also has *This check is wrong*). Every command can get a shortcut in *Settings › Shortcut Mapper*.
 - **New handler…** asks the game's name, its .exe and what to start with, then creates and opens the handler. **Install to Nucleus Co-op** copies it (and its `<Name>/` folder) into Nucleus' `handlers` folder, asking first if it has errors or is already installed. The **Outline panel** lists the handler's options, functions and variables; click one to jump there.
 - **Test in Nucleus Co-op** installs the handler and starts Nucleus with its game selected (restarting an open one, with your OK); **Open Nucleus' debug log** shows what happened.
 - **Browse the Hub…** lists the Hub's handlers (most downloaded first, or search by game), and downloads one with its files and opens it. **Package as .nc…** makes the file to upload to the Hub.
 - **Settings…**: how each check is shown (error, warning, info, hint or off), and the format style (quotes, semicolons).
 - A **Run › Nucleus: check this handler** entry runs `ncdev lint` on the open file in a console.
+- Every menu entry and its keys: [Tools › Notepad++](https://snailedlt.github.io/nucleus-devtools/docs/tools/notepadpp/).
 
 `ncdev update` keeps the tool current (the plugin's menu says when there's a new one). `ncdev setup notepad++ --check` says what's installed and `--remove` takes it all out again. Without the standalone `ncdev` (e.g. `node nucleus.js setup notepad++`), the setup adds the Nucleus names and call tips to Notepad++'s own JavaScript suggestions instead (no plugin).
 
@@ -430,10 +433,12 @@ Setting up an AI for handlers? [Make a handler with AI](https://snailedlt.github
 
 ### Claude Code
 
+<!-- generated:claude-plugin -->
 ```
 /plugin marketplace add Snailedlt/nucleus-devtools
 /plugin install nucleus-coop@splitscreenme
 ```
+<!-- /generated:claude-plugin -->
 
 The skill loads automatically when you ask about Nucleus handlers.
 
@@ -501,7 +506,7 @@ Contributors' agents: see [AGENTS.md](AGENTS.md).
 Every tool knows which form its report belongs in, so you never pick one: the workbench, Learn, checks, Try it, the docs, VS Code, Notepad++, ncdev and other editors all open this repository's forms, with the right one and its *Where* filled in. Each report is filled in with what the tool knows (versions, the check, where the handler came from: a Hub id and version, an example or your own code) and you see all of it before you submit. Code is only included when it's the flagged line(s) of a check, and you can leave it out.
 
 - **Report a problem**: VS Code's command palette or the language status (*Feedback*), Notepad++'s plugin menu, `ncdev report`, the workbench's menu.
-- **This check is wrong**: on every check's problem (not on the game folder's or package's): Ctrl+. in VS Code, Alt+Enter in Notepad++, the code actions of any LSP editor, `ncdev report --check <rule> <file>`, the problem's flag in the workbench.
+- **This check is wrong**: on every check's problem (not on the game folder's or package's): the quick fixes in VS Code (Ctrl+.), Notepad++ and any LSP editor, `ncdev report --check <rule> <file>`, the problem's flag in the workbench.
 - **Nucleus did something different**: the report button in the Try it panel (VS Code and the workbench), `ncdev report tryit <file>`.
 - **I want to do…**: a feature request that starts from the problem: what you're trying to do and what's in the way (*Request a Feature…*, `ncdev report feature`).
 - **A problem with one Hub handler** (the game doesn't start, splits wrong)? That's for the handler's author and the community, not these tools: the report flows ask, and point to its Hub page, the [Discord](https://discord.gg/XxGMkqCf4r) and [r/nucleuscoop](https://www.reddit.com/r/nucleuscoop/).

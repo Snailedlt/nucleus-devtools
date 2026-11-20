@@ -6,7 +6,7 @@ Thanks for helping. These tools are for people who write Nucleus Co-op handlers,
 
 - **VS Code extension**: download the `.vsix` from the [latest release](https://github.com/Snailedlt/nucleus-devtools/releases), then in VS Code run **Extensions: Install from VSIX…**. Open your handlers folder; any handler `.js` gets checking, completion and hover docs.
 - **Workbench** (nothing to install): https://snailedlt.github.io/nucleus-devtools/?ref=vscode-testing-md
-- **Claude Code skill** (optional): `/plugin marketplace add Snailedlt/nucleus-devtools`, then `/plugin install nucleus-coop@splitscreenme`.
+- **Claude Code skill** (optional): the two commands in the README's [Claude Code](README.md#claude-code) section.
 
 ## What to try
 

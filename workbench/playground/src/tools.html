@@ -94,7 +94,7 @@ ncdev hub search "borderlands"  # how other handlers did it</code></pre>
   <div class="ctas"><a class="btn primary" href="../ai/">Set up your AI</a></div>
   <p class="small">Prompts to copy for Claude Code, other agents and chatbots: the agent sets the tools up itself. Or by hand:</p>
   <ul class="facts">
-    <li><strong>Claude Code:</strong> <code class="cmd">/plugin marketplace add Snailedlt/nucleus-devtools</code>, then <code class="cmd">/plugin install nucleus-coop@splitscreenme</code>. Its skill loads when you ask about handlers.</li>
+    <li><strong>Claude Code:</strong> <code class="cmd">/plugin marketplace add __CLAUDE_MARKETPLACE__</code>, then <code class="cmd">/plugin install __CLAUDE_PLUGIN__</code>. Its skill loads when you ask about handlers.</li>
     <li><strong>VS Code (Copilot agent mode):</strong> nothing to set up. The extension brings the tools; turn them on under <strong>MCP Servers</strong> in the Extensions view.</li>
     <li><strong>Claude Desktop, Cursor and other MCP clients:</strong> <code>ncdev mcp</code> serves the tools (check, fix, Try it, API lookup, Hub search). <a href="https://github.com/Snailedlt/nucleus-devtools#mcp-server-claude-desktop-cursor-vs-code-copilot-">The setup</a>.</li>
     <li><strong>Any agent in your handler folder:</strong> <a href="https://github.com/Snailedlt/nucleus-devtools#any-agent-in-your-handler-folder">the agent kit</a> (the skill, the API reference and a one-file command-line tool).</li>
@@ -106,26 +106,7 @@ ncdev hub search "borderlands"  # how other handlers did it</code></pre>
 <p class="small">One engine runs underneath all of them: the checks, suggestions and docs are the same. What differs is what each editor can show.</p>
 <div class="compare-wrap" tabindex="0" role="region" aria-label="Features by editor (scrolls sideways)">
 <table class="compare">
-<thead><tr><th scope="col">Feature</th><th scope="col">VS Code</th><th scope="col">Notepad++</th><th scope="col">Workbench</th><th scope="col">Other editors (LSP)</th></tr></thead>
-<tbody>
-<tr><th scope="row">Problems as you type, with the why</th><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-<tr><th scope="row">Quick fixes and Fix all</th><td>✅</td><td>✅<small>Alt+Enter</small></td><td>✅</td><td>✅</td></tr>
-<tr><th scope="row">Suggestions, snippets, New handler</th><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-<tr><th scope="row">Hover docs and parameter hints</th><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-<tr><th scope="row">Docs for every option and function</th><td>✅<small>panel</small></td><td>✅<small>API reference</small></td><td>✅<small>Docs tab</small></td><td>✅<small>links here</small></td></tr>
-<tr><th scope="row">Format (never moves a line)</th><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-<tr><th scope="row">Go to definition, references, rename</th><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-<tr><th scope="row">Outline</th><td>✅</td><td>✅<small>panel</small></td><td class="no">—</td><td>✅</td></tr>
-<tr><th scope="row">Try it (each player's setup)</th><td>✅</td><td>✅</td><td>✅</td><td>✅<small>command</small></td></tr>
-<tr><th scope="row">Debugger, per player</th><td>✅</td><td class="no">—</td><td>✅</td><td>✅<small><code>ncdev dap</code></small></td></tr>
-<tr><th scope="row">Lines (every name, one click to insert)</th><td class="no">—</td><td class="no">—</td><td>✅</td><td class="no">—</td></tr>
-<tr><th scope="row">Checks against the game's folder</th><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-<tr><th scope="row">Browse and open Hub handlers</th><td>✅</td><td>✅</td><td>✅</td><td><small><code>ncdev hub</code></small></td></tr>
-<tr><th scope="row">Package as .nc for the Hub</th><td>✅</td><td>✅</td><td>✅</td><td>✅<small>command</small></td></tr>
-<tr><th scope="row">Install into Nucleus Co-op</th><td>✅</td><td>✅</td><td>✅<small>Chrome, Edge</small></td><td>✅<small>command</small></td></tr>
-<tr><th scope="row">Test in Nucleus Co-op (starts it)</th><td>✅</td><td>✅</td><td class="no">—<small>a browser can't</small></td><td>✅<small>command</small></td></tr>
-<tr><th scope="row">What to install</th><td><small>the extension</small></td><td><small><code>ncdev setup notepad++</code></small></td><td><small>nothing</small></td><td><small><code>ncdev</code></small></td></tr>
-</tbody>
+<!--COMPARE-->
 </table>
 </div>
 </details>
