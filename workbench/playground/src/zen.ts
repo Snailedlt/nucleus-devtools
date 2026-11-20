@@ -20,7 +20,7 @@ export function initZen(opts: { refresh: () => void; focusCode: () => void; anno
   // Esc twice, quickly, and only when the Escape had nothing else to close: a suggestion list, the find bar, a menu, a
   // popup over the code or a dialog (looked at before they handle it, in the capture phase). The editor itself marks
   // every Escape as used, so that can't tell.
-  const OPEN = '.CodeMirror-hints, .find-widget.open, .app-menu, dialog[open], #line-pop:not([hidden]), .CodeMirror-dialog, #tip:not([hidden])';
+  const OPEN = '.CodeMirror-hints, .find-widget.open, .app-menu, dialog[open], #line-pop:not([hidden]), .CodeMirror-dialog, #tip:not([hidden]), #sig:not([hidden])';
   let last = 0;
   document.addEventListener('keydown', (e) => {
     if (e.key !== 'Escape' || !on()) return;

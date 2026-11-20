@@ -2065,7 +2065,7 @@ function commandList(): OpenEntry[] {
     c('Turn Advanced mode on or off', '', 'advanced mode rule details probes', click('#advanced')),
     c('Turn tips on or off', '', 'tips hints help', () => tips.toggle()),
     c('Reset panel sizes', '', 'layout resize panels reset width', () => panels.reset()),
-    c('Show or hide the results pane (Check, Try it, Docs)', labelOf('results'), 'results pane panel hide show toggle wide code editor maximize minimize collapse distraction', () => toggleResults()),
+    c('Show or hide the results pane (Check, Try it, Docs)', labelOf('results'), 'results pane panel hide show toggle wide code editor maximize minimize collapse distraction', () => resultsKey()),
     c('Zen mode: only the code', labelOf('zen'), 'zen focus distraction free full screen fullscreen only code hide everything centered', () => zen.toggle(), 'Esc twice leaves it'),
     c("What's new", '', 'changelog changes news updates release notes', () => news.open()),
     c('Keyboard shortcuts', '?', 'help keys shortcuts keybindings', () => helpDialog.showModal()),
@@ -2404,7 +2404,7 @@ let revealResults = () => {};
 /** Shows a results tab. `reveal` (the default, when someone asks for a tab) brings back a hidden results pane and leaves
  *  Zen mode; a tab chosen for them (start-up, a handler opened, F8) leaves the layout as it is. */
 function selectTab(id: string, reveal = true) {
-  if (reveal && !narrow()) revealResults();
+  if (reveal) revealResults();
   document.querySelectorAll<HTMLButtonElement>('.pane-head [role=tab]').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === id)));
   requestAnimationFrame(placeInk);
   document.querySelectorAll<HTMLElement>('[role=tabpanel][id^=panel-]').forEach((p) => (p.hidden = p.id !== `panel-${id}`));
@@ -2506,15 +2506,20 @@ const settings = initSettings({
 const news = initNews();
 const panels = initPanels({ refresh: () => editor.refresh(), toast, menu: (edge, at) => edgeMenu(edge, at) });
 const zen = initZen({ refresh: () => editor.refresh(), focusCode: () => { if (viewMode === 'code') editor.focus(); }, announce, keys: () => labelOf('zen') });
-revealResults = () => { zen.set(false); panels.results(true); };
+// Asked for a results tab: out of Zen mode at any width; the hidden pane back on wide screens (phones switch views).
+revealResults = () => { zen.set(false); if (!narrow()) panels.results(true); };
 /** Ctrl+J, the Results button and the pane's own hide button: the results pane in or out. Hiding it puts the focus in
  *  the code (it may have been in the pane). */
 function toggleResults(show?: boolean) {
+  // Where the focus is before the pane goes (hiding it can move the focus to the page).
+  const inResults = !!document.querySelector('.main > .pane.side')?.contains(document.activeElement);
   const shown = panels.results(show);
-  if (!shown && document.querySelector('.main > .pane.side')?.contains(document.activeElement)) editor.focus();
+  if (!shown && inResults) editor.focus();
   if (shown && zen.isOn()) zen.set(false);
   announce(shown ? 'The results pane is back.' : `The results pane is hidden. ${labelOf('results') || 'The Results button'} brings it back.`);
 }
+/** Ctrl+J and the palette: on a phone, switch between the code and the results; else the pane in or out. */
+const resultsKey = () => (narrow() ? setView(document.querySelector<HTMLElement>('#main')?.dataset.view === 'results' ? 'code' : 'results') : toggleResults());
 $('#results-hide').addEventListener('click', () => toggleResults(false));
 $('#results-show').addEventListener('click', () => toggleResults(true));
 $('#set-results').addEventListener('change', (e) => toggleResults((e.target as HTMLInputElement).checked));
@@ -2588,7 +2593,7 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
     saveAs: () => openMenu(shown('#save-more', '.rail [data-rail=save]', '#code-menu-phone') ?? $('#save-more'), 'Save as', saveItems(), document.documentElement.dataset.layout === 'rail' ? 'right' : 'below'),
     saveNucleus: () => void saveToNucleus(),
     lines: () => lines.toggle(),
-    results: () => (narrow() ? setView(document.querySelector<HTMLElement>('#main')?.dataset.view === 'results' ? 'code' : 'results') : toggleResults()),
+    results: () => resultsKey(),
     zen: () => zen.toggle(),
     settings: () => settings.open(),
     wordWrap: () => settings.toggleWrap(),
