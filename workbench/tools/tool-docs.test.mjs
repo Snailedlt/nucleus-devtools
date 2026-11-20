@@ -32,17 +32,19 @@ test('tool docs: the Notepad++ menu is read in order, with its keys and separato
 // What the README and the site still name by hand must exist in the tools; what's generated must be current. A
 // command may be named by its title's start ("Nucleus: Try It" for "Nucleus: Try It (Simulate Each Player)").
 const { updatedReadme } = await import('../../scripts/readme-blocks.mjs');
-const PAGES = ['README.md', 'PORTING.md', 'TESTING.md', 'workbench/playground/src/tools.html', 'workbench/playground/src/ai.html', 'workbench/playground/src/llms.txt'];
+const SKILL = 'plugin/skills/nucleus-handler';
+const PAGES = ['README.md', 'PORTING.md', 'TESTING.md', 'CONTRIBUTING.md', 'workbench/README.md', 'workbench/playground/src/tools.html', 'workbench/playground/src/ai.html', 'workbench/playground/src/start.html', 'workbench/playground/src/llms.txt',
+  `${SKILL}/SKILL.md`, `${SKILL}/templates/AGENTS.section.md`, ...fs.readdirSync(path.join(root, SKILL, 'reference')).filter((f) => f.endsWith('.md') && f !== 'api.md').map((f) => `${SKILL}/reference/${f}`)];
 
-test('docs sync: README.md\'s generated parts are current (node scripts/readme-blocks.mjs)', () => {
-  assert.equal(read('README.md'), updatedReadme(read('README.md')), 'README.md is out of date: run node scripts/readme-blocks.mjs');
+test('docs sync: README.md\'s generated parts are current (node scripts/readme-blocks.mjs)', async () => {
+  assert.equal(read('README.md'), await updatedReadme(read('README.md')), 'README.md is out of date: run node scripts/readme-blocks.mjs');
 });
 
 test('docs sync: every `ncdev <command>` the docs name is a real command', () => {
   const src = read('src/clihelp.ts');
   const real = new Set(parseHelp(src.slice(src.indexOf('`', src.indexOf('helpText')) + 1, src.lastIndexOf('`')).replace(/\$\{[^}]*\}/g, 'x')).commands.flatMap((c) => c.use.map((u) => u.split(' ')[0])));
   const bad = [];
-  for (const p of PAGES) for (const m of read(p).matchAll(/(?:`|<code[^>]*>)(?:\.\\)?(?:ncdev|node nucleus\.js) ([a-z][\w-]*)/g)) if (!real.has(m[1])) bad.push(`${p}: ncdev ${m[1]}`);
+  for (const p of PAGES) for (const m of read(p).matchAll(/(?:`|<code[^>]*>|^)(?:\.\\)?(?:ncdev|node (?:[\w./-]*\/)?nucleus\.js) ([a-z][\w-]*)/gm)) if (!real.has(m[1])) bad.push(`${p}: ncdev ${m[1]}`);
   assert.deepEqual(bad, []);
 });
 
@@ -57,5 +59,11 @@ test('docs sync: the Notepad++ menu is named as the plugin names it', () => {
   const name = /PLUGIN_NAME = L"([^"]+)"/.exec(read('npp-plugin/src/NcDev.cpp'))[1];
   const bad = [];
   for (const p of PAGES) for (const m of read(p).matchAll(/Plugins (?:›|&rsaquo;) (?:<strong>)?([A-Z][\w+ -]*?)(?:<\/strong>|\*\*|[,.:)])/g)) if (m[1].trim().replace(/ menu$/, '') !== name) bad.push(`${p}: ${m[1]}`);
+  assert.deepEqual(bad, []);
+});
+
+test('docs sync: every {key:…} in the workbench tips is a shortcut in the list', () => {
+  const ids = new Set([...read('workbench/playground/src/keyactions.ts').matchAll(/id: '([\w]+)'/g)].map((m) => m[1]));
+  const bad = [...read('workbench/playground/src/tips.ts').matchAll(/\{key:(\w+)\}/g)].map((m) => m[1]).filter((id) => !ids.has(id));
   assert.deepEqual(bad, []);
 });

@@ -51,7 +51,7 @@ export interface LspSettings {
   /** The Nucleus Co-op folder (with NucleusCoop.exe and `handlers`), for Install. */
   nucleusPath?: string;
 }
-const DEFAULTS: LspSettings = { detection: 'auto', handlerGlobs: [], lint: { enable: true, rules: {}, compareWithHub: true, workspace: true }, completion: { enable: true }, gameFolders: {}, format: { quotes: 'double', semicolons: 'add' } };
+export const DEFAULTS: LspSettings = { detection: 'auto', handlerGlobs: [], lint: { enable: true, rules: {}, compareWithHub: true, workspace: true }, completion: { enable: true }, gameFolders: {}, format: { quotes: 'double', semicolons: 'add' } };
 
 export const COMMANDS = { tryIt: 'nucleus.tryIt', fixAll: 'nucleus.fixAll', workbenchLink: 'nucleus.workbenchLink', package: 'nucleus.package', install: 'nucleus.install', newHandler: 'nucleus.newHandler', testInNucleus: 'nucleus.testInNucleus', explainLine: 'nucleus.explainLine', report: 'nucleus.report' } as const;
 const FIX_ALL_KIND = 'source.fixAll.nucleus';

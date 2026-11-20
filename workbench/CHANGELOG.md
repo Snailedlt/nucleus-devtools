@@ -23,6 +23,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 ### ⚡ Faster
 - **Mascots move only where you can see them.** Ones that are scrolled away or in a hidden panel are paused, and each starts when it first comes into view. Check, Try it, Test all and Docs keep the mascot they show while they update, so typing no longer restarts it and Test all's ring runs smoothly through the run.
 ### 🐛 Fixed
+- **Your own shortcuts, everywhere.** After you change a shortcut in Settings, the tips and the command palette show the new keys too (some still showed the defaults).
 - **Nucli's worried and searching faces show again.** In "Oops" and "Nothing matches", the face change never played.
 
 ---

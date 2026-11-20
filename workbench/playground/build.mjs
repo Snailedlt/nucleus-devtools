@@ -653,7 +653,10 @@ const ANCHOR_SVG = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden=
 const escHtml = (t) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 // The start page (start/) and the tools page (tools/): the same look (start.html's head and styles), each its own
 // body. tools.html is only the body; it gets start.html's head with its own title, description and address.
-const startSrc = fs.readFileSync(path.join(here, 'src', 'start.html'), 'utf8');
+// Parts two pages share (src/partials/): written once, filled into each.
+const PARTIALS = { WORKBENCH_EXTRAS: fs.readFileSync(path.join(here, 'src', 'partials', 'workbench-extras.html'), 'utf8').replace(/^<!--[\s\S]*?-->\n/, '').trimEnd() };
+const withPartials = (src) => src.replace(/<!--([A-Z_]+)-->/g, (m, k) => PARTIALS[k] ?? m);
+const startSrc = withPartials(fs.readFileSync(path.join(here, 'src', 'start.html'), 'utf8'));
 /** A page with start.html's head (look, fonts, header) and a body of its own: its title, description and address. */
 const sitePageSrc = (file, slug, title, desc, shareTitle) => {
   const head = startSrc.slice(0, startSrc.indexOf('<body>'));
@@ -671,11 +674,11 @@ const sitePageSrc = (file, slug, title, desc, shareTitle) => {
 // (data/tools-compare.json) and the Claude Code plugin's commands (.claude-plugin/marketplace.json).
 const RB = await import(pathToFileURL(path.join(coreRepo, 'scripts', 'readme-blocks.mjs')).href);
 const plugin = RB.claudePlugin();
-const fromData = (src) => src.replace('<!--COMPARE-->', () => RB.compareHtml()).replaceAll('__CLAUDE_MARKETPLACE__', plugin.marketplace).replaceAll('__CLAUDE_PLUGIN__', plugin.plugin);
-const toolsSrc = fromData(sitePageSrc('tools.html', 'tools',
+const fromData = (src) => src.replace('<!--COMPARE-->', () => RB.compareHtml()).replaceAll('__CLAUDE_MARKETPLACE__', plugin.marketplace).replaceAll('__CLAUDE_PLUGIN__', plugin.plugin).replace(/<!--ED:(\w+)-->/g, (_, id) => RB.editorTag(id));
+const toolsSrc = withPartials(fromData(sitePageSrc('tools.html', 'tools',
   'Get the tools: Nucleus Co-op handlers in VS Code, Notepad++, the browser and more',
   'Every Nucleus Co-op handler tool in one place: the browser workbench, VS Code, Notepad++, other editors through a language server, the ncdev command line and AI agents.',
-  'Get the tools: Nucleus Co-op handler tools'));
+  'Get the tools: Nucleus Co-op handler tools')));
 // ai/: making a handler with ChatGPT, Claude, Copilot and other AI, chat or agent, checked by the tools.
 // The chatbot prompt's rules are the core's (core/airules.ts AI_HARD_RULES), the same ones Fix with AI and the MCP
 // server give an AI, so the page can't say less or something else.

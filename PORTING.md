@@ -76,7 +76,8 @@ Send them as `initializationOptions`, or later as `workspace/didChangeConfigurat
   "handlerGlobs": ["**/my-handlers/*.js"],
   "lint": { "enable": true, "rules": { "unknown-member": "error" }, "compareWithHub": true, "workspace": true },
   "completion": { "enable": true },
-  "gameFolders": { "MyGame.js": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\MyGame" }
+  "gameFolders": { "MyGame.js": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\MyGame" },
+  "format": { "quotes": "double", "semicolons": "add" }
 }
 ```
 
@@ -86,6 +87,7 @@ Send them as `initializationOptions`, or later as `workspace/didChangeConfigurat
 - `lint.compareWithHub`: for a handler with a `Hub.Handler.Id`, compare `Game.GUID` with the Hub's version (downloads it once, cached; the problem list updates when it arrives). `false` keeps the server offline.
 - `lint.workspace`: check every handler in the workspace folders, opened or not (default `true`), and re-check files that change on disk (when the client supports watched files: the server asks to watch `**/*.js` and each handler's `<Name>/` folder, not the whole workspace, and ignores `node_modules` and dot folders).
 - `gameFolders`: the game's install folder per handler file name. The handler is then checked against the real files (`ExecutableName`, `BinariesFolder`, the symlink and copy lists…), each problem's fix comes as a quick fix, and completion inside those lists offers the game's own files. File names and sizes are read, and the game's `.exe` and DLLs are analysed locally in the background, never run (their imports, exports and the names written in them) for quiet hints: the Proto Input hooks and Nucleus options that match what the game uses, most with a fix that adds the line (a note, such as a detected launcher, has none).
+- `format.quotes` and `format.semicolons`: how Format Document writes quotes (`double`, `single` or `keep`) and semicolons (`add` or `keep`).
 - `completion.enable`: hover, completion, signature help, inlay hints and semantic tokens (Nucleus names coloured by what they are). Turn it off if TypeScript provides them (the `.d.ts` in `types/`).
 
   The semantic tokens use JavaScript's standard types (`variable`, `property`, `method`, `class`, all `defaultLibrary`), so any theme colours them. Three modifiers of our own add Nucleus's detail for themes that want it: `group` (an object of options, or an enum: `Game.ProtoInput`, `Nucleus.Folder`), `choice` (an enum's fixed value) and `callback` (a function Nucleus calls: `Game.Play`). In Neovim, for example, style them with the `@lsp.typemod.property.group`, `@lsp.typemod.property.choice` and `@lsp.typemod.method.callback` highlight groups.

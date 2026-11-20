@@ -7,6 +7,7 @@ import { docsPageUrl, docsPage, docsValue, docsView, DocsPage } from './core/doc
 import { linkApiNames } from './core/features';
 import { allEntries, lookup } from './core/lookup';
 import { FEEDBACK_SITE, voteEventPath, type DocPart } from './core/docvotes';
+import { DISCORD } from './core/report';
 import { api, docFeedbackUrl, docReviewUrl, docSlot, type Member } from './core/api';
 import { aiFrameCss, placeAiFrames } from './core/aimark';
 import { WORKBENCH_URL } from './core/sharelink';
@@ -25,7 +26,7 @@ export function webLinks(workbenchUrl: string): { label: string; url: string }[]
     { label: 'Handler hub', url: 'https://hub.splitscreen.me/' },
     { label: 'Nucleus Co-op source code', url: 'https://github.com/SplitScreen-Me/splitscreenme-nucleus' },
     { label: 'PCGamingWiki (check input & multiplayer support)', url: 'https://www.pcgamingwiki.com/wiki/Home' },
-    { label: 'Ask for help: SplitScreen.Me Discord', url: 'https://discord.gg/XxGMkqCf4r' },
+    { label: 'Ask for help: SplitScreen.Me Discord', url: DISCORD },
     { label: 'Ask for help: r/nucleuscoop', url: 'https://www.reddit.com/r/nucleuscoop/' },
   ];
 }
