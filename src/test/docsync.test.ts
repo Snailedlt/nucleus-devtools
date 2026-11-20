@@ -78,9 +78,18 @@ test('release files: the workflow uploads what data/release-assets.json lists, a
   }
 });
 
-test('one site address: TypeScript code uses WORKBENCH_URL (core/sharelink.ts), not its own copy', () => {
-  const files = [...walk('src'), ...walk('workbench/playground/src')].filter((f) => f.endsWith('.ts') && !f.includes('/test/') && !f.endsWith('core/sharelink.ts'));
-  const bad = files.filter((f) => read(f).includes('https://snailedlt.github.io/nucleus-devtools/'));
+test('one address each: TypeScript code uses the shared constants, not its own copy', () => {
+  // Where each address lives: the site (core/sharelink.ts WORKBENCH_URL), this repository and its raw files
+  // (core/report.ts TOOLS_REPO, REPO_URL, DATA_RAW, MAIN_RAW), the Hub (core/hub.ts HUB; report.ts keeps its own: it
+  // has no imports) and r/nucleuscoop (report.ts REDDIT).
+  const homes: [string, string[]][] = [
+    ['https://snailedlt.github.io/nucleus-devtools/', ['core/sharelink.ts']],
+    ['Snailedlt/nucleus-devtools', ['core/report.ts']],
+    ['https://hub.splitscreen.me', ['core/hub.ts', 'core/report.ts']],
+    ['reddit.com/r/nucleuscoop', ['core/report.ts']],
+  ];
+  const files = [...walk('src'), ...walk('workbench/playground/src')].filter((f) => f.endsWith('.ts') && !f.includes('/test/'));
+  const bad = homes.flatMap(([lit, home]) => files.filter((f) => !home.some((h) => f.endsWith(h)) && read(f).split('\n').some((l) => l.includes(lit) && !/^\s*(\/\/|\*)/.test(l))).map((f) => `${f}: ${lit}`));
   assert.deepEqual(bad, []);
 });
 

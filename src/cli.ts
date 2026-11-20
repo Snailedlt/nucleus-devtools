@@ -14,7 +14,7 @@ import { lint, lineOf, lineStart, RULES, RuleId, Severity, LintOptions, looksLik
 import { fixAll, matchLeftAfterFix } from './core/fix';
 import { formatHandler } from './core/format';
 import { lookup, search, formatEntry, formatObject, markdownReference } from './core/lookup';
-import { handlerPageUrl, HubHandler } from './core/hub';
+import { handlerPageUrl, HUB, HubHandler } from './core/hub';
 import { hubHandlers, hubPackage } from './hubcache';
 import { renderHandler, toHandlerFileName, validateHandlerInfo, FEATURES, Feature } from './core/templates';
 import { buildPackage, extractEntries, findSkillDir, installAgentKit } from './core/pkg';
@@ -37,7 +37,7 @@ import { readGameBinaries } from './gamefolder-node';
 import { analyse, exePath, findExes, importsReport } from './core/importhooks';
 import type { PeFile } from './core/pe';
 import { serve as serveLsp } from './lsp';
-import { buildReport, DISCORD_THREAD, findDuplicates, handlerHelp, handlerOrigin, simSummary, type ReportInput } from './core/report';
+import { buildReport, DISCORD_THREAD, findDuplicates, handlerHelp, handlerOrigin, REPO_URL, simSummary, TOOLS_REPO, type ReportInput } from './core/report';
 import { spawn } from 'node:child_process';
 
 const HELP = helpText(VERSION);
@@ -538,7 +538,7 @@ function cmdPackage(args: Args, json: boolean): number {
   const out = flag(args, '--out') ?? file.replace(/\.js$/, '.nc');
   const { zip, assetCount } = buildPackage(file);
   fs.writeFileSync(out, zip);
-  print(json, { file: path.resolve(out), assetCount }, () => `Wrote ${out} (handler.js + ${assetCount} asset file(s)). Upload it at https://hub.splitscreen.me/`);
+  print(json, { file: path.resolve(out), assetCount }, () => `Wrote ${out} (handler.js + ${assetCount} asset file(s)). Upload it at ${HUB}/`);
   return 0;
 }
 
@@ -615,8 +615,8 @@ async function cmdWorkbench(args: Args, json: boolean): Promise<number> {
   if (fs.existsSync(out) && !has(args, '--force')) throw new Error(`${out} already exists (use --force to overwrite)`);
   // The newest release with the file, pre-releases included. If the API is unavailable (rate
   // limits), fall back to the newest full release's download link.
-  let rel = { tag_name: 'the latest release', url: 'https://github.com/Snailedlt/nucleus-devtools/releases/latest/download/workbench.html' };
-  const res = await fetch('https://api.github.com/repos/Snailedlt/nucleus-devtools/releases?per_page=50', { headers: { accept: 'application/vnd.github+json' } }).catch(() => undefined);
+  let rel = { tag_name: 'the latest release', url: `${REPO_URL}/releases/latest/download/workbench.html` };
+  const res = await fetch(`https://api.github.com/repos/${TOOLS_REPO}/releases?per_page=50`, { headers: { accept: 'application/vnd.github+json' } }).catch(() => undefined);
   if (res?.ok) {
     const releases = (await res.json()) as { tag_name: string; draft: boolean; assets: { name: string; browser_download_url: string }[] }[];
     const r = releases.find((x) => !x.draft && x.assets.some((a) => a.name === 'workbench.html'));

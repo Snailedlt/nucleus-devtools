@@ -1,6 +1,6 @@
 // The `ncdev --help` text: the CLI prints it, and the site's docs (docs/tools/ncdev/) list the commands from it.
 import { FEATURES } from './core/templates';
-import { DISCORD } from './core/report';
+import { DISCORD, REDDIT } from './core/report';
 
 export const helpText = (VERSION: string) => `ncdev ${VERSION}: Nucleus Co-op dev tools (\`nucleus\` is the old name and still works)
 
@@ -105,4 +105,4 @@ Exit code: 1 when lint finds errors, a simulated handler fails to load or run, o
 fails; 2 on bad usage.
 
 Questions? Ask other handler authors: ${DISCORD} (Discord) or
-https://www.reddit.com/r/nucleuscoop/`;
+${REDDIT}`;

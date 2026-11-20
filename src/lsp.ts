@@ -24,6 +24,7 @@ import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { publishedNow } from './published';
 import { setHubTool } from './hubcache';
+import { HUB } from './core/hub';
 import { pluginsFor } from './sandbox';
 import { simWorker, isCancelled } from './simworker';
 import { formatSimulation } from './simformat';
@@ -888,7 +889,7 @@ export class Server {
         const out = typeof (args[0] as any)?.out === 'string' ? (args[0] as any).out : file.replace(/\.js$/i, '.nc');
         const { zip, assetCount } = buildPackage(file);
         fs.writeFileSync(out, zip);
-        this.notify('window/showMessage', { type: 3, message: `Nucleus: wrote ${path.basename(out)} (handler.js + ${assetCount} file(s) from its folder). Upload it at https://hub.splitscreen.me/` });
+        this.notify('window/showMessage', { type: 3, message: `Nucleus: wrote ${path.basename(out)} (handler.js + ${assetCount} file(s) from its folder). Upload it at ${HUB}/` });
         return { file: out, assetCount };
       }
       case COMMANDS.install: {

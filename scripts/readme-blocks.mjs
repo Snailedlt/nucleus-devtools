@@ -62,6 +62,12 @@ export function editorTag(id, data = readJson('data/editors.json')) {
   return e.people || e.ai ? '<span class="ed-tag ok">Tested</span>' : '<span class="ed-tag">Untested</span>';
 }
 
+/** The tools page's tiles for the editors that use ncdev lsp (the tools page fills <!--ED_TILES--> with them). */
+export function editorTiles(data = readJson('data/editors.json')) {
+  const repo = readJson('package.json').repository.url.replace(/^git\+/, '').replace(/\.git$/, '');
+  return data.editors.map((e) => `<li><a class="ed" data-ed="${e.id}" href="${repo}#${e.tile.readme}" rel="noopener"><img src="../start/editors/${e.id}.svg" alt="" width="40" height="40" loading="lazy"><span><strong>${esc(e.tile.name)}</strong><small>${esc(e.tile.line)}</small></span>${editorTag(e.id, data)}</a></li>`).join('');
+}
+
 /** An editor's setup snippet: the first code block under its heading in PORTING.md (the tools page shows the same). */
 const PORTING_HEADINGS = { neovim: '### Neovim', helix: '### Helix', sublime: '### Sublime Text', emacs: '### Emacs', kate: '### Kate' };
 export function portingSnippet(id, porting = fs.readFileSync(path.join(root, 'PORTING.md'), 'utf8')) {

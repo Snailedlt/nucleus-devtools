@@ -1,5 +1,6 @@
 import { toast } from './toast';
 import { checksum } from './checksum';
+import { REPO_URL } from '@core/report';
 // Feedback links (the tester feedback and doc review issue forms) filled in with what the workbench knows: the build,
 // browser, screen, settings, the open handler (by name and source, never its code), the tester profile and the test
 // item. It goes in the form's "Details from the workbench" field with a checksum. GitHub can't lock a field, so the
@@ -58,7 +59,7 @@ export function reportContext(extra: Record<string, string | undefined> = {}): s
 
 // The workbench's feedback goes to the same form as every tool's (.github/ISSUE_TEMPLATE/tester-feedback.yml at the
 // repository root), with the workbench's Where.
-const FORM = 'https://github.com/Snailedlt/nucleus-devtools/issues/new';
+const FORM = `${REPO_URL}/issues/new`;
 /** Phones and tablets only: the GitHub app can catch github.com links, and it opens a blank issue: no form, no details. */
 export const onPhone = () => /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) || (navigator.maxTouchPoints > 1 && /Macintosh/.test(navigator.userAgent));
 export const GH_APP_NOTE = 'Opens GitHub. Use your browser, not the GitHub app: the app leaves out the form and its details.';

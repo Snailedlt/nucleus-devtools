@@ -7,6 +7,10 @@
 // runs in the browser, in Node and in VS Code.
 
 export const TOOLS_REPO = 'Snailedlt/nucleus-devtools';
+/** The repository on GitHub, and its raw files: the `data` branch (Hub index, votes) and `main`. */
+export const REPO_URL = `https://github.com/${TOOLS_REPO}`;
+export const DATA_RAW = `https://raw.githubusercontent.com/${TOOLS_REPO}/data/`;
+export const MAIN_RAW = `https://raw.githubusercontent.com/${TOOLS_REPO}/main/`;
 /** The workbench moved into this repository (workbench/): its reports go to the same forms. Kept as a name for old imports. */
 export const WORKBENCH_REPO = TOOLS_REPO;
 /** The testers' thread on the SplitScreen.Me Discord: for people without a GitHub account. */

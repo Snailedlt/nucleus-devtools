@@ -677,7 +677,7 @@ const sitePageSrc = (file, slug, title, desc, shareTitle) => {
 // (data/tools-compare.json) and the Claude Code plugin's commands (.claude-plugin/marketplace.json).
 const RB = await import(pathToFileURL(path.join(coreRepo, 'scripts', 'readme-blocks.mjs')).href);
 const plugin = RB.claudePlugin();
-const fromData = (src) => src.replace('<!--COMPARE-->', () => RB.compareHtml()).replaceAll('__CLAUDE_MARKETPLACE__', plugin.marketplace).replaceAll('__CLAUDE_PLUGIN__', plugin.plugin).replace(/<!--ED:(\w+)-->/g, (_, id) => RB.editorTag(id)).replace(/<!--PORTING:(\w+)-->/g, (_, id) => RB.portingSnippet(id).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]));
+const fromData = (src) => src.replace('<!--COMPARE-->', () => RB.compareHtml()).replaceAll('__CLAUDE_MARKETPLACE__', plugin.marketplace).replaceAll('__CLAUDE_PLUGIN__', plugin.plugin).replace('<!--ED_TILES-->', () => RB.editorTiles()).replace(/<!--ED:(\w+)-->/g, (_, id) => RB.editorTag(id)).replace(/<!--PORTING:(\w+)-->/g, (_, id) => RB.portingSnippet(id).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]));
 const toolsSrc = withPartials(fromData(sitePageSrc('tools.html', 'tools',
   'Get the tools: Nucleus Co-op handlers in VS Code, Notepad++, the browser and more',
   'Every Nucleus Co-op handler tool in one place: the browser workbench, VS Code, Notepad++, other editors through a language server, the ncdev command line and AI agents.',
