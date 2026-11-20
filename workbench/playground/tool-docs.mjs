@@ -63,16 +63,18 @@ export function toolPages(d) {
   const conf = [].concat(d.pkg.contributes.configuration ?? []).flatMap((c) => Object.entries(c.properties ?? {}));
   const cmdTitle = Object.fromEntries((d.pkg.contributes.commands ?? []).map((c) => [c.command, `${c.category ? `${c.category}: ` : ''}${c.title}`]));
   const menu = parseNppMenu(d.nppCpp);
+  const wiring = d.porting.indexOf('## Wiring');
+  const end = d.porting.indexOf('\n## ', d.porting.indexOf('## Debugging'));
 
   pages.push({
     slug: 'tools/workbench', group: 'Editors', title: 'Workbench', desc: 'The browser workbench\'s keyboard shortcuts.',
-    html: `<p>The workbench runs in your browser, with nothing to install. Every shortcut below can be changed in <strong>Settings › Keyboard shortcuts</strong>; <kbd>?</kbd> lists them in the workbench. On a Mac, <kbd>Ctrl</kbd> is <kbd>⌘</kbd> unless a Mac key is shown.</p>
+    html: `<p>Generated from the workbench's own shortcut list. Change them in the workbench's Settings; <kbd>?</kbd> shows them there.</p>
 <p class="small"><a href="__UP__">Open the workbench</a>.</p>
 ${[...new Set(d.actions.map((a) => a.group))].map((g) => `<h2>${esc(g)}</h2>\n${table(['Action', 'Keys'], d.actions.filter((a) => a.group === g).map((a) => [esc(a.label), keys(a.keys) + (a.mac ? ` <span class="small">(Mac: ${keys(a.mac)})</span>` : '')]))}`).join('\n')}`,
   });
   pages.push({
     slug: 'tools/vscode', group: 'Editors', title: 'VS Code', desc: 'The VS Code extension\'s commands, keys and settings.',
-    html: `<p>The extension works in VS Code and VSCodium. Its commands are in the Command Palette (<kbd>Ctrl+Shift+P</kbd>) under <strong>Nucleus</strong>; its settings are under <strong>Settings › Extensions › Nucleus</strong>.</p>
+    html: `<p>Generated from the extension's manifest (<code class="use">package.json</code>).</p>
 ${get('get-vscode', 'Get the tools: VS Code')}
 <h2>Commands</h2>
 ${table(['Command'], (d.pkg.contributes.commands ?? []).map((c) => [esc(cmdTitle[c.command])]))}
@@ -83,23 +85,21 @@ ${table(['Setting', 'Default', 'What it does'], conf.map(([k, v]) => [`<code>${e
   });
   pages.push({
     slug: 'tools/notepadpp', group: 'Editors', title: 'Notepad++', desc: 'The Notepad++ plugin\'s menu.',
-    html: `<p>The plugin adds a <strong>Plugins › Nucleus</strong> menu to Notepad++. It runs <code>ncdev lsp</code> underneath, so its checks and docs are the same as everywhere else.</p>
+    html: `<p>Generated from the plugin's menu.</p>
 ${get('get-notepadpp', 'Get the tools: Notepad++')}
 <h2>The Nucleus menu</h2>
 <ul class="dlist">${menu.map((m) => (m.label ? `<li>${esc(m.label)}${m.keys ? ` (${keys(m.keys)})` : ''}</li>` : '</ul><ul class="dlist">')).join('')}</ul>`,
   });
-  const wiring = d.porting.indexOf('## Wiring');
-  const end = d.porting.indexOf('\n## ', d.porting.indexOf('## Debugging'));
   pages.push({
-    slug: 'tools/other-editors', group: 'Editors', title: 'Other editors', desc: 'Neovim, Helix, Zed, Sublime Text, Emacs, JetBrains, Kate: the language server and the debugger.',
+    slug: 'tools/other-editors', group: 'Editors', title: 'Other editors', desc: `The language server and debugger setups: ${[...d.porting.slice(wiring, end).matchAll(/^### ([^(\n`]+)/gm)].map((m) => m[1].trim()).filter((x) => !/^(Anything|Settings)/.test(x)).join(', ')}.`,
     md: d.porting.slice(wiring, end > 0 ? end : undefined).replace(/^## Wiring[^\n]*\n/, '## Set up your editor\n').replace(/^###? /gm, (h) => (h === '### ' ? '### ' : '## ')),
     mdHref: (u) => (/^https?:/.test(u) ? u : u.startsWith('#') ? `${d.repoUrl}/blob/main/PORTING.md${u}` : `${d.repoUrl}/blob/main/${u}`),
-    intro: `<p>Other editors get the checks, docs, suggestions and fixes from <code>ncdev lsp</code>, a language server, and the debugger from <code>ncdev dap</code>. Both come with <a href="__UP__docs/tools/ncdev/">ncdev</a>. The setups below are from <a href="${d.repoUrl}/blob/main/PORTING.md">PORTING.md</a>, which also has the details for porting the tools to another editor.</p>
+    intro: `<p>From <a href="${d.repoUrl}/blob/main/PORTING.md">PORTING.md</a>, which also covers porting the tools to another editor.</p>
 ${get('in-your-editor', 'Get the tools: other editors')}`,
   });
   pages.push({
     slug: 'tools/ncdev', group: 'Command line and AI', title: 'ncdev (command line)', desc: 'Every ncdev command and option.',
-    html: `<p><code>ncdev</code> checks, fixes, formats, simulates and packages handlers from the command line, one at a time or a whole folder. It's one file: <code>ncdev.exe</code> on Windows, or <code>nucleus.js</code> with Node.js 18 or newer. <code>nucleus</code> is its old name and still works. <code>ncdev &lt;command&gt; --help</code> prints one command's part of this list.</p>
+    html: `<p>Generated from <code class="use">ncdev --help</code>; <code class="use">ncdev &lt;command&gt; --help</code> prints one command's part.</p>
 ${get('command-line', 'Get the tools: the command line')}
 <h2>Commands</h2>
 ${table(['Command', 'What it does'], cmds.commands.map((c) => [c.use.map(use).join('<br>'), md(c.desc)]))}
@@ -108,7 +108,7 @@ ${table(['Option', 'What it does'], cmds.options.map((c) => [c.use.map(use).join
   });
   pages.push({
     slug: 'tools/mcp', group: 'Command line and AI', title: 'MCP server (AI agents)', desc: 'The tools AI agents get from the nucleus MCP server.',
-    html: `<p><code>ncdev mcp</code> is an MCP server: AI agents (Claude Code, Codex, Cursor, Copilot and others) call these tools to check, fix and try the handlers they write. The Claude Code plugin and the VS Code extension start it for you; <a href="__UP__ai/">Set up your AI</a> has the prompts that set it up in other agents.</p>
+    html: `<p>Generated from the tool list <code class="use">ncdev mcp</code> serves. <a href="__UP__ai/">Set up your AI</a> connects an agent to it.</p>
 ${d.mcpTools.map((t) => {
       const props = Object.entries(t.inputSchema?.properties ?? {});
       const req = new Set(t.inputSchema?.required ?? []);
