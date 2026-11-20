@@ -25,6 +25,7 @@ const set = (k: string, v: string | null) => {
   }
 };
 import { PAIRS } from './themekit';
+import { announce } from './toast';
 import THEMES from './themes.json';
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]!);
 
@@ -134,7 +135,9 @@ export function initDevBar(opts: { build: string; toast: (text: string) => void 
     if (e.ctrlKey && e.altKey && e.code === 'KeyD') {
       e.preventDefault();
       toggle();
-      opts.toast(on ? 'Dev bar on. Ctrl+Alt+D hides it.' : 'Dev bar off. Ctrl+Alt+D shows it again.');
+      // Off: the bar is gone, so a toast says how to get it back. On: the bar itself is the answer (read out, not shown twice).
+      if (on) announce('Dev bar on. Ctrl+Alt+D hides it.');
+      else opts.toast('Dev bar off. Ctrl+Alt+D shows it again.');
     }
   });
   document.addEventListener('click', (e) => {
@@ -145,7 +148,7 @@ export function initDevBar(opts: { build: string; toast: (text: string) => void 
       set('site', t.dataset.devSite === 'www' ? null : t.dataset.devSite);
       applyTheme();
       window.dispatchEvent(new Event('workbench-look')); // a built-in look: no custom theme over it
-      opts.toast(`Theme: ${SITES.find((s) => s.id === site())!.label}`);
+      announce(`Theme: ${SITES.find((s) => s.id === site())!.label}`); // the page shows it; screen readers hear it
     } else if (t.dataset.devMode) {
       set('mode', t.dataset.devMode === 'auto' ? null : t.dataset.devMode);
       applyTheme();

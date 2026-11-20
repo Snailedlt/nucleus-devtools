@@ -1105,6 +1105,9 @@ kbd { font: 11px var(--font-mono); border: 1px solid var(--line); border-bottom-
 #notice .notice-close:hover { background: var(--surface); color: var(--fg); }
 #notice .notice-close svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; }
 /* A button that answers for itself ("Copied ✓"), instead of a toast. */
+.near-note { display: flex; align-items: flex-start; gap: 8px; margin: 6px 0; padding: 6px 10px; font-size: 13px; line-height: 1.4; border: 1px solid var(--line); border-left: 3px solid var(--tk); border-radius: var(--r-ctl, 6px); background: var(--surface); color: var(--fg); }
+.near-note.info { --tk: var(--info); } .near-note.warning { --tk: var(--warn); } .near-note.error { --tk: var(--err); } .near-note.success { --tk: var(--ok); }
+.near-note .toast-icon { width: 16px; height: 16px; }
 .btn.confirmed, .link.confirmed { color: var(--ok); }
 /* Toasts (src/toast.ts): a deck at the bottom right (above the bottom bar on phones). JS places
    each toast (transform, height) and the deck's own height; hovering fans it out. */
@@ -2245,6 +2248,9 @@ html:not(.visual) .visual-only { display: none !important; }
 .fp-game .fp-prog { margin: 0 4px 10px; font-size: 12.5px; }
 .fp-game .fp-prog-row { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; overflow-wrap: anywhere; }
 .fp-game .fp-prog progress { display: block; width: 100%; height: 6px; margin: 4px 0 2px; accent-color: var(--accent); }
+/* Duo pushing the bar (mascotprogress.ts) stands in for the bar; the <progress> stays for screen readers. */
+.fp-game .fp-prog .fp-duo { display: block; width: 100% !important; max-width: 240px; height: auto !important; aspect-ratio: 102 / 72; margin: 2px 0 0; }
+:root:not([data-mascots="off"]):not([data-site="alpha8"]) .fp-game .fp-prog .fp-duo + progress { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .fp-game .fp-prog-n { font-size: 11.5px; min-height: 1.4em; }
 /* No moving bar without a total when motion is reduced: the count below says it's working. */
 @media (prefers-reduced-motion: reduce) { .fp-game .fp-prog progress:indeterminate { visibility: hidden; } }
@@ -2505,9 +2511,9 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
   </div>
   <div class="set-panel" role="tabpanel" id="sp-motion" aria-labelledby="st-motion" data-label="Motion" hidden>
     <div class="set-sec motion-sec"><h3>Motion</h3>
-      <label class="set-line">How much moves <select id="set-motion"><option value="all">All</option><option value="default">Default</option><option value="calm">Calm</option><option value="still">Still</option><option value="off">Off</option><option value="custom" disabled>Custom</option></select></label>
+      <label class="set-line">Animations <select id="set-motion"><option value="all">All</option><option value="balanced">Balanced</option><option value="some">Some</option><option value="none">None</option><option value="custom" disabled>Custom</option></select></label>
       <label class="set-check"><input type="checkbox" id="set-motion-ui"> <span>Moving interface<small>Dialogs, tabs and notes slide and spring into place</small></span></label>
-      <label class="set-line">Duo and Nucli <select id="set-motion-masc"><option value="loop">Lively</option><option value="once">Play once, then rest</option><option value="still">Still</option><option value="off">Off</option></select></label>
+      <label class="set-line">Duo and Nucli <select id="set-motion-masc"><option value="loop">Lively</option><option value="still">Still</option><option value="off">Hidden</option></select></label>
       <label class="set-check"><input type="checkbox" id="set-motion-edit"> <span>Nucli edits the code during fixes<small>He zaps the old text and the new text glows. It briefly covers the code.</small></span></label>
       <label class="set-check"><input type="checkbox" id="set-motion-news"> <span>What's new plays animations by itself<small>Otherwise they wait for Play</small></span></label>
       <p class="muted small" id="set-motion-note" style="margin:0"></p></div>

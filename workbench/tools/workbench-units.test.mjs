@@ -783,6 +783,7 @@ test("game folder: Cancel stops only the read the progress shows, not another ta
     const bFirst = seen.findIndex((p) => p.phase === 'binaries' && p.name === 'B');
     const bEnd = seen.findIndex((p, i) => i > bFirst && p.phase === 'done');
     assert.ok(bFirst >= 0 && bEnd > bFirst);
+    assert.equal(seen[bEnd].cancelled, true, "cancelled reads must not show the success animation");
     assert.ok(!seen.slice(bFirst, bEnd).some((p) => p.name === 'A'), 'no A progress while B is shown');
   } finally {
     delete globalThis.window.showDirectoryPicker;
@@ -799,4 +800,405 @@ test('doc votes: an "In practice" report says so in its title (core docReviewUrl
   // The docs pages pass the part on (docs-pages.mjs), as the workbench's Docs does (doccard.ts).
   const src = fs.readFileSync(path.join(root, 'playground/docs-pages.mjs'), 'utf8') + fs.readFileSync(path.join(root, 'playground/src/doccard.ts'), 'utf8');
   for (const call of ['o.docReviewUrl(page.path, part)', 'feedbackUrl(page.path, part)', 'docReviewUrl(path, part)', 'docFeedbackUrl(path, part)']) assert.ok(src.includes(call), call);
+});
+
+// PR #76's animation and notice units run in separate browser contexts. Frames and timers are
+// advanced explicitly: no wall-clock waits, shared browser globals, or animation snapshots.
+async function progressBrowser(file, stubs = {}) {
+  const { transformSync } = await import('esbuild');
+  const { runInNewContext } = await import('node:vm');
+  let now = 0, id = 0;
+  const frames = new Map(), timers = new Map();
+  class Element {
+    constructor(cls = '') {
+      this.className = cls;
+      this.dataset = {};
+      this.style = { setProperty(k, v) { this[k] = v; } };
+      this.attrs = {};
+      this.parts = new Map();
+      this.events = new Map();
+      this.isConnected = true;
+      this.offsetParent = {};
+      this.classList = {
+        contains: (k) => this.className.split(' ').includes(k),
+        toggle: (k, on) => on ? this.classList.add(k) : this.classList.remove(k),
+        add: (...ks) => { this.className += ' ' + ks.join(' '); },
+        remove: (...ks) => { this.className = this.className.split(' ').filter((k) => !ks.includes(k)).join(' '); },
+      };
+    }
+    querySelector(sel) { return this.querySelectorAll(sel)[0] ?? null; }
+    querySelectorAll(sel) { return this.parts.get(sel) ?? []; }
+    part(sel, count = 1) { const parts = Array.from({ length: count }, () => new Element()); this.parts.set(sel, parts); return parts[0]; }
+    set innerHTML(value) {
+      this.html = value;
+      // Only the controls used by the notice modules; textContent remains distinct from HTML.
+      for (const sel of ['span', '.cn-text', '.cn-x', '.toast-text']) this.part(sel);
+      if (value.includes('cn-act')) this.part('.cn-act');
+      this.firstElementChild = new Element();
+    }
+    get innerHTML() { return this.html; }
+    setAttribute(k, v) { this.attrs[k] = v; }
+    removeAttribute(k) { delete this.attrs[k]; }
+    addEventListener(k, fn) { if (!this.events.has(k)) this.events.set(k, new Set()); this.events.get(k).add(fn); }
+    removeEventListener(k, fn) { this.events.get(k)?.delete(fn); }
+    fire(k, event = {}) { for (const fn of [...(this.events.get(k) ?? [])]) fn(event); }
+    closest(sel) { return sel.startsWith('dialog') ? this.closedDialog ?? null : this.anchor ?? null; }
+    insertAdjacentElement(position, el) { assert.equal(position, 'afterend'); this.after = el; }
+    contains(el) { return el === this || [...this.parts.values()].some((xs) => xs.includes(el)); }
+    remove() { this.isConnected = false; }
+    appendChild(el) { this.child = el; return el; }
+    append(el) { this.appendChild(el); }
+  }
+  const document = new Element();
+  document.documentElement = new Element();
+  document.body = new Element();
+  document.head = new Element();
+  document.createElement = () => new Element();
+  document.getElementById = () => null;
+  const media = { matches: false, addEventListener(_name, fn) { this.change = fn; } };
+  const localStorage = memoryStorage();
+  const setTimeout = (fn, ms) => { timers.set(++id, { fn, ms }); return id; };
+  const context = {
+    document, HTMLElement: Element, Element, localStorage,
+    MutationObserver: class { observe() {} },
+    matchMedia: () => media, performance: { now: () => now },
+    requestAnimationFrame: (fn) => { frames.set(++id, fn); return id; },
+    setTimeout, clearTimeout: (key) => timers.delete(key),
+    exports: {}, require: (name) => { assert.ok(name in stubs, `unexpected import ${name}`); return stubs[name]; },
+  };
+  context.module = { exports: context.exports };
+  context.window = context;
+  const code = transformSync(fs.readFileSync(path.join(root, 'playground/src', file), 'utf8'), { loader: 'ts', format: 'cjs' }).code;
+  runInNewContext(code, context, { filename: file });
+  return {
+    api: context.module?.exports ?? context.exports, context, document, Element, media, localStorage, frames, timers,
+    frame(ms = 16) { now += ms; const pending = [...frames.values()]; frames.clear(); pending.forEach((fn) => fn(now)); },
+    timer(ms) { for (const [key, t] of [...timers]) if (t.ms === ms && timers.delete(key)) t.fn(); },
+  };
+}
+
+async function loaderBrowser(mode = 'loop') {
+  const setting = { mascots: mode };
+  const b = await progressBrowser('mascotprogress.ts', { './motion': { motion: () => setting } });
+  const make = (cls) => {
+    const el = new b.Element(cls);
+    for (const sel of ['.rqarc', '.n-core', '.ld-w', '.ld-b', '.d-fl', '.d-fr', '.ld-fill', '.ld-done', '.ld-chk', '.ld-sw', '.look']) el.part(sel);
+    for (let i = 0; i < 4; i++) { el.part('.rq' + i); el.part('.rqb' + i); }
+    el.part('.fa', 2); el.part('.fb', 2);
+    return el;
+  };
+  return { ...b, setting, make, style: (el, sel, prop) => el.querySelector(sel).style[prop] };
+}
+
+for (const mode of ['still', 'off']) {
+  test(`progress: ${mode} draws clamped ring and bar poses without scheduling frames`, async () => {
+    const b = await loaderBrowser(mode);
+    const ring = b.make('masc-n-ring'), bar = b.make('masc-load');
+    let done = 0;
+    for (const [p, arc, fill] of [[-1, '276.5', '83.00'], [0.5, '138.3', '41.50'], [2, '0.0', '0.00']]) {
+      b.api.ringProgress(ring, p);
+      b.api.barProgress(bar, p, () => done++);
+      assert.equal(b.style(ring, '.rqarc', 'stroke-dashoffset'), arc);
+      assert.equal(b.style(bar, '.ld-fill', 'stroke-dashoffset'), fill);
+      assert.ok(ring.classList.contains('prog'));
+      assert.ok(bar.classList.contains('prog'));
+    }
+    assert.equal(done, 1);
+    assert.equal(b.style(bar, '.ld-done', 'opacity'), '1');
+    assert.equal(b.style(bar, '.ld-chk', 'transform'), 'scale(1.000)');
+    assert.ok(bar.querySelectorAll('.fb').every((e) => e.style.opacity === '1'));
+    assert.equal(b.frames.size, 0);
+  });
+}
+
+test('progress: absent loaders are harmless, and a parent can locate a nested loader', async () => {
+  const b = await loaderBrowser('still'), rootEl = new b.Element();
+  let done = 0;
+  b.api.ringProgress(rootEl, 1);
+  b.api.barProgress(rootEl, 1, () => done++);
+  assert.equal(done, 0);
+  const ring = rootEl.part('.masc-n-ring');
+  ring.part('.rqarc');
+  b.api.ringProgress(rootEl, 0.25);
+  assert.equal(b.style(ring, '.rqarc', 'stroke-dashoffset'), '207.4');
+});
+
+test('ring: updates share one frame loop, animate towards the target, settle, and restart', async () => {
+  const b = await loaderBrowser(), ring = b.make('masc-n-ring');
+  b.api.ringProgress(ring, 0.1);
+  b.frame();
+  b.api.ringProgress(ring, 0.7);
+  b.api.ringProgress(ring, 1);
+  assert.equal(b.frames.size, 1);
+  b.frame();
+  const offset = Number(b.style(ring, '.rqarc', 'stroke-dashoffset'));
+  assert.ok(offset > 0 && offset < 276.5);
+  for (let i = 0; i < 1000 && b.frames.size; i++) b.frame();
+  assert.equal(b.frames.size, 0, 'settled ring releases its frame loop');
+  assert.equal(b.style(ring, '.rqarc', 'stroke-dashoffset'), '0.0');
+  const angles = Array.from({ length: 4 }, (_, i) => Number(b.style(ring, '.rq' + i, 'transform').match(/rotate\(([-\d.]+)/)[1]));
+  assert.ok(angles[0] <= 360 && angles.every((a, i) => !i || a < angles[i - 1]), 'electrons remain behind the tip and ordered');
+  b.api.ringProgress(ring, 0.2);
+  assert.equal(b.frames.size, 1);
+});
+
+for (const hidden of ['detached', 'offscreen']) {
+  test(`progress: ${hidden} stops frames and a subsequent update resumes`, async () => {
+    const b = await loaderBrowser(), ring = b.make('masc-n-ring');
+    b.api.ringProgress(ring, 0.5);
+    if (hidden === 'detached') ring.isConnected = false; else ring.classList.add('masc-off');
+    b.frame();
+    assert.equal(b.frames.size, 0);
+    ring.isConnected = true; ring.classList.remove('masc-off');
+    b.api.ringProgress(ring, 0.8);
+    b.frame();
+    assert.ok(Number(b.style(ring, '.rqarc', 'stroke-dashoffset')) < 276.5);
+    assert.equal(b.frames.size, 1);
+  });
+}
+
+test('progress: a long frame is capped and switching to still draws the final pose', async () => {
+  const a = await loaderBrowser(), b = await loaderBrowser();
+  const ra = a.make('masc-n-ring'), rb = b.make('masc-n-ring');
+  a.api.ringProgress(ra, 0.8); b.api.ringProgress(rb, 0.8);
+  a.frame(60000); b.frame(50);
+  assert.equal(a.style(ra, '.rqarc', 'stroke-dashoffset'), b.style(rb, '.rqarc', 'stroke-dashoffset'));
+  a.setting.mascots = 'still'; a.frame();
+  assert.equal(a.frames.size, 0);
+  assert.equal(a.style(ra, '.rqarc', 'stroke-dashoffset'), '55.3');
+});
+
+test('bar: stalls, resumes on new progress, then completes once after landing', async () => {
+  const b = await loaderBrowser(), bar = b.make('masc-load');
+  let done = 0;
+  b.api.barProgress(bar, 0.2, () => done++);
+  for (let i = 0; i < 50; i++) b.frame();
+  assert.equal(b.style(bar, '.ld-sw', 'opacity'), '1');
+  b.api.barProgress(bar, 0.7);
+  b.frame();
+  assert.equal(b.style(bar, '.ld-sw', 'opacity'), '0');
+  assert.equal(done, 0);
+  b.api.barProgress(bar, 1);
+  b.frame();
+  assert.equal(done, 0, 'completion waits for the animation');
+  for (let i = 0; i < 300 && b.frames.size; i++) b.frame();
+  assert.equal(done, 1, 'callback survives updates which omit it');
+  assert.equal(b.frames.size, 0);
+  assert.equal(b.style(bar, '.ld-fill', 'stroke-dashoffset'), '0.00');
+  assert.equal(b.style(bar, '.ld-chk', 'opacity'), '1');
+  assert.equal(b.style(bar, '.ld-w', 'transform'), 'translate(84.00px, 0.00px)');
+  b.api.barProgress(bar, 1);
+  for (let i = 0; i < 5; i++) b.frame();
+  assert.equal(done, 1);
+});
+
+test('motion: balanced defaults, old once migration, partial settings and inaccessible storage', async () => {
+  const b = await progressBrowser('motion.ts'), m = b.api;
+  assert.equal(m.DEFAULT_PRESET, 'balanced');
+  assert.equal(m.presetOf(m.savedMotion()), 'balanced');
+  b.localStorage.setItem('nucleus-workbench-motion', JSON.stringify({ mascots: 'once', newsAuto: false }));
+  assert.equal(m.savedMotion().mascots, 'loop');
+  assert.equal(m.savedMotion().newsAuto, false);
+  assert.equal(m.savedMotion().ui, true);
+  b.localStorage.clear();
+  for (const old of ['still', 'off']) {
+    b.localStorage.setItem('nucleus-workbench-mascots', old);
+    assert.equal(m.savedMotion().mascots, old);
+  }
+  b.localStorage.setItem('nucleus-workbench-motion', '{broken');
+  assert.equal(m.presetOf(m.savedMotion()), 'balanced');
+  b.localStorage.getItem = () => { throw new Error('storage blocked'); };
+  assert.equal(m.presetOf(m.savedMotion()), 'balanced');
+});
+
+test('motion: every new preset round trips, reduced motion caps it without changing the saved choice', async () => {
+  const b = await progressBrowser('motion.ts'), m = b.api;
+  let changes = 0;
+  m.onMotion(() => changes++);
+  for (const name of ['all', 'balanced', 'some', 'none']) {
+    b.localStorage.setItem('nucleus-workbench-mascots', 'off');
+    m.setMotion(m.PRESETS[name]);
+    assert.equal(m.presetOf(m.savedMotion()), name);
+    assert.equal(b.localStorage.getItem('nucleus-workbench-mascots'), null);
+  }
+  assert.equal(changes, 4);
+  m.setMotion(m.PRESETS.all);
+  b.media.matches = true; b.media.change();
+  assert.equal(m.motion().mascots, 'still');
+  assert.equal(m.motion().ui, false);
+  assert.equal(m.motion().editFx, false);
+  assert.equal(m.motion().newsAuto, false);
+  assert.equal(m.presetOf(m.savedMotion()), 'all');
+  assert.equal(b.document.documentElement.dataset.motionUi, 'off');
+  m.setMotion({ ...m.PRESETS.none, mascots: 'off' });
+  assert.equal(m.motion().mascots, 'off');
+  assert.equal(m.presetOf(m.savedMotion()), 'custom');
+  b.media.matches = false;
+  m.setMotion(m.PRESETS.balanced);
+  assert.equal(b.document.documentElement.dataset.motionUi, undefined);
+  assert.equal(b.document.documentElement.dataset.mascots, 'loop');
+});
+
+async function noticeBrowser(file, keep = false) {
+  const messages = [];
+  const b = await progressBrowser(file, {
+    './a11y': { noteDuration: (ms) => keep ? Infinity : ms },
+    './mascots': { mascotsOn: () => false },
+    './toast': { announce: (s) => messages.push(s) },
+    './kbd': { keysText: (s) => s },
+  });
+  return { ...b, messages };
+}
+
+for (const kind of ['info', 'success', 'warning', 'error']) {
+  test(`near note: ${kind} is placed after the action's block and announced with the right role`, async () => {
+    const b = await noticeBrowser('toast.ts'), button = new b.Element(), row = new b.Element();
+    button.anchor = row;
+    b.api.noteNear(button, '<img src=x onerror=alert(1)>', kind);
+    const note = row.after;
+    assert.equal(note.className, `near-note ${kind}`);
+    assert.equal(note.attrs.role, ['warning', 'error'].includes(kind) ? 'alert' : 'status');
+    assert.equal(note.querySelector('span').textContent, '<img src=x onerror=alert(1)>');
+    assert.ok(!note.innerHTML.includes('onerror'), 'message is inserted as text');
+    assert.equal(b.document.events.size, 0, 'opening event cannot close the note');
+    b.timer(0);
+    b.document.fire('pointerdown', { target: note.querySelector('span') });
+    b.document.fire('keydown', { key: 'Enter' });
+    assert.equal(note.isConnected, true);
+    b.document.fire('keydown', { key: 'Escape' });
+    assert.equal(note.isConnected, false);
+    assert.equal(b.timers.size, 0);
+    assert.ok([...b.document.events.values()].every((listeners) => listeners.size === 0));
+  });
+}
+
+test('near note: replacement cleans up even before listeners arm; outside click and timeout dismiss', async () => {
+  const b = await noticeBrowser('toast.ts'), button = new b.Element();
+  b.api.noteNear(button, 'first');
+  const first = button.after;
+  b.api.noteNear(button, 'second');
+  assert.equal(first.isConnected, false);
+  assert.equal(b.timers.size, 2);
+  b.timer(0);
+  b.document.fire('pointerdown', { target: new b.Element() });
+  assert.equal(button.after.isConnected, false);
+  assert.equal(b.timers.size, 0);
+  b.api.noteNear(button, 'third');
+  b.timer(8000);
+  assert.equal(button.after.isConnected, false);
+  assert.equal(b.timers.size, 0);
+});
+
+test('near note: Keep notes open suppresses timeout but still permits Escape', async () => {
+  const b = await noticeBrowser('toast.ts', true), button = new b.Element();
+  b.api.noteNear(button, 'keep'); b.timer(0);
+  assert.equal(b.timers.size, 0);
+  assert.equal(button.after.isConnected, true);
+  b.document.fire('keydown', { key: 'Escape' });
+  assert.equal(button.after.isConnected, false);
+});
+
+for (const keep of [false, true]) {
+  test(`code note: an action is invalidated by edits, including Keep notes open=${keep}`, async () => {
+    const b = await noticeBrowser('codenote.ts', keep);
+    let cleared = 0, onClear = 0, run = 0;
+    const handlers = new Set();
+    let widget;
+    const editor = {
+      lineCount: () => 3,
+      addLineWidget(line, el) { widget = el; assert.equal(line, 2); return { clear: () => cleared++ }; },
+      on(name, fn) { assert.equal(name, 'change'); handlers.add(fn); },
+      off(name, fn) { assert.equal(name, 'change'); handlers.delete(fn); },
+      scrollIntoView() {},
+    };
+    b.api.codeNote(editor, 999, 'Fixed', { action: { label: 'Undo', run: () => run++ }, onClear: () => onClear++ });
+    assert.equal(handlers.size, 1);
+    assert.equal(b.timers.size, keep ? 0 : 1);
+    for (const fn of [...handlers]) fn();
+    widget.querySelector('.cn-x').onclick();
+    assert.equal(cleared, 1);
+    assert.equal(onClear, 1);
+    assert.equal(run, 0);
+    assert.equal(handlers.size, 0);
+    assert.equal(b.timers.size, 0);
+  });
+}
+
+for (const unavailable of ['missing', 'undefined', 'hidden', 'closed dialog']) {
+  test(`near note: ${unavailable} action falls back to a toast preserving text and kind`, async () => {
+    const b = await noticeBrowser('toast.ts');
+    let button = new b.Element();
+    if (unavailable === 'missing') button = null;
+    if (unavailable === 'undefined') button = undefined;
+    if (unavailable === 'hidden') button.offsetParent = null;
+    if (unavailable === 'closed dialog') button.closedDialog = {};
+    b.api.noteNear(button, 'Cannot insert here', 'warning');
+    const host = b.document.body.child, toast = host.child;
+    assert.equal(host.id, 'toasts');
+    assert.ok(toast.classList.contains('warning'));
+    assert.equal(toast.querySelector('.toast-text').textContent, 'Cannot insert here');
+    assert.equal(button?.after, undefined);
+  });
+}
+
+test('bar: switching motion off at completion finishes immediately and releases the frame loop', async () => {
+  const b = await loaderBrowser(), bar = b.make('masc-load');
+  let done = 0;
+  b.api.barProgress(bar, 0.3, () => done++);
+  b.api.barProgress(bar, 1);
+  b.setting.mascots = 'still'; b.frame();
+  assert.equal(done, 1);
+  assert.equal(b.frames.size, 0);
+  assert.equal(b.style(bar, '.ld-fill', 'stroke-dashoffset'), '0.00');
+  assert.equal(b.style(bar, '.ld-chk', 'transform'), 'scale(1.000)');
+});
+
+for (const sticky of [false, true]) {
+  test(`code note: sticky=${sticky} respects note lifetime, hover/focus, replacement, and action order`, async () => {
+    const b = await noticeBrowser('codenote.ts');
+    let cleared = 0, ran = 0, widget;
+    const handlers = new Set();
+    const editor = {
+      lineCount: () => 2,
+      addLineWidget(line, el) { assert.equal(line, 0); widget = el; return { clear: () => cleared++ }; },
+      on(_name, fn) { handlers.add(fn); }, off(_name, fn) { handlers.delete(fn); }, scrollIntoView() {},
+    };
+    b.api.codeNote(editor, -1, 'first', { sticky });
+    assert.equal(b.timers.size, sticky ? 0 : 1);
+    assert.equal(handlers.size, sticky ? 1 : 0);
+    widget.fire('pointerenter'); assert.equal(b.timers.size, 0);
+    widget.fire('pointerleave'); assert.equal(b.timers.size, sticky ? 0 : 1);
+    widget.fire('focusin'); assert.equal(b.timers.size, 0);
+    widget.fire('focusout'); assert.equal(b.timers.size, sticky ? 0 : 1);
+    b.api.codeNote(editor, 0, 'second', { action: { label: 'Undo', run() { assert.equal(cleared, 2, 'clear before invoking action'); ran++; } } });
+    assert.equal(cleared, 1, 'replacement clears previous note');
+    widget.querySelector('.cn-act').onclick();
+    assert.equal(ran, 1);
+    assert.equal(handlers.size, 0);
+    assert.equal(b.timers.size, 0);
+    b.api.codeNote(editor, 0, 'third');
+    b.timer(5000 + 'third'.length * 30);
+    assert.equal(cleared, 3, 'ordinary note expires');
+    assert.equal(b.timers.size, 0);
+  });
+}
+
+test('mascot: the exported loading scene supports a wide crop, proportional height and distinct redraw keys', async () => {
+  const scenes = await load('playground/src/mascots.gen.ts');
+  const b = await progressBrowser('mascots.ts', {
+    './mascots.gen': scenes,
+    './motion': { motion: () => ({ mascots: 'still' }), onMotion() {} },
+  });
+  const opts = { size: 168, view: [10, 40, 102, 72], label: 'Reading "files"' };
+  const first = b.api.mascot('load', opts), second = b.api.mascot('load', opts);
+  assert.match(first, /viewBox="10 40 102 72"/);
+  assert.match(first, /width:168px;height:119px/);
+  assert.match(first, /role="img" aria-label="Reading &quot;files&quot;"/);
+  const key = (html) => html.match(/data-m="([^"]*)"/)[1];
+  assert.equal(key(first), key(second), 'same scene can preserve progress through keepMascots');
+  assert.notEqual(first, second, 'SVG ids remain unique between copies');
+  assert.notEqual(key(first), key(b.api.mascot('load', { ...opts, view: [0, 0, 120, 120] })), 'different crops must not reuse the old scene');
+  const square = b.api.mascot('load', { size: 80 });
+  assert.match(square, /width:80px;height:80px/);
+  assert.match(square, /aria-hidden="true"/);
 });
