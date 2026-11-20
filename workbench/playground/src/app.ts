@@ -2519,6 +2519,8 @@ revealResults = () => { zen.set(false); if (!narrow()) panels.results(true); };
 /** Ctrl+J, the Results button and the pane's own hide button: the results pane in or out. Hiding it puts the focus in
  *  the code (it may have been in the pane). */
 function toggleResults(show?: boolean) {
+  // In Zen mode the pane is out of sight whatever is saved: the key means "show me the results".
+  if (show === undefined && zen.isOn()) show = true;
   // Where the focus is before the pane goes (hiding it can move the focus to the page).
   const inResults = !!document.querySelector('.main > .pane.side')?.contains(document.activeElement);
   const shown = panels.results(show);
