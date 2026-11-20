@@ -11,7 +11,7 @@ import { motion } from './motion';
 
 type Sim = { raf: number; last: number; rest?: () => void; [k: string]: unknown };
 type El = HTMLElement & { _prog?: Sim };
-const still = () => motion().mascots !== 'loop' && motion().mascots !== 'once';
+const still = () => motion().mascots !== 'loop';
 const loader = (root: ParentNode, cls: string): El | null =>
   root instanceof HTMLElement && root.classList.contains(cls) ? (root as El) : root.querySelector<El>('.' + cls);
 
