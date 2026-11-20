@@ -975,6 +975,30 @@ await m.ctx.close();
   await s.ctx.close();
 }
 {
+  // Cancelling while the program files are read: no success to show, so Duo doesn't finish the bar and hop; the
+  // progress just goes.
+  const s = await page('light');
+  await s.ctx.addInitScript(() => {
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const file = (name, size) => ({ kind: 'file', name, getFile: async () => ({ name, size, arrayBuffer: async () => (await wait(500), new ArrayBuffer(64)) }) });
+    window.showDirectoryPicker = async () => ({ kind: 'directory', name: 'CancelGame', async *values() { for (let i = 0; i < 8; i++) yield file(`m${i}.dll`, 1e6); } });
+  });
+  await s.p.goto(BASE + '#example-mistakes');
+  await s.p.waitForTimeout(900);
+  await s.p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
+  if (await s.p.$eval('#files-panel', (e) => e.hidden)) await s.p.click('#files-toggle');
+  await s.p.waitForTimeout(300);
+  await s.p.click('#files-panel [data-gf=pick]');
+  await s.p.waitForSelector('.fp-duo', { timeout: 5000 }).catch(() => {});
+  await s.p.waitForTimeout(700);
+  await s.p.click('#files-panel [data-gf=cancel]');
+  await s.p.waitForTimeout(800);
+  const after = await s.p.evaluate(() => ({ prog: !!document.querySelector('.fp-prog'), duo: !!document.querySelector('.fp-duo') }));
+  check(!after.prog && !after.duo, `game folder: Cancel takes the progress away without Duo finishing the bar (${JSON.stringify(after)})`);
+  check(!s.errors.length, `game folder cancel: no page errors ${s.errors.join(' ')}`);
+  await s.ctx.close();
+}
+{
   // Two reads at once (a second folder picked while the first's program files are still being read): the label names
   // the newest read, the one Cancel stops; after Cancel the first read shows again and runs to its end.
   const s = await page('light');

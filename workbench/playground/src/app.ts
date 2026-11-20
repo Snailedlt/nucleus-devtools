@@ -603,7 +603,11 @@ onFolderProgress((p) => {
   folderProg = p;
   const bar = document.getElementById('gf-prog-bar') as HTMLProgressElement | null;
   const duo = document.querySelector<HTMLElement>('.fp-duo');
-  if (p.phase === 'done' && prev?.phase === 'binaries' && duo) {
+  if (p.phase === 'done' && !p.cancelled && prev?.phase === 'binaries' && duo) {
+    // The bar and its numbers say it's all read (screen readers follow them, not Duo), before he finishes.
+    if (bar) bar.value = bar.max;
+    const n = document.getElementById('gf-prog-n');
+    if (n) n.textContent = folderProgText({ ...prev, done: prev.total, bytes: prev.totalBytes });
     // Done: Duo lets go, the bar turns green and he hops; then the section is drawn again. When he's finished (at once
     // on Still), or after 3 s if he's off screen and never gets there.
     // Only for this read: if another one has started meanwhile, its own Duo is left alone.
