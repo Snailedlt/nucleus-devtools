@@ -2505,7 +2505,15 @@ const settings = initSettings({
 });
 const news = initNews();
 const panels = initPanels({ refresh: () => editor.refresh(), toast, menu: (edge, at) => edgeMenu(edge, at) });
-const zen = initZen({ refresh: () => editor.refresh(), focusCode: () => { if (viewMode === 'code') editor.focus(); }, announce, keys: () => labelOf('zen') });
+/** The focus into the code that shows: handler.js's editor, or a package file's editor (or card) open in its place, or
+ *  Form/Blocks' first control. */
+function focusShownCode() {
+  const shown = (el: Element) => (el as HTMLElement).offsetParent !== null && el.getClientRects().length > 0;
+  if (viewMode === 'code' && shown(editor.getWrapperElement())) return editor.focus();
+  const pane = document.querySelector<HTMLElement>('.main > .pane:not(.side)');
+  [...(pane?.querySelectorAll<HTMLElement>(`.CodeMirror textarea, ${FOCUSABLE}`) ?? [])].find(shown)?.focus();
+}
+const zen = initZen({ refresh: () => editor.refresh(), focusCode: focusShownCode, announce, keys: () => labelOf('zen') });
 // Asked for a results tab: out of Zen mode at any width; the hidden pane back on wide screens (phones switch views).
 revealResults = () => { zen.set(false); if (!narrow()) panels.results(true); };
 /** Ctrl+J, the Results button and the pane's own hide button: the results pane in or out. Hiding it puts the focus in
@@ -2514,12 +2522,17 @@ function toggleResults(show?: boolean) {
   // Where the focus is before the pane goes (hiding it can move the focus to the page).
   const inResults = !!document.querySelector('.main > .pane.side')?.contains(document.activeElement);
   const shown = panels.results(show);
-  if (!shown && inResults) editor.focus();
+  if (!shown && inResults) focusShownCode();
   if (shown && zen.isOn()) zen.set(false);
   announce(shown ? 'The results pane is back.' : `The results pane is hidden. ${labelOf('results') || 'The Results button'} brings it back.`);
 }
 /** Ctrl+J and the palette: on a phone, switch between the code and the results; else the pane in or out. */
-const resultsKey = () => (narrow() ? setView(document.querySelector<HTMLElement>('#main')?.dataset.view === 'results' ? 'code' : 'results') : toggleResults());
+const resultsKey = () => {
+  if (!narrow()) return toggleResults();
+  if (document.querySelector<HTMLElement>('#main')?.dataset.view === 'results') return setView('code');
+  revealResults(); // out of Zen mode first: it hides the results
+  setView('results');
+};
 $('#results-hide').addEventListener('click', () => toggleResults(false));
 $('#results-show').addEventListener('click', () => toggleResults(true));
 $('#set-results').addEventListener('change', (e) => toggleResults((e.target as HTMLInputElement).checked));
