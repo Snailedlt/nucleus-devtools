@@ -25,8 +25,9 @@ pre.prompt { margin: 0; padding: 12px 64px 12px 14px; background: var(--code-bg)
   <div role="tabpanel" id="panel-agent" aria-labelledby="tab-agent" tabindex="0">
 <pre class="prompt">Set up the Nucleus Co-op handler tools in this folder, then help me make a handler.
 
-1. Download https://github.com/Snailedlt/nucleus-devtools/releases/latest/download/nucleus.js (it needs Node.js 18 or newer).
-2. Run: node nucleus.js init-agent .
+1. Clone the tools into a temporary folder outside this one (needs git and Node.js 18 or newer): git clone --depth 1 https://github.com/Snailedlt/nucleus-devtools &lt;temp&gt;/nucleus-devtools
+2. Run here: node &lt;temp&gt;/nucleus-devtools/plugin/skills/nucleus-handler/scripts/nucleus.js init-agent .
+   Then delete the temporary clone.
 3. Read .claude/skills/nucleus-handler/SKILL.md and follow it: look up every option with its api command instead of guessing, lint after every edit, and simulate with 2 and 4 players before you give me the handler.
 
 My game: &lt;name&gt;. Ask me what you need to know about it (engine, .exe name, how multiplayer works, where it keeps settings and saves).</pre>
