@@ -1,84 +1,79 @@
 <main>
 <style>
-pre.prompt { margin: 6px 0 2px; padding: 12px 64px 12px 14px; background: var(--code-bg); border-radius: var(--r-sm); font: 13px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
-.ai-steps { padding-left: 1.3em; display: grid; gap: 8px; }
+pre.prompt { margin: 0; padding: 12px 64px 12px 14px; background: var(--code-bg); border-radius: 0 var(--r-sm) var(--r-sm) var(--r-sm); font: 13px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ai-tabs { display: flex; gap: 2px; margin-top: 18px; }
+.ai-tabs button { font: 600 14px var(--sans, system-ui, sans-serif); padding: 8px 14px; border: 1px solid var(--line); border-bottom: 0; border-radius: var(--r-sm) var(--r-sm) 0 0; background: var(--surface); color: var(--muted); cursor: pointer; }
+.ai-tabs button[aria-selected="true"] { background: var(--code-bg); color: var(--fg); }
+.ai-tabs button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 </style>
   <header>
   <p class="kicker">Make a handler with AI</p>
-  <h1>AI can write a handler. Check it before you trust it.</h1>
-  <p class="lede">ChatGPT, Claude, Gemini, Copilot and the rest know a little about Nucleus Co-op, and fill the gaps with guesses that look right. Nucleus quietly ignores an option it doesn't know, and refuses to load newer JavaScript, so a handler can look fine and do nothing. The fix is simple: let the AI write, and let the tools check.</p>
-  <ul class="tool-grid">
-    <li><a href="#chat"><span class="tg-ico" aria-hidden="true">💬</span><strong>In a chat</strong><small>ChatGPT, Claude, Gemini, Copilot Chat, a local model: no setup.</small></a></li>
-    <li><a href="#agents"><span class="tg-ico" aria-hidden="true">✦</span><strong>With an agent</strong><small>Claude Code, Copilot agent mode, Cursor: it checks its own work.</small></a></li>
-    <li><a href="#workbench"><img src="../icon.png" alt="" width="36" height="36"><strong>In the workbench</strong><small>Fix with AI and Explain this line, next to the checks.</small></a></li>
+  <h1>Set up your AI for Nucleus Co-op handlers</h1>
+  <p class="lede">AI can write a handler, but it guesses option names and uses JavaScript Nucleus can't run. Our tools give it the real Nucleus API and the same checks and Try it as the <a href="../?ref=ai">workbench</a>, so what it writes loads and works.</p>
+  <ul class="facts">
+    <li><strong>Free:</strong> VS Code with GitHub Copilot's free plan (<a href="../tools/#get-vscode">our extension</a> gives it the tools), or any free chatbot with the workbench to check its code.</li>
+    <li><strong>Paid:</strong> Claude Code with <a href="../tools/#ai-agents">our plugin</a>, or any other coding agent with the prompt below.</li>
   </ul>
   </header>
 
-  <section aria-labelledby="why">
-  <h2 id="why" class="has-anchor">What AI gets wrong</h2>
-  <p>The same few mistakes, over and over. Every one of them is caught by the checks, which is why the loop below works.</p>
-  <ul class="facts">
-    <li><strong>Newer JavaScript.</strong> Nucleus runs handlers with an old engine (Jint 2.11): arrow functions, <code>`template ${strings}`</code>, classes and <code>.includes()</code> don't load or don't run. <a href="../rules/es5-only/">es5-only</a>, <a href="../rules/missing-builtin/">missing-builtin</a></li>
-    <li><strong>Invented options.</strong> <code>Game.ForceFinishOnPlay</code>, <code>Game.IgnoreWindowBordercheck</code>, <code>ProtoController5</code>: they sound right, Nucleus ignores them, and the handler "works" without doing what it says. <a href="../rules/unknown-member/">unknown-member</a></li>
-    <li><strong>Context in the wrong place.</strong> <code>Context</code> only exists inside <code>Game.Play</code> and the other callbacks; at the top of the file it stops the handler from loading. <a href="../rules/callback-only-global/">callback-only-global</a></li>
-    <li><strong>Wrong types.</strong> <code>Game.KillMutex = "name"</code> needs a list, <code>["name"]</code>, or the whole handler fails; <code>Game.DPIHandling = true</code> quietly picks a mode you didn't mean. <a href="../rules/type-mismatch/">type-mismatch</a></li>
-    <li><strong>Lines the Hub can't read.</strong> <code>Game.GameName</code> and <code>Game.ExecutableName</code> on their own lines, in double quotes, or installing from the Hub breaks. <a href="../rules/hub-install-parse/">hub-install-parse</a></li>
-  </ul>
-  </section>
+  <section aria-labelledby="prompts">
+  <h2 id="prompts" class="has-anchor">Copy, paste, add your game</h2>
+  <div class="ai-tabs" role="tablist" aria-label="Kind of AI">
+    <button type="button" role="tab" id="tab-agent" aria-controls="panel-agent" aria-selected="true">AI agents</button>
+    <button type="button" role="tab" id="tab-chat" aria-controls="panel-chat" aria-selected="false" tabindex="-1">Chatbots</button>
+  </div>
+  <div role="tabpanel" id="panel-agent" aria-labelledby="tab-agent" tabindex="0">
+<pre class="prompt">Set up the Nucleus Co-op handler tools in this folder, then help me make a handler.
 
-  <section aria-labelledby="chat">
-  <h2 id="chat" class="has-anchor">In a chat: write, check, fix, repeat</h2>
-  <p>Any chat AI works, free or paid. It can't run anything, so you carry the code between it and the workbench.</p>
-  <ol class="ai-steps">
-    <li><strong>Start with the rules.</strong> Paste the prompt below first, then describe your game. The more facts you give (engine, the .exe's name, how it does multiplayer, where it keeps its settings), the less it guesses. <a href="https://www.pcgamingwiki.com/">PCGamingWiki</a> has most of them.</li>
-    <li><strong>Paste its handler into the workbench</strong> (<a href="../?ref=ai">open it</a> and paste over the template) and look at Check. <strong>Fix problems</strong> applies the safe fixes in one go.</li>
-    <li><strong>Send back what's left.</strong> Copy each problem's message to the AI and ask it to fix only those. Don't let it rewrite the whole handler: it tends to bring old mistakes back.</li>
-    <li><strong>Try it</strong> shows what each player gets: their window, launch arguments and the files <code>Game.Play</code> changes. If something is wrong there, tell the AI what you see.</li>
-    <li><strong>Test in Nucleus.</strong> Turn on its debug log (Settings), play with two players, and give the AI <code>debug-log.txt</code> from the Nucleus folder along with what happened.</li>
-  </ol>
-  <h3 id="starter-prompt" class="has-anchor">The starter prompt</h3>
-  <p class="small">Copy it into a new chat, then add your game underneath.</p>
-<pre class="prompt">You are helping me write a Nucleus Co-op handler: the JavaScript file Nucleus Co-op (SplitScreen.Me) uses to run several copies of a PC game split-screen, one per player. Follow these rules exactly:
+1. Download https://github.com/Snailedlt/nucleus-devtools/releases/latest/download/nucleus.js (it needs Node.js 18 or newer).
+2. Run: node nucleus.js init-agent .
+3. Read .claude/skills/nucleus-handler/SKILL.md and follow it: look up every option with its api command instead of guessing, lint after every edit, and simulate with 2 and 4 players before you give me the handler.
 
-1. ES5 JavaScript only. Nucleus runs handlers with Jint 2.11: no arrow functions, template strings, classes, let/const (use var), destructuring, spread, default parameters, for...of, ?. or ??. No .includes(), .startsWith(), .find(), Object.assign, Map or Set: use indexOf, loops and plain objects.
-2. Only use options that really exist. Nucleus silently ignores a misspelled or invented option. If you are not sure an option exists, say so and ask me to check it, instead of guessing.
+My game: &lt;name&gt;. Ask me what you need to know about it (engine, .exe name, how multiplayer works, where it keeps settings and saves).</pre>
+  <p class="small">For Claude Code, Codex, Google Antigravity, Cursor, Copilot agent mode and other agents that can run commands.</p>
+  </div>
+  <div role="tabpanel" id="panel-chat" aria-labelledby="tab-chat" tabindex="0" hidden>
+<pre class="prompt">Help me write a Nucleus Co-op handler: the JavaScript file Nucleus Co-op (SplitScreen.Me) uses to run several copies of a PC game split-screen, one per player. Follow these rules exactly:
+
+1. ES5 JavaScript only (Jint 2.11): no arrow functions, template strings, classes, let/const, destructuring, spread, default parameters, for...of, ?. or ??. No .includes(), .startsWith(), .find(), Object.assign, Map or Set.
+2. Only use options that exist. Nucleus silently ignores a misspelled or invented one. If you are not sure an option exists, say so instead of guessing.
 3. Context, Player and PlayerList only exist inside callbacks such as Game.Play. Top-level code only sets Game.* options.
 4. Required: Game.GUID (letters, digits and spaces only), Game.GameName, Game.ExecutableName (the .exe's file name, never a path).
-5. Write Game.GameName = "..."; and Game.ExecutableName = "..."; each on its own line, not indented, in double quotes, with no other " on the line.
-6. List options take arrays: Game.KillMutex = ["name"];. Booleans are true/false, numbers are numbers. Pass every argument to a method, even ones that look optional.
-7. Game.Play runs once per player: use Context.PlayerID (0-based), Context.Width and Context.Height there, and set Context.StartArguments for the command line.
-8. Don't add Hub.* lines; the Hub writes them.
+5. Game.GameName = "..."; and Game.ExecutableName = "..."; each on its own line, not indented, in double quotes, with no other " on the line.
+6. List options take arrays (Game.KillMutex = ["name"];). Booleans are true/false, numbers are numbers. Pass every argument to a method.
+7. Game.Play runs once per player: use Context.PlayerID (0-based), Context.Width, Context.Height, and set Context.StartArguments there.
+8. Don't add Hub.* lines.
 
-When you change the handler, change only what I ask, give me the whole file, and say what each change is for. Ask me for facts about the game you don't know (engine, .exe name, how multiplayer works, where settings and saves are) rather than inventing them.</pre>
-  <p class="small">The full list of options, with their types and docs, is in <a href="../docs/">Docs</a>. If your AI can open links, give it <a href="https://raw.githubusercontent.com/Snailedlt/nucleus-devtools/main/plugin/skills/nucleus-handler/reference/api.md">the API reference</a> (large) and <a href="https://raw.githubusercontent.com/Snailedlt/nucleus-devtools/main/plugin/skills/nucleus-handler/SKILL.md">the handler guide written for AI</a>.</p>
-  </section>
+When you give me a handler, tell me to paste it into https://snailedlt.github.io/nucleus-devtools/ to check it; I'll send you the problems it finds. Then fix only those, and give me the whole file.
 
-  <section aria-labelledby="agents">
-  <h2 id="agents" class="has-anchor">With an agent: it checks its own work</h2>
-  <p>Agents that can run tools (Claude Code, GitHub Copilot in agent mode, Cursor, Claude Desktop) can use the same checks as the workbench, so they fix their own mistakes before you see them. Set it up once (<a href="../tools/#ai-agents">how, for each agent</a>), then ask for what you want:</p>
-<pre class="prompt">Make a Nucleus Co-op handler for &lt;game&gt;. It's on &lt;engine&gt;, the exe is &lt;Game.exe&gt;, and multiplayer is &lt;LAN / Steam / online only&gt;. Check it and Try it with 2 and 4 players before you give it to me.</pre>
-  <ul class="facts">
-    <li><strong>It looks things up</strong> instead of guessing: every option it uses, and how existing Hub handlers for the same game or engine solved it.</li>
-    <li><strong>It checks and runs the handler</strong> per player, the way Nucleus would, and fixes what fails.</li>
-    <li><strong>It hands you a test plan</strong>: what to try in Nucleus and what to send back. It can't run the game for you.</li>
-    <li><strong>It signs its work</strong>: a few lines at the top of the handler say an AI wrote it and what was checked, so people who help on Discord know where to start.</li>
-  </ul>
+My game: &lt;name&gt;. Ask me what you need to know about it.</pre>
+  <p class="small">For ChatGPT, Claude, Gemini, Grok, Copilot Chat and other chatbots. Paste their handler into the <a href="../?ref=ai">workbench</a>, send back what Check finds, and Try it before testing in Nucleus.</p>
+  </div>
   </section>
-
-  <section aria-labelledby="workbench">
-  <h2 id="workbench" class="has-anchor">In the workbench</h2>
-  <ul class="facts">
-    <li><strong>Fix with AI</strong> sends the handler and its problems to an AI and shows what it would change, before and after, to apply or discard. Use your own key (Claude, OpenAI, OpenRouter, Gemini) or a free local model (Ollama, LM Studio): Settings › AI. The checks run again on what comes back.</li>
-    <li><strong>Explain this line</strong> (<kbd>Ctrl</kbd>+<kbd>Alt</kbd>+<kbd>E</kbd>) says in plain words what a line does, from the docs; no AI needed. Handy for reading what an AI wrote.</li>
-  </ul>
-  <div class="ctas"><a class="btn primary" href="../?ref=ai">Open the workbench</a><a class="btn" href="../learn/">Learn: make your first handler</a></div>
-  </section>
-
-  <section aria-labelledby="sharing">
-  <h2 id="sharing" class="has-anchor">Before you share it</h2>
-  <p>A handler that passes every check can still not work: the checks know Nucleus, not your game. Test it with two players in Nucleus first, and say it was made with AI when you post it on the Hub or ask for help, so others know to look at the details.</p>
-  <!--COMMUNITY-->
-  </section>
+<script>
+(function () {
+  var tabs = [].slice.call(document.querySelectorAll('.ai-tabs [role=tab]'));
+  function pick(t, focus) {
+    tabs.forEach(function (x) {
+      var on = x === t;
+      x.setAttribute('aria-selected', String(on));
+      x.tabIndex = on ? 0 : -1;
+      document.getElementById(x.getAttribute('aria-controls')).hidden = !on;
+    });
+    if (focus) t.focus();
+  }
+  tabs.forEach(function (t, i) {
+    t.addEventListener('click', function () { pick(t); });
+    t.addEventListener('keydown', function (e) {
+      var j = e.key === 'ArrowRight' ? i + 1 : e.key === 'ArrowLeft' ? i - 1 : e.key === 'Home' ? 0 : e.key === 'End' ? tabs.length - 1 : null;
+      if (j === null) return;
+      e.preventDefault();
+      pick(tabs[(j + tabs.length) % tabs.length], true);
+    });
+  });
+  if (location.hash === '#chatbots') pick(tabs[1]);
+})();
+</script>
 </main>
 </body>
 </html>

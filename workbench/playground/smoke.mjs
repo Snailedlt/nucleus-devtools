@@ -811,11 +811,16 @@ for (const theme of ['light', 'dark']) {
   await s.p.goto(BASE + 'start/#get-notepadpp');
   await s.p.waitForTimeout(500);
   check(/\/tools\/#get-notepadpp$/.test(s.p.url()), `${theme}: an old start-page link to the downloads goes to the tools page (${s.p.url()})`);
-  // Make a handler with AI: the starter prompt has a Copy button, and the page passes axe.
+  // Make a handler with AI: two prompts in tabs (agents shown first, chatbots one click or ArrowRight away), each with a Copy button.
   await s.p.goto(BASE + 'ai/');
   await s.p.waitForTimeout(400);
-  const ai = await s.p.evaluate(() => ({ prompt: document.querySelector('pre.prompt')?.textContent ?? '', copy: !!document.querySelector('.copy-wrap pre.prompt + .copy-btn') }));
-  check(/ES5 JavaScript only/.test(ai.prompt) && ai.copy, `${theme}: the AI guide has the starter prompt with a Copy button`);
+  const vis = () => s.p.evaluate(() => [...document.querySelectorAll('[role=tabpanel]')].filter((p) => !p.hidden).map((p) => p.id).join());
+  const first = await vis();
+  await s.p.focus('#tab-agent');
+  await s.p.keyboard.press('ArrowRight');
+  const second = await vis();
+  const ai = await s.p.evaluate(() => ({ chat: /ES5 JavaScript only/.test(document.querySelector('#panel-chat pre.prompt')?.textContent ?? ''), agent: /init-agent/.test(document.querySelector('#panel-agent pre.prompt')?.textContent ?? ''), copies: document.querySelectorAll('.copy-wrap pre.prompt + .copy-btn').length, focus: document.activeElement?.id }));
+  check(first === 'panel-agent' && second === 'panel-chat' && ai.focus === 'tab-chat' && ai.chat && ai.agent && ai.copies === 2, `${theme}: the AI guide's two prompts switch with the tabs and the arrow keys, each with a Copy button (${first} -> ${second}, ${JSON.stringify(ai)})`);
   await axe(s.p, `${theme}, AI guide`);
   // Every page has the way home (the brand) and to the workbench in its header.
   for (const u of ['start/', 'tools/', 'ai/', 'docs/', 'docs/Game.Play/', 'rules/', 'rules/syntax-error/', 'learn/']) {

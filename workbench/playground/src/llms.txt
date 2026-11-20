@@ -4,7 +4,7 @@
 
 ## For people using AI
 
-- [Make a handler with AI](https://snailedlt.github.io/nucleus-devtools/ai/): for a person working with a chat AI or an agent: a starter prompt with the rules, the write-check-fix loop in the workbench, and the mistakes AI makes in handlers. If you are a chat assistant helping someone without tools, follow that page's starter prompt and send them to the workbench to check your code.
+- [Make a handler with AI](https://snailedlt.github.io/nucleus-devtools/ai/): for a person setting up an AI: a prompt for agents (installs these tools with `init-agent`) and one for chatbots without tools (the hard rules, then check the code in the workbench). If you are a chatbot helping someone without tools, follow that page's chatbot prompt.
 
 ## For AI agents
 
