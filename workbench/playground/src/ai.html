@@ -1,6 +1,11 @@
 <main>
 <style>
 pre.prompt { margin: 0; padding: 12px 64px 12px 14px; background: var(--code-bg); border-radius: 0 var(--r-sm) var(--r-sm) var(--r-sm); font: 13px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+.ai-game { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 14px; }
+.ai-game label { font-weight: 600; }
+.ai-game input { font: inherit; padding: 6px 10px; min-width: 0; width: 22em; max-width: 100%; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); color: var(--fg); }
+.ai-game input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.game-slot.filled { color: var(--accent); }
 .ai-tabs { display: flex; gap: 2px; margin-top: 18px; }
 .ai-tabs button { font: 600 14px var(--sans, system-ui, sans-serif); padding: 8px 14px; border: 1px solid var(--line); border-bottom: 0; border-radius: var(--r-sm) var(--r-sm) 0 0; background: var(--surface); color: var(--muted); cursor: pointer; }
 .ai-tabs button[aria-selected="true"] { background: var(--code-bg); color: var(--fg); }
@@ -17,7 +22,12 @@ pre.prompt { margin: 0; padding: 12px 64px 12px 14px; background: var(--code-bg)
   </header>
 
   <section aria-labelledby="prompts">
-  <h2 id="prompts" class="has-anchor">Copy, paste, add your game</h2>
+  <h2 id="prompts" class="has-anchor">Add your game, copy, paste</h2>
+  <div class="ai-game">
+    <label for="ai-game">Your game</label>
+    <input id="ai-game" type="text" autocomplete="off" spellcheck="false" placeholder="e.g. Halo: The Master Chief Collection" aria-describedby="ai-game-hint">
+    <span id="ai-game-hint" class="small">It goes into the prompts below.</span>
+  </div>
   <div class="ai-tabs" role="tablist" aria-label="Kind of AI">
     <button type="button" role="tab" id="tab-claude" aria-controls="panel-claude" aria-selected="true">Claude Code</button>
     <button type="button" role="tab" id="tab-agent" aria-controls="panel-agent" aria-selected="false" tabindex="-1">Other AI agents</button>
@@ -33,7 +43,7 @@ If you don't have the nucleus-handler skill and the nucleus MCP tools yet, set t
 
 Then use the nucleus-handler skill: look up every option with nucleus_api instead of guessing, run nucleus_lint after every edit, and nucleus_simulate with 2 and 4 players before you give me the handler.
 
-My game: &lt;name&gt;. Ask me what you need to know about it (engine, .exe name, how multiplayer works, where it keeps settings and saves).</pre>
+My game: <span class="game-slot">&lt;name&gt;</span>. Ask me what you need to know about it (engine, .exe name, how multiplayer works, where it keeps settings and saves).</pre>
   <p class="small">The plugin brings the guide (a skill) and the tools (an MCP server). Needs Node.js 18 or newer.</p>
   </div>
   <div role="tabpanel" id="panel-agent" aria-labelledby="tab-agent" tabindex="0" hidden>
@@ -47,7 +57,7 @@ If you don't have the nucleus MCP tools (nucleus_rules, nucleus_lint, nucleus_si
 
 Then call nucleus_rules and follow it: look up every option with nucleus_api instead of guessing, run nucleus_lint after every edit, and nucleus_simulate with 2 and 4 players before you give me the handler.
 
-My game: &lt;name&gt;. Ask me what you need to know about it (engine, .exe name, how multiplayer works, where it keeps settings and saves).</pre>
+My game: <span class="game-slot">&lt;name&gt;</span>. Ask me what you need to know about it (engine, .exe name, how multiplayer works, where it keeps settings and saves).</pre>
   <p class="small">For Codex, Google Antigravity, Cursor, Gemini CLI, Claude Desktop and other agents that use MCP. In VS Code, <a href="../tools/#get-vscode">our extension</a> already gives Copilot these tools.</p>
   </div>
   <div role="tabpanel" id="panel-chat" aria-labelledby="tab-chat" tabindex="0" hidden>
@@ -64,7 +74,7 @@ My game: &lt;name&gt;. Ask me what you need to know about it (engine, .exe name,
 
 When you give me a handler, tell me to paste it into https://snailedlt.github.io/nucleus-devtools/ to check it; I'll send you the problems it finds. Then fix only those, and give me the whole file.
 
-My game: &lt;name&gt;. Ask me what you need to know about it.</pre>
+My game: <span class="game-slot">&lt;name&gt;</span>. Ask me what you need to know about it.</pre>
   <p class="small">For ChatGPT, Claude, Gemini, Grok, Copilot Chat and other chatbots. Paste their handler into the <a href="../?ref=ai">workbench</a>, send back what Check finds, and Try it before testing in Nucleus.</p>
   </div>
   </section>
@@ -89,6 +99,13 @@ My game: &lt;name&gt;. Ask me what you need to know about it.</pre>
       pick(tabs[(j + tabs.length) % tabs.length], true);
     });
   });
+  var game = document.getElementById('ai-game');
+  function fill() {
+    var v = game.value.trim();
+    [].forEach.call(document.querySelectorAll('.game-slot'), function (el) { el.textContent = v || '<name>'; el.classList.toggle('filled', !!v); });
+  }
+  game.addEventListener('input', fill);
+  fill();
   var byHash = { '#agents': 1, '#chatbots': 2 }[location.hash];
   if (byHash) pick(tabs[byHash]);
 })();

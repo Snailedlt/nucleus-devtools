@@ -819,8 +819,10 @@ for (const theme of ['light', 'dark']) {
   await s.p.focus('#tab-claude');
   await s.p.keyboard.press('ArrowRight');
   const second = await vis();
-  const ai = await s.p.evaluate(() => ({ chat: /ES5 JavaScript only/.test(document.querySelector('#panel-chat pre.prompt')?.textContent ?? ''), claude: /claude plugin install nucleus-coop@splitscreenme/.test(document.querySelector('#panel-claude pre.prompt')?.textContent ?? ''), agent: /latest\/download\/nucleus\.js[\s\S]*MCP server/.test(document.querySelector('#panel-agent pre.prompt')?.textContent ?? ''), copies: document.querySelectorAll('.copy-wrap pre.prompt + .copy-btn').length, focus: document.activeElement?.id }));
-  check(first === 'panel-claude' && second === 'panel-agent' && ai.focus === 'tab-agent' && ai.chat && ai.claude && ai.agent && ai.copies === 3, `${theme}: the AI guide's three prompts switch with the tabs and the arrow keys, each with a Copy button (${first} -> ${second}, ${JSON.stringify(ai)})`);
+  const tabFocus = await s.p.evaluate(() => document.activeElement?.id);
+  await s.p.fill('#ai-game', 'Halo 3');
+  const ai = await s.p.evaluate(() => ({ filled: [...document.querySelectorAll('pre.prompt')].every((p) => p.innerText.includes('My game: Halo 3.')), chat: /ES5 JavaScript only/.test(document.querySelector('#panel-chat pre.prompt')?.textContent ?? ''), claude: /claude plugin install nucleus-coop@splitscreenme/.test(document.querySelector('#panel-claude pre.prompt')?.textContent ?? ''), agent: /latest\/download\/nucleus\.js[\s\S]*MCP server/.test(document.querySelector('#panel-agent pre.prompt')?.textContent ?? ''), copies: document.querySelectorAll('.copy-wrap pre.prompt + .copy-btn').length, focus: document.activeElement?.id }));
+  check(first === 'panel-claude' && second === 'panel-agent' && tabFocus === 'tab-agent' && ai.chat && ai.claude && ai.agent && ai.copies === 3 && ai.filled, `${theme}: the AI guide's three prompts switch with the tabs and the arrow keys, each with a Copy button, and take the game's name (${first} -> ${second}, ${JSON.stringify(ai)})`);
   await axe(s.p, `${theme}, AI guide`);
   // Every page has the way home (the brand) and to the workbench in its header.
   for (const u of ['start/', 'tools/', 'ai/', 'docs/', 'docs/Game.Play/', 'rules/', 'rules/syntax-error/', 'learn/']) {
