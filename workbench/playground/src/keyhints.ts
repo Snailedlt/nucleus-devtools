@@ -4,7 +4,9 @@
 const MAC = /Mac|iPhone|iPad/.test(navigator.platform);
 const show = (keys: string) => keys.split(' ').map((k) => `<kbd>${k === 'Ctrl' && MAC ? '⌘' : k === 'Alt' && MAC ? '⌥' : k}</kbd>`).join('');
 
-export function initKeyHints(list: { el: HTMLElement | null; what?: string; keys: string }[]) {
+/** `keys` is "Ctrl B" (space between keys), or a function for a rebindable action, read when the hint shows; call the
+ *  returned `refresh` when bindings change so aria-keyshortcuts follows. */
+export function initKeyHints(list: { el: HTMLElement | null; what?: string; keys: string | (() => string) }[]) {
   const tip = document.createElement('div');
   tip.className = 'keyhint';
   tip.setAttribute('role', 'tooltip');
@@ -12,15 +14,21 @@ export function initKeyHints(list: { el: HTMLElement | null; what?: string; keys
   document.body.append(tip);
   let timer = 0;
   const hide = () => { clearTimeout(timer); tip.hidden = true; };
-  for (const { el, what, keys } of list) {
+  const aria = (el: HTMLElement, k: string) => {
+    if (k) el.setAttribute('aria-keyshortcuts', k.replace(/ /g, '+').replace('Ctrl', MAC ? 'Meta' : 'Control'));
+    else el.removeAttribute('aria-keyshortcuts');
+  };
+  const now = (keys: string | (() => string)) => (typeof keys === 'function' ? keys() : keys);
+  for (const { el, what, keys: given } of list) {
     if (!el) continue;
     const label = what ?? (el.getAttribute('title') || el.getAttribute('aria-label') || el.textContent || '').replace(/\s*\((Ctrl|⌘|F\d|\?)[^)]*\)\s*$/, '').trim();
     el.removeAttribute('title');
-    if (keys) el.setAttribute('aria-keyshortcuts', keys.replace(/ /g, '+').replace('Ctrl', MAC ? 'Meta' : 'Control'));
+    aria(el, now(given));
     const open = (delay: number) => {
       clearTimeout(timer);
       timer = window.setTimeout(() => {
         if (!el.isConnected || el.offsetParent === null) return;
+        const keys = now(given);
         tip.innerHTML = `<span>${label.replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]!)}</span>${keys ? `<span class="kh-keys">${show(keys)}</span>` : ''}`;
         tip.hidden = false;
         const r = el.getBoundingClientRect();
@@ -43,4 +51,5 @@ export function initKeyHints(list: { el: HTMLElement | null; what?: string; keys
   }
   document.addEventListener('keydown', (e) => e.key === 'Escape' && hide());
   addEventListener('scroll', hide, true);
+  return { refresh: () => list.forEach(({ el, keys }) => el && aria(el, now(keys))) };
 }

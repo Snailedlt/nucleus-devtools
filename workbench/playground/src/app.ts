@@ -390,7 +390,9 @@ const editorHandlers: Record<string, (cm: any) => void> = {
 };
 const applyKeys = () => editor.setOption('extraKeys', codeKeyMap(editorHandlers, fixedCodeKeys));
 applyKeys();
-onBindingsChange(() => (applyKeys(), renderHelpKeys()));
+onBindingsChange(() => (applyKeys(), renderHelpKeys(), refreshKeyHints()));
+// Set once the key hints are made (further down).
+let refreshKeyHints = () => {};
 keysByPosition(editor);
 let escThenTab = false;
 editor.on('keydown', (_cm: any, e: KeyboardEvent) => {
@@ -2510,8 +2512,10 @@ const panels = initPanels({ refresh: () => editor.refresh(), toast, menu: (edge,
 function focusShownCode() {
   const shown = (el: Element) => (el as HTMLElement).offsetParent !== null && el.getClientRects().length > 0;
   if (viewMode === 'code' && shown(editor.getWrapperElement())) return editor.focus();
-  const pane = document.querySelector<HTMLElement>('.main > .pane:not(.side)');
-  [...(pane?.querySelectorAll<HTMLElement>(`.CodeMirror textarea, ${FOCUSABLE}`) ?? [])].find(shown)?.focus();
+  // A package file's editor, then its card or Form/Blocks' controls, before the head's buttons (Files, Lines…).
+  const row = document.querySelector<HTMLElement>('.main > .pane:not(.side) .code-row');
+  const pick = (sel: string) => [...(row?.querySelectorAll<HTMLElement>(sel) ?? [])].find(shown);
+  (pick('.CodeMirror textarea') ?? pick(FOCUSABLE))?.focus();
 }
 const zen = initZen({ refresh: () => editor.refresh(), focusCode: focusShownCode, announce, keys: () => labelOf('zen') });
 // Asked for a results tab: out of Zen mode at any width; the hidden pane back on wide screens (phones switch views).
@@ -2927,18 +2931,21 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-// The common shortcuts, on hover or keyboard focus of the buttons they belong to (both modes).
-initKeyHints([
+// The common shortcuts, on hover or keyboard focus of the buttons they belong to (both modes). The results pane's keys
+// can be changed (Settings › Keyboard shortcuts): read when shown, and its aria-keyshortcuts follow a change.
+const resultsHintKeys = () => binding('results').replace(/\+/g, ' ');
+const keyHints = initKeyHints([
   { el: document.getElementById('tab-add'), what: 'New, open a file or an example', keys: 'Ctrl K' },
   { el: document.getElementById('app-menu-open'), what: 'Settings, Advanced mode and help', keys: 'Ctrl ,' },
   ...[...document.querySelectorAll<HTMLElement>('.rail [data-rail]')].map((b) => ({ el: b, what: b.getAttribute('aria-label') ?? '', keys: ({ lines: 'Ctrl B', save: 'Ctrl S', add: 'Ctrl K', menu: 'Ctrl ,' } as Record<string, string>)[b.dataset.rail!] ?? '' })),
   { el: document.getElementById('lines-toggle'), what: 'Show or hide Lines', keys: 'Ctrl B' },
-  { el: document.getElementById('results-hide'), what: 'Hide the results', keys: 'Ctrl J' },
-  { el: document.getElementById('results-show'), what: 'Show the results', keys: 'Ctrl J' },
+  { el: document.getElementById('results-hide'), what: 'Hide the results', keys: resultsHintKeys },
+  { el: document.getElementById('results-show'), what: 'Show the results', keys: resultsHintKeys },
   { el: document.getElementById('code-menu-open'), what: 'Save', keys: 'Ctrl S' },
   { el: document.getElementById('save-more'), what: 'Save as…', keys: 'Ctrl Shift S' },
   { el: document.querySelector<HTMLElement>('[role=tab][data-tab=simulate]'), what: 'Try it', keys: 'Ctrl Enter' },
 ]);
+refreshKeyHints = keyHints.refresh;
 
 {
   const sel = $('#set-density') as HTMLSelectElement;

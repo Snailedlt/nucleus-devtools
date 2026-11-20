@@ -368,6 +368,13 @@ for (const theme of ['light', 'dark']) {
         const opened = !(await p.$eval('#file-editor', (e) => e.hidden));
         check(opened, `${theme}: ${txt.name} opens in the file editor`);
         if (opened) {
+          // Hiding the results pane from inside it puts the focus in the file that shows, not the hidden handler.js.
+          await p.focus('[role=tab][data-tab=problems]');
+          await p.keyboard.press('Control+J');
+          await p.waitForTimeout(200);
+          check(await p.evaluate(() => !!document.activeElement?.closest('#file-editor')), `${theme}: Ctrl+J from the results puts the focus in the open package file`);
+          await p.keyboard.press('Control+J');
+          await p.waitForTimeout(200);
           await p.evaluate(() => { document.querySelector('#file-editor .CodeMirror').CodeMirror.replaceRange('; edited\n', { line: 0, ch: 0 }); document.querySelector('#share-open').click(); });
           await p.waitForTimeout(500);
           const lead = await p.evaluate(() => document.querySelector('#code-dialog .code-hero')?.dataset.code);
