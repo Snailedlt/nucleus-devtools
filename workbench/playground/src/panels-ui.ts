@@ -2,9 +2,11 @@
 // sheet's height. Sizes are kept per browser; nothing changes until you drag. Double-click an edge
 // to reset it, or Settings > Reset panel sizes for all of them. Arrow keys work on a focused edge. Right-click an edge
 // (or the Menu key / Shift+F10 on a focused one) for its layout menu: reset, move to the other side, hide.
+// The results pane (Check, Try it, Docs) can be hidden too, for a wide code editor (Ctrl+J, as VS Code's panel); it
+// comes back with the same key, its Results button, or when something opens one of its tabs.
 const KEY = 'nucleus-workbench-panels';
 const $ = <T extends HTMLElement = HTMLElement>(sel: string) => document.querySelector(sel) as T;
-interface Sizes { main?: number; lines?: number; files?: number; sheet?: number; filesSide?: "left" | "right"; linesSide?: "left" | "right" } // main: share of the code pane (0..1); lines: px; sheet: vh
+interface Sizes { main?: number; lines?: number; files?: number; sheet?: number; filesSide?: "left" | "right"; linesSide?: "left" | "right"; resultsHidden?: boolean } // main: share of the code pane (0..1); lines: px; sheet: vh
 
 export type PanelEdge = 'main' | 'lines' | 'files';
 export function initPanels(opts: { refresh: () => void; toast: (s: string) => void; menu?: (edge: PanelEdge, at: { x: number; y: number }) => void }) {
@@ -39,6 +41,11 @@ export function initPanels(opts: { refresh: () => void; toast: (s: string) => vo
       const s = document.getElementById(id) as HTMLSelectElement | null;
       if (s) s.value = v ?? 'right';
     }
+    main.classList.toggle('results-hidden', !!sizes.resultsHidden);
+    const show = document.getElementById('results-show');
+    if (show) show.hidden = !sizes.resultsHidden;
+    const cb = document.getElementById('set-results') as HTMLInputElement | null;
+    if (cb) cb.checked = !sizes.resultsHidden;
     lines.classList.toggle('custom-h', !!sizes.sheet);
     if (sizes.sheet) lines.style.setProperty('--sheet-h', `${sizes.sheet}vh`);
     // Screen readers announce a focusable separator's position (a percentage of the space it divides).
@@ -170,8 +177,19 @@ export function initPanels(opts: { refresh: () => void; toast: (s: string) => vo
       apply();
       return sizes[key] ?? 'right';
     },
+    /** Whether the results pane shows (wide screens; phones switch between the code and the results). */
+    resultsShown: () => !sizes.resultsHidden,
+    /** Shows or hides the results pane; without `show`, the other way round. Returns whether it shows now. */
+    results(show?: boolean) {
+      const next = show ?? !!sizes.resultsHidden;
+      if (next === !sizes.resultsHidden) return next;
+      if (next) delete sizes.resultsHidden; else sizes.resultsHidden = true;
+      save();
+      apply();
+      return next;
+    },
     reset() {
-      sizes = { filesSide: sizes.filesSide, linesSide: sizes.linesSide }; // sizes only; the sides stay
+      sizes = { filesSide: sizes.filesSide, linesSide: sizes.linesSide, resultsHidden: sizes.resultsHidden }; // sizes only; the sides and what's hidden stay
       save();
       apply();
     },

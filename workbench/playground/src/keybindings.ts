@@ -34,6 +34,8 @@ export const ACTIONS: Action[] = [
   { id: 'saveAs', label: 'Save as: .zip, .js or .nc', group: 'Workbench', keys: 'Ctrl+Shift+S', where: 'app' },
   { id: 'saveNucleus', label: "Save into Nucleus Co-op's handlers folder", group: 'Workbench', keys: 'Ctrl+Alt+S', where: 'app' },
   { id: 'lines', label: 'Show or hide the Lines list', group: 'Workbench', keys: 'Ctrl+B', where: 'app' },
+  { id: 'results', label: 'Show or hide the results pane (Check, Try it, Docs)', group: 'Workbench', keys: 'Ctrl+J', where: 'app' },
+  { id: 'zen', label: 'Zen mode: only the code (Esc twice leaves it)', group: 'Workbench', keys: 'Ctrl+K Z', where: 'app' },
   { id: 'settings', label: 'Settings', group: 'Workbench', keys: 'Ctrl+,', where: 'app' },
   { id: 'nextPane', label: 'Next part of the page (header, files, code, results)', group: 'Workbench', keys: 'F6', where: 'app' },
   { id: 'prevPane', label: 'Previous part of the page', group: 'Workbench', keys: 'Shift+F6', where: 'app' },

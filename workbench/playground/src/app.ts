@@ -38,6 +38,7 @@ import { initSettings } from './settings-ui';
 import { announceLine, hoverDelay, initA11y } from './a11y';
 import { initNews } from './news';
 import { initPanels, type PanelEdge } from './panels-ui';
+import { initZen } from './zen';
 import { initTouchTitles } from './touch-titles';
 import { keepMascots, mascot } from './mascots';
 import { fixWithNucli, applyEditsToText } from './fixfx';
@@ -1010,6 +1011,7 @@ function renderProblems(text: string) {
   // errors, warnings and info. Hints (outdated options) are counted on their own.
   const total = counts.total;
   $('#count-problems').textContent = String(total);
+  $('#count-results').textContent = total ? String(total) : ''; // on the Results button, while the pane is hidden
   $('#count-switch').textContent = String(total);
   $('#f-all').textContent = String(total);
   for (const k of ['error', 'warning', 'info', 'hint']) $(`#f-${k}`).textContent = String(counts[k]);
@@ -1367,7 +1369,7 @@ function stepProblem(dir: 1 | -1) {
     codeNote(editor, editor.getCursor().line, 'No problems to go to.', { mood: 'info' });
     return;
   }
-  selectTab('problems');
+  selectTab('problems', false); // F8 moves in the code; the list follows if it shows
   problemIndex = (problemIndex + dir + shownProblems.length) % shownProblems.length;
   document.querySelectorAll('.problem.current').forEach((e) => e.classList.remove('current'));
   const li = document.querySelector(`.problem[data-i="${shownRowOf[problemIndex] ?? problemIndex}"]`);
@@ -1675,7 +1677,7 @@ function loadSource(src: string, meta: DocMeta, opts: { fresh?: boolean } = {}) 
   else if (location.hash) history.replaceState(null, '', location.pathname + location.search);
   renderDocHead();
   $('#ai-box').hidden = true; // the fix box (aifix-ui.ts) shows an older version
-  selectTab('problems');
+  selectTab('problems', false);
   editor.focus();
   if (tabsReady) (saveTabs(), renderTabs());
 }
@@ -2063,6 +2065,8 @@ function commandList(): OpenEntry[] {
     c('Turn Advanced mode on or off', '', 'advanced mode rule details probes', click('#advanced')),
     c('Turn tips on or off', '', 'tips hints help', () => tips.toggle()),
     c('Reset panel sizes', '', 'layout resize panels reset width', () => panels.reset()),
+    c('Show or hide the results pane (Check, Try it, Docs)', labelOf('results'), 'results pane panel hide show toggle wide code editor maximize minimize collapse distraction', () => toggleResults()),
+    c('Zen mode: only the code', labelOf('zen'), 'zen focus distraction free full screen fullscreen only code hide everything centered', () => zen.toggle(), 'Esc twice leaves it'),
     c("What's new", '', 'changelog changes news updates release notes', () => news.open()),
     c('Keyboard shortcuts', '?', 'help keys shortcuts keybindings', () => helpDialog.showModal()),
     c('Take the tour', '', 'tour guided getting started intro welcome first walkthrough help show around', () => tour.take()),
@@ -2395,7 +2399,12 @@ $('#help-open-2').addEventListener('click', () => helpDialog.showModal());
 $('#help-close').addEventListener('click', () => helpDialog.close());
 
 const TAB_KEY = 'nucleus-workbench-tab';
-function selectTab(id: string) {
+// Set once the layout (panels, Zen mode) is ready, further down.
+let revealResults = () => {};
+/** Shows a results tab. `reveal` (the default, when someone asks for a tab) brings back a hidden results pane and leaves
+ *  Zen mode; a tab chosen for them (start-up, a handler opened, F8) leaves the layout as it is. */
+function selectTab(id: string, reveal = true) {
+  if (reveal && !narrow()) revealResults();
   document.querySelectorAll<HTMLButtonElement>('.pane-head [role=tab]').forEach((t) => t.setAttribute('aria-selected', String(t.dataset.tab === id)));
   requestAnimationFrame(placeInk);
   document.querySelectorAll<HTMLElement>('[role=tabpanel][id^=panel-]').forEach((p) => (p.hidden = p.id !== `panel-${id}`));
@@ -2496,6 +2505,19 @@ const settings = initSettings({
 });
 const news = initNews();
 const panels = initPanels({ refresh: () => editor.refresh(), toast, menu: (edge, at) => edgeMenu(edge, at) });
+const zen = initZen({ refresh: () => editor.refresh(), focusCode: () => { if (viewMode === 'code') editor.focus(); }, announce, keys: () => labelOf('zen') });
+revealResults = () => { zen.set(false); panels.results(true); };
+/** Ctrl+J, the Results button and the pane's own hide button: the results pane in or out. Hiding it puts the focus in
+ *  the code (it may have been in the pane). */
+function toggleResults(show?: boolean) {
+  const shown = panels.results(show);
+  if (!shown && document.querySelector('.main > .pane.side')?.contains(document.activeElement)) editor.focus();
+  if (shown && zen.isOn()) zen.set(false);
+  announce(shown ? 'The results pane is back.' : `The results pane is hidden. ${labelOf('results') || 'The Results button'} brings it back.`);
+}
+$('#results-hide').addEventListener('click', () => toggleResults(false));
+$('#results-show').addEventListener('click', () => toggleResults(true));
+$('#set-results').addEventListener('change', (e) => toggleResults((e.target as HTMLInputElement).checked));
 /** The right-click menu of a resize handle (panels-ui.ts): reset it, move or hide its panel, the layout. Opens where
  *  the pointer is, from a small anchor (menus.ts places a menu by its anchor). */
 function edgeMenu(edge: PanelEdge, at: { x: number; y: number }) {
@@ -2510,7 +2532,10 @@ function edgeMenu(edge: PanelEdge, at: { x: number; y: number }) {
   anchor.style.top = `${at.y}px`;
   const side = (w: 'files' | 'lines') => (panels.side(w) === 'left' ? 'right' : 'left');
   const items: MenuItem[] = edge === 'main'
-    ? [{ label: 'Reset to the default split', hint: 'Double-click', run: () => panels.resetOne('main') }]
+    ? [
+        { label: 'Reset to the default split', hint: 'Double-click', run: () => panels.resetOne('main') },
+        { label: 'Hide the results', hint: labelOf('results'), run: () => toggleResults(false) },
+      ]
     : [
         { label: `Reset the ${edge === 'lines' ? 'Lines' : 'Files'} width`, hint: 'Double-click', run: () => panels.resetOne(edge) },
         { label: `Move ${edge === 'lines' ? 'Lines' : 'Files'} to the ${side(edge)}`, run: () => { panels.flip(edge); requestAnimationFrame(() => editor.refresh()); } },
@@ -2521,6 +2546,7 @@ function edgeMenu(edge: PanelEdge, at: { x: number; y: number }) {
     { kind: 'separator', label: '' },
     { label: 'Reset all panel sizes', run: () => panels.reset() },
     { label: 'Tools in a side rail', checked: layout() === 'rail', run: () => setLayout(layout() === 'rail' ? 'bar' : 'rail') },
+    { label: 'Zen mode: only the code', hint: labelOf('zen'), run: () => zen.set(true) },
     { label: 'Layout settings…', run: () => settings.open('layout') },
   ], 'right', document.getElementById(`split-${edge}`) ?? undefined); // focus back to the edge, not the position marker
 }
@@ -2562,6 +2588,8 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
     saveAs: () => openMenu(shown('#save-more', '.rail [data-rail=save]', '#code-menu-phone') ?? $('#save-more'), 'Save as', saveItems(), document.documentElement.dataset.layout === 'rail' ? 'right' : 'below'),
     saveNucleus: () => void saveToNucleus(),
     lines: () => lines.toggle(),
+    results: () => (narrow() ? setView(document.querySelector<HTMLElement>('#main')?.dataset.view === 'results' ? 'code' : 'results') : toggleResults()),
+    zen: () => zen.toggle(),
     settings: () => settings.open(),
     wordWrap: () => settings.toggleWrap(),
     format: () => formatDocument(),
@@ -2805,6 +2833,7 @@ const MI = (name: IconName) => icon(name, 16);
 const appItems = (): MenuItem[] => [
   { label: 'Advanced mode', icon: MI('wrench'), checked: mode === 'dev', run: () => ($('#advanced') as HTMLInputElement).click() },
   { label: 'Tools in a side rail', icon: MI('panel-left'), checked: layout() === 'rail', run: () => setLayout(layout() === 'rail' ? 'bar' : 'rail') },
+  { label: 'Zen mode: only the code', icon: MI('maximize'), hint: labelOf('zen'), run: () => zen.set(true) },
   { kind: 'separator', label: '' },
   { label: 'Settings…', icon: MI('settings'), hint: 'Ctrl ,', run: () => settings.open() },
   { label: 'Keyboard shortcuts', icon: MI('keyboard'), hint: '?', run: () => helpDialog.showModal() },
@@ -2884,6 +2913,8 @@ initKeyHints([
   { el: document.getElementById('app-menu-open'), what: 'Settings, Advanced mode and help', keys: 'Ctrl ,' },
   ...[...document.querySelectorAll<HTMLElement>('.rail [data-rail]')].map((b) => ({ el: b, what: b.getAttribute('aria-label') ?? '', keys: ({ lines: 'Ctrl B', save: 'Ctrl S', add: 'Ctrl K', menu: 'Ctrl ,' } as Record<string, string>)[b.dataset.rail!] ?? '' })),
   { el: document.getElementById('lines-toggle'), what: 'Show or hide Lines', keys: 'Ctrl B' },
+  { el: document.getElementById('results-hide'), what: 'Hide the results', keys: 'Ctrl J' },
+  { el: document.getElementById('results-show'), what: 'Show the results', keys: 'Ctrl J' },
   { el: document.getElementById('code-menu-open'), what: 'Save', keys: 'Ctrl S' },
   { el: document.getElementById('save-more'), what: 'Save as…', keys: 'Ctrl Shift S' },
   { el: document.querySelector<HTMLElement>('[role=tab][data-tab=simulate]'), what: 'Try it', keys: 'Ctrl Enter' },
@@ -2986,7 +3017,7 @@ function setMode(m: Mode) {
     /* ignore */
   }
   const active = document.querySelector<HTMLElement>('[role=tab][aria-selected=true]')?.dataset.tab;
-  if (m === 'simple' && active === 'probes') selectTab('problems');
+  if (m === 'simple' && active === 'probes') selectTab('problems', false);
   (editor as any).performLint();
   if (active === 'simulate') runSim();
   // The credit's default follows the mode (on in Guided); a choice of one's own stays.
@@ -3239,7 +3270,7 @@ if (initialDocs) {
   docs.openHash(initialDocs);
 } else if (!openFromHash()) {
   renderDocHead();
-  selectTab(['problems', 'simulate', 'api', 'probes'].includes(startTab) ? startTab : 'problems');
+  selectTab(['problems', 'simulate', 'api', 'probes'].includes(startTab) ? startTab : 'problems', false);
 } else if (narrow()) setView('code');
 // A link that opened a handler (#example-…, #hub-…) leaves the results tabs as they were: mark the one whose
 // panel shows, so a tab is always selected (and its ink drawn). Only the marking: the view stays as it is.
