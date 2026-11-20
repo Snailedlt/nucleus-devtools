@@ -248,8 +248,8 @@ This installs the **Nucleus Co-op handlers** plugin and puts `ncdev` in `%LOCALA
 
 `ncdev lsp` is a Language Server with the same features: problems and quick fixes, hover, completion with your own names and snippets, signature help, go to definition, rename, outline, Format Document, window-message hints, Try it, and *Package*, *Install*, *New handler* and *Test in Nucleus* as code actions and commands. `ncdev dap` brings the debugger. Any editor with an LSP client can use it; most need only a few lines of config.
 
-1. **Get the server.** Windows: `ncdev.exe` from the [newest release](https://github.com/Snailedlt/nucleus-devtools/releases) (no Node needed; `ncdev update` keeps it current). Anywhere with Node.js 18+: `nucleus.js` from the same release.
-2. **Point your editor's LSP client at it** for JavaScript files, over stdio: `ncdev lsp`, or `node /path/to/nucleus.js lsp`. It only answers for handler files, so your usual JavaScript server keeps working beside it. The examples below start it by name, so `ncdev` must be on your `PATH`; otherwise use its full path (e.g. `C:\Tools\ncdev.exe`).
+1. **Get the server.** `ncdev.exe` (Windows) or `ncdev-linux-x64` (Linux: `chmod +x` it and put it on your PATH as `ncdev`) from the [newest release](https://github.com/Snailedlt/nucleus-devtools/releases); no Node needed, and `ncdev update` keeps it current. Elsewhere (macOS, for one), `nucleus.js` from a release with Node.js 18+ does the same.
+2. **Point your editor's LSP client at it** for JavaScript files, over stdio: `ncdev lsp` (or `node /path/to/nucleus.js lsp` without a standalone `ncdev`). It only answers for handler files, so your usual JavaScript server keeps working beside it. The examples below start it by name, so `ncdev` must be on your `PATH`; otherwise use its full path (e.g. `C:\Tools\ncdev.exe`).
 3. **Open a handler.** Problems should show within a second.
 
 <!-- generated:editors -->
@@ -268,41 +268,40 @@ This installs the **Nucleus Co-op handlers** plugin and puts `ncdev` in `%LOCALA
 
 #### Neovim
 
+<!-- generated:snippet-neovim -->
 ```lua
 vim.lsp.config('nucleus', {
-  cmd = { 'ncdev', 'lsp' }, -- or { 'node', '/path/to/nucleus.js', 'lsp' }
+  cmd = { 'ncdev', 'lsp' },
   filetypes = { 'javascript' },
   root_markers = { 'handlers', '.git' },
+  init_options = { lint = { compareWithHub = true } },
 })
 vim.lsp.enable('nucleus')
+-- Inlay hints (window-message names): vim.lsp.inlay_hint.enable(true)
+-- Fix all: vim.lsp.buf.code_action({ context = { only = { 'source.fixAll' } }, apply = true })
+-- Try it: vim.lsp.buf_request(0, 'workspace/executeCommand',
+--   { command = 'nucleus.tryIt', arguments = { { uri = vim.uri_from_bufnr(0), players = 2 } } },
+--   function(_, text) if text then print(text) end end)
 ```
+<!-- /generated:snippet-neovim -->
 
-If your colour scheme leaves Nucleus names plain, [PORTING.md](PORTING.md#neovim-011-built-in) has six highlight links that colour them in any scheme.
-
-Before Neovim 0.11:
-
-```lua
-vim.api.nvim_create_autocmd('FileType', {
-  pattern = 'javascript',
-  callback = function()
-    vim.lsp.start({ name = 'nucleus', cmd = { 'ncdev', 'lsp' }, root_dir = vim.fn.getcwd() })
-  end,
-})
-```
+Older Neovim, the colour links for Nucleus names, Fix all and Try it: [PORTING.md](PORTING.md#neovim-011-built-in).
 
 #### Helix
 
 In `languages.toml`:
 
+<!-- generated:snippet-helix -->
 ```toml
 [language-server.nucleus]
-command = "ncdev"  # or command = "node", args = ["/path/to/nucleus.js", "lsp"]
+command = "ncdev"
 args = ["lsp"]
 
 [[language]]
 name = "javascript"
 language-servers = ["typescript-language-server", "nucleus"]
 ```
+<!-- /generated:snippet-helix -->
 
 Settings (which checks to show, the format style, your Nucleus folder), Fix all, Try it and the debugger for each editor are in [PORTING.md](PORTING.md), which also explains how the code is split, for anyone (or any AI agent) building a proper extension for their editor.
 
@@ -310,7 +309,7 @@ Settings (which checks to show, the format style, your Nucleus folder), Fix all,
 
 `ncdev` (Nucleus Co-op dev tools) is the same engine as the extension, on the command line: lint, fix, format, Try it (`simulate`), the debugger (`debug`), API lookup, Hub search, new handlers from templates, packages, and the servers for other editors and AI agents (`lsp`, `dap`, `mcp`). `ncdev --help` lists everything. `nucleus` is its old name and still works.
 
-**Standalone (Windows, nothing else to install):** download `ncdev.exe` from the [newest release](https://github.com/Snailedlt/nucleus-devtools/releases) and run it from a terminal:
+**Standalone (Windows and Linux, nothing else to install):** download `ncdev.exe` or `ncdev-linux-x64` from the [newest release](https://github.com/Snailedlt/nucleus-devtools/releases) (on Linux, `chmod +x` it and put it on your PATH as `ncdev`) and run it from a terminal:
 
 ```
 ncdev lint MyGame.js
@@ -318,7 +317,7 @@ ncdev lint MyGame.js
 
 `ncdev update` replaces it with the newest release (checked against the release's SHA-256 sums); `ncdev --version` says when there is one. It's large because Node.js is inside. It isn't code-signed yet, so Windows SmartScreen may ask once ("More info › Run anyway").
 
-**With Node.js 18+:** `nucleus.js` from a release (`node nucleus.js lint MyGame.js`), or from the repository:
+**Elsewhere, with Node.js 18+:** `nucleus.js` from a release (`node nucleus.js lint MyGame.js`), or from the repository:
 
 ```bash
 npm ci && npm run build

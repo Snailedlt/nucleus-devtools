@@ -22,7 +22,7 @@
 
   <section aria-labelledby="in-your-editor">
   <span id="install" class="anchor-alias" aria-hidden="true"></span><span id="try-it-in-5-minutes" class="anchor-alias" aria-hidden="true"></span><span id="any-editor-with-a-language-server-lsp" class="anchor-alias" aria-hidden="true"></span><h2 id="in-your-editor" class="has-anchor">In your editor</h2>
-  <p>Pick yours to see how to set it up. We recommend <strong>VS Code</strong>: it shows the most (hovers with docs, a Docs panel, Try it, a debugger). Notepad++ has every feature too, in a plainer way. The others get them through a <strong>language server</strong> (LSP): <code>ncdev lsp</code>, from <a href="__NCDEV_URL__"><code>ncdev.exe</code></a> on your PATH.</p>
+  <p>Pick yours to see how to set it up. We recommend <strong>VS Code</strong>: it shows the most (hovers with docs, a Docs panel, Try it, a debugger). Notepad++ has every feature too, in a plainer way. The others get them through a <strong>language server</strong> (LSP): <code>ncdev lsp</code>, with <code>ncdev</code> on your PATH: <a href="__NCDEV_URL__"><code>ncdev.exe</code></a> (Windows) or <a href="__NCDEV_LINUX_URL__"><code>ncdev-linux-x64</code></a> (Linux; <code class="cmd">chmod +x ncdev-linux-x64 &amp;&amp; mv ncdev-linux-x64 ~/.local/bin/ncdev</code>). Elsewhere, <code>node nucleus.js</code> from a <a href="https://github.com/Snailedlt/nucleus-devtools/releases">release</a> works in its place.</p>
 <ul class="editors dev"><li><a class="ed full" id="get-vscode" data-ed="vscode" href="#get-vscode"><img src="../start/editors/vscode.svg" alt="" width="40" height="40"><span><strong>VS Code</strong><small>Extension · also VSCodium</small></span><span class="ed-tag rec">Recommended</span></a></li><li><a class="ed full" id="get-notepadpp" data-ed="notepadpp" href="#get-notepadpp"><img src="../start/editors/notepadplusplus.svg" alt="" width="40" height="40"><span><strong>Notepad++</strong><small>Plugin, one command</small></span><span class="ed-tag full">Full support</span></a></li><li><a class="ed" data-ed="neovim" href="https://github.com/Snailedlt/nucleus-devtools#neovim" rel="noopener"><img src="../start/editors/neovim.svg" alt="" width="40" height="40" loading="lazy"><span><strong>Neovim</strong><small>5 lines of Lua</small></span><!--ED:neovim--></a></li><li><a class="ed" data-ed="helix" href="https://github.com/Snailedlt/nucleus-devtools#helix" rel="noopener"><img src="../start/editors/helix.svg" alt="" width="40" height="40" loading="lazy"><span><strong>Helix</strong><small>6 lines of TOML</small></span><!--ED:helix--></a></li><li><a class="ed" data-ed="sublime" href="https://github.com/Snailedlt/nucleus-devtools#your-own-editor-for-experienced-developers" rel="noopener"><img src="../start/editors/sublime.svg" alt="" width="40" height="40" loading="lazy"><span><strong>Sublime Text</strong><small>LSP package + one entry</small></span><!--ED:sublime--></a></li><li><a class="ed" data-ed="emacs" href="https://github.com/Snailedlt/nucleus-devtools#your-own-editor-for-experienced-developers" rel="noopener"><img src="../start/editors/emacs.svg" alt="" width="40" height="40" loading="lazy"><span><strong>Emacs</strong><small>One eglot line</small></span><!--ED:emacs--></a></li><li><a class="ed" data-ed="kate" href="https://github.com/Snailedlt/nucleus-devtools#your-own-editor-for-experienced-developers" rel="noopener"><img src="../start/editors/kate.svg" alt="" width="40" height="40" loading="lazy"><span><strong>Kate</strong><small>One LSP Client entry</small></span><!--ED:kate--></a></li><li><a class="ed" data-ed="jetbrains" href="https://github.com/Snailedlt/nucleus-devtools#your-own-editor-for-experienced-developers" rel="noopener"><img src="../start/editors/jetbrains.svg" alt="" width="40" height="40" loading="lazy"><span><strong>JetBrains IDEs</strong><small>LSP4IJ plugin</small></span><!--ED:jetbrains--></a></li><li><a class="ed" data-ed="zed" href="https://github.com/Snailedlt/nucleus-devtools#your-own-editor-for-experienced-developers" rel="noopener"><img src="../start/editors/zed.svg" alt="" width="40" height="40" loading="lazy"><span><strong>Zed</strong><small>Needs a small extension</small></span><!--ED:zed--></a></li><li><a class="ed" data-ed="any" href="https://github.com/Snailedlt/nucleus-devtools#your-own-editor-for-experienced-developers" rel="noopener"><img src="../start/editors/lsp.svg" alt="" width="40" height="40" loading="lazy"><span><strong>Anything with LSP</strong><small><code>ncdev lsp</code> over stdio</small></span><span class="ed-tag">Untested</span></a></li></ul>
 <p class="small poll-line">Using an editor marked Untested, or one that's missing? <a href="__EDITOR_POLL__" target="_blank" rel="noopener">Vote in the editor poll on Discord</a> (<a href="__DISCORD_INVITE__" target="_blank" rel="noopener">join the server</a> first if you're new). It decides which editors get tested next.</p>
 <div class="ed-steps" id="ed-steps"><div class="ed-step" id="setup-vscode" hidden><h3>VS Code</h3><ol>
@@ -32,36 +32,16 @@
 <li>Download <a id="ncdev" href="__NCDEV_URL__"><code>ncdev.exe</code></a> and close Notepad++.</li>
 <li>Double-click it and choose <strong>Set up Notepad++</strong> (or run <code class="cmd">.\ncdev setup notepad++</code> in its folder). When Windows asks for permission, allow it.</li>
 <li>Open a handler: everything is under <strong>Plugins › Nucleus Co-op handlers</strong>.</li></ol><p class="small">A portable Notepad++ (no permission needed): <code class="cmd">.\ncdev setup notepad++ --path "C:\path\to\Notepad++"</code></p></div><div class="ed-step" id="setup-neovim" hidden><h3>Neovim 0.11+</h3><ol><li>Add to your <code>init.lua</code>:
-<pre class="cfg" data-lang="lua"><code>vim.lsp.config('nucleus', {
-  cmd = { 'ncdev', 'lsp' },
-  filetypes = { 'javascript' },
-  root_markers = { 'handlers', '.git' },
-})
-vim.lsp.enable('nucleus')</code></pre></li>
+<pre class="cfg" data-lang="lua"><code><!--PORTING:neovim--></code></pre></li>
 <li>Open a handler: problems show within a second. Older Neovim: <a href="https://github.com/Snailedlt/nucleus-devtools#neovim">the setup for it</a>.</li></ol></div><div class="ed-step" id="setup-helix" hidden><h3>Helix</h3><ol><li>Add to <code>languages.toml</code>:
-<pre class="cfg" data-lang="toml"><code>[language-server.nucleus]
-command = "ncdev"
-args = ["lsp"]
-
-[[language]]
-name = "javascript"
-language-servers = ["typescript-language-server", "nucleus"]</code></pre></li>
+<pre class="cfg" data-lang="toml"><code><!--PORTING:helix--></code></pre></li>
 <li>Open a handler (<code>:lsp-restart</code> if Helix was already open).</li></ol></div><div class="ed-step" id="setup-sublime" hidden><h3>Sublime Text</h3><ol><li>Install the <a href="https://packagecontrol.io/packages/LSP">LSP</a> package (Package Control).</li>
 <li><strong>Preferences › Package Settings › LSP › Settings</strong>, add:
-<pre class="cfg" data-lang="json"><code>{ "clients": { "nucleus": {
-  "enabled": true,
-  "command": ["ncdev", "lsp"],
-  "selector": "source.js"
-} } }</code></pre></li>
+<pre class="cfg" data-lang="json"><code><!--PORTING:sublime--></code></pre></li>
 <li>Open a handler.</li></ol></div><div class="ed-step" id="setup-emacs" hidden><h3>Emacs 29+ (eglot)</h3><ol><li>Add to your init file:
-<pre class="cfg" data-lang="commonlisp"><code>(with-eval-after-load 'eglot
-  (add-to-list 'eglot-server-programs
-               '((js-mode js-ts-mode) . ("ncdev" "lsp"))))</code></pre></li>
+<pre class="cfg" data-lang="commonlisp"><code><!--PORTING:emacs--></code></pre></li>
 <li>Open a handler and run <kbd>M-x eglot</kbd>.</li></ol></div><div class="ed-step" id="setup-kate" hidden><h3>Kate</h3><ol><li><strong>Settings › Configure Kate › LSP Client › User Server Settings</strong>, add:
-<pre class="cfg" data-lang="json"><code>{ "servers": { "nucleus": {
-  "command": ["ncdev", "lsp"],
-  "highlightingModeRegex": "^JavaScript$"
-} } }</code></pre></li>
+<pre class="cfg" data-lang="json"><code><!--PORTING:kate--></code></pre></li>
 <li>Open a handler. (Kate runs one server per language: this one takes over <code>.js</code> files.)</li></ol></div><div class="ed-step" id="setup-jetbrains" hidden><h3>JetBrains IDEs</h3><ol><li>Install the <a href="https://plugins.jetbrains.com/plugin/23257-lsp4ij">LSP4IJ</a> plugin.</li>
 <li><strong>Settings › Languages &amp; Frameworks › Language Servers › +</strong>: name <code>Nucleus</code>, command <code>ncdev lsp</code>, and under Mappings the file pattern <code>*.js</code>.</li>
 <li>Open a handler.</li></ol></div><div class="ed-step" id="setup-zed" hidden><h3>Zed</h3><ol><li>Zed only starts language servers that an extension provides, so it needs a small Zed extension first; <a href="https://github.com/Snailedlt/nucleus-devtools/blob/main/PORTING.md#zed-settingsjson">how, in PORTING.md</a>.</li></ol></div><div class="ed-step" id="setup-any" hidden><h3>Any other editor</h3><ol><li>Point its LSP client at <code>ncdev lsp</code> (stdio) for JavaScript files. It only answers for handler files, so your usual JavaScript server keeps working.</li>
@@ -72,7 +52,7 @@ language-servers = ["typescript-language-server", "nucleus"]</code></pre></li>
   <section aria-labelledby="command-line">
   <h2 id="command-line" class="has-anchor">The command line: ncdev</h2>
   <p><code>ncdev</code> (Nucleus Co-op dev tools) is the same engine on the command line: check a handler or a whole <code>handlers</code> folder, fix and format it, Try it, look up an option, search the Hub, and package or install a handler. It also runs the servers for other editors and AI agents.</p>
-  <p><strong>Windows, nothing else to install:</strong> download <a href="__NCDEV_URL__"><code>ncdev.exe</code></a> and run it from a terminal in its folder (in PowerShell, as <code>.\ncdev</code>). <code>ncdev update</code> keeps it current. <strong>With Node.js 18+:</strong> <code>nucleus.js</code> from <a href="https://github.com/Snailedlt/nucleus-devtools/releases">a release</a> does the same (<code>node nucleus.js lint MyGame.js</code>).</p>
+  <p><strong>Windows or Linux, nothing else to install:</strong> download <a href="__NCDEV_URL__"><code>ncdev.exe</code></a> (run it from a terminal in its folder; in PowerShell, as <code>.\ncdev</code>) or <a href="__NCDEV_LINUX_URL__"><code>ncdev-linux-x64</code></a> (<code>chmod +x</code> it, and put it on your PATH as <code>ncdev</code>). <code>ncdev update</code> keeps it current. <strong>Elsewhere, with Node.js 18+:</strong> <code>nucleus.js</code> from <a href="https://github.com/Snailedlt/nucleus-devtools/releases">a release</a> does the same (<code>node nucleus.js lint MyGame.js</code>).</p>
 <pre class="cfg" tabindex="0" aria-label="Examples of ncdev commands" data-lang="shell"><code>ncdev lint MyGame.js            # every problem, with line and why
 ncdev lint handlers --fix       # apply the safe fixes in a whole folder
 ncdev format MyGame.js --write  # indentation and spacing, never what it does

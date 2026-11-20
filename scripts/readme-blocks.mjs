@@ -62,6 +62,15 @@ export function editorTag(id, data = readJson('data/editors.json')) {
   return e.people || e.ai ? '<span class="ed-tag ok">Tested</span>' : '<span class="ed-tag">Untested</span>';
 }
 
+/** An editor's setup snippet: the first code block under its heading in PORTING.md (the tools page shows the same). */
+const PORTING_HEADINGS = { neovim: '### Neovim', helix: '### Helix', sublime: '### Sublime Text', emacs: '### Emacs', kate: '### Kate' };
+export function portingSnippet(id, porting = fs.readFileSync(path.join(root, 'PORTING.md'), 'utf8')) {
+  const h = porting.indexOf(`\n${PORTING_HEADINGS[id]}`);
+  if (!PORTING_HEADINGS[id] || h < 0) throw new Error(`PORTING.md has no heading for "${id}"`);
+  const m = /```\w*\n([\s\S]*?)```/.exec(porting.slice(h));
+  return m[1].replace(/\n$/, '');
+}
+
 /** The Claude Code plugin's marketplace (owner/repo) and its id (plugin@marketplace), from the manifests. */
 export function claudePlugin() {
   const market = readJson('.claude-plugin/marketplace.json');
@@ -101,6 +110,8 @@ export async function readmeBlocks() {
     settings: settingsMarkdown(),
     'vscode-commands': commandsMarkdown(),
     'mcp-tools': mcpMarkdown(k),
+    'snippet-neovim': `\`\`\`lua\n${portingSnippet('neovim')}\n\`\`\``,
+    'snippet-helix': `\`\`\`toml\n${portingSnippet('helix')}\n\`\`\``,
     'claude-plugin': `\`\`\`\n/plugin marketplace add ${c.marketplace}\n/plugin install ${c.plugin}\n\`\`\``,
   };
 }

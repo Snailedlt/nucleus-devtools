@@ -562,6 +562,7 @@ fs.mkdirSync(startDir, { recursive: true });
 const TEST_BUILD = process.argv.includes('--test-build');
 let vsix = { url: 'https://github.com/Snailedlt/nucleus-devtools/releases', name: 'the .vsix', tag: 'latest release' };
 let ncdevUrl = 'https://github.com/Snailedlt/nucleus-devtools/releases';
+let ncdevLinuxUrl = ncdevUrl;
 try {
   const api = TEST_BUILD ? 'https://api.github.com/repos/Snailedlt/nucleus-devtools/releases/tags/test-build' : 'https://api.github.com/repos/Snailedlt/nucleus-devtools/releases?per_page=30';
   const res = await fetch(api, {
@@ -574,6 +575,8 @@ try {
   if (asset) vsix = { url: asset.browser_download_url, name: asset.name, tag: TEST_BUILD ? `test build, ${rel.name.replace(/^Test build:\s*/, '')}` : rel.tag_name };
   const exe = rel?.assets.find((a) => a.name === 'ncdev.exe');
   if (exe) ncdevUrl = exe.browser_download_url;
+  const linux = rel?.assets.find((a) => a.name === 'ncdev-linux-x64');
+  if (linux) ncdevLinuxUrl = linux.browser_download_url;
   if (TEST_BUILD) console.log(`tools page: the test build (${rel.name})`);
 } catch (e) {
   if (TEST_BUILD) throw new Error(`--test-build: ${e.message}`);
@@ -674,7 +677,7 @@ const sitePageSrc = (file, slug, title, desc, shareTitle) => {
 // (data/tools-compare.json) and the Claude Code plugin's commands (.claude-plugin/marketplace.json).
 const RB = await import(pathToFileURL(path.join(coreRepo, 'scripts', 'readme-blocks.mjs')).href);
 const plugin = RB.claudePlugin();
-const fromData = (src) => src.replace('<!--COMPARE-->', () => RB.compareHtml()).replaceAll('__CLAUDE_MARKETPLACE__', plugin.marketplace).replaceAll('__CLAUDE_PLUGIN__', plugin.plugin).replace(/<!--ED:(\w+)-->/g, (_, id) => RB.editorTag(id));
+const fromData = (src) => src.replace('<!--COMPARE-->', () => RB.compareHtml()).replaceAll('__CLAUDE_MARKETPLACE__', plugin.marketplace).replaceAll('__CLAUDE_PLUGIN__', plugin.plugin).replace(/<!--ED:(\w+)-->/g, (_, id) => RB.editorTag(id)).replace(/<!--PORTING:(\w+)-->/g, (_, id) => RB.portingSnippet(id).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]));
 const toolsSrc = withPartials(fromData(sitePageSrc('tools.html', 'tools',
   'Get the tools: Nucleus Co-op handlers in VS Code, Notepad++, the browser and more',
   'Every Nucleus Co-op handler tool in one place: the browser workbench, VS Code, Notepad++, other editors through a language server, the ncdev command line and AI agents.',
@@ -706,6 +709,7 @@ const renderSitePage = (src, section) =>
     .replaceAll('__VSIX_NAME__', escHtml(vsix.name))
     .replaceAll('__VSIX_TAG__', escHtml(vsix.tag))
     .replaceAll('__NCDEV_URL__', escHtml(ncdevUrl))
+    .replaceAll('__NCDEV_LINUX_URL__', escHtml(ncdevLinuxUrl))
     .replace('<a id="vsix" ', () => (TEST_BUILD ? '<a id="vsix" data-pinned="test-build" ' : '<a id="vsix" '))
     .replaceAll('__PROBES__', String(probes.length))
     // Every heading with class has-anchor gets its link (GitHub's link icon, shown on hover), written here once.
