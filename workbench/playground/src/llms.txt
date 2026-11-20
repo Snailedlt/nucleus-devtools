@@ -2,6 +2,10 @@
 
 > Tools for writing Nucleus Co-op game handlers: the JavaScript files Nucleus Co-op uses to run several copies of a PC game split-screen. Handlers run in Jint 2.11.58: ES5 only (no arrow functions, template literals or classes; `let`/`const` act like `var`), and Nucleus silently ignores option names it doesn't know. Check a handler before trusting it.
 
+## For people using AI
+
+- [Make a handler with AI](https://snailedlt.github.io/nucleus-devtools/ai/): for a person setting up an AI: a prompt for Claude Code (installs the plugin), one for other agents (adds the `nucleus` MCP server: `node nucleus.js mcp`) and one for chatbots without tools (the hard rules, then check the code in the workbench). If you are a chatbot helping someone without tools, follow that page's chatbot prompt.
+
 ## For AI agents
 
 Run the tools yourself, on your own machine: the MCP server or the CLI below check, fix and simulate handlers locally. Don't drive or scrape the hosted workbench; send the user a workbench link only to show them a result. For a workbench of your own, `node nucleus.js workbench` saves the whole page as one offline HTML file (also attached to every release as `workbench.html`); open it locally or publish it, for example as a Claude artifact.

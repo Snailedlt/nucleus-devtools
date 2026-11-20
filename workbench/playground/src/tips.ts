@@ -184,6 +184,7 @@ const FEATURES_ = T('Feature', [
   { id: 'f-reference', text: 'The Docs tab searches every option, Context member and Nucleus enum with its docs: try "window title" or "mutex".' },
   { id: 'f-mascots', text: 'Meet Nucli, the quiet atom who checks your handler: he dozes until there\'s code, cheers when there\'s nothing to fix and runs Test all. Duo, splitscreen.me\'s split-screen ball, turns up when something won\'t load.' },
   { id: 'f-mascot-modes', text: 'Want Duo and Nucli livelier, or nothing moving at all? Settings → Theme → Motion has presets and a switch for each kind of motion, including Nucli editing the code during fixes.' },
+  { id: 'f-ai-guide', text: 'Writing a handler with ChatGPT, Claude, Codex or another AI? The site’s AI page has a prompt to paste for agents and one for chatbots, so it follows Nucleus’ rules and checks its work.' },
   { id: 'f-ai-providers', text: 'Fix with AI works with Claude, OpenAI, OpenRouter, Gemini or a free local model (Ollama, LM Studio): pick one in Settings › AI.' },
   { id: 'f-save-nucleus', text: 'Save straight into Nucleus Co-op: Ctrl+Alt+S (or Save ▾ › Into Nucleus Co-op) writes the handler into its handlers folder. Pick the folder once; in Firefox and Safari it saves the .zip to drag onto Nucleus.' },
   { id: 'f-value-pick', text: 'Not sure what a value can be? Put the cursor on it, like the false in Game.SymlinkGame = false;, and tap the ▾ after it (or press Alt+↓) to pick from the values it takes.' },

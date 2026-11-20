@@ -9,7 +9,7 @@
     <li><a href="#get-notepadpp"><img src="../start/editors/notepadplusplus.svg" alt="" width="36" height="36"><strong>Notepad++</strong><small>A plugin, installed with one command.</small></a></li>
     <li><a href="#in-your-editor"><img src="../start/editors/lsp.svg" alt="" width="36" height="36"><strong>Other editors</strong><small>Neovim, Helix, Sublime Text, Emacs, Kate, JetBrains, Zed: through a language server.</small></a></li>
     <li><a href="#command-line"><span class="tg-ico" aria-hidden="true">&gt;_</span><strong>Command line</strong><small><code>ncdev</code>: check, fix, format and test handlers, one at a time or a whole folder.</small></a></li>
-    <li><a href="#ai-agents"><span class="tg-ico" aria-hidden="true">✦</span><strong>AI agents</strong><small>Claude Code, Copilot, Cursor and others write handlers that load, checked by the same engine.</small></a></li>
+    <li><a href="#ai-agents"><span class="tg-ico" aria-hidden="true">✦</span><strong>AI</strong><small>Claude Code, Codex, Cursor, ChatGPT and others write handlers that load, checked by the same engine.</small></a></li>
   </ul>
   </header>
 
@@ -89,8 +89,10 @@ ncdev hub search "borderlands"  # how other handlers did it</code></pre>
   </section>
 
   <section aria-labelledby="ai-agents">
-  <h2 id="ai-agents" class="has-anchor">AI agents</h2>
+  <h2 id="ai-agents" class="has-anchor">AI agents and chatbots</h2>
   <p>Agents guess option names from memory, and Nucleus quietly ignores the wrong ones. The agent kit gives them the real API and the same checks, so what they write loads and works.</p>
+  <div class="ctas"><a class="btn primary" href="../ai/">Set up your AI</a></div>
+  <p class="small">Prompts to copy for Claude Code, other agents and chatbots: the agent sets the tools up itself. Or by hand:</p>
   <ul class="facts">
     <li><strong>Claude Code:</strong> <code class="cmd">/plugin marketplace add Snailedlt/nucleus-devtools</code>, then <code class="cmd">/plugin install nucleus-coop@splitscreenme</code>. Its skill loads when you ask about handlers.</li>
     <li><strong>VS Code (Copilot agent mode):</strong> nothing to set up. The extension brings the tools; turn them on under <strong>MCP Servers</strong> in the Extensions view.</li>

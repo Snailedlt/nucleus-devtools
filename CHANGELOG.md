@@ -19,6 +19,10 @@ How to write it (people and AI agents read this; the release workflow publishes 
 
 - **One home for the tools: nucleus-devtools.** This repository is now [Snailedlt/nucleus-devtools](https://github.com/Snailedlt/nucleus-devtools) (old links redirect), and the browser workbench moved into it: its address is now https://snailedlt.github.io/nucleus-devtools/, which every tool's links (Open in the Browser Workbench, the docs and check pages) now use. Reports from every tool, the workbench included, go to the same forms here.
 
+### ✨ New
+
+- **The Claude Code plugin brings the tools too.** Installing the nucleus-coop plugin now also adds the `nucleus` MCP server (check, fix, Try it, API lookup, Hub search), so Claude Code calls them as tools without any setup.
+
 ---
 
 ## 0.9.0 · 2026-11-19

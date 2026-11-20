@@ -215,7 +215,7 @@ pre.cfg code { background: none; padding: 0; font-size: inherit; }
 .ticks { list-style: none; padding: 0; margin: 0 0 6px; display: grid; gap: 6px; font-size: 16px; }
 .ticks li { display: flex; align-items: flex-start; }
 .ticks li::before { flex: none; margin-top: 2px; content: "✓"; display: inline-grid; place-items: center; width: 20px; height: 20px; margin-right: 10px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); font-weight: 800; font-size: 12px; }
-.hero-learn { margin: 10px 0 0; font-size: 15px; }
+.hero-learn { margin: 10px 0 0; font-size: 15px; display: flex; flex-wrap: wrap; gap: 8px; }
 .hero-learn .learn-btn { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
 .hero-learn .learn-btn small { font-weight: 400; color: var(--muted); }
 .disclaimer-line { margin: 14px 0 0; color: var(--muted); max-width: 60ch; }
@@ -274,7 +274,7 @@ pre.cfg code { background: none; padding: 0; font-size: inherit; }
     <a class="btn primary" href="../?ref=start#example-mistakes" title="Opens a handler with the mistakes Nucleus trips over most, so Check shows what it does at once">Try it in the browser</a>
     <a class="btn" href="../tools/">Get the tools</a>
   </div>
-  <p class="hero-learn"><a class="btn learn-btn" href="../learn/"><span aria-hidden="true">📘</span> Make your first handler <small>short steps · a free game · mostly in your browser</small></a></p>
+  <p class="hero-learn"><a class="btn learn-btn" href="../learn/"><span aria-hidden="true">📘</span> Make your first handler <small>short steps · a free game · mostly in your browser</small></a><a class="btn learn-btn" href="../ai/"><span aria-hidden="true">✦</span> Make one with AI <small>Claude Code, Codex, ChatGPT and others</small></a></p>
   <p class="disclaimer-line small"><span aria-hidden="true">🤖</span> <strong>Vibe-coded, and early:</strong> written mostly by an AI with a person steering, tested against Nucleus' real script engine. Expect rough edges, and <a href="https://github.com/Snailedlt/nucleus-devtools/issues/new?template=tester-feedback.yml&amp;area=Home+and+tools+pages">tell us what you find</a>.</p>
   </div>
   <div class="hero-visual">
@@ -332,6 +332,7 @@ pre.cfg code { background: none; padding: 0; font-size: inherit; }
     <li><a href="../tools/#get-notepadpp"><img src="editors/notepadplusplus.svg" alt="" width="36" height="36"><strong>Notepad++</strong><small>A plugin, set up with one command.</small></a></li>
     <li><a href="../tools/#in-your-editor"><img src="editors/lsp.svg" alt="" width="36" height="36"><strong>Neovim, Helix, JetBrains…</strong><small>Any editor with a language server.</small></a></li>
     <li><a href="../tools/#command-line"><span class="tg-ico" aria-hidden="true">&gt;_</span><strong>Command line and AI agents</strong><small><code>ncdev</code> for a whole folder; a kit for Claude Code, Copilot and Cursor.</small></a></li>
+    <li><a href="../ai/"><span class="tg-ico" aria-hidden="true">✦</span><strong>Make one with AI</strong><small>A prompt to paste for Claude Code, Codex, Cursor and other agents, and one for chatbots.</small></a></li>
   </ul>
   <span id="in-motion" class="anchor-alias" aria-hidden="true"></span>
   <div class="videos">

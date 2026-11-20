@@ -4,7 +4,7 @@
 // the theme of the screenshots, keyboard access, and no accessibility violations (axe-core).
 //
 //   npm run build   (or: node build.mjs --preview)
-//   node smoke.mjs  [--headed]
+//   node smoke.mjs  [--headed] [--ai-guide]
 import fs from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
@@ -63,6 +63,71 @@ const cmType = (p, find, text) =>
     for (let i = 0; i < cm.lineCount(); i++) if (cm.getLine(i).includes(f)) return cm.replaceRange(t, { line: i, ch: cm.getLine(i).length }), true;
     return false;
   }, [find, text]);
+
+async function checkAiGuide(s, theme) {
+  // Make a handler with AI: three prompts in tabs (Claude Code first, other agents one ArrowRight away, chatbots), each with a Copy button.
+  await s.p.goto(BASE + 'ai/');
+  await s.p.waitForTimeout(400);
+  const vis = () => s.p.evaluate(() => [...document.querySelectorAll('[role=tabpanel]')].filter((p) => !p.hidden).map((p) => p.id).join());
+  const first = await vis();
+  await s.p.focus('#tab-claude');
+  await s.p.keyboard.press('ArrowRight');
+  const second = await vis();
+  const tabFocus = await s.p.evaluate(() => document.activeElement?.id);
+  await s.p.fill('#ai-game-agent', 'Halo 3');
+  const ai = await s.p.evaluate(() => ({ synced: [...document.querySelectorAll('.ai-game-input')].every((g) => g.value === 'Halo 3'), filled: [...document.querySelectorAll('pre.prompt.handler')].filter((p) => p.innerText.includes('for Halo 3.')).length === 3, chat: /ES5 JavaScript only/.test(document.querySelector('#panel-chat pre.prompt')?.textContent ?? ''), claude: /claude plugin install nucleus-coop@splitscreenme/.test(document.querySelector('#panel-claude pre.setup')?.textContent ?? ''), agent: /latest\/download\/nucleus\.js[\s\S]*MCP server/.test(document.querySelector('#panel-agent pre.setup')?.textContent ?? ''), copies: document.querySelectorAll('.copy-wrap pre.prompt + .copy-btn').length, focus: document.activeElement?.id }));
+  check(first === 'panel-claude' && second === 'panel-agent' && tabFocus === 'tab-agent' && ai.chat && ai.claude && ai.agent && ai.copies === 5 && ai.filled && ai.synced, `${theme}: the AI guide's tabs switch with the arrow keys; setup and handler prompts, each with a Copy button, and the game's name fills all three handler prompts (${first} -> ${second}, ${JSON.stringify(ai)})`);
+  await axe(s.p, `${theme}, AI guide`);
+  if (theme === 'light') {
+    const tabState = () => s.p.evaluate(() => ({
+      selected: [...document.querySelectorAll('[role=tab][aria-selected=true]')].map((t) => t.id),
+      tabbable: [...document.querySelectorAll('[role=tab]')].filter((t) => t.tabIndex === 0).map((t) => t.id),
+      visible: [...document.querySelectorAll('[role=tabpanel]:not([hidden])')].map((p) => p.id),
+      focused: document.activeElement?.id,
+    }));
+    for (const [hash, tab] of [['#agents', 'agent'], ['#chatbots', 'chat'], ['#unknown', 'claude']]) {
+      // Reload even when only the fragment differs: these are entry links.
+      await s.p.goto(BASE + 'ai/' + hash);
+      await s.p.reload();
+      const state = await tabState();
+      check(state.selected.join() === 'tab-' + tab && state.tabbable.join() === 'tab-' + tab && state.visible.join() === 'panel-' + tab && !state.focused?.startsWith('tab-'), `AI guide: ${hash} opens ${tab} without moving focus (${JSON.stringify(state)})`);
+    }
+    await s.p.focus('#tab-claude');
+    for (const [key, tab] of [['ArrowLeft', 'chat'], ['ArrowRight', 'claude'], ['End', 'chat'], ['Home', 'claude']]) {
+      await s.p.keyboard.press(key);
+      const state = await tabState();
+      check(state.selected.join() === 'tab-' + tab && state.tabbable.join() === 'tab-' + tab && state.visible.join() === 'panel-' + tab && state.focused === 'tab-' + tab, `AI guide: ${key} selects and focuses ${tab} (${JSON.stringify(state)})`);
+    }
+
+    await s.ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: BASE });
+    const name = 'Portal <3 & friends';
+    await s.p.fill('#ai-game-claude', '  ' + name + '  ');
+    await s.p.click('#tab-chat');
+    const panel = s.p.locator('#panel-chat');
+    const prompt = panel.locator('pre.handler');
+    const copy = panel.locator('pre.handler + .copy-btn');
+    await copy.click();
+    await copy.filter({ hasText: /^Copied$/ }).waitFor();
+    const clipboard = await s.p.evaluate(() => navigator.clipboard.readText());
+    check(clipboard.includes(`for ${name}.`) && clipboard === (await prompt.innerText()).replace(/\n$/, ''), 'AI guide: Copy writes the full chatbot prompt with the trimmed game name as literal text');
+    await s.p.fill('#ai-game-chat', '   ');
+    const slots = await s.p.locator('.game-slot').evaluateAll((els) => els.map((el) => [el.textContent, el.classList.contains('filled')]));
+    check(slots.length === 3 && slots.every(([text, filled]) => text === '<name>' && !filled), 'AI guide: clearing the name in another tab restores all three placeholders');
+  }
+}
+
+if (process.argv.includes('--ai-guide')) {
+  const s = await page('light');
+  try {
+    await checkAiGuide(s, 'light');
+    check(s.errors.length === 0, `AI guide: no page errors (${s.errors.join('; ')})`);
+  } finally {
+    await s.ctx.close();
+    await browser.close();
+    server.close();
+  }
+  process.exit(failures ? 1 : 0);
+}
 
 for (const theme of ['light', 'dark']) {
   // Check, Fix all, then editing: the fix box closes and Check counts the new problem.
@@ -811,8 +876,9 @@ for (const theme of ['light', 'dark']) {
   await s.p.goto(BASE + 'start/#get-notepadpp');
   await s.p.waitForTimeout(500);
   check(/\/tools\/#get-notepadpp$/.test(s.p.url()), `${theme}: an old start-page link to the downloads goes to the tools page (${s.p.url()})`);
+  await checkAiGuide(s, theme);
   // Every page has the way home (the brand) and to the workbench in its header.
-  for (const u of ['start/', 'tools/', 'docs/', 'docs/Game.Play/', 'rules/', 'rules/syntax-error/', 'learn/']) {
+  for (const u of ['start/', 'tools/', 'ai/', 'docs/', 'docs/Game.Play/', 'rules/', 'rules/syntax-error/', 'learn/']) {
     await s.p.goto(BASE + u);
     const nav = await s.p.evaluate(() => ({ home: [...document.querySelectorAll('header a, .top a, nav a')].some((a) => /\/start\/$/.test(a.href)), wb: [...document.querySelectorAll('header a, .top a, nav a')].some((a) => a.textContent.trim() === 'Workbench') }));
     check(nav.home && nav.wb, `${theme}: ${u} links home and to the workbench from its header`);
@@ -934,7 +1000,7 @@ await m.ctx.close();
     await s.ctx.close();
   }
   const ph = await page('light', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  for (const u of ['docs/Context.ModifySaveFile/', 'rules/', 'rules/syntax-error/', 'start/', 'tools/']) {
+  for (const u of ['docs/Context.ModifySaveFile/', 'rules/', 'rules/syntax-error/', 'start/', 'tools/', 'ai/']) {
     await ph.p.goto(BASE + u);
     const wide = await ph.p.evaluate(() => document.documentElement.scrollWidth - innerWidth);
     check(wide <= 1, `phone ${u}: no sideways scrolling, header included (${wide}px)`);
