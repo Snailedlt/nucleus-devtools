@@ -19,10 +19,11 @@ How to write it (people and AI agents read this, and the workbench shows it):
 - **Loaders show how far along they are.** Test all's ring fills to the combinations done, and Nucli's electrons ride just behind its tip, chasing each jump, bumping into each other and settling. Reading your game's program files, Duo pushes the bar: he walks while it moves, leans in and strains (a sweat drop) when it stalls, and at 100 % the bar turns green, a check pops and he hops. *Still* shows the pose for the progress, nothing moving.
 ### 🛠️ Improved
 - **Messages where you're looking.** When *Insert into handler* can't place an example, the reason shows under the button instead of in a toast; Alt+Z's word wrap note shows in the code. Toasts are left for things whose place is gone (a closed menu).
-- **Nucli reacts once, then settles.** "Nothing to fix", "Oops" and "Fixed" play once and keep their ending (the tick, the "!", the fixed code) instead of repeating every few seconds; with Motion set to lively he goes on blinking, his electrons circling. Loaders keep moving while you wait, and Test all's ring is the new one from the concept sheet: the electrons ride the front of the ring as it fills. *Still* now shows each scene's own pose (a reaction its ending) rather than a frozen moment.
+- **Nucli reacts to fit the moment.** "Oops" plays once and keeps its ending instead of repeating every few seconds. "Nothing to fix" and "Fixed" stay as long as their message and keep moving. Loaders keep moving while you wait, and Test all's ring is the new one from the concept sheet: the electrons ride the front of the ring as it fills. *Still* now shows each scene's own pose (a reaction its ending) rather than a frozen moment.
 ### ⚡ Faster
 - **Mascots move only where you can see them.** Ones that are scrolled away or in a hidden panel are paused, and each starts when it first comes into view. Check, Try it, Test all and Docs keep the mascot they show while they update, so typing no longer restarts it and Test all's ring runs smoothly through the run.
 ### 🐛 Fixed
+- **A fix's green highlight stays until you're done with it.** After a quick fix or *Fix all*, the changed lines stay marked as long as the "Fixed" note is open: until you close it, undo, or edit the code.
 - **Nucli's worried and searching faces show again.** In "Oops" and "Nothing matches", the face change never played.
 
 ---

@@ -3,8 +3,10 @@
 // the sheet's CSS also sits behind prefers-reduced-motion. They stay out of the alpha 8 look.
 //
 // What loops and what doesn't, by what a scene means:
-// - Reactions (n-ok "nothing to fix", n-bad "oops", n-fix "fixed") are an event: they play once, in every mode, and
-//   hold their ending (the badge stays up, the code stays fixed). "Lively" then keeps him alive: blinking, electrons.
+// - "Oops" (n-bad) is an event: it plays once, in every mode, and holds its ending. "Lively" then keeps him alive:
+//   blinking, electrons.
+// - "Nothing to fix" and "fixed" (n-ok, n-fix) go with a message that stays up (Check's empty list, a fix's note):
+//   they loop as long as it's on screen, on "lively" and "once" alike; "Still" shows their ending (the badge up).
 // - Loaders (busy: Fix with AI, Test all, Sending…) loop while they wait; a frozen spinner reads as stuck.
 // - Everything else (dozing, looking around, searching) is ambient: it loops when lively, plays one cycle on "once".
 // "Still" shows each scene's designed pose (a reaction its ending), never a frozen frame.
@@ -18,7 +20,11 @@ import { motion, onMotion } from './motion';
 export type MascotId = 'n-sleep' | 'n-ok' | 'n-bad' | 'n-fix' | 'n-ring' | 'n-spin' | 'n-idle' | 'n-scan' | 'n-calc' | 'load';
 
 /** Scenes that are an event: played once and held at their end, the share HOLD of their cycle (ms, from the sheet's CSS). */
-const REACT: Partial<Record<MascotId, number>> = { 'n-ok': 3000, 'n-bad': 3400, 'n-fix': 3400 };
+const REACT: Partial<Record<MascotId, number>> = { 'n-bad': 3400 };
+/** Scenes whose designed pose is their ending: "Still" shows that (the badge up), not their first frame. */
+const ENDS: MascotId[] = ['n-ok', 'n-bad', 'n-fix'];
+/** Scenes that loop on "once" too, like a loader: they stand for a message that stays on screen. */
+const LOOPS: MascotId[] = ['n-ok', 'n-fix'];
 const HOLD = 0.88;
 /** How long "once" lets an ambient scene run: a little over its longest cycle (n-idle's 5.2 s), then it's done. */
 const ONCE_MS = 5400;
@@ -27,6 +33,8 @@ const ONCE_MS = 5400;
 export const mascotsOn = () => motion().mascots !== 'off';
 
 const reactSel = Object.keys(REACT).map((id) => `.masc-${id}`).join(', ');
+const endSel = ENDS.map((id) => `.masc-${id}`).join(', ');
+const loopSel = LOOPS.map((id) => `.masc-${id}`).join(', ');
 const LOCAL = `.masc { display: inline-block; flex: none; line-height: 0; vertical-align: middle; }
 .masc > svg { display: block; width: 100%; height: 100%; overflow: visible; }
 :root[data-site="alpha8"] .masc, :root[data-mascots="off"] .masc { display: none !important; }
@@ -34,12 +42,12 @@ const LOCAL = `.masc { display: inline-block; flex: none; line-height: 0; vertic
 .masc.masc-wait *, .masc.masc-off * { animation-play-state: paused !important; }
 :root[data-mascots="once"] .masc * { animation-iteration-count: 1 !important; }
 /* A loading mascot keeps moving while it waits (a frozen spinner reads as stuck); still and off still apply. */
-:root[data-mascots="once"] .masc.busy * { animation-iteration-count: infinite !important; }
+:root[data-mascots="once"] .masc.busy *, :root[data-mascots="once"] :is(${loopSel}) * { animation-iteration-count: infinite !important; }
 /* A reaction plays once whatever the mode, and holds its ending; only the blink goes on (lively). */
 :root :is(${reactSel}):not(.busy) svg :not(.eye) { animation-iteration-count: ${HOLD} !important; animation-fill-mode: forwards !important; }
 /* Still: the designed pose. A reaction jumps straight to its ending; the rest take no animation at all. */
-:root[data-mascots="still"] .masc:not(${reactSel}) *, :root[data-mascots="still"] :is(${reactSel}) .eye { animation: none !important; }
-:root[data-mascots="still"] :is(${reactSel}) svg :not(.eye) { animation-duration: 1ms !important; animation-delay: 0s !important; }
+:root[data-mascots="still"] .masc:not(${endSel}) *, :root[data-mascots="still"] :is(${endSel}) .eye { animation: none !important; }
+:root[data-mascots="still"] :is(${endSel}) svg :not(.eye) { animation-duration: 1ms !important; animation-delay: 0s !important; animation-iteration-count: ${HOLD} !important; animation-fill-mode: forwards !important; }
 /* Done (a reaction played, or "once" ran its cycle): if anything restarts it (a panel hidden with display: none and
    shown again), it starts at its end instead of playing again. */
 .masc.masc-done svg :not(.eye), :root[data-mascots="once"] .masc.masc-done .eye { animation-delay: -1000s !important; }
@@ -59,7 +67,7 @@ function smil(m: HTMLElement) {
   if (!svg || typeof svg.pauseAnimations !== 'function') return;
   const mode = motion().mascots;
   const seen = !m.classList.contains('masc-wait') && !m.classList.contains('masc-off');
-  const busy = m.classList.contains('busy');
+  const busy = m.classList.contains('busy') || LOOPS.includes((m.dataset.m ?? '').split('|')[0] as MascotId);
   clearTimeout(svg._t);
   if (svg._since !== undefined && svg._left !== undefined) svg._left -= performance.now() - svg._since;
   svg._since = undefined;

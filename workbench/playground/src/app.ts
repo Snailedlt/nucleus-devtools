@@ -700,12 +700,13 @@ function showHoverCard(text: string, at: number, list: Diagnostic[], doc: string
     const [di, fi] = b.dataset.hcFix!.split(':').map(Number);
     const fix = list[di].fixes![fi];
     tip.hidden = true;
-    fixWithNucli(editor, applyEditsToText(editor.getValue(), fix.edits), () =>
+    const unmark = fixWithNucli(editor, applyEditsToText(editor.getValue(), fix.edits), () =>
       editor.operation(() => {
         for (const e of [...fix.edits].sort((a, z) => z.start - a.start)) editor.replaceRange(e.text, editor.posFromIndex(e.start), editor.posFromIndex(e.end));
       }),
+      { keep: true },
     );
-    codeNote(editor, editor.posFromIndex(Math.min(...fix.edits.map((e) => e.start))).line, `Fixed: ${fix.title.replace(/`/g, '')}.`, { action: undoAction });
+    codeNote(editor, editor.posFromIndex(Math.min(...fix.edits.map((e) => e.start))).line, `Fixed: ${fix.title.replace(/`/g, '')}.`, { action: undoAction, sticky: true, onClear: unmark });
   }));
   placeTip(editor.charCoords(editor.posFromIndex(anchorFrom), 'window'));
 }
@@ -1008,8 +1009,8 @@ function renderExtraProblems(text: string) {
     const f = list[Number(b.dataset.xfix)];
     const fx = f.fix!;
     const edits = [{ start: fx.start, end: fx.end, text: fx.text }];
-    fixWithNucli(editor, applyEditsToText(editor.getValue(), edits), () => editor.replaceRange(fx.text, editor.posFromIndex(fx.start), editor.posFromIndex(fx.end)));
-    codeNote(editor, editor.posFromIndex(fx.start).line, `Fixed: ${fx.title.replace(/`/g, '')}.`, { action: undoAction });
+    const unmark = fixWithNucli(editor, applyEditsToText(editor.getValue(), edits), () => editor.replaceRange(fx.text, editor.posFromIndex(fx.start), editor.posFromIndex(fx.end)), { keep: true });
+    codeNote(editor, editor.posFromIndex(fx.start).line, `Fixed: ${fx.title.replace(/`/g, '')}.`, { action: undoAction, sticky: true, onClear: unmark });
     keepFocus(pk.length + Number(b.dataset.xfix));
   }));
 }
@@ -1134,12 +1135,13 @@ function renderProblems(text: string) {
         edits.push(...es);
         fixed++;
       }
-      fixWithNucli(editor, applyEditsToText(editor.getValue(), edits), () =>
+      const unmark = fixWithNucli(editor, applyEditsToText(editor.getValue(), edits), () =>
         editor.operation(() => {
           for (const e of [...edits].sort((a, z) => z.start - a.start)) editor.replaceRange(e.text, editor.posFromIndex(e.start), editor.posFromIndex(e.end));
         }),
+        { keep: true },
       );
-      codeNote(editor, editor.posFromIndex(Math.min(...edits.map((e) => e.start))).line, `Fixed${fixed > 1 ? ` ${fixed}×` : ''}${fixed < g.length ? ` (${g.length - fixed} more once Check has run again)` : ''}: ${fix.title.replace(/`/g, '')}.`, { action: undoAction });
+      codeNote(editor, editor.posFromIndex(Math.min(...edits.map((e) => e.start))).line, `Fixed${fixed > 1 ? ` ${fixed}×` : ''}${fixed < g.length ? ` (${g.length - fixed} more once Check has run again)` : ''}: ${fix.title.replace(/`/g, '')}.`, { action: undoAction, sticky: true, onClear: unmark });
       // Keep the keyboard in the list: focus the problem that is now where this one was (the list re-renders).
       const at = Number(b.dataset.d);
       setTimeout(() => {
@@ -1252,13 +1254,14 @@ function showLineProblems(line: number, at?: number) {
     b.addEventListener('click', () => {
       const [di, fi] = b.dataset.lpFix!.split(':').map(Number);
       const fix = list[di].fixes![fi];
-      fixWithNucli(editor, applyEditsToText(editor.getValue(), fix.edits), () =>
+      const unmark = fixWithNucli(editor, applyEditsToText(editor.getValue(), fix.edits), () =>
         editor.operation(() => {
           for (const e of [...fix.edits].sort((a, z) => z.start - a.start)) editor.replaceRange(e.text, editor.posFromIndex(e.start), editor.posFromIndex(e.end));
         }),
+        { keep: true },
       );
       hideLinePop();
-      codeNote(editor, editor.posFromIndex(Math.min(...fix.edits.map((e) => e.start))).line, `Fixed: ${fix.title.replace(/`/g, '')}.`, { action: undoAction });
+      codeNote(editor, editor.posFromIndex(Math.min(...fix.edits.map((e) => e.start))).line, `Fixed: ${fix.title.replace(/`/g, '')}.`, { action: undoAction, sticky: true, onClear: unmark });
     }),
   );
   linePop.querySelectorAll<HTMLButtonElement>('[data-lp-wrong]').forEach((b) => b.addEventListener('click', () => (hideLinePop(), reportWrongCheck([list[Number(b.dataset.lpWrong)]]))));
