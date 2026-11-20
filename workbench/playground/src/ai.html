@@ -1,7 +1,7 @@
 <main>
 <style>
 pre.prompt { margin: 0; padding: 12px 64px 12px 14px; background: var(--code-bg); border-radius: var(--r-sm); font: 13px/1.5 var(--mono); white-space: pre-wrap; overflow-wrap: anywhere; }
-.ai-game { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin-top: 14px; }
+.ai-game { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; margin: 0 0 10px; }
 .ai-game label { font-weight: 600; }
 .ai-game input { font: inherit; padding: 6px 10px; min-width: 0; width: 22em; max-width: 100%; border: 1px solid var(--line); border-radius: var(--r-sm); background: var(--surface); color: var(--fg); }
 .ai-game input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -26,12 +26,7 @@ pre.prompt { margin: 0; padding: 12px 64px 12px 14px; background: var(--code-bg)
   </header>
 
   <section aria-labelledby="prompts">
-  <h2 id="prompts" class="has-anchor">Copy, paste, add your game</h2>
-  <div class="ai-game">
-    <label for="ai-game">Your game</label>
-    <input id="ai-game" type="text" autocomplete="off" spellcheck="false" placeholder="e.g. Halo: The Master Chief Collection" aria-describedby="ai-game-hint">
-    <span id="ai-game-hint" class="small">It goes into the "Make a handler" prompts below.</span>
-  </div>
+  <h2 id="prompts" class="has-anchor">Pick your AI, copy, paste</h2>
   <div class="ai-tabs" role="tablist" aria-label="Kind of AI">
     <button type="button" role="tab" id="tab-claude" aria-controls="panel-claude" aria-selected="true">Claude Code</button>
     <button type="button" role="tab" id="tab-agent" aria-controls="panel-agent" aria-selected="false" tabindex="-1">Other AI agents</button>
@@ -45,11 +40,15 @@ pre.prompt { margin: 0; padding: 12px 64px 12px 14px; background: var(--code-bg)
 3. Tell me to restart Claude Code.</pre>
   <p class="small">The plugin brings the guide (a skill) and the tools (an MCP server). Needs Node.js 18 or newer.</p>
   <h3>2. Make a handler <small>(once per game, in a new chat)</small></h3>
+  <div class="ai-game">
+    <label for="ai-game-claude">Your game</label>
+    <input id="ai-game-claude" class="ai-game-input" type="text" autocomplete="off" spellcheck="false" placeholder="e.g. Halo: The Master Chief Collection">
+  </div>
 <pre class="prompt handler">Make a Nucleus Co-op handler for <span class="game-slot">&lt;name&gt;</span>.
 
 Use the nucleus-handler skill. Look up every option with nucleus_api instead of guessing, run nucleus_lint after every edit, and nucleus_simulate with 2 and 4 players before you give me the handler. If you don't have the nucleus tools, stop and tell me to do the setup at https://snailedlt.github.io/nucleus-devtools/ai/ first.
 
-Ask me what you need to know about the game (engine, .exe name, how multiplayer works, where it keeps settings and saves).</pre>
+Ask me what you need to know about the game (engine, .exe name, how multiplayer works, where it keeps settings and saves), and for a link to its store or wiki page if that would help.</pre>
   <p class="small">One game per chat: for three games, start three new chats.</p>
   </div>
   <div class="ai-panel" role="tabpanel" id="panel-agent" aria-labelledby="tab-agent" tabindex="0" hidden>
@@ -61,15 +60,23 @@ Ask me what you need to know about the game (engine, .exe name, how multiplayer 
 4. Tell me to restart you (or reload your MCP servers).</pre>
   <p class="small">For Codex, Google Antigravity, Cursor, Gemini CLI, Claude Desktop and other agents that use MCP. In VS Code, <a href="../tools/#get-vscode">our extension</a> already gives Copilot these tools: skip to step 2.</p>
   <h3>2. Make a handler <small>(once per game, in a new chat)</small></h3>
+  <div class="ai-game">
+    <label for="ai-game-agent">Your game</label>
+    <input id="ai-game-agent" class="ai-game-input" type="text" autocomplete="off" spellcheck="false" placeholder="e.g. Halo: The Master Chief Collection">
+  </div>
 <pre class="prompt handler">Make a Nucleus Co-op handler for <span class="game-slot">&lt;name&gt;</span>.
 
 Call nucleus_rules first and follow it. Look up every option with nucleus_api instead of guessing, run nucleus_lint after every edit, and nucleus_simulate with 2 and 4 players before you give me the handler. If you don't have the nucleus tools, stop and tell me to do the setup at https://snailedlt.github.io/nucleus-devtools/ai/ first.
 
-Ask me what you need to know about the game (engine, .exe name, how multiplayer works, where it keeps settings and saves).</pre>
+Ask me what you need to know about the game (engine, .exe name, how multiplayer works, where it keeps settings and saves), and for a link to its store or wiki page if that would help.</pre>
   <p class="small">One game per chat: for three games, start three new chats.</p>
   </div>
   <div class="ai-panel" role="tabpanel" id="panel-chat" aria-labelledby="tab-chat" tabindex="0" hidden>
   <h3>Make a handler <small>(once per game, in a new chat)</small></h3>
+  <div class="ai-game">
+    <label for="ai-game-chat">Your game</label>
+    <input id="ai-game-chat" class="ai-game-input" type="text" autocomplete="off" spellcheck="false" placeholder="e.g. Halo: The Master Chief Collection">
+  </div>
 <pre class="prompt handler">Help me write a Nucleus Co-op handler for <span class="game-slot">&lt;name&gt;</span>. A handler is the JavaScript file Nucleus Co-op (SplitScreen.Me) uses to run several copies of a PC game split-screen, one per player. Follow these rules exactly:
 
 1. ES5 JavaScript only (Jint 2.11): no arrow functions, template strings, classes, let/const, destructuring, spread, default parameters, for...of, ?. or ??. No .includes(), .startsWith(), .find(), Object.assign, Map or Set.
@@ -83,7 +90,7 @@ Ask me what you need to know about the game (engine, .exe name, how multiplayer 
 
 When you give me a handler, tell me to paste it into https://snailedlt.github.io/nucleus-devtools/ to check it; I'll send you the problems it finds. Then fix only those, and give me the whole file.
 
-Ask me what you need to know about the game.</pre>
+Ask me what you need to know about the game, and for a link to its store or wiki page if that would help.</pre>
   <p class="small">No setup. For ChatGPT, Claude, Gemini, Grok, Copilot Chat and other chatbots. Paste their handler into the <a href="../?ref=ai">workbench</a>, send back what Check finds, and Try it before testing in Nucleus.</p>
   </div>
   </section>
@@ -108,12 +115,14 @@ Ask me what you need to know about the game.</pre>
       pick(tabs[(j + tabs.length) % tabs.length], true);
     });
   });
-  var game = document.getElementById('ai-game');
-  function fill() {
-    var v = game.value.trim();
+  var games = [].slice.call(document.querySelectorAll('.ai-game-input'));
+  function fill(e) {
+    var src = e && e.target;
+    if (src) games.forEach(function (g) { if (g !== src) g.value = src.value; });
+    var v = games[0].value.trim();
     [].forEach.call(document.querySelectorAll('.game-slot'), function (el) { el.textContent = v || '<name>'; el.classList.toggle('filled', !!v); });
   }
-  game.addEventListener('input', fill);
+  games.forEach(function (g) { g.addEventListener('input', fill); });
   fill();
   var byHash = { '#agents': 1, '#chatbots': 2 }[location.hash];
   if (byHash) pick(tabs[byHash]);
