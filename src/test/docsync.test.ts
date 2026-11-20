@@ -48,3 +48,55 @@ test('docs sync: template features the docs name exist', () => {
   const bad = DOCS.flatMap((f) => [...read(f).matchAll(/--features ([\w,-]+)/g)].flatMap((m) => m[1].split(',')).filter((id) => !real.has(id)).map((id) => `${f}: ${id}`));
   assert.deepEqual(bad, []);
 });
+
+test('docs sync: the language server\'s defaults are the extension\'s (package.json)', () => {
+  const props: Record<string, { default?: unknown; enum?: unknown[] }> = Object.assign({}, ...[].concat(JSON.parse(read('package.json')).contributes.configuration).map((c: { properties?: object }) => c.properties ?? {}));
+  const flat = (o: Record<string, unknown>, pre = ''): [string, unknown][] => Object.entries(o).flatMap(([k, v]) => (v && typeof v === 'object' && !Array.isArray(v) && Object.keys(v).length ? flat(v as Record<string, unknown>, `${pre}${k}.`) : [[`${pre}${k}`, v] as [string, unknown]]));
+  const bad = flat(DEFAULTS as unknown as Record<string, unknown>).flatMap(([k, v]) => {
+    const p = props[`splitscreenme.${k}`];
+    if (!p) return [];
+    return [...(JSON.stringify(p.default) !== JSON.stringify(v) ? [`${k}: ${JSON.stringify(v)} here, ${JSON.stringify(p.default)} in package.json`] : []), ...(p.enum && !p.enum.includes(v) ? [`${k}: ${JSON.stringify(v)} isn't one of ${JSON.stringify(p.enum)}`] : [])];
+  });
+  assert.deepEqual(bad, []);
+});
+
+test('release files: the workflow uploads what data/release-assets.json lists, and ncdev update looks for the same names', async () => {
+  const listed = (JSON.parse(read('data/release-assets.json')).assets as { name: string }[]).map((a) => a.name.replace('{tag}', '$TAG'));
+  const wf = read('.github/workflows/release.yml');
+  const line = /gh release create "\$TAG" (.*?) --target/.exec(wf)![1];
+  const uploaded = line.split(/\s+/).map((f) => f.replace(/"/g, ''));
+  assert.deepEqual([...uploaded].sort(), [...listed].sort(), 'release.yml uploads something other than data/release-assets.json lists');
+  // The standalone builds the release makes (build-native.sh's targets) are the ones ncdev update downloads.
+  const { assetName } = await import('../standalone');
+  const targets = /build-native\.sh ([\w,-]+)/.exec(wf)![1].split(',');
+  const names = Object.fromEntries([...read('scripts/sea.mjs').matchAll(/'([\w-]+)': '([\w.-]+)'/g)].map((m) => [m[1], m[2]]));
+  for (const t of targets) {
+    const [os, arch] = t.split('-');
+    const name = assetName((os === 'win' ? 'win32' : os === 'macos' ? 'darwin' : os) as NodeJS.Platform, arch as NodeJS.Architecture);
+    assert.equal(name, names[t], `ncdev update looks for ${name}, sea.mjs builds ${names[t]} (${t})`);
+    assert.ok(listed.includes(name!), `${name} is built but not uploaded`);
+  }
+});
+
+test('one site address: TypeScript code uses WORKBENCH_URL (core/sharelink.ts), not its own copy', () => {
+  const files = [...walk('src'), ...walk('workbench/playground/src')].filter((f) => f.endsWith('.ts') && !f.includes('/test/') && !f.endsWith('core/sharelink.ts'));
+  const bad = files.filter((f) => read(f).includes('https://snailedlt.github.io/nucleus-devtools/'));
+  assert.deepEqual(bad, []);
+});
+
+test('one Jint version: every "Jint x.y.z" in the code and docs, and the testbench\'s JINT_VERSION, is the API model\'s', () => {
+  const jint = JSON.parse(read('data/nucleus-api.json')).jint as string;
+  assert.equal(/JINT_VERSION=([\d.]+)/.exec(read('workbench/setup.sh'))![1], jint, 'workbench/setup.sh');
+  const files = [...walk('src'), ...walk('scripts'), ...walk('workbench/playground/src'), ...walk('plugin/skills'), ...DOCS, 'AGENTS.md', 'CODERABBIT.md',
+    ...fs.readdirSync(path.join(root, 'workbench/playground')).filter((f) => f.endsWith('.mjs')).map((f) => `workbench/playground/${f}`)]
+    .filter((f) => /\.(ts|mjs|md|html|txt)$/.test(f) && !f.includes('CHANGELOG'));
+  const bad = [...new Set(files)].flatMap((f) => [...read(f).matchAll(/Jint (\d+\.\d+\.\d+)/g)].filter((m) => m[1] !== jint).map((m) => `${f}: ${m[0]}`));
+  assert.deepEqual(bad, []);
+});
+
+test('one Node.js version for working on the tools: .nvmrc, the workflows and "Git and Node.js N"', () => {
+  const v = read('.nvmrc').trim();
+  const bad = walk('.github/workflows').flatMap((f) => [...read(f).matchAll(/node-version: (\S+)/g)].filter((m) => m[1] !== v).map((m) => `${f}: ${m[0]}`));
+  bad.push(...DOCS.flatMap((f) => [...read(f).matchAll(/Git and Node\.js (\d+)/g)].filter((m) => m[1] !== v).map((m) => `${f}: ${m[0]}`)));
+  assert.deepEqual(bad, []);
+});

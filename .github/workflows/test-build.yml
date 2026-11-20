@@ -95,7 +95,7 @@ jobs:
           echo "Building $EXT_REPO@$FULL ($BRANCH)" >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 22 # .nvmrc (the commit built may predate it; docsync.test.ts checks they agree)
       - name: Build and test it
         working-directory: ext
         run: |

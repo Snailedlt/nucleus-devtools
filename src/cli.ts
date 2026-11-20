@@ -32,6 +32,7 @@ import { EVERY_KEYBOARD } from './core/sim';
 import { formatSimulation } from './simformat';
 import { serve } from './mcp';
 import { helpText } from './clihelp';
+import { WORKBENCH_URL } from './core/sharelink';
 import { readGameBinaries } from './gamefolder-node';
 import { analyse, exePath, findExes, importsReport } from './core/importhooks';
 import type { PeFile } from './core/pe';
@@ -619,11 +620,11 @@ async function cmdWorkbench(args: Args, json: boolean): Promise<number> {
   if (res?.ok) {
     const releases = (await res.json()) as { tag_name: string; draft: boolean; assets: { name: string; browser_download_url: string }[] }[];
     const r = releases.find((x) => !x.draft && x.assets.some((a) => a.name === 'workbench.html'));
-    if (!r) throw new Error('No release has a workbench.html yet. Use https://snailedlt.github.io/nucleus-devtools/ for now.');
+    if (!r) throw new Error(`No release has a workbench.html yet. Use ${WORKBENCH_URL} for now.`);
     rel = { tag_name: r.tag_name, url: r.assets.find((a) => a.name === 'workbench.html')!.browser_download_url };
   }
   const page = await fetch(rel.url);
-  if (page.status === 404) throw new Error('No release has a workbench.html yet. Use https://snailedlt.github.io/nucleus-devtools/ for now.');
+  if (page.status === 404) throw new Error(`No release has a workbench.html yet. Use ${WORKBENCH_URL} for now.`);
   if (!page.ok) throw new Error(`Download failed (${page.status})`);
   const html = await page.text();
   if (!/^<!doctype html>/i.test(html.trimStart())) throw new Error('The download is not an HTML page.');

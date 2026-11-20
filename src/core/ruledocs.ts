@@ -5,12 +5,15 @@
 // ExecutableName in front of them, so they can stay short.
 import { RULES } from './lint';
 import { JS_RULES } from './jsrules';
+import { WORKBENCH_URL } from './sharelink';
 
 export interface RuleDoc {
   /** The rule's title, in plain words. */
   title: string;
   /** What happens in Nucleus, and why it matters. */
   why: string;
+  /** Simpler words for the workbench's Simple view (no rule ids, no engine names), when title and why are too technical. */
+  plain?: { title: string; why: string };
   bad?: string;
   good?: string;
   /** How to fix it (one or two sentences); the editors' quick fix, when there is one. */
@@ -22,12 +25,13 @@ export interface RuleDoc {
 }
 
 /** Where the pages live: the workbench site (GitHub Pages). */
-export const RULES_BASE = 'https://snailedlt.github.io/nucleus-devtools/rules/';
+export const RULES_BASE = `${WORKBENCH_URL}rules/`;
 /** A check's page; `ref` tags the link with the tool it was followed from, for the anonymous visit counts. */
 export const ruleUrl = (id: string, ref?: string) => `${RULES_BASE}${encodeURIComponent(id)}/${ref ? `?ref=${encodeURIComponent(ref)}` : ''}`;
 
 const NUCLEUS: Record<string, RuleDoc> = {
   'syntax-error': {
+    plain: { title: "Nucleus can't read this file", why: 'Something is missing or extra here, often a bracket, a quote or a comma. The rest is still checked, but Nucleus won\'t load the file until this is fixed.' },
     title: 'Code that can\'t be read',
     why: 'The handler isn\'t valid JavaScript, so Nucleus can\'t load it at all: the game disappears from its list. Often a missing bracket, quote or comma.',
     bad: 'Game.Play = function () {\n  Context.StartArguments = "-windowed";\n',
@@ -35,6 +39,7 @@ const NUCLEUS: Record<string, RuleDoc> = {
     fix: 'Look at the line the problem points to and the line before it: close the bracket or quote that is still open.',
   },
   'es5-only': {
+    plain: { title: 'Newer JavaScript than Nucleus understands', why: 'Nucleus only reads an older form of JavaScript, so it stops loading the handler here.' },
     title: 'Newer JavaScript than Nucleus understands',
     why: 'Nucleus runs handlers with Jint 2.11.58, which only reads ES5 (plus `let` and `const`). Arrow functions, template strings, classes, spread and destructuring stop the handler from loading.',
     bad: 'Game.Play = function () {\n  var args = `-width ${Context.Width}`;\n};',
@@ -42,6 +47,7 @@ const NUCLEUS: Record<string, RuleDoc> = {
     fix: 'Write it the ES5 way: `function () {}` instead of `() =>`, `"a" + b` instead of a template string. The quick fix rewrites most of them.',
   },
   'let-const-semantics': {
+    plain: { title: 'Written in a newer style', why: 'Nucleus treats this like a plain "var". Usually harmless.' },
     title: '`let` and `const` work like `var` here',
     why: 'Jint 2.x accepts `let` and `const` but treats them exactly like `var`: they belong to the whole function, not the block, and a `const` can be changed. Code that relies on block scope behaves differently in Nucleus.',
     bad: 'Game.Play = function () {\n  for (let i = 0; i < 2; i++) {\n    const name = "p" + i;\n  }\n};',
@@ -49,6 +55,7 @@ const NUCLEUS: Record<string, RuleDoc> = {
     fix: 'Use `var`, so the code says what Nucleus does.',
   },
   'unknown-member': {
+    plain: { title: "A setting Nucleus doesn't know", why: "Nucleus skips it, so it does nothing. It's usually a typo." },
     title: 'A name Nucleus doesn\'t have',
     why: 'This option or method doesn\'t exist on that Nucleus object, usually a typo. Setting it does nothing (Jint ignores it without an error), reading it gives `undefined`, and calling it stops the handler.',
     bad: 'Game.KillMutexs = ["Mutex"];',
@@ -56,6 +63,7 @@ const NUCLEUS: Record<string, RuleDoc> = {
     fix: 'The problem suggests the closest real name; pick it from the quick fix, or look the option up in the docs.',
   },
   'readonly-member': {
+    plain: { title: 'A value Nucleus sets by itself', why: 'Changing it here has no effect.' },
     title: 'A value Nucleus sets itself',
     why: 'Nucleus computes this value (a player\'s index, the screen size…); setting it from the handler is ignored.',
     bad: 'Game.Play = function () {\n  Context.Width = 1280;\n};',
@@ -63,6 +71,7 @@ const NUCLEUS: Record<string, RuleDoc> = {
     fix: 'Read it instead of setting it, or store what you need in your own variable.',
   },
   'type-mismatch': {
+    plain: { title: 'The value has the wrong form', why: 'Nucleus expects a different kind of value here, for example a list in [ ] brackets, or true / false.' },
     title: 'The wrong kind of value',
     why: 'Nucleus expects another type here (a number, true/false, a list…). Some values are converted, others make Nucleus fail to load the handler or ignore the option.',
     bad: 'Game.MaxPlayers = "4";',
@@ -77,6 +86,7 @@ const NUCLEUS: Record<string, RuleDoc> = {
     fix: 'Use the form from the option\'s docs (a hotkey is "on|name|modifier|key"); the quick fix rewrites the common cases.',
   },
   'wrong-arguments': {
+    plain: { title: 'A function gets the wrong number of values', why: 'Nucleus stops with an error when it reaches this line.' },
     title: 'A call with the wrong number of values',
     why: 'Jint only finds a Nucleus method when you pass exactly as many values as one of its versions takes (default values in C# don\'t count). Otherwise it throws "No public methods with the specified arguments were found" and the session ends.',
     bad: 'Game.Play = function () {\n  var folder = Context.GetFolder();\n};',
@@ -84,6 +94,7 @@ const NUCLEUS: Record<string, RuleDoc> = {
     fix: 'Check the signature in the hover or the docs and pass every value, even ones that look optional.',
   },
   'missing-required': {
+    plain: { title: 'Required information is missing', why: "Every handler needs the game's name, a GUID and the game's .exe file name." },
     title: 'A required option is missing',
     why: 'Nucleus needs Game.GUID, Game.GameName and Game.ExecutableName to load a handler; without one, the game doesn\'t appear.',
     bad: 'Game.GameName = "My Game";\nGame.ExecutableName = "game.exe";',
@@ -99,6 +110,7 @@ const NUCLEUS: Record<string, RuleDoc> = {
     fix: 'Remove the declaration, or give your own variable another name.',
   },
   'callback-only-global': {
+    plain: { title: 'Code in the wrong place', why: 'This code needs the game to be starting, so it belongs inside Game.Play. Here it stops Nucleus from loading the handler.' },
     title: 'Code in the wrong place',
     why: 'Context, Player, PlayerList, Handler and ProtoInput only exist while Nucleus runs a callback such as Game.Play. Used at the top of the handler, they make it fail to load.',
     bad: 'var width = Context.Width;',
@@ -113,6 +125,7 @@ const NUCLEUS: Record<string, RuleDoc> = {
     fix: 'Move the line to the top level of the handler.',
   },
   'duplicate-assignment': {
+    plain: { title: 'The same setting is set twice', why: 'Only the last value counts, so this one does nothing.' },
     title: 'The same option set twice',
     why: 'Only the last value counts, so the first line does nothing. Usually a leftover from copying another handler.',
     bad: 'Game.MaxPlayers = 4;\nGame.MaxPlayers = 8;',
@@ -120,6 +133,7 @@ const NUCLEUS: Record<string, RuleDoc> = {
     fix: 'Keep the value you mean and delete the other line.',
   },
   'hub-install-parse': {
+    plain: { title: 'Would break installing this handler', why: 'When installing, Nucleus reads the game name and .exe from these lines in a strict way.' },
     title: 'A line the Hub install misreads',
     why: 'When a handler is installed from the Hub, Nucleus finds Game.GameName and Game.ExecutableName by reading lines that start with them and taking the text between the first and last double quote. A comment, a second string or single quotes on that line break the install.',
     bad: 'Game.GUID = "My Game";\nGame.GameName = \'My Game\';\nGame.ExecutableName = "game.exe";',
@@ -128,6 +142,7 @@ const NUCLEUS: Record<string, RuleDoc> = {
     whole: true,
   },
   'guid-characters': {
+    plain: { title: 'Special characters in the GUID', why: 'The GUID becomes a folder name. Letters, digits and spaces are safest.' },
     title: 'Characters a folder name can\'t have',
     why: 'Game.GUID becomes a folder name in Nucleus. Characters like `: * ? " < > |` don\'t work in Windows folder names.',
     bad: 'Game.GUID = "My Game: Deluxe";\nGame.GameName = "My Game";\nGame.ExecutableName = "game.exe";',
@@ -136,6 +151,7 @@ const NUCLEUS: Record<string, RuleDoc> = {
     whole: true,
   },
   'protoinput-legacy-hooks': {
+    plain: { title: 'Old input settings are still on', why: 'With Proto Input they should be turned off, or two input systems run at once.' },
     title: 'Old input options fighting Proto Input',
     why: 'With Proto Input and several keyboards and mice, the old input options (Game.HookGetCursorPos, Game.SendNormalMouseInput…) must be off: several default to on and get in Proto Input\'s way.',
     bad: 'Game.ProtoInput.InjectStartup = true;\nGame.SupportsMultipleKeyboardsAndMice = true;\nGame.HookGetCursorPos = true;',
@@ -143,6 +159,7 @@ const NUCLEUS: Record<string, RuleDoc> = {
     fix: 'Set the old options it lists to false; the quick fix adds the lines.',
   },
   'protoinput-inactive': {
+    plain: { title: "Proto Input never starts", why: "None of its start options (InjectStartup or an InjectRuntime method) is on, so Nucleus ignores every Proto Input setting here." },
     title: 'Proto Input options that never start',
     why: 'Proto Input only starts with Game.ProtoInput.InjectStartup or one of the InjectRuntime_… options. Without one, every other Game.ProtoInput option is ignored.',
     bad: 'Game.ProtoInput.FocusHooksHookGetFocus = true;',
@@ -150,6 +167,7 @@ const NUCLEUS: Record<string, RuleDoc> = {
     fix: 'Turn on the way Proto Input should start (usually Game.ProtoInput.InjectStartup = true), or remove the unused options.',
   },
   'protoinput-needs-hook': {
+    plain: { title: 'Blocked messages and filters do nothing yet', why: "They only work inside Proto Input's message filter hook, which isn't turned on." },
     title: 'A message filter without its hook',
     why: 'Game.ProtoInput.BlockedMessages and the message filters only act inside Proto Input\'s message filter hook; without that hook they do nothing.',
     bad: 'Game.ProtoInput.InjectStartup = true;\nGame.ProtoInput.BlockedMessages = [0x0008];',
@@ -157,6 +175,7 @@ const NUCLEUS: Record<string, RuleDoc> = {
     fix: 'Add `Game.ProtoInput.MessageFilterHook = true;` (the quick fix does).',
   },
   'blocked-message': {
+    plain: { title: "A window message Proto Input can't block as written", why: "It isn't in Proto Input's message list (it blocks something else, or nothing), or it's in the list twice." },
     title: 'A message Proto Input can\'t block',
     why: 'Proto Input looks blocked messages up in its own list. A number that isn\'t in it blocks a different message, or nothing.',
     bad: 'Game.ProtoInput.InjectStartup = true;\nGame.ProtoInput.MessageFilterHook = true;\nGame.ProtoInput.BlockedMessages = [0x0009];',
@@ -164,6 +183,7 @@ const NUCLEUS: Record<string, RuleDoc> = {
     fix: 'Pick the message by name from the list (hover a number to see which message it is).',
   },
   'protoinput-needs-raw-input': {
+    plain: { title: "Keyboard and mouse players won't get keys or the cursor", why: "These Proto Input hooks answer from each player's own keyboard and mouse, which Proto Input only reads with its raw input hook (Game.ProtoInput.RegisterRawInputHook). Without it the game sees no key pressed and a cursor that doesn't move. Turn it on." },
     title: 'Key or cursor hooks without raw input',
     why: 'GetCursorPosHook and the key state hooks answer the game with the player\'s own cursor and keys. Proto Input only reads those keyboards and mice when Game.ProtoInput.RegisterRawInputHook is on, so without it the game sees no key pressed and a frozen cursor.',
     bad: 'Game.ProtoInput.InjectStartup = true;\nGame.SupportsMultipleKeyboardsAndMice = true;\nGame.ProtoInput.GetKeyStateHook = true;',
@@ -171,6 +191,7 @@ const NUCLEUS: Record<string, RuleDoc> = {
     fix: 'Turn the raw input hook on (the quick fix adds it). Shown only in handlers with Game.SupportsMultipleKeyboardsAndMice; for controller-only players a frozen cursor is harmless.',
   },
   'needs-option': {
+    plain: { title: 'A setting that needs another one turned on', why: "Nucleus only reads it when the other setting is on, so on its own it does nothing." },
     title: 'An option that needs another one',
     why: 'Nucleus only reads some options when another is on: FakeFocusInterval needs FakeFocus, SteamlessArgs needs UseSteamless, and so on. Alone, it does nothing.',
     bad: 'Game.FakeFocusInterval = 1000;',
@@ -185,6 +206,7 @@ const NUCLEUS: Record<string, RuleDoc> = {
     fix: 'Compare with text ("4", "Yes") or with `==`, which matches "4" and 4; give yes/no options text values such as "Yes" and "No". The quick fix changes `===` to `==`.',
   },
   'unused-option': {
+    plain: { title: 'An option nothing reads', why: 'Players can pick a value, but nothing in the handler reads it (Context.Options["key"]), so the choice changes nothing. Read it in Game.Play, or remove the option.' },
     title: 'An option nothing reads',
     why: 'Nucleus shows the option and stores the player\'s choice, but never reads it itself (`Game.ShowOptionAsStep` only asks for it): only the handler\'s own `Context.Options["key"]` does. With no such read, the choice changes nothing, and players think a setting works when it doesn\'t. Shown faded, like unused code.',
     bad: 'Game.AddOption("FPS cap", "", "fps", ["30", "60"]);\nGame.Play = function () {\n  Context.StartArguments = "-windowed";\n};',
@@ -192,12 +214,14 @@ const NUCLEUS: Record<string, RuleDoc> = {
     fix: 'Read the option where the choice matters (usually in `Game.Play`), check the key is spelled the same in both places, or remove the option. The quick fix removes the line when nothing else names the key.',
   },
   'guid-changed': {
+    plain: { title: 'A different GUID than on the Hub', why: 'Nucleus files each player\'s game and profiles under the GUID: after this update their game disappears from the list. Keep the Hub version\'s GUID.' },
     title: 'A GUID that differs from the Hub',
     why: 'Nucleus keys a user\'s game, profiles, cover and content folder by Game.GUID. Updating a published handler with another GUID drops the game from their list.',
     noExample: 'This check compares with the version on the Hub, so it only appears for handlers that have a Hub.Handler.Id line.',
     fix: 'Keep the GUID the Hub version has.',
   },
   'file-encoding': {
+    plain: { title: 'Not saved as UTF-8', why: 'Nucleus reads handlers as UTF-8, so accented letters arrive broken. Save the file as UTF-8 and retype them.' },
     title: 'A file that isn\'t UTF-8',
     why: 'Nucleus reads handlers as UTF-8. A file saved as ANSI / Windows-1252 turns accented letters into � in names, paths and messages.',
     noExample: 'This check looks at the file\'s bytes, so it can\'t be shown as text.',
@@ -211,6 +235,7 @@ const NUCLEUS: Record<string, RuleDoc> = {
     fix: 'Fix the spelling (the problem suggests the closest name) or declare the variable first.',
   },
   'missing-builtin': {
+    plain: { title: "A JavaScript function Nucleus doesn't have", why: "Nucleus uses an older JavaScript engine that lacks this function, so the handler stops with an error when it reaches this line." },
     title: 'A JavaScript function Nucleus doesn\'t have',
     why: 'Jint 2.x only has ES5\'s built-in functions. Newer ones such as `"…".includes()`, `[].find()`, `Object.assign` or `Array.from` don\'t exist, so calling one ends the session.',
     bad: 'Game.Play = function () {\n  var copy = Array.from([1, 2]);\n};',
@@ -225,6 +250,7 @@ const NUCLEUS: Record<string, RuleDoc> = {
     fix: 'Move the code to a callback Nucleus runs (usually Game.Play), or remove it.',
   },
   deprecated: {
+    plain: { title: 'An outdated setting', why: 'It still works, but it has been replaced.' },
     title: 'A deprecated option',
     why: 'Nucleus still reads this option but it has a replacement, or it is kept only for old handlers.',
     fix: 'The hover names what to use instead. Setting it to false is fine.',

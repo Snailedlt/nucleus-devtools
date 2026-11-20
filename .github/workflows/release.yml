@@ -40,7 +40,7 @@ jobs:
           PUSHED_TAG: ${{ github.event_name == 'push' && github.ref_name || '' }}
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
       - run: npm ci
       - name: Release notes (from CHANGELOG.md)
