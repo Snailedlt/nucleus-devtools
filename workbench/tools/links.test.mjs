@@ -256,7 +256,7 @@ test('?ref= links name the tool in plain words', () => {
 });
 
 test('release and Hub links have the expected form', () => {
-  for (const { file, m } of found(/https:\/\/github\.com\/Snailedlt\/[\w-]+\/releases[^\s"'`)<>]*/g)) assert.match(m[0], /\/releases(\/latest|\/tag\/[\w.$%{}-]+|\/download\/[^\s]+)?\/?$/, `${file}: ${m[0]}`);
+  for (const { file, m } of found(/https:\/\/github\.com\/Snailedlt\/[\w-]+\/releases[^\s"'`)<>]*/g)) assert.match(m[0], /\/releases(\/latest\/download\/[^\s]+|\/latest|\/tag\/[\w.$%{}-]+|\/download\/[^\s]+)?\/?$/, `${file}: ${m[0]}`);
   for (const { file, m } of found(/https:\/\/hub\.splitscreen\.me\/[^\s"'`)<>]*/g)) assert.match(m[0], /^https:\/\/hub\.splitscreen\.me\/?(handler\/|api\/|cdn\/|$|\$\{)/, `${file}: ${m[0]}`);
 });
 

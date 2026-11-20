@@ -811,16 +811,16 @@ for (const theme of ['light', 'dark']) {
   await s.p.goto(BASE + 'start/#get-notepadpp');
   await s.p.waitForTimeout(500);
   check(/\/tools\/#get-notepadpp$/.test(s.p.url()), `${theme}: an old start-page link to the downloads goes to the tools page (${s.p.url()})`);
-  // Make a handler with AI: two prompts in tabs (agents shown first, chatbots one click or ArrowRight away), each with a Copy button.
+  // Make a handler with AI: three prompts in tabs (Claude Code first, other agents one ArrowRight away, chatbots), each with a Copy button.
   await s.p.goto(BASE + 'ai/');
   await s.p.waitForTimeout(400);
   const vis = () => s.p.evaluate(() => [...document.querySelectorAll('[role=tabpanel]')].filter((p) => !p.hidden).map((p) => p.id).join());
   const first = await vis();
-  await s.p.focus('#tab-agent');
+  await s.p.focus('#tab-claude');
   await s.p.keyboard.press('ArrowRight');
   const second = await vis();
-  const ai = await s.p.evaluate(() => ({ chat: /ES5 JavaScript only/.test(document.querySelector('#panel-chat pre.prompt')?.textContent ?? ''), agent: /init-agent/.test(document.querySelector('#panel-agent pre.prompt')?.textContent ?? ''), copies: document.querySelectorAll('.copy-wrap pre.prompt + .copy-btn').length, focus: document.activeElement?.id }));
-  check(first === 'panel-agent' && second === 'panel-chat' && ai.focus === 'tab-chat' && ai.chat && ai.agent && ai.copies === 2, `${theme}: the AI guide's two prompts switch with the tabs and the arrow keys, each with a Copy button (${first} -> ${second}, ${JSON.stringify(ai)})`);
+  const ai = await s.p.evaluate(() => ({ chat: /ES5 JavaScript only/.test(document.querySelector('#panel-chat pre.prompt')?.textContent ?? ''), claude: /claude plugin install nucleus-coop@splitscreenme/.test(document.querySelector('#panel-claude pre.prompt')?.textContent ?? ''), agent: /latest\/download\/nucleus\.js[\s\S]*MCP server/.test(document.querySelector('#panel-agent pre.prompt')?.textContent ?? ''), copies: document.querySelectorAll('.copy-wrap pre.prompt + .copy-btn').length, focus: document.activeElement?.id }));
+  check(first === 'panel-claude' && second === 'panel-agent' && ai.focus === 'tab-agent' && ai.chat && ai.claude && ai.agent && ai.copies === 3, `${theme}: the AI guide's three prompts switch with the tabs and the arrow keys, each with a Copy button (${first} -> ${second}, ${JSON.stringify(ai)})`);
   await axe(s.p, `${theme}, AI guide`);
   // Every page has the way home (the brand) and to the workbench in its header.
   for (const u of ['start/', 'tools/', 'ai/', 'docs/', 'docs/Game.Play/', 'rules/', 'rules/syntax-error/', 'learn/']) {

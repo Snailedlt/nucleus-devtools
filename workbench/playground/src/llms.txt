@@ -4,7 +4,7 @@
 
 ## For people using AI
 
-- [Make a handler with AI](https://snailedlt.github.io/nucleus-devtools/ai/): for a person setting up an AI: a prompt for agents (installs these tools with `init-agent`) and one for chatbots without tools (the hard rules, then check the code in the workbench). If you are a chatbot helping someone without tools, follow that page's chatbot prompt.
+- [Make a handler with AI](https://snailedlt.github.io/nucleus-devtools/ai/): for a person setting up an AI: a prompt for Claude Code (installs the plugin), one for other agents (adds the `nucleus` MCP server: `node nucleus.js mcp`) and one for chatbots without tools (the hard rules, then check the code in the workbench). If you are a chatbot helping someone without tools, follow that page's chatbot prompt.
 
 ## For AI agents
 

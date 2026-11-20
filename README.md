@@ -409,7 +409,7 @@ The linter runs over the 150 most-downloaded handlers on the Hub with **no error
 
 The repo also ships an agent kit, so coding agents (Claude Code, Copilot, Codex, Cursor, …) write handlers that load and work, instead of guessing option names from memory.
 
-Setting up an AI for handlers? [Make a handler with AI](https://snailedlt.github.io/nucleus-devtools/ai/) has a prompt to paste for agents and one for chatbots (ChatGPT, Claude, Gemini, …) without tools.
+Setting up an AI for handlers? [Make a handler with AI](https://snailedlt.github.io/nucleus-devtools/ai/) has a prompt to paste for Claude Code, one for other agents (they add the MCP server themselves) and one for chatbots (ChatGPT, Claude, Gemini, …) without tools.
 
 - **The `nucleus-handler` skill** (`plugin/skills/nucleus-handler/`) contains:
   - the hard rules: ES5 only, real options only, `Context` only inside callbacks, Hub line format, …;

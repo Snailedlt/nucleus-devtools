@@ -11,27 +11,44 @@ pre.prompt { margin: 0; padding: 12px 64px 12px 14px; background: var(--code-bg)
   <h1>Set up your AI for Nucleus Co-op handlers</h1>
   <p class="lede">AI can write a handler, but it guesses option names and uses JavaScript Nucleus can't run. Our tools give it the real Nucleus API and the same checks and Try it as the <a href="../?ref=ai">workbench</a>, so what it writes loads and works.</p>
   <ul class="facts">
-    <li><strong>Free:</strong> VS Code with GitHub Copilot's free plan (<a href="../tools/#get-vscode">our extension</a> gives it the tools), or any free chatbot with the workbench to check its code.</li>
-    <li><strong>Paid:</strong> Claude Code with <a href="../tools/#ai-agents">our plugin</a>, or any other coding agent with the prompt below.</li>
+    <li><strong>Free:</strong> VS Code with GitHub Copilot's free plan and <a href="../tools/#get-vscode">our extension</a> (it adds the tools for Copilot itself), or any free chatbot with the workbench to check its code.</li>
+    <li><strong>Paid:</strong> Claude Code with our plugin, or any other coding agent. Both set themselves up with the prompt below.</li>
   </ul>
   </header>
 
   <section aria-labelledby="prompts">
   <h2 id="prompts" class="has-anchor">Copy, paste, add your game</h2>
   <div class="ai-tabs" role="tablist" aria-label="Kind of AI">
-    <button type="button" role="tab" id="tab-agent" aria-controls="panel-agent" aria-selected="true">AI agents</button>
+    <button type="button" role="tab" id="tab-claude" aria-controls="panel-claude" aria-selected="true">Claude Code</button>
+    <button type="button" role="tab" id="tab-agent" aria-controls="panel-agent" aria-selected="false" tabindex="-1">Other AI agents</button>
     <button type="button" role="tab" id="tab-chat" aria-controls="panel-chat" aria-selected="false" tabindex="-1">Chatbots</button>
   </div>
-  <div role="tabpanel" id="panel-agent" aria-labelledby="tab-agent" tabindex="0">
-<pre class="prompt">Set up the Nucleus Co-op handler tools in this folder, then help me make a handler.
+  <div role="tabpanel" id="panel-claude" aria-labelledby="tab-claude" tabindex="0">
+<pre class="prompt">Help me make a Nucleus Co-op handler with the Nucleus Co-op plugin.
 
-1. Clone the tools into a temporary folder outside this one (needs git and Node.js 18 or newer): git clone --depth 1 https://github.com/Snailedlt/nucleus-devtools &lt;temp&gt;/nucleus-devtools
-2. Run here: node &lt;temp&gt;/nucleus-devtools/plugin/skills/nucleus-handler/scripts/nucleus.js init-agent .
-   Then delete the temporary clone.
-3. Read .claude/skills/nucleus-handler/SKILL.md and follow it: look up every option with its api command instead of guessing, lint after every edit, and simulate with 2 and 4 players before you give me the handler.
+If you don't have the nucleus-handler skill and the nucleus MCP tools yet, set them up first:
+1. Run: claude plugin marketplace add Snailedlt/nucleus-devtools
+2. Run: claude plugin install nucleus-coop@splitscreenme
+3. Tell me to restart Claude Code and paste this message again. Stop here.
+
+Then use the nucleus-handler skill: look up every option with nucleus_api instead of guessing, run nucleus_lint after every edit, and nucleus_simulate with 2 and 4 players before you give me the handler.
 
 My game: &lt;name&gt;. Ask me what you need to know about it (engine, .exe name, how multiplayer works, where it keeps settings and saves).</pre>
-  <p class="small">For Claude Code, Codex, Google Antigravity, Cursor, Copilot agent mode and other agents that can run commands.</p>
+  <p class="small">The plugin brings the guide (a skill) and the tools (an MCP server). Needs Node.js 18 or newer.</p>
+  </div>
+  <div role="tabpanel" id="panel-agent" aria-labelledby="tab-agent" tabindex="0" hidden>
+<pre class="prompt">Help me make a Nucleus Co-op handler with the Nucleus tools (an MCP server).
+
+If you don't have the nucleus MCP tools (nucleus_rules, nucleus_lint, nucleus_simulate…) yet, set them up first:
+1. Check that Node.js 18 or newer is installed. If not, tell me how to install it and stop.
+2. Download https://github.com/Snailedlt/nucleus-devtools/releases/latest/download/nucleus.js into a folder named .nucleus-devtools in my home folder.
+3. Add an MCP server named "nucleus" to your own user-level MCP settings: command "node", arguments: the full path to that nucleus.js, then "mcp".
+4. Tell me to restart you (or reload your MCP servers) and paste this message again. Stop here.
+
+Then call nucleus_rules and follow it: look up every option with nucleus_api instead of guessing, run nucleus_lint after every edit, and nucleus_simulate with 2 and 4 players before you give me the handler.
+
+My game: &lt;name&gt;. Ask me what you need to know about it (engine, .exe name, how multiplayer works, where it keeps settings and saves).</pre>
+  <p class="small">For Codex, Google Antigravity, Cursor, Gemini CLI, Claude Desktop and other agents that use MCP. In VS Code, <a href="../tools/#get-vscode">our extension</a> already gives Copilot these tools.</p>
   </div>
   <div role="tabpanel" id="panel-chat" aria-labelledby="tab-chat" tabindex="0" hidden>
 <pre class="prompt">Help me write a Nucleus Co-op handler: the JavaScript file Nucleus Co-op (SplitScreen.Me) uses to run several copies of a PC game split-screen, one per player. Follow these rules exactly:
@@ -72,7 +89,8 @@ My game: &lt;name&gt;. Ask me what you need to know about it.</pre>
       pick(tabs[(j + tabs.length) % tabs.length], true);
     });
   });
-  if (location.hash === '#chatbots') pick(tabs[1]);
+  var byHash = { '#agents': 1, '#chatbots': 2 }[location.hash];
+  if (byHash) pick(tabs[byHash]);
 })();
 </script>
 </main>
