@@ -409,6 +409,8 @@ The linter runs over the 150 most-downloaded handlers on the Hub with **no error
 
 The repo also ships an agent kit, so coding agents (Claude Code, Copilot, Codex, Cursor, …) write handlers that load and work, instead of guessing option names from memory.
 
+Using ChatGPT, Claude or another AI in a chat, without tools? [Make a handler with AI](https://snailedlt.github.io/nucleus-devtools/ai/) has a starter prompt with the rules and the write, check, fix loop in the workbench.
+
 - **The `nucleus-handler` skill** (`plugin/skills/nucleus-handler/`) contains:
   - the hard rules: ES5 only, real options only, `Context` only inside callbacks, Hub line format, …;
   - a research → reference handlers → scaffold → lint → test-plan workflow;

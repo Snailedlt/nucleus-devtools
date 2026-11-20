@@ -654,20 +654,28 @@ const escHtml = (t) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;',
 // The start page (start/) and the tools page (tools/): the same look (start.html's head and styles), each its own
 // body. tools.html is only the body; it gets start.html's head with its own title, description and address.
 const startSrc = fs.readFileSync(path.join(here, 'src', 'start.html'), 'utf8');
-const toolsSrc = (() => {
+/** A page with start.html's head (look, fonts, header) and a body of its own: its title, description and address. */
+const sitePageSrc = (file, slug, title, desc, shareTitle) => {
   const head = startSrc.slice(0, startSrc.indexOf('<body>'));
-  const title = 'Get the tools: Nucleus Co-op handlers in VS Code, Notepad++, the browser and more';
-  const desc = 'Every Nucleus Co-op handler tool in one place: the browser workbench, VS Code, Notepad++, other editors through a language server, the ncdev command line and AI agents.';
   return head
     .replace(/<title>[^<]*<\/title>/, `<title>${title}</title>`)
     .replace(/(<meta name="description" content=")[^"]*"/, `$1${desc}"`)
-    .replace(/(<meta (?:property="og|name="twitter):title" content=")[^"]*"/g, `$1Get the tools: Nucleus Co-op handler tools"`)
+    .replace(/(<meta (?:property="og|name="twitter):title" content=")[^"]*"/g, `$1${shareTitle}"`)
     .replace(/(<meta (?:property="og|name="twitter):description" content=")[^"]*"/g, `$1${desc}"`)
-    .replace(/__BASE__start\/"/g, '__BASE__tools/"')
-    .replace(/(content="__BASE__)tools\/og\.png"/g, '$1start/og.png"')
+    .replace(/__BASE__start\/"/g, `__BASE__${slug}/"`)
+    .replace(new RegExp(`(content="__BASE__)${slug}/og\\.png"`, 'g'), '$1start/og.png"')
     // Its <script> stays as written (hlLangBlocks only on the HTML around it).
-    + '<body>\n' + fs.readFileSync(path.join(here, 'src', 'tools.html'), 'utf8').split(/(<script\b[\s\S]*?<\/script>)/i).map((part, i) => (i % 2 ? part : hlLangBlocks(part))).join('');
-})();
+    + '<body>\n' + fs.readFileSync(path.join(here, 'src', file), 'utf8').split(/(<script\b[\s\S]*?<\/script>)/i).map((part, i) => (i % 2 ? part : hlLangBlocks(part))).join('');
+};
+const toolsSrc = sitePageSrc('tools.html', 'tools',
+  'Get the tools: Nucleus Co-op handlers in VS Code, Notepad++, the browser and more',
+  'Every Nucleus Co-op handler tool in one place: the browser workbench, VS Code, Notepad++, other editors through a language server, the ncdev command line and AI agents.',
+  'Get the tools: Nucleus Co-op handler tools');
+// ai/: making a handler with ChatGPT, Claude, Copilot and other AI, chat or agent, checked by the tools.
+const aiSrc = sitePageSrc('ai.html', 'ai',
+  'Make a Nucleus Co-op handler with AI: ChatGPT, Claude, Copilot, Cursor',
+  'How to make a Nucleus Co-op handler with an AI chat or agent and check it before you trust it: a starter prompt, the write-check-fix loop, and what AI gets wrong.',
+  'Make a Nucleus Co-op handler with AI');
 const toolsDir = path.join(here, 'dist', 'pages', 'tools');
 fs.mkdirSync(toolsDir, { recursive: true });
 const renderSitePage = (src, section) =>
@@ -707,6 +715,8 @@ const renderSitePage = (src, section) =>
     })());
 fs.writeFileSync(path.join(startDir, 'index.html'), renderSitePage(startSrc, 'start/'));
 fs.writeFileSync(path.join(toolsDir, 'index.html'), renderSitePage(toolsSrc, 'tools/'));
+fs.mkdirSync(path.join(here, 'dist', 'pages', 'ai'), { recursive: true });
+fs.writeFileSync(path.join(here, 'dist', 'pages', 'ai', 'index.html'), renderSitePage(aiSrc, 'ai/'));
 // The gallery's screenshots (<tool>-<view>-light/dark.webp, the workbench's looks as workbench-look-<look>-…): each
 // view in light and dark, compared with the slider on the page. One set, also shown by the READMEs: the workbench's
 // (workbench-*) from this repo's docs/images/gallery, the editors' (vscode-*, notepadpp-*) from the repository root's docs/images/gallery.
@@ -748,7 +758,7 @@ let checksNav = [];
   const { writeRulePages } = await import('./rules-pages.mjs');
   let ruleIds;
   ({ ids: ruleIds, nav: checksNav } = writeRulePages({ hl: hlSem, outDir: path.join(here, 'dist', 'pages', 'rules'), startHtml: fs.readFileSync(path.join(here, 'src', 'start.html'), 'utf8'), RULES, RULE_DOCS, JS_RULES, base: PAGES_BASE, preview: PREVIEW, noindex: NOINDEX, feedbackSite, countsSite }));
-  if (!PREVIEW) fs.writeFileSync(path.join(here, 'dist', 'pages', 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[PAGES_BASE, `${PAGES_BASE}start/`, `${PAGES_BASE}tools/`, `${PAGES_BASE}rules/`, `${PAGES_BASE}learn/`, `${PAGES_BASE}docs/`, ...ruleIds.map((id) => `${PAGES_BASE}rules/${id}/`)].map((u) => `  <url><loc>${u}</loc></url>`).join('\n')}\n</urlset>\n`);
+  if (!PREVIEW) fs.writeFileSync(path.join(here, 'dist', 'pages', 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[PAGES_BASE, `${PAGES_BASE}start/`, `${PAGES_BASE}tools/`, `${PAGES_BASE}ai/`, `${PAGES_BASE}rules/`, `${PAGES_BASE}learn/`, `${PAGES_BASE}docs/`, ...ruleIds.map((id) => `${PAGES_BASE}rules/${id}/`)].map((u) => `  <url><loc>${u}</loc></url>`).join('\n')}\n</urlset>\n`);
 }
 // Learn (learn/): the lessons, one page with its own small bundle (src/learn/): the editor, the checks and Try it,
 // without the rest of the workbench. ESLint's general rules stay out (the lessons only need Nucleus' own checks).
@@ -874,7 +884,7 @@ for (const f of fs.readdirSync(path.join(here, 'src', 'editor-icons'))) if (f.en
       else if (e.name === 'index.html') fs.writeFileSync(f, page(fs.readFileSync(f, 'utf8')));
     }
   };
-  for (const sub of ['start', 'tools', 'learn', 'docs', 'rules', 'test-guide', 'votes']) add(path.join(here, 'dist', 'pages', sub));
+  for (const sub of ['start', 'tools', 'ai', 'learn', 'docs', 'rules', 'test-guide', 'votes']) add(path.join(here, 'dist', 'pages', sub));
   // The Duo and Nucli pages (design/, copied in as they are) count their page views too, and nothing else is added to them.
   const countOnly = (d) => {
     if (!script || !fs.existsSync(d)) return;

@@ -811,8 +811,14 @@ for (const theme of ['light', 'dark']) {
   await s.p.goto(BASE + 'start/#get-notepadpp');
   await s.p.waitForTimeout(500);
   check(/\/tools\/#get-notepadpp$/.test(s.p.url()), `${theme}: an old start-page link to the downloads goes to the tools page (${s.p.url()})`);
+  // Make a handler with AI: the starter prompt has a Copy button, and the page passes axe.
+  await s.p.goto(BASE + 'ai/');
+  await s.p.waitForTimeout(400);
+  const ai = await s.p.evaluate(() => ({ prompt: document.querySelector('pre.prompt')?.textContent ?? '', copy: !!document.querySelector('.copy-wrap pre.prompt + .copy-btn') }));
+  check(/ES5 JavaScript only/.test(ai.prompt) && ai.copy, `${theme}: the AI guide has the starter prompt with a Copy button`);
+  await axe(s.p, `${theme}, AI guide`);
   // Every page has the way home (the brand) and to the workbench in its header.
-  for (const u of ['start/', 'tools/', 'docs/', 'docs/Game.Play/', 'rules/', 'rules/syntax-error/', 'learn/']) {
+  for (const u of ['start/', 'tools/', 'ai/', 'docs/', 'docs/Game.Play/', 'rules/', 'rules/syntax-error/', 'learn/']) {
     await s.p.goto(BASE + u);
     const nav = await s.p.evaluate(() => ({ home: [...document.querySelectorAll('header a, .top a, nav a')].some((a) => /\/start\/$/.test(a.href)), wb: [...document.querySelectorAll('header a, .top a, nav a')].some((a) => a.textContent.trim() === 'Workbench') }));
     check(nav.home && nav.wb, `${theme}: ${u} links home and to the workbench from its header`);
@@ -934,7 +940,7 @@ await m.ctx.close();
     await s.ctx.close();
   }
   const ph = await page('light', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  for (const u of ['docs/Context.ModifySaveFile/', 'rules/', 'rules/syntax-error/', 'start/', 'tools/']) {
+  for (const u of ['docs/Context.ModifySaveFile/', 'rules/', 'rules/syntax-error/', 'start/', 'tools/', 'ai/']) {
     await ph.p.goto(BASE + u);
     const wide = await ph.p.evaluate(() => document.documentElement.scrollWidth - innerWidth);
     check(wide <= 1, `phone ${u}: no sideways scrolling, header included (${wide}px)`);

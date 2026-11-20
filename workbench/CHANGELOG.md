@@ -15,6 +15,8 @@ How to write it (people and AI agents read this, and the workbench shows it):
 ## Unreleased
 ### ⚠️ Changed
 - **A new address: https://snailedlt.github.io/nucleus-devtools/.** The workbench moved into the tools' repository, [nucleus-devtools](https://github.com/Snailedlt/nucleus-devtools), so it's built from the same commit as the checks it runs. Update your bookmarks; your drafts and settings come along (same site, new folder). Reports go to the same forms as the other tools'.
+### ✨ New
+- **Make a handler with AI: a guide.** A new page on the site (ai/) for people using ChatGPT, Claude, Copilot or another AI: a starter prompt with the rules a handler must follow, the write, check, fix loop in the workbench, the mistakes AI makes in handlers (each linked to its check), and how agents set up with the agent kit check their own work. Linked from the start and tools pages.
 ### 🛠️ Improved
 - **Nucli reacts once, then settles.** "Nothing to fix", "Oops" and "Fixed" play once and keep their ending (the tick, the "!", the fixed code) instead of repeating every few seconds; with Motion set to lively he goes on blinking, his electrons circling. Loaders keep moving while you wait, and Test all's ring is the new one from the concept sheet: the electrons ride the front of the ring as it fills. *Still* now shows each scene's own pose (a reaction its ending) rather than a frozen moment.
 ### ⚡ Faster
