@@ -151,7 +151,7 @@ ${AI_SPARK_CSS}
 ${o.aiFrameCss ? o.aiFrameCss({ fg: 'var(--fg)', muted: 'var(--muted)', line: 'var(--line)', surface: 'var(--surface)', link: 'var(--accent)' }) : ''}
 ${SITE_HEADER_CSS}${DOC_FEEDBACK_CSS}
 ${DRAWER_CSS}
-table { border-collapse: collapse; margin: 0 0 16px; font-size: 14px; } th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+table { border-collapse: collapse; margin: 0 0 16px; font-size: 14px; display: block; max-width: 100%; overflow-x: auto; } th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
 </style>
 </head>
 <body>
@@ -224,12 +224,27 @@ ${docsDrawer(up, here0, o.groups.map((g) => `<li><a href="${up}docs/${g.key}/">$
     const body = `<p class="crumbs">${crumbs.join(' › ')}</p>
 <h1>${esc(v ? title : 'Docs')}</h1>
 <p class="open-wb"><a href="${up}#docs${v ? `-${encodeURIComponent(v)}` : ''}">Open in the workbench</a> (search, and try it in a handler)</p>
-${withVotes(page, members.get(page.path), href)}
+${!v && o.toolPages?.length ? `<p class="small">For the tools themselves (the workbench, VS Code, Notepad++, ncdev, the MCP server): their commands, settings and shortcuts are under <a href="tools/">Tools</a>.</p>\n` : ''}${withVotes(page, members.get(page.path), href)}
 `;
     const dir = v ? path.join(o.outDir, v) : o.outDir;
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'index.html'), head(v ? `${title}: Nucleus Co-op handler docs` : 'Docs: every Nucleus Co-op handler option and call', first || 'Nucleus Co-op handler docs.', `${o.base}docs/${v ? `${v}/` : ''}`, up, v || '@api') + body + foot(up));
     written.push(v);
+  }
+  // Tools (tool-docs.mjs): docs/tools/ and a page per tool, reference only.
+  const tools = o.toolPages ?? [];
+  if (tools.length) {
+    const page = (slug, title, desc, inner, here0) => {
+      const up = '../'.repeat(slug.split('/').length + 1);
+      const crumbs = [`<a href="${up}start/">Nucleus handler tools</a>`, `<a href="${up}docs/">Docs</a>`, ...(slug === 'tools' ? ['Tools'] : [`<a href="${up}docs/tools/">Tools</a>`, esc(title)])];
+      const dir = path.join(o.outDir, slug);
+      fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(path.join(dir, 'index.html'), head(`${title}: Nucleus Co-op handler tools`, desc, `${o.base}docs/${slug}/`, up, here0) + `<p class="crumbs">${crumbs.join(' › ')}</p>\n<h1>${esc(title)}</h1>\n${inner.replaceAll('__UP__', up)}\n` + foot(up));
+      written.push(slug);
+    };
+    page('tools', 'Tools', 'The commands, settings and shortcuts of the Nucleus Co-op handler tools.', `<p>The reference for each tool: commands, settings, keys and setup. They share one engine, so a handler checked in one is checked the same in the others. To install them, see <a href="__UP__tools/">Get the tools</a>.</p>
+<ul class="dlist">${tools.map((t) => `<li><a href="__UP__docs/${t.slug}/">${esc(t.title)}</a>: ${esc(t.desc)}</li>`).join('')}<li><a href="__UP__ai/">Set up your AI</a>: prompts for Claude Code, other AI agents and chatbots.</li></ul>`, '@tools');
+    for (const t of tools) page(t.slug, t.title, t.desc, (t.intro ?? '') + (t.html ?? mdToHtml(t.md, t.mdHref ?? ((u) => u))), t.slug);
   }
   // The list the drawer shows (nav.js): each group's names with their first line, for the filter.
   const first = (d) => String(d ?? '').split('\n')[0].replace(/[`*\\_]/g, '').slice(0, 110);
@@ -237,7 +252,9 @@ ${withVotes(page, members.get(page.path), href)}
   const nav = o.groups.map((g) => ({ sec: 'api', key: g.key, title: g.title, items: entries.filter((e) => g.match(e.path)).sort((a, b) => a.path.localeCompare(b.path)).map((e) => ({ p: e.path, d: first(e.member.doc) })) }))
     .concat([{ sec: 'api', key: '', title: 'Nucleus values (enums)', items: (o.enums ?? []).map((n) => ({ p: `Nucleus.${n}`, d: '' })) }])
     // The checks (rules-pages.mjs): their own section, each item linking to rules/<id>/ by its title.
-    .concat((o.checks ?? []).map((g) => ({ sec: 'checks', key: g.key, title: g.title, items: g.items })));
+    .concat((o.checks ?? []).map((g) => ({ sec: 'checks', key: g.key, title: g.title, items: g.items })))
+    // Tools (tool-docs.mjs): its groups (Editors, Command line and AI); the AI setup page is the last item.
+    .concat([...new Set(tools.map((t) => t.group))].map((g, i, all) => ({ sec: 'tools', key: `tools:${g}`, title: g, items: tools.filter((t) => t.group === g).map((t) => ({ p: t.slug, t: t.title, d: t.desc, u: `docs/${t.slug}/` })).concat(i === all.length - 1 ? [{ p: 'ai', t: 'Set up your AI', d: 'Prompts for Claude Code, other AI agents and chatbots', u: 'ai/' }] : []) })));
   fs.writeFileSync(path.join(o.outDir, 'nav.json'), JSON.stringify(nav));
   fs.writeFileSync(path.join(o.outDir, 'nav.js'), NAV_JS);
   return written;
@@ -248,7 +265,7 @@ const NAV_JS = `(function () {
   var nav = document.getElementById('docs-drawer'); if (!nav) return;
   var base = nav.dataset.base, root = nav.dataset.root || base + '../', here = nav.dataset.here, list = document.getElementById('dn-list'), q = nav.querySelector('.dn-filter');
   // The list's sections, each heading linking to its own page.
-  var SECS = { api: ['Handler API', 'docs/'], checks: ['Checks', 'rules/'] };
+  var SECS = { api: ['Handler API', 'docs/'], checks: ['Checks', 'rules/'], tools: ['Tools', 'docs/tools/'] };
   var toggle = nav.querySelector('.dn-toggle');
   toggle.addEventListener('click', function () { var o = nav.classList.toggle('open'); toggle.setAttribute('aria-expanded', String(o)); if (o) q.focus(); });
   function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
@@ -263,7 +280,7 @@ const NAV_JS = `(function () {
     list.innerHTML = secs.map(function (s) {
       var gs = groups.filter(function (g) { return (g.sec || 'api') === s; });
       var mine = here === '@' + s || gs.some(function (g) { return g.key === here || g.items.some(function (i) { return i.p === here; }); });
-      var inner = '<li class="dn-all"><a href="' + root + SECS[s][1] + '"' + (here === '@' + s ? ' aria-current="page"' : '') + '>' + (s === 'checks' ? 'Every check' : 'All the docs') + '</a></li>' + gs.map(function (g) {
+      var inner = '<li class="dn-all"><a href="' + root + SECS[s][1] + '"' + (here === '@' + s ? ' aria-current="page"' : '') + '>' + (s === 'checks' ? 'Every check' : s === 'tools' ? 'All the tools' : 'All the docs') + '</a></li>' + gs.map(function (g) {
         var open = g.key === here || g.items.some(function (i) { return i.p === here; });
         return '<li><details' + (open ? ' open' : '') + '><summary>' + esc(g.title) + '<span class="n">' + g.items.length + '</span></summary><ul>' + g.items.map(function (i) { return '<li>' + link(i.p, '', i.t || (g.key && i.p.indexOf(g.key + '.') === 0 ? i.p.slice(g.key.length + 1) : i.p), i.u) + '</li>'; }).join('') + '</ul></details></li>';
       }).join('');
