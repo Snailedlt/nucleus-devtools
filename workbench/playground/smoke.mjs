@@ -373,6 +373,14 @@ for (const theme of ['light', 'dark']) {
           await p.keyboard.press('Control+J');
           await p.waitForTimeout(200);
           check(await p.evaluate(() => !!document.activeElement?.closest('#file-editor')), `${theme}: Ctrl+J from the results puts the focus in the open package file`);
+          // …and typing goes into that file (then undone, so the rest of the check sees the file as it was).
+          const fileText = () => p.evaluate(() => document.querySelector('#file-editor .CodeMirror').CodeMirror.getValue());
+          const beforeTyping = await fileText();
+          await p.keyboard.type('zq7');
+          const typed = await fileText();
+          await p.keyboard.press('Control+Z');
+          await p.waitForTimeout(100);
+          check(typed.includes('zq7') && !beforeTyping.includes('zq7') && (await fileText()) === beforeTyping, `${theme}: after Ctrl+J, typing edits the open package file`);
           await p.keyboard.press('Control+J');
           await p.waitForTimeout(200);
           await p.evaluate(() => { document.querySelector('#file-editor .CodeMirror').CodeMirror.replaceRange('; edited\n', { line: 0, ch: 0 }); document.querySelector('#share-open').click(); });
