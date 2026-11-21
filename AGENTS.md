@@ -196,6 +196,7 @@ Every user-visible change to the extension, ncdev, the Notepad++ plugin or the s
 ## Conventions
 
 - **Structured and data-driven.** Put content in data (JSON, typed fields) and render it, rather than writing it into strings or code, so it's easy to maintain and reads consistently for people (the AI docs' `basis` is an example: fields, rendered as a list, a line or words wherever it shows).
+- **One push per review round.** On a pull request under review, wait until the reviewer (CodeRabbit) has finished, fix every valid comment together, run the checks once and push once; a late or minor comment gets a reply and its fix goes with the next batch, and a wrong one gets a reply and no push. Each push reruns CI and the review, and many small ones make CodeRabbit pause. Verify a comment before acting on it: they are suggestions, and some are wrong.
 - When the maintainer has to run a workflow or change a setting, give the direct link (e.g. https://github.com/Snailedlt/nucleus-devtools/actions/workflows/release.yml) and the inputs to enter.
 - When you need network allowlist entries (hosts) or environment variables from the maintainer, always list them in a code block, one per line, ready to copy.
 

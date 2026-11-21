@@ -53,6 +53,8 @@ const arg = (flag) => {
 };
 // Checked before the browser starts.
 const ONLY = arg('--only')?.toLowerCase();
+// "learn," would match every section (an empty name is part of every name).
+if (ONLY !== undefined && ONLY.split(',').some((o) => !o.trim())) throw new Error(`--only has an empty name in "${ONLY}" (node smoke.mjs --list names the sections).`);
 const JOBS = arg('--jobs');
 if (JOBS !== undefined && !/^[1-9]\d*$/.test(JOBS)) throw new Error(`--jobs needs a whole number from 1 up, not "${JOBS}".`);
 async function runSections() {
