@@ -5,8 +5,7 @@ import { CONTEXT_TIPS, GENERAL_TIPS, Tip, TipContext, TipShow, tipShown } from '
 import { scanHandler, inCallback, Scan } from './lines';
 import { narrow } from './dom';
 import { keysText } from './kbd';
-import { binding } from './keybindings';
-import { ACTIONS } from './keyactions';
+import { binding, noKeyText } from './keybindings';
 
 // A tip's {key:actionId}: that action's key as it's bound now, in backticks so it is drawn as keys (kbd.ts keysText;
 // the binding as written, "Cmd+S", which the keycaps know on every platform). An action without a key is named
@@ -14,7 +13,7 @@ import { ACTIONS } from './keyactions';
 // still reads.
 const withKeys = (text: string) => text.replace(/\{key:(\w+)\}/g, (_, id: string) => {
   const key = binding(id);
-  return key ? '`' + key + '`' : `"${ACTIONS.find((a) => a.id === id)?.label ?? id}" (no key set)`;
+  return key ? '`' + key + '`' : noKeyText(id);
 });
 import { BETA } from './testplan';
 

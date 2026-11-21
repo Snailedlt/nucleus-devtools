@@ -33,7 +33,7 @@ const plain = (t: string) => t.replace(/`/g, '');
 
 export interface TourStep {
   title: string;
-  /** {key:<action id>} in it is that shortcut as it is bound when the step is shown (TourDeps.keyLabel). */
+  /** {key:<action id>} in it is that shortcut as it is bound when the step is shown (TourDeps.keyText). */
   text: string;
   /** Where it points: the first of these that is shown. None shown: the step is left out. */
   targets: string[];
@@ -68,8 +68,9 @@ export interface TourDeps {
   selectTab: (id: string) => void;
   /** The tour was finished (not skipped). */
   finished?: () => void;
-  /** A shortcut's keys as they are bound now, for {key:<action id>} in a step's text. */
-  keyLabel?: (id: string) => string;
+  /** What {key:<action id>} in a step's text becomes: the shortcut's keys as they are bound now, in backticks, or
+   *  words for an action that has no key. */
+  keyText?: (id: string) => string;
 }
 interface Saved { state: 'done' | 'skipped'; step?: number }
 
@@ -208,7 +209,7 @@ export function initTour(d: TourDeps) {
     q('#tour-title').textContent = s.title;
     // The keys are looked up now, not when the steps were built: a shortcut changed since the page loaded shows
     // as it is, and it's the one the step's action listens for.
-    const text = s.text.replace(/\{key:(\w+)\}/g, (_, id: string) => '`' + (d.keyLabel?.(id) ?? id) + '`');
+    const text = s.text.replace(/\{key:(\w+)\}/g, (_, id: string) => d.keyText?.(id) ?? id);
     q('#tour-text').innerHTML = tourHtml(text);
     const a = q('#tour-act');
     a.hidden = !sa;

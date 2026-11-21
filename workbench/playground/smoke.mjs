@@ -598,6 +598,18 @@ for (const theme of ['light', 'dark']) section(`workbench, ${theme}`, async () =
     const linesStep = await q.evaluate(() => ({ title: document.getElementById('tour-title').textContent, keys: [...document.querySelectorAll('#tour-text kbd')].map((k) => k.textContent).join('+') }));
     check(linesStep.title === 'Lines' && /9/.test(linesStep.keys) && !/B/.test(linesStep.keys), `${theme}: the tour names a shortcut as it is bound now, without a reload (${JSON.stringify(linesStep)})`);
     await q.keyboard.press('Escape');
+    // A shortcut that was cleared: the step names the action instead of showing an empty key.
+    await q.keyboard.press('Control+Comma');
+    await q.click('#st-keys');
+    await q.fill('#sp-keys .kb-q', 'lines');
+    await q.click('#sp-keys [data-kb-change="lines"]');
+    await q.click('#sp-keys [data-kb-none="lines"]');
+    await q.keyboard.press('Escape');
+    await takeTour();
+    for (let i = 0; i < 12 && (await q.textContent('#tour-title')) !== 'Lines'; i++) { await q.click('[data-tour=next]'); await q.waitForTimeout(200); }
+    const noKey = await q.textContent('#tour-text');
+    check(/\(no key set\) opens and closes the list/.test(noKey) && !noKey.includes('`'), `${theme}: the tour names an action whose shortcut was cleared (${noKey.slice(-70)})`);
+    await q.keyboard.press('Escape');
     await fresh.close();
   }
   // One handler per tab: another handler opens a new tab; one that's already open switches to its tab.

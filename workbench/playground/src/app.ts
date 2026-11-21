@@ -18,7 +18,7 @@ import 'codemirror/addon/edit/matchbrackets';
 import 'codemirror/addon/edit/closebrackets';
 import { semanticMarks } from './semmarks';
 import { codeHandlers, fixedCodeKeys, foldRange, keysByPosition, lineCommentFold, selectReferences, vscodeMouse } from './keys';
-import { ACTIONS, appActionFor, codeKeyMap, keyLabel, labelOf, binding, onBindingsChange, stepOf, type Group } from './keybindings';
+import { ACTIONS, appActionFor, codeKeyMap, keyLabel, labelOf, noKeyText, binding, onBindingsChange, stepOf, type Group } from './keybindings';
 import { lint, Diagnostic, RULES, lineOf, pluginGlobals, type TextEdit } from '@core/lint';
 import { api, ownerLabel, Resolved, type Member } from '@core/api';
 import { resolveAt } from '@core/complete';
@@ -3043,8 +3043,9 @@ const tour = initTour({
   setView,
   getTab: visibleTab,
   selectTab,
-  // Shortcuts named in a step's text ({key:…}) show as they are bound when the step comes up.
-  keyLabel: labelOf,
+  // Shortcuts named in a step's text ({key:…}) show as they are bound when the step comes up; an action whose
+  // shortcut was cleared is named instead, as in the tips.
+  keyText: (id) => { const keys = labelOf(id); return keys ? '`' + keys + '`' : noKeyText(id); },
   // Finishing the tour ticks its task in Help test this beta.
   finished: () => { if (BETA && !testDone('tour')) setTestDone('tour', true); },
   // Title, text and where each step points come from tourparts.json (the docs' labelled screenshot uses the same
