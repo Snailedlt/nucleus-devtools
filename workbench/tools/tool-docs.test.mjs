@@ -176,7 +176,7 @@ test('tool docs: render commands, settings, chords and MCP input details from so
   assert.equal(other.mdHref('#intro'), 'https://example.test/owner/repo/blob/main/PORTING.md#intro');
   assert.equal(other.mdHref('https://example.org/help'), 'https://example.org/help');
   // Every tool's page starts with what it is and when it is useful.
-  for (const slug of ['tools/workbench', 'tools/vscode', 'tools/notepadpp', 'tools/ncdev', 'tools/mcp']) assert.match(bySlug[slug].html, /^<div class="tool-intro">\n<p class="lead">What \w+ is\.<\/p>\n<h2 id="when">When it is useful<\/h2>\n<ul class="dlist"><li>When one\.<\/li><li>When two\.<\/li><\/ul>/, slug);
+  for (const slug of ['tools/workbench', 'tools/vscode', 'tools/notepadpp', 'tools/ncdev', 'tools/mcp']) assert.match(bySlug[slug].html, /^<div class="tool-intro">\n<p class="lead">What \w+ is\.<\/p>\n<h2 id="when">When to use it<\/h2>\n<ul class="dlist"><li>When one\.<\/li><li>When two\.<\/li><\/ul>/, slug);
   assert.match(other.intro, /^<div class="tool-intro">/);
   // The guide's text: steps, keys, links to other pages and to the site, bold and code; all escaped.
   const over = bySlug['tools/workbench'].html;
@@ -287,11 +287,11 @@ test('tool docs: writer registers nested pages, resolves their links and omits T
   const options = {
     outDir, startHtml: '<style></style>', docsPage: () => ({ markdown: 'API reference', crumbs: [] }),
     docsView: (value) => value, allEntries: () => [], groups: [], base: 'https://example.test/project/',
-    noindex: '',
+    noindex: '', hl: (code) => `[${code}]`,
   };
   const toolPages = [
     { slug: 'tools/editor', title: 'Editor & keys', nav: 'Editor', desc: 'Shortcuts', group: 'Editors', html: '<a href="__UP__start/">Start</a>' },
-    { slug: 'tools/cli', title: 'CLI', desc: 'Commands', group: 'Command line and AI', md: '## Usage\n\n[Manual](manual.md)', mdHref: (url) => `https://example.test/${url}` },
+    { slug: 'tools/cli', title: 'CLI', desc: 'Commands', group: 'Command line and AI', md: '## Usage\n\n[Manual](manual.md)\n\n```lua\nlocal a = "<b>" -- note\n```\n\n```elisp\n(setq a 1)\n```\n\n```js\nGame.Play = 1;\n```\n\n```\nGame.GUID = 2;\n```\n\n```ini\nkey=value\n```\n\nAfter.', mdHref: (url) => `https://example.test/${url}` },
   ];
   const page = (slug) => fs.readFileSync(path.join(outDir, slug, 'index.html'), 'utf8');
   const nav = () => JSON.parse(fs.readFileSync(path.join(outDir, 'nav.json'), 'utf8')).filter(({ sec }) => sec === 'tools');
@@ -304,6 +304,13 @@ test('tool docs: writer registers nested pages, resolves their links and omits T
   assert.doesNotMatch(page('tools/editor'), /__UP__/);
   assert.match(page('tools/cli'), /<h2>Usage<\/h2>/);
   assert.match(page('tools/cli'), /href="https:\/\/example\.test\/manual\.md"/);
+  // A fenced block in another language is marked for that language's colours (the site's page pass), not coloured
+  // as handler JavaScript; handler code (js, or no language) gets the handler colours; an unknown one stays plain.
+  assert.match(page('tools/cli'), /<pre class="cfg" data-lang="lua"><code>local a = &quot;&lt;b&gt;&quot; -- note<\/code><\/pre>/);
+  assert.match(page('tools/cli'), /<pre class="cfg" data-lang="commonlisp"><code>\(setq a 1\)<\/code><\/pre>/);
+  assert.match(page('tools/cli'), /<pre class="cfg hl"><code>\[Game\.Play = 1;\]<\/code><\/pre>/);
+  assert.match(page('tools/cli'), /<pre class="cfg hl"><code>\[Game\.GUID = 2;\]<\/code><\/pre>/);
+  assert.match(page('tools/cli'), /<pre class="cfg"><code>key=value<\/code><\/pre>\n<p>After\.<\/p>/);
   assert.deepEqual(nav().map(({ title, items }) => [title, items.map(({ u }) => u)]), [
     ['Editors', ['docs/tools/editor/']],
     ['Command line and AI', ['docs/tools/cli/', 'ai/']],

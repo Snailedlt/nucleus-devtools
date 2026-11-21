@@ -110,14 +110,14 @@ const video = (name, title, line, d) => {
   const v = d.videos[name];
   if (!v) throw new Error(`tool docs: no video "${name}" on the start page (its size is read from there).`);
   return `<figure class="shot vid"><video controls preload="none" playsinline muted poster="__UP__start/videos/${name}-poster.jpg" width="${v.w}" height="${v.h}" aria-label="${esc(title)}: a short demo with captions"><source src="__UP__start/videos/${name}.mp4" type="video/mp4"></video>
-<figcaption>${esc(line)} Captions, no sound. <a href="__UP__start/videos/${name}.mp4">Download</a></figcaption></figure>`;
+<figcaption>${esc(line)} It has captions and no sound. <a href="__UP__start/videos/${name}.mp4">Download</a></figcaption></figure>`;
 };
 
 /** What a tool is and when it is useful (data/tools.json), on top of its page. */
 function intro(t, c, d) {
   return `<div class="tool-intro">
 <p class="lead">${rich(t.what, c)}</p>
-<h2 id="when">When it is useful</h2>
+<h2 id="when">When to use it</h2>
 <ul class="dlist">${t.when.map((w) => `<li>${rich(w, c)}</li>`).join('')}</ul>
 ${t.not ? `<p class="small">${rich(t.not, c)}</p>\n` : ''}<p><a class="btn primary" href="__UP__${t.get.href}">${esc(t.get.label)}</a></p>
 </div>${t.video ? `\n${video(t.video, t.title, t.videoLine, d)}` : ''}`;
@@ -187,8 +187,8 @@ export function toolDocs(d) {
       if (d.map) d.used.add('workbench-map');
       body.push(`<h2 id="where-things-are">Where things are</h2>
 ${d.map ? `<figure class="shot wb-map"><div class="map-scroll"><div class="map-frame"><img class="th-light" src="__UP__start/gallery/workbench-map-light.webp" alt="The workbench: the code on the left, the results on the right, the tools in a bar on top" width="${d.map.width}" height="${d.map.height}"><img class="th-dark" src="__UP__start/gallery/workbench-map-dark.webp" alt="" aria-hidden="true" width="${d.map.width}" height="${d.map.height}">${pins}</div></div>
-<figcaption>The numbers are explained below. The tour in the workbench points at the same parts.</figcaption></figure>\n` : ''}<ol class="map-legend">${d.tourParts.parts.map((x) => `<li id="part-${x.id}"><strong>${esc(x.title)}.</strong> ${rich(x.text, c)}${x.page && x.page !== p.id ? ` <a href="${c.guideHref(x.page)}">More: ${esc(guidePage[x.page].nav)}</a>` : ''}</li>`).join('')}</ol>
-<p class="small">The layout can be different: the tools can sit in a side rail, and Files and Lines on either side of the code (<a href="${c.guideHref('settings')}">Settings and looks</a>). On a phone, the code and the results take turns.</p>`);
+<figcaption>Each number is explained below. The tour inside the workbench walks you through the same parts.</figcaption></figure>\n` : ''}<ol class="map-legend">${d.tourParts.parts.map((x) => `<li id="part-${x.id}"><strong>${esc(x.title)}.</strong> ${rich(x.text, c)}${x.page && x.page !== p.id ? ` <a href="${c.guideHref(x.page)}">More: ${esc(guidePage[x.page].nav)}</a>` : ''}</li>`).join('')}</ol>
+<p class="small">Your layout may look different. The tools can sit in a rail on the side, and Files and Lines can be on either side of the code (see <a href="${c.guideHref('settings')}">Settings and looks</a>). On a phone you switch between the code and the results.</p>`);
     } else {
       body.push(`<p class="lead">${rich(p.intro, c)}</p>`);
       if (parts.length) body.push(`<p class="where small">Where it is: ${parts.map((x) => `<a href="${c.guideHref('overview')}#part-${x.id}" title="Where things are"><span class="pin" aria-hidden="true">${partNo[x.id]}</span>${esc(x.title)}</a>`).join(' ')}</p>`);
@@ -198,51 +198,51 @@ ${d.map ? `<figure class="shot wb-map"><div class="map-scroll"><div class="map-f
     for (const s of p.sections ?? []) body.push(`<h2 id="${s.h.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')}">${esc(s.h)}</h2>\n${blocks(s.md, c)}`);
     if (p === overview) {
       body.push(`<h2 id="from-idea-to-nucleus">From an idea to a handler in Nucleus</h2>
-${flowDiagram(d, 'The workbench covers the first four steps. Testing in Nucleus Co-op and publishing on the Hub happen outside it.', (id) => ({ write: c.guideHref('writing'), check: c.guideHref('check'), try: c.guideHref('try-it'), save: c.guideHref('files') })[id] ?? null)}`);
-      body.push(`<h2 id="the-guide">The guide</h2>
+${flowDiagram(d, 'The workbench handles the first four steps. Testing in Nucleus Co-op and uploading to the Hub happen outside it.', (id) => ({ write: c.guideHref('writing'), check: c.guideHref('check'), try: c.guideHref('try-it'), save: c.guideHref('files') })[id] ?? null)}`);
+      body.push(`<h2 id="the-guide">What's in this guide</h2>
 <ul class="tool-cards">${d.guide.pages.slice(1).map((x) => `<li><a href="${c.guideHref(x.id)}"><strong>${esc(x.nav)}</strong><small>${esc(x.desc)}</small></a></li>`).join('')}</ul>`);
     }
-    if (p.settingsTabs) body.push(`<h2 id="sections">What Settings has</h2>\n<ul class="chips">${d.settingsTabs.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>`);
+    if (p.settingsTabs) body.push(`<h2 id="sections">Sections in Settings</h2>\n<ul class="chips">${d.settingsTabs.map((t) => `<li>${esc(t)}</li>`).join('')}</ul>`);
     if (p.allKeys) body.push([...new Set(d.actions.map((a) => a.group))].map((g) => `<h2>${esc(g)}</h2>\n${keyTable(d.actions.filter((a) => a.group === g))}`).join('\n'));
-    if (p.keys?.length) body.push(`<h2 id="keys">Keys</h2>\n${keyTable(p.keys.map((id) => { if (!action[id]) throw new Error(`tool docs: guide page "${p.id}" lists the key "${id}", which is not an action in keyactions.ts.`); return action[id]; }))}\n<p class="small">These are the defaults; <a href="${c.guideHref('shortcuts')}">all shortcuts</a>.</p>`);
-    if (p.tips?.length) body.push(`<h2 id="good-to-know">Good to know</h2>\n<ul class="dlist tips">${p.tips.map((id) => { if (!tipText[id]) throw new Error(`tool docs: guide page "${p.id}" lists the tip "${id}", which is not in tips.ts.`); return `<li>${rich(tipText[id], c)}</li>`; }).join('')}</ul>`);
-    body.push(`<nav class="guide-nav" aria-label="The workbench guide">${prev ? `<a rel="prev" href="${c.guideHref(prev.id)}"><small>Before</small>${esc(prev.nav)}</a>` : '<span></span>'}${next ? `<a rel="next" href="${c.guideHref(next.id)}"><small>Next</small>${esc(next.nav)}</a>` : '<span></span>'}</nav>
-<p class="small"><a href="__UP__">Open the workbench</a> · <a href="__UP__#tour">Take the tour there</a></p>`);
+    if (p.keys?.length) body.push(`<h2 id="keys">Keys</h2>\n${keyTable(p.keys.map((id) => { if (!action[id]) throw new Error(`tool docs: guide page "${p.id}" lists the key "${id}", which is not an action in keyactions.ts.`); return action[id]; }))}\n<p class="small">These are the default keys. <a href="${c.guideHref('shortcuts')}">See all shortcuts</a>.</p>`);
+    if (p.tips?.length) body.push(`<h2 id="tips">Tips from the workbench</h2>\n<ul class="dlist tips">${p.tips.map((id) => { if (!tipText[id]) throw new Error(`tool docs: guide page "${p.id}" lists the tip "${id}", which is not in tips.ts.`); return `<li>${rich(tipText[id], c)}</li>`; }).join('')}</ul>`);
+    body.push(`<nav class="guide-nav" aria-label="The workbench guide">${prev ? `<a rel="prev" href="${c.guideHref(prev.id)}"><small>Previous</small>${esc(prev.nav)}</a>` : '<span></span>'}${next ? `<a rel="next" href="${c.guideHref(next.id)}"><small>Next</small>${esc(next.nav)}</a>` : '<span></span>'}</nav>
+<p class="small"><a href="__UP__">Open the workbench</a> · <a href="__UP__#tour">Take the tour in it</a></p>`);
     pages.push({ slug: p.slug, group: groupTitle.workbench, title: p.title, nav: p.nav, desc: p.desc, html: body.join('\n') });
   }
 
   // Editors: the overview (which editor, and the comparison), then each editor's page.
   const lsp = d.editors.editors;
   pages.push({
-    slug: 'tools/editors', group: groupTitle.editors, title: 'Editors: which one, and how they compare', nav: 'Compare the editors', desc: 'VS Code, Notepad++, other editors through the language server, and the workbench: what each can do.',
-    html: `<p class="lead">Every editor here gets the same checks, fixes, suggestions and docs, because they all run one engine. They differ in how you install them and in a few extras.</p>
-<h2 id="which">Which one</h2>
+    slug: 'tools/editors', group: groupTitle.editors, title: 'Picking an editor', nav: 'Compare the editors', desc: 'VS Code, Notepad++, other editors and the workbench side by side, and what each one can do.',
+    html: `<p class="lead">All of these give you the same checks, fixes, suggestions and docs, since the same engine runs underneath. Where they differ is in how you install them and in a few extras.</p>
+<h2 id="which">Which one to pick</h2>
 <ul class="tool-cards two">
-<li><a href="__UP__docs/tools/vscode/"><strong>VS Code</strong><small>The most complete: a Docs panel, Try it beside the code and a debugger. Recommended if you have no favourite.</small></a></li>
-<li><a href="__UP__docs/tools/notepadpp/"><strong>Notepad++</strong><small>The editor handler authors use most. One command sets it up. No debugger.</small></a></li>
-<li><a href="__UP__docs/tools/other-editors/"><strong>${lsp.slice(0, 3).map((e) => esc(e.tile.name)).join(', ')} and others</strong><small>Any editor with a language-server client, with a few lines of config: ${lsp.map((e) => esc(e.tile.name)).join(', ')}.</small></a></li>
-<li><a href="__UP__docs/tools/workbench/"><strong>No editor: the workbench</strong><small>The same tools in your browser. Nothing to install.</small></a></li>
+<li><a href="__UP__docs/tools/vscode/"><strong>VS Code</strong><small>Has the most in it, including a Docs panel, Try it next to your code and a debugger. If you don't have a favourite editor, pick this one.</small></a></li>
+<li><a href="__UP__docs/tools/notepadpp/"><strong>Notepad++</strong><small>The most popular editor among handler authors. Setup is one command. It has no debugger.</small></a></li>
+<li><a href="__UP__docs/tools/other-editors/"><strong>${lsp.slice(0, 3).map((e) => esc(e.tile.name)).join(', ')} and others</strong><small>These need a few lines of config. We have setups for ${lsp.slice(0, -1).map((e) => esc(e.tile.name)).join(', ')} and ${esc(lsp.at(-1).tile.name)}. Other editors with a language-server client should work too.</small></a></li>
+<li><a href="__UP__docs/tools/workbench/"><strong>Or no editor at all</strong><small>The workbench has the same tools in a browser tab, with nothing to install.</small></a></li>
 </ul>
-<h2 id="compare">Compare</h2>
+<h2 id="compare">Side by side</h2>
 <div class="compare-wrap" tabindex="0" role="region" aria-label="Features by editor (scrolls sideways)">
 <table class="compare">
 ${d.compareHtml}
 </table>
 </div>
 <h2 id="language-server-editors">Editors that use the language server</h2>
-<p>These all run <code class="use">ncdev lsp</code>. How far each setup has been tested:</p>
+<p>These all run <code class="use">ncdev lsp</code>. Here's how far each setup has been tested.</p>
 ${table(['Editor', 'Setup', 'Tested'], lsp.map((e) => [esc(e.name), esc(e.tile.line), d.editorTag(e.id)]))}
-<p class="small">Their setups are on <a href="__UP__docs/tools/other-editors/">Other editors</a>. Yours isn't listed? The same server works in any editor with a language-server client; <a href="${d.repoUrl}/blob/main/PORTING.md">PORTING.md</a> says how.</p>`,
+<p class="small">The setups themselves are on <a href="__UP__docs/tools/other-editors/">Other editors</a>. If your editor isn't here, the server should still work as long as the editor has a language-server client. <a href="${d.repoUrl}/blob/main/PORTING.md">PORTING.md</a> explains how to wire it up.</p>`,
   });
   pages.push({
-    slug: 'tools/vscode', group: groupTitle.editors, title: 'VS Code', nav: 'VS Code', desc: 'What the VS Code extension does, and its commands, keys and settings.',
+    slug: 'tools/vscode', group: groupTitle.editors, title: 'VS Code', nav: 'VS Code', desc: 'What the VS Code extension does, with its commands, keys and settings.',
     html: `${intro(tool.vscode, c, d)}
 <div class="shots">${shots(tool.vscode.shots, d)}</div>
 <h2 id="how-it-works">How it works</h2>
 <ul class="dlist">
-<li>Open a handler: a .js file in a <code class="use">handlers</code> folder, or any .js file that looks like one. It is checked as you type, and the problems show in the code and in the Problems panel.</li>
-<li><kbd>Ctrl+.</kbd> on a problem lists its fixes. Hover a name for its docs; the link in the hover opens the Nucleus Docs panel beside the code.</li>
-<li>The commands below are in the command palette (<kbd>Ctrl+Shift+P</kbd>, type "Nucleus").</li>
+<li>Open a handler. The extension recognises a .js file in a <code class="use">handlers</code> folder, and any other .js file that looks like a handler. From then on it's checked while you type, with problems underlined in the code and listed in the Problems panel.</li>
+<li>Press <kbd>Ctrl+.</kbd> on a problem to see its fixes. Hover a name to read its docs, and follow the link in the hover if you want the Nucleus Docs panel open beside your code.</li>
+<li>Everything else is in the command palette. Press <kbd>Ctrl+Shift+P</kbd> and type "Nucleus".</li>
 </ul>
 <h2 id="commands">Commands</h2>
 ${table(['Command'], (d.pkg.contributes.commands ?? []).map((x) => [esc(cmdTitle[x.command])]))}
@@ -250,21 +250,21 @@ ${table(['Command'], (d.pkg.contributes.commands ?? []).map((x) => [esc(cmdTitle
 ${table(['Command', 'Keys'], (d.pkg.contributes.keybindings ?? []).map((k) => [esc(cmdTitle[k.command] ?? k.command), keys(k.key.replace(/\b\w/g, (x) => x.toUpperCase())) + (k.mac && k.mac !== k.key ? ` <span class="small">(Mac: ${keys(k.mac.replace(/\b\w/g, (x) => x.toUpperCase()).replace(/\bCmd\b/g, '⌘'))})</span>` : '')]))}
 <h2 id="settings">Settings</h2>
 ${table(['Setting', 'Default', 'What it does'], conf.map(([k, v]) => [`<code>${esc(k)}</code>`, v.default === undefined || typeof v.default === 'object' ? '' : `<code>${esc(JSON.stringify(v.default))}</code>`, md(v.markdownDescription ?? v.description ?? '')]))}
-<p class="small">The commands, keys and settings are generated from the extension's manifest (<code class="use">package.json</code>).</p>`,
+<p class="small">These lists are generated from the extension's <code class="use">package.json</code>.</p>`,
   });
   pages.push({
-    slug: 'tools/notepadpp', group: groupTitle.editors, title: 'Notepad++', nav: 'Notepad++', desc: 'What the Notepad++ plugin does, and its menu.',
+    slug: 'tools/notepadpp', group: groupTitle.editors, title: 'Notepad++', nav: 'Notepad++', desc: 'What the Notepad++ plugin does, and what\'s in its menu.',
     html: `${intro(tool.notepadpp, c, d)}
 <div class="shots">${shots(tool.notepadpp.shots, d)}</div>
 <h2 id="how-it-works">How it works</h2>
 <ul class="dlist">
-<li>The plugin starts <code class="use">ncdev</code> in the background and asks it about the handler you have open, so Notepad++ shows the same problems and docs as the other tools.</li>
-<li>Problems are underlined as you type. Hover one for what is wrong; <kbd>Alt+Enter</kbd> fixes it.</li>
-<li>Everything else is in the menu: <strong>Plugins › Nucleus Co-op handlers</strong>.</li>
+<li>The plugin runs <code class="use">ncdev</code> in the background and asks it about the handler you have open. That's why Notepad++ shows the same problems and docs as the other tools.</li>
+<li>Problems get underlined while you type. Hover one to read what's wrong, or press <kbd>Alt+Enter</kbd> to fix it.</li>
+<li>The rest is in the menu, under <strong>Plugins › Nucleus Co-op handlers</strong>.</li>
 </ul>
 <h2 id="menu">The Nucleus menu</h2>
 <ul class="dlist">${menu.map((m) => (m.label ? `<li>${esc(m.label)}${m.keys ? ` (${keys(m.keys)})` : ''}</li>` : '</ul><ul class="dlist">')).join('')}</ul>
-<p class="small">The menu is generated from the plugin's own.</p>`,
+<p class="small">This list is read from the plugin's own menu.</p>`,
   });
   pages.push({
     slug: 'tools/other-editors', group: groupTitle.editors, title: 'Other editors', nav: 'Other editors', desc: `The language server and debugger setups: ${[...d.porting.slice(wiring, end).matchAll(/^### ([^(\n`]+)/gm)].map((m) => m[1].trim()).filter((x) => !/^(Anything|Settings)/.test(x)).join(', ')}.`,
@@ -272,18 +272,18 @@ ${table(['Setting', 'Default', 'What it does'], conf.map(([k, v]) => [`<code>${e
     mdHref: (u) => (/^https?:/.test(u) ? u : u.startsWith('#') ? `${d.repoUrl}/blob/main/PORTING.md${u}` : `${d.repoUrl}/blob/main/${u}`),
     intro: `${intro(tool['other-editors'], c, d)}
 <h2 id="how-it-works">How it works</h2>
-<figure class="dg" aria-labelledby="dg-lsp-cap"><ol class="dg-flow pair"><li><span><strong>Your editor</strong><small>shows problems, docs, suggestions</small></span></li><li><span><strong>ncdev lsp</strong><small>checks the handler, answers</small></span></li></ol>
-<figcaption id="dg-lsp-cap">Your editor starts <code class="use">ncdev lsp</code> and talks to it as you type. The server does the work; the editor shows the result.</figcaption></figure>
-<p class="small">The setups below are from <a href="${d.repoUrl}/blob/main/PORTING.md">PORTING.md</a>, which also covers porting the tools to another editor. <a href="__UP__docs/tools/editors/#language-server-editors">How far each is tested</a>.</p>`,
+<figure class="dg" aria-labelledby="dg-lsp-cap"><ol class="dg-flow pair"><li><span><strong>Your editor</strong><small>shows problems, docs and suggestions</small></span></li><li><span><strong>ncdev lsp</strong><small>checks the handler</small></span></li></ol>
+<figcaption id="dg-lsp-cap">Your editor starts <code class="use">ncdev lsp</code> and talks to it while you type. The server works out what's wrong with the handler, and your editor displays it.</figcaption></figure>
+<p class="small">The setups below come from <a href="${d.repoUrl}/blob/main/PORTING.md">PORTING.md</a>, which also explains how to port the tools to an editor we don't cover yet. You can see <a href="__UP__docs/tools/editors/#language-server-editors">how far each one is tested</a>.</p>`,
   });
   pages.push({
-    slug: 'tools/ncdev', group: groupTitle['cli-ai'], title: 'ncdev (command line)', nav: 'ncdev (command line)', desc: 'What ncdev is for, and every command and option.',
+    slug: 'tools/ncdev', group: groupTitle['cli-ai'], title: 'ncdev (command line)', nav: 'ncdev (command line)', desc: 'What ncdev is for, with every command and option.',
     html: `${intro(tool.ncdev, c, d)}
 <h2 id="how-it-works">How it works</h2>
 <ul class="dlist">
-<li><code class="use">ncdev lint handlers/</code> checks every handler in a folder and exits with an error code when one has errors, so a script can stop there.</li>
-<li><code class="use">ncdev simulate handler.js --players 3</code> is Try it in a terminal: each player's window, launch arguments and file changes.</li>
-<li><code class="use">ncdev &lt;command&gt; --help</code> prints one command's part of the help.</li>
+<li><code class="use">ncdev lint handlers/</code> checks every handler in a folder. If any of them has errors it exits with an error code, which is what a script or a CI job needs.</li>
+<li><code class="use">ncdev simulate handler.js --players 3</code> is Try it in a terminal. It prints each player's window, launch arguments and file changes.</li>
+<li>Add <code class="use">--help</code> after a command to see only that command's part of the help.</li>
 </ul>
 <h2 id="commands">Commands</h2>
 ${table(['Command', 'What it does'], cmds.commands.map((x) => [x.use.map(use).join('<br>'), md(x.desc)]))}
@@ -291,32 +291,32 @@ ${table(['Command', 'What it does'], cmds.commands.map((x) => [x.use.map(use).jo
 ${table(['Option', 'What it does'], cmds.options.map((x) => [x.use.map(use).join('<br>'), md(x.desc)]))}
 <h2 id="lint-options">Options of <code class="use">ncdev lint</code></h2>
 ${table(['Option', 'What it does'], cmds.lint.map((x) => [x.use.map(use).join('<br>'), md(x.desc)]))}
-<p class="small">The commands and options are generated from <code class="use">ncdev --help</code>.</p>`,
+<p class="small">This reference is generated from <code class="use">ncdev --help</code>.</p>`,
   });
   pages.push({
-    slug: 'tools/mcp', group: groupTitle['cli-ai'], title: 'MCP server (AI agents)', nav: 'MCP server (AI agents)', desc: 'What the MCP server gives AI agents, and each of its tools.',
+    slug: 'tools/mcp', group: groupTitle['cli-ai'], title: 'MCP server (AI agents)', nav: 'MCP server (AI agents)', desc: 'What the MCP server gives AI agents, tool by tool.',
     html: `${intro(tool.mcp, c, d)}
 <h2 id="how-it-works">How it works</h2>
-<figure class="dg" aria-labelledby="dg-mcp-cap"><ol class="dg-flow pair"><li><span><strong>Your AI agent</strong><small>writes the handler</small></span></li><li><span><strong>ncdev mcp</strong><small>looks up, checks, simulates</small></span></li></ol>
-<figcaption id="dg-mcp-cap">The agent starts <code class="use">ncdev mcp</code> and calls the tools below while it works: it looks a name up before using it, and checks the handler before showing it to you.</figcaption></figure>
+<figure class="dg" aria-labelledby="dg-mcp-cap"><ol class="dg-flow pair"><li><span><strong>Your AI agent</strong><small>writes the handler</small></span></li><li><span><strong>ncdev mcp</strong><small>looks things up, checks, runs Try it</small></span></li></ol>
+<figcaption id="dg-mcp-cap">The agent starts <code class="use">ncdev mcp</code> and calls the tools below as it works. A well-behaved agent looks a name up before using it and runs Check before it shows you the handler.</figcaption></figure>
 <h2 id="tools">The tools</h2>
 ${d.mcpTools.map((t) => {
       const props = Object.entries(t.inputSchema?.properties ?? {});
       const req = new Set(t.inputSchema?.required ?? []);
       return `<h3 id="${esc(t.name)}"><code>${esc(t.name)}</code>${t.title ? `: ${esc(t.title)}` : ''}</h3>\n<p>${md(t.description)}</p>${props.length ? `\n${table(['Parameter', 'Type', 'What it is'], props.map(([k, v]) => [`<code>${esc(k)}</code>${req.has(k) ? '' : ' <span class="small">(optional)</span>'}`, esc(v.type ?? (v.enum ? v.enum.join(' | ') : '')), md(v.description ?? '')]))}` : ''}`;
     }).join('\n')}
-<p class="small">The tools are generated from the list <code class="use">ncdev mcp</code> serves.</p>`,
+<p class="small">This list comes straight from what <code class="use">ncdev mcp</code> serves.</p>`,
   });
 
   // docs/tools/: what the tools are, the two diagrams, and the pages by group.
-  const index = `<p class="lead">Tools for writing Nucleus Co-op handlers: an editor in your browser, extensions for the editor you already use, a command line, and a server for AI agents. Each page says what the tool is, when it is useful and how it works.</p>
+  const index = `<p class="lead">These are the tools for writing Nucleus Co-op handlers. There's an editor that runs in your browser, add-ons for the editor you already have, a command-line program, and a server that AI agents can use. Each page explains what the tool is for and how it works, then lists its commands and settings.</p>
 ${coreDiagram(d)}
 ${d.tools.groups.map((g) => `<h2 id="${g.id}">${esc(g.title)}</h2>
 <p>${esc(g.line)}</p>
-<ul class="tool-cards">${pages.filter((p) => p.group === g.title && (g.id !== 'workbench' || p.slug === overview.slug)).map((p) => `<li><a href="__UP__docs/${p.slug}/"><strong>${esc(p.nav === 'Overview' ? p.title : p.nav)}</strong><small>${esc(p.desc)}</small></a></li>`).join('')}${g.id === 'cli-ai' ? '<li><a href="__UP__ai/"><strong>Set up your AI</strong><small>Prompts for Claude Code, other AI agents and chatbots.</small></a></li>' : ''}</ul>`).join('\n')}
+<ul class="tool-cards">${pages.filter((p) => p.group === g.title && (g.id !== 'workbench' || p.slug === overview.slug)).map((p) => `<li><a href="__UP__docs/${p.slug}/"><strong>${esc(p.nav === 'Overview' ? p.title : p.nav)}</strong><small>${esc(p.desc)}</small></a></li>`).join('')}${g.id === 'cli-ai' ? '<li><a href="__UP__ai/"><strong>Set up your AI</strong><small>Prompts to paste into Claude Code, other AI agents and chatbots.</small></a></li>' : ''}</ul>`).join('\n')}
 <h2 id="path">A handler's path</h2>
-${flowDiagram(d, 'Every tool covers writing, checking and trying. Saving, testing and sharing differ: the comparison says which tool does what.')}
-<p class="small"><a href="__UP__docs/tools/editors/#compare">Compare the editors</a> · To install the tools: <a href="__UP__tools/">Get the tools</a>.</p>`;
+${flowDiagram(d, 'All of the tools can write, check and try a handler. They differ in saving, testing and sharing, and the comparison shows how.')}
+<p class="small"><a href="__UP__docs/tools/editors/#compare">Compare the editors</a> · To install anything, go to <a href="__UP__tools/">Get the tools</a>.</p>`;
   return { pages, index, media: [...d.used], css: TOOL_DOCS_CSS };
 }
 
