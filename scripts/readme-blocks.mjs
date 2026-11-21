@@ -69,6 +69,18 @@ export function editorTiles(data = readJson('data/editors.json')) {
   return data.editors.map((e) => `<li><a class="ed" data-ed="${e.id}" href="${repo}#${e.tile.readme}" rel="noopener"><img src="../start/editors/${e.id}.svg" alt="" width="40" height="40" loading="lazy"><span><strong>${esc(e.tile.name)}</strong><small>${esc(e.tile.line)}</small></span>${editorTag(e.id, data)}</a></li>`).join('');
 }
 
+/** The tools page's setup steps for those editors (<!--ED_STEPS-->), from each editor's `page` in data/editors.json. */
+export function editorSteps(data = readJson('data/editors.json')) {
+  const repo = readJson('package.json').repository.url.replace(/^git\+/, '').replace(/\.git$/, '');
+  const inline = (t) => t.replaceAll('{repo}', repo).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>').replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2">$1</a>');
+  const step = (e, t) => {
+    const m = /\{snippet:(\w+)\}$/.exec(t);
+    if (!m) return `<li>${inline(t)}</li>`;
+    return `<li>${inline(t.slice(0, m.index))}\n<pre class="cfg" data-lang="${m[1]}"><code>${esc(portingSnippet(e.id)).replace(/&quot;/g, '"')}</code></pre></li>`;
+  };
+  return data.editors.map((e) => `<div class="ed-step" id="setup-${e.id}" hidden><h3>${e.page.title}</h3><ol>${e.page.steps.map((t) => step(e, t)).join('\n')}</ol></div>`).join('');
+}
+
 /** An editor's setup snippet: the first code block under its heading in PORTING.md (the tools page shows the same). */
 const PORTING_HEADINGS = { neovim: '### Neovim', helix: '### Helix', sublime: '### Sublime Text', emacs: '### Emacs', kate: '### Kate' };
 export function portingSnippet(id, porting = fs.readFileSync(path.join(root, 'PORTING.md'), 'utf8')) {

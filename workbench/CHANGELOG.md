@@ -14,6 +14,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 ## Unreleased
 ### ⚠️ Changed
+- **The Form and Blocks views have been removed.** They were hidden since the last release; a different visual editor is planned instead. If your saved view was one of them, the workbench opens your handler as code and says so once.
 - **A new address: https://snailedlt.github.io/nucleus-devtools/.** The workbench moved into the tools' repository, [nucleus-devtools](https://github.com/Snailedlt/nucleus-devtools), so it's built from the same commit as the checks it runs. Update your bookmarks; your drafts and settings come along (same site, new folder). Reports go to the same forms as the other tools'.
 ### ✨ New
 - **Set up your AI for handlers.** A short page on the site (ai/): what the tools give an AI, the free and paid setups we recommend, and prompts to copy. Claude Code and other AI agents (Codex, Antigravity, Cursor) get a setup prompt to run once (it installs our plugin or adds our MCP server, so the agent checks and tries its own work) and a prompt to make a handler, once per game; chatbots (ChatGPT, Claude, Gemini, Grok) get the rules a handler must follow. Type your game once and it fills every prompt. Linked from the start and tools pages.
@@ -21,6 +22,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 ### 🛠️ Improved
 - **Nucli reacts once, then settles.** "Nothing to fix", "Oops" and "Fixed" play once and keep their ending (the tick, the "!", the fixed code) instead of repeating every few seconds; with Motion set to lively he goes on blinking, his electrons circling. Loaders keep moving while you wait, and Test all's ring is the new one from the concept sheet: the electrons ride the front of the ring as it fills. *Still* now shows each scene's own pose (a reaction its ending) rather than a frozen moment.
 ### ⚡ Faster
+- **The workbench and Learn open faster.** The site now loads their code as files your browser keeps, shared between the two pages, instead of everything inside each page: about a third less to download the first time, and almost nothing when you go from one to the other. The Claude API part and the visual editor only load when they're used. The one-file workbench for offline use is the same as before.
 - **Mascots move only where you can see them.** Ones that are scrolled away or in a hidden panel are paused, and each starts when it first comes into view. Check, Try it, Test all and Docs keep the mascot they show while they update, so typing no longer restarts it and Test all's ring runs smoothly through the run.
 ### 🐛 Fixed
 - **Your own shortcuts, everywhere.** After you change a shortcut in Settings, the tips and the command palette show the new keys too (some still showed the defaults).

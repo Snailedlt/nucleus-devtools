@@ -4,7 +4,6 @@
 // General tips come in five topics: best practices and pitfalls (writing handlers: Nucleus and Jint
 // behaviour), and shortcuts, settings and features (using this workbench). Add one with every new
 // workbench feature.
-import { aboutVisual, VISUAL } from './visual';
 
 export interface TipContext {
   text: string;
@@ -174,7 +173,7 @@ const SETTINGS = T('Setting', [
 ]);
 
 const FEATURES_ = T('Feature', [
-  { id: 'f-lines', text: 'Lines lists every name a handler can use. Names already in the handler show their value; click one to insert it. It works in Form and Blocks too.', action: { label: 'Show Lines', run: 'lines' } },
+  { id: 'f-lines', text: 'Lines lists every name a handler can use. Names already in the handler show their value; click one to insert it.', action: { label: 'Show Lines', run: 'lines' } },
   { id: 'f-hover', text: 'Hover any name in the code for its docs. In Lines, the (i) next to a name also says how many Hub handlers use it.' },
   { id: 'f-tryit', text: 'Try it shows what each player gets: window, launch arguments and every file change, without Nucleus or the game.', action: { label: 'Try it', run: 'tryit' } },
   { id: 'f-debug', text: 'Step through your handler: click beside a line number for a breakpoint, then Try it › Step through ({key:debugGo}). Next line (`F10`), Back to undo a step, and drag the timeline through every player’s Game.Play.', action: { label: 'Try it', run: 'tryit' } },
@@ -196,14 +195,11 @@ const FEATURES_ = T('Feature', [
   { id: 'f-edge-menu', text: 'Right-click the edge between two panels (or focus it and press the keyboard\'s menu key) for its layout menu: reset its size, move Files or Lines to the other side, or hide it.' },
   { id: 'f-rail', text: 'Want more room for code? Settings › Layout › Side rail puts the tools in a strip on the left; › at its bottom shows their names. Files and Lines can sit on either side of the code.' },
   { id: 'f-gamefolder', text: 'Files › Your game on this PC: link the folder your game is installed in, and Check compares the executable and file lists with the real files, and hints at the Proto Input hooks the game\'s .exe and DLLs call for. Read in your browser only.' },
-  { id: 'f-expand', text: 'A long value in Form or Blocks? Alt+Enter (or the expand button next to it) opens it in a larger editor, with the option’s docs beside it. `Esc` takes you back.' },
-  { id: 'f-blocks', text: 'Blocks, next to Code and Form, shows Game.Play as steps: "If … then", "Set … to", "Do …". Every change edits the code, and your comments stay.' },
   { id: 'f-settings-io', text: 'New computer or browser? Settings › Updates and backup exports your settings to a file, and imports them there.' },
   { id: 'f-feedback', text: 'Found something odd? Report a problem (menu or {key:palette}) opens the right GitHub form already filled in with your browser, settings and where the handler came from, never your code. No GitHub account? Copy the report for the testers\u2019 Discord thread.' },
   { id: 'f-check-wrong', text: 'A warning on code that works in Nucleus? Open the problem in Check (or hover it) and use the flag, This check is wrong: the check and the line are filled in for you.' },
   { id: 'f-tryit-differs', text: 'Nucleus did something Try it didn\u2019t show? The icon in the corner of Try it\u2019s result reports what it showed, next to what really happened.' },
   { id: 'f-a11y', text: 'Settings › Accessibility: colour-blind-friendly colours, another underline for problems, a strong focus ring, larger buttons, an easier-to-read font, and notes that stay until you close them.' },
-  { id: 'f-form', text: 'Prefer switches over code? Form, above the code, shows the options as a form; every change edits the code.' },
   { id: 'f-files', text: 'A handler with extra files (ini, dlls…)? Files, above the code, shows the package as Nucleus installs it; open its text files in tabs, and drop files on it to add them.' },
   { id: 'f-swipe', text: 'Done with a note at the bottom right? Swipe it away to the right, or hover the stack to read them all.' },
   { id: 'f-gutter', text: 'Click a marker next to a line number for that line’s problems and fixes.' },
@@ -213,9 +209,9 @@ const FEATURES_ = T('Feature', [
 
 // Who each tip is for (Tip.for). Unset: useful to everyone. Guided shows newcomer tips, Advanced mode
 // developer tips; both show the rest. Things an experienced author already knows (how to get suggestions,
-// VS Code's editing keys, Form and Blocks, the mascots) are for newcomers; power-user shortcuts and
+// VS Code's editing keys, the mascots) are for newcomers; power-user shortcuts and
 // workflow settings are for developers.
-const NEWCOMER = new Set(['start', 'in-play', 's-tutorial', 's-suggest', 's-edit', 'c-theme', 'c-editor', 'c-advanced', 'f-form', 'f-blocks', 'f-expand', 'f-mascots', 'f-mascot-modes', 'f-swipe', 'f-gutter', 'f-hover', 'f-votes', 'f-eq-values', 'f-value-pick', 'f-reference', 'f-ref-home', 'f-lines']);
+const NEWCOMER = new Set(['start', 'in-play', 's-tutorial', 's-suggest', 's-edit', 'c-theme', 'c-editor', 'c-advanced', 'f-mascots', 'f-mascot-modes', 'f-swipe', 'f-gutter', 'f-hover', 'f-votes', 'f-eq-values', 'f-value-pick', 'f-reference', 'f-ref-home', 'f-lines']);
 const DEVELOPER = new Set(['s-find-all', 's-goto', 's-open-keys', 'f-vscode', 'f-custom-theme', 'f-settings-io', 'c-review', 'c-wakatime', 'f-save-nucleus', 'f-ai-providers']);
 for (const t of [...CONTEXT_TIPS, ...PITFALLS, ...SHORTCUTS, ...BEST, ...FEATURES_, ...SETTINGS]) {
   if (NEWCOMER.has(t.id)) t.for = 'newcomer';
@@ -229,13 +225,6 @@ export type TipShow = 'mode' | 'all' | 'newcomer' | 'developer' | 'everyone';
 export const tipShown = (t: Tip, show: TipShow, who: 'newcomer' | 'developer') =>
   show === 'mode' ? tipFor(t, who) : show === 'all' ? true : show === 'everyone' ? !t.for : t.for === show;
 
-// Form and Blocks are hidden for now (visual.ts): their tips go with them, and the others don't mention them.
-if (!VISUAL) {
-  for (const g of [CONTEXT_TIPS, PITFALLS, SHORTCUTS, BEST, FEATURES_, SETTINGS]) {
-    for (const t of g) t.text = t.text.replace(/ It works in Form and Blocks too\./, '');
-    for (let i = g.length - 1; i >= 0; i--) if (aboutVisual(g[i].text)) g.splice(i, 1);
-  }
-}
 const GROUPS = [PITFALLS, SHORTCUTS, BEST, FEATURES_, SETTINGS];
 /** Every general tip, the topics taking turns, so Next goes round them. */
 export const GENERAL_TIPS: Tip[] = Array.from({ length: Math.max(...GROUPS.map((g) => g.length)) }, (_, i) => GROUPS.map((g) => g[i])).flat().filter(Boolean);

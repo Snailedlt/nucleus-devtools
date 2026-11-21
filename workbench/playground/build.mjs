@@ -13,6 +13,7 @@ import { execSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import * as esbuild from 'esbuild';
+import { eslintSlim } from '../../scripts/eslint-slim.mjs';
 import { fetchPackageFiles, slimFiles } from '../tools/hub-files.mjs';
 import { hubClientHeaders } from '../tools/hub-client.mjs';
 
@@ -411,9 +412,10 @@ const CHANGES = changes();
 
 // One bundle for the page and its lint worker (src/main.ts picks which to run), so the
 // linter and the API model ship once.
-const result = await esbuild.build({
+const appBundle = {
   entryPoints: [path.join(here, 'src', 'main.ts')],
   bundle: true,
+  plugins: [eslintSlim(coreRepo)],
   format: 'iife',
   platform: 'browser',
   target: 'es2020',
@@ -425,8 +427,30 @@ const result = await esbuild.build({
   banner: { js: "var process = globalThis.process || { env: {}, argv: [], versions: {}, platform: 'browser', cwd: function () { return '/'; }, emitWarning: function () {}, nextTick: function (f) { Promise.resolve().then(f); } };" },
   nodePaths: [path.join(coreRepo, 'node_modules'), path.join(here, 'node_modules')],
   logLevel: 'warning',
-});
+};
+const result = await esbuild.build(appBundle);
 const js = result.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');
+// The site's workbench gets the same code as files next to the page (dist/pages/app/): the page and its lint worker
+// share chunks, and the parts few people use (the Anthropic SDK) are only fetched when they're
+// first needed (the `import()`s in src/). Every name carries a hash of its content, so a browser's cached copy is
+// never a mix of two builds. The single file above has everything inside it.
+const appDir = path.join(here, 'dist', 'pages', 'app');
+fs.rmSync(appDir, { recursive: true, force: true });
+const split = await esbuild.build({ ...appBundle, entryPoints: { main: path.join(here, 'src', 'app.ts'), worker: path.join(here, 'src', 'worker.ts'), learn: path.join(here, 'src', 'learn', 'learn.ts') }, format: 'esm', splitting: true, outdir: appDir, entryNames: '[name]-[hash]', chunkNames: 'chunk-[hash]', write: true, metafile: true });
+const appFile = (entry) => 'app/' + path.basename(Object.entries(split.metafile.outputs).find(([, o]) => o.entryPoint && o.entryPoint.replace(/\\/g, '/').endsWith(`src/${entry}.ts`))[0]);
+const APP_MAIN = appFile('app');
+const APP_WORKER = appFile('worker');
+const APP_LEARN = appFile('learn/learn');
+// What a page loads at once (its entry's static imports, all the way down): preloaded together, not one after another.
+const preloadOf = (entry) => {
+  const outs = split.metafile.outputs;
+  const key = Object.keys(outs).find((k) => k.endsWith(path.basename(entry)));
+  const seen = new Set([key]);
+  for (const k of seen) for (const i of outs[k].imports) if (i.kind === 'import-statement' && outs[i.path]) seen.add(i.path);
+  return [...seen].map((k) => 'app/' + path.basename(k));
+};
+/** The tags that load an entry of app/ from a page `up` folders below the site's root. */
+const appTags = (entry, up = '') => `${preloadOf(entry).map((f) => `<link rel="modulepreload" href="${up}${f}">`).join('\n')}\n<script type="module" src="${up}${entry}"></script>`;
 
 const cm = (p) => fs.readFileSync(path.join(here, 'node_modules', 'codemirror', p), 'utf8');
 const css = [cm('lib/codemirror.css'), cm('addon/lint/lint.css'), cm('addon/hint/show-hint.css'), cm('addon/dialog/dialog.css'), cm('addon/fold/foldgutter.css')].join('\n');
@@ -465,7 +489,7 @@ function pageHtml(inlineHub) {
     return { ...h, filesData: slimFiles(hubFiles.get(h.id).files) };
   };
   const handlers = (inlineHub ? hub.handlers.map(inlineFiles) : hub.handlers.map(({ source, ...h }) => h)).map(withCover);
-  const data = `var PROBES = ${JSON.stringify(probes)};\nvar BUILD = ${JSON.stringify(build)};\nvar HUB_EXAMPLES = ${JSON.stringify({ takenAt: hub.takenAt, handlers, base: inlineHub ? null : 'hub/', ...(hub.all ? { all: true } : {}) })};\nvar BOT_TEMPLATES = ${JSON.stringify(bot)};\nvar EXAMPLE_PACKAGES = ${JSON.stringify(EXAMPLE_PACKAGES)};\nvar CHANGES = ${JSON.stringify(CHANGES)};`
+  const data = `${inlineHub ? '' : `var __WORKER_URL = new URL(${JSON.stringify(APP_WORKER)}, document.baseURI).href, __WORKER_MODULE = true;\n`}var PROBES = ${JSON.stringify(probes)};\nvar BUILD = ${JSON.stringify(build)};\nvar HUB_EXAMPLES = ${JSON.stringify({ takenAt: hub.takenAt, handlers, base: inlineHub ? null : 'hub/', ...(hub.all ? { all: true } : {}) })};\nvar BOT_TEMPLATES = ${JSON.stringify(bot)};\nvar EXAMPLE_PACKAGES = ${JSON.stringify(EXAMPLE_PACKAGES)};\nvar CHANGES = ${JSON.stringify(CHANGES)};`
     .replace(/<\/script/gi, '<\\/script')
     // A few Hub handlers carry U+FFFD (text that was already broken when uploaded): written as the
     // escape inside these JSON strings, the same character, but no raw replacement character in the page.
@@ -480,7 +504,7 @@ function pageHtml(inlineHub) {
     .replace('/*THEMES*/', () => themesCSS)
     .replace('/*CODEMIRROR_CSS*/', () => css)
     .replace('/*PROBES_AND_BUILD*/', () => data)
-    .replace('/*APP_JS*/', () => js);
+    .replace('<script>/*APP_JS*/</script>', () => (inlineHub ? `<script>${js}</script>` : appTags(APP_MAIN)));
 }
 const html = pageHtml(true);
 // The workbench as its own page. page.html starts with what belongs in <head> (title, the theme
@@ -678,7 +702,7 @@ const sitePageSrc = (file, slug, title, desc, shareTitle) => {
 // From this checkout, not the core being built against (--core): an older core has no such script.
 const RB = await import(pathToFileURL(path.join(here, '..', '..', 'scripts', 'readme-blocks.mjs')).href);
 const plugin = RB.claudePlugin();
-const fromData = (src) => src.replace('<!--COMPARE-->', () => RB.compareHtml()).replaceAll('__CLAUDE_MARKETPLACE__', plugin.marketplace).replaceAll('__CLAUDE_PLUGIN__', plugin.plugin).replace('<!--ED_TILES-->', () => RB.editorTiles()).replace(/<!--ED:(\w+)-->/g, (_, id) => RB.editorTag(id)).replace(/<!--PORTING:(\w+)-->/g, (_, id) => RB.portingSnippet(id).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]));
+const fromData = (src) => src.replace('<!--COMPARE-->', () => RB.compareHtml()).replaceAll('__CLAUDE_MARKETPLACE__', plugin.marketplace).replaceAll('__CLAUDE_PLUGIN__', plugin.plugin).replace('<!--ED_TILES-->', () => RB.editorTiles()).replace('<!--ED_STEPS-->', () => RB.editorSteps()).replace(/<!--ED:(\w+)-->/g, (_, id) => RB.editorTag(id)).replace(/<!--PORTING:(\w+)-->/g, (_, id) => RB.portingSnippet(id).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]));
 const toolsSrc = withPartials(fromData(sitePageSrc('tools.html', 'tools',
   'Get the tools: Nucleus Co-op handlers in VS Code, Notepad++, the browser and more',
   'Every Nucleus Co-op handler tool in one place: the browser workbench, VS Code, Notepad++, other editors through a language server, the ncdev command line and AI agents.',
@@ -777,18 +801,9 @@ let checksNav = [];
   if (!PREVIEW) fs.writeFileSync(path.join(here, 'dist', 'pages', 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[PAGES_BASE, `${PAGES_BASE}start/`, `${PAGES_BASE}tools/`, `${PAGES_BASE}ai/`, `${PAGES_BASE}rules/`, `${PAGES_BASE}learn/`, `${PAGES_BASE}docs/`, ...ruleIds.map((id) => `${PAGES_BASE}rules/${id}/`)].map((u) => `  <url><loc>${u}</loc></url>`).join('\n')}\n</urlset>\n`);
 }
 // Learn (learn/): the lessons, one page with its own small bundle (src/learn/): the editor, the checks and Try it,
-// without the rest of the workbench. ESLint's general rules stay out (the lessons only need Nucleus' own checks).
+// without the rest of the workbench. Its code is an entry of the same split build as the workbench's (app/), so the
+// two pages share the files they have in common: whoever has opened one has most of the other already.
 {
-  const learnJs = await esbuild.build({
-    entryPoints: [path.join(here, 'src', 'learn', 'learn.ts')],
-    bundle: true, format: 'iife', platform: 'browser', target: 'es2020', minify: true, write: false,
-    // The reports' details (report.ts) say which build this is, as the workbench's do.
-    define: { BUILD: JSON.stringify({ bench: build.bench, core: build.core }) },
-    alias: { '@core': path.join(coreRepo, 'src', 'core'), 'eslint/universal': path.join(coreRepo, 'src', 'core', 'eslint-stub.ts'), 'node:path': 'path-browserify', path: 'path-browserify' },
-    banner: { js: "var process = globalThis.process || { env: {}, argv: [], versions: {}, platform: 'browser', cwd: function () { return '/'; }, emitWarning: function () {}, nextTick: function (f) { Promise.resolve().then(f); } };" },
-    nodePaths: [path.join(coreRepo, 'node_modules'), path.join(here, 'node_modules')],
-    logLevel: 'warning',
-  });
   const startHtml = fs.readFileSync(path.join(here, 'src', 'start.html'), 'utf8');
   const style = startHtml.slice(startHtml.indexOf('<style>') + 7);
   const tokens = style.slice(0, style.indexOf('* { box-sizing'));
@@ -798,7 +813,8 @@ let checksNav = [];
     .replace('__HEAD__', () => NOINDEX + (PREVIEW ? '' : `<link rel="canonical" href="${PAGES_BASE}learn/">`))
     .replace('/*TOKENS*/', () => tokens)
     .replace('/*CODEMIRROR_CSS*/', () => cm('lib/codemirror.css'))
-    .replace('/*LEARN_JS*/', () => learnJs.outputFiles[0].text.replace(/<\/script/gi, '<\\/script')));
+    // The reports' details (report.ts) say which build this is, as the workbench's do.
+    .replace('<script>/*LEARN_JS*/</script>', () => `<script>var BUILD = ${JSON.stringify({ bench: build.bench, core: build.core })};</script>\n${appTags(APP_LEARN, '../')}`));
 }
 // The Docs as pages (docs/, docs/<group>/, docs/<name>/), from the core's core/docspage.ts (docs-pages.mjs): linkable
 // and searchable, each with "Open in the workbench".

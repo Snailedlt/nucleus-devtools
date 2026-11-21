@@ -207,7 +207,9 @@ test('start page: the old anchors still lead somewhere (on the page, or forwarde
   const aliases = [...startSrc.matchAll(/<span id="([^"]+)" class="anchor-alias"/g)].map((m) => m[1]);
   const startIds = new Set([...startSrc.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]));
   const moved = JSON.parse(startSrc.match(/var MOVED = (\[[^\]]*\])/)[1].replace(/'/g, '"'));
-  const toolsIds = new Set([...toolsSrc.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]));
+  // …plus the editors' setup steps, which the build writes from data/editors.json (<!--ED_STEPS-->).
+  const editors = JSON.parse(fs.readFileSync(new URL('../../data/editors.json', import.meta.url), 'utf8')).editors;
+  const toolsIds = new Set([...[...toolsSrc.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]), ...editors.map((e) => `setup-${e.id}`)]);
   for (const id of moved) assert.ok(toolsIds.has(id), `moved #${id} exists on tools/`);
   for (const old of ['catches', 'see', 'install', 'help', 'what-it-catches', 'see-it', 'try-it-in-5-minutes', 'get-vscode', 'get-notepadpp', 'any-editor-with-a-language-server-lsp', 'compare-the-editors', 'works-in-your-editor', 'also-in-the-workbench', 'want-to-help-build-it', 'in-motion', 'screenshots'])
     assert.ok(aliases.includes(old) || startIds.has(old) || moved.includes(old), old);

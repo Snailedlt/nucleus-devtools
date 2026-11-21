@@ -48,9 +48,6 @@ import { initMessageHints } from './wmhints';
 import { initValuePicker } from './valuepick';
 import { memberCard, syncVoteLinks } from './doccard';
 import { initKeyHints } from './keyhints';
-import { mountFormView, type FormView } from './formview';
-import { mountBlocksView, type BlocksView } from './blocksview';
-import { VISUAL, VISUAL_HIDDEN_NOTE } from './visual';
 import { initPackageUI, fileIcon } from './packageui';
 import type { PkgProblem } from './pkgcheck';
 import { pickGameFolder, checkAgainstFolder, initFolderPickers, folderSummaryHtml, gameBinariesNow, gameBinariesPending, importProblems, onFolderProgress, cancelFolderRead, type GameFolder, type FolderProblem, type FolderProgress } from './gamefolder';
@@ -73,7 +70,6 @@ import { initSheetDrag } from './sheets';
 import { initWakaTime } from './wakatime';
 import { mountDebugger } from './debugui';
 import { hlCode, hlHtml, modeFor } from './codehl';
-import { setCodeFieldSupport } from './codefield';
 import { $, esc, md, narrow, onNarrowChange } from './dom';
 import { initTour } from './tour';
 import { initDocs, linkApiNames, wireApiLinkClicks } from './docs-ui';
@@ -250,7 +246,7 @@ const guidOf = (src: string): string | undefined => {
   }
 };
 try {
-  worker = new Worker((globalThis as any).__WORKER_URL);
+  worker = new Worker((globalThis as any).__WORKER_URL, (globalThis as any).__WORKER_MODULE ? { type: 'module' } : undefined);
   worker.onmessage = (e: MessageEvent<Analysis & { id: number }>) => {
     const p = pending.get(e.data.id);
     pending.delete(e.data.id);
@@ -317,8 +313,6 @@ const editor = CodeMirror($('#editor'), {
         // Unused code (tagged unnecessary) is faded, as VS Code fades it; hints among it get no squiggle.
         for (const m of fadeMarks) m.clear();
         fadeMarks = current.filter((d) => d.tags?.includes('unnecessary') && d.end > d.start).map((d) => editor.markText(posAt(text, d.start), posAt(text, d.end), { className: 'cm-unnecessary' }));
-        if (formView && viewMode === 'form') formView.refresh();
-        if (blocksView && viewMode === 'blocks') blocksView.refresh();
         return [
           ...current
             .filter((d) => (d.severity !== 'hint' || (mode === 'dev' && filter === 'hint')) && !quietInCheck(d))
@@ -772,38 +766,6 @@ semanticMarks(editor); // Game, Context and the rest in their own colours, as in
 editor.on('scroll', () => (tip.hidden = true));
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !tip.hidden) tip.hidden = true; });
 
-// The small code editors in Form and Blocks (codefield.ts): the same suggestions, hover docs and announcements.
-setCodeFieldSupport({
-  hint: hinter,
-  say: (msg) => announce(msg),
-  hover(cm: any, e: MouseEvent, problems) {
-    if (tip.contains(e.target as Node)) return;
-    clearTimeout(tipTimer);
-    clearTimeout(tipHideTimer);
-    tipTimer = window.setTimeout(() => {
-      const text = cm.getValue();
-      const pos = cm.coordsChar({ left: e.clientX, top: e.clientY }, 'window');
-      const at = cm.indexFromPos(pos);
-      const end = cm.charCoords({ line: pos.line, ch: cm.getLine(pos.line).length }, 'window');
-      if (e.clientX > end.right + 4) return void (tip.hidden = true);
-      const r = resolveAt(text, at);
-      let doc = r ? describeResolved(r.resolved, text.slice(r.start, r.end)) : '';
-      const own = doc ? undefined : hoverAt(text, at, { own: true });
-      if (own) doc = md(own.markdown);
-      if (!doc && !problems.length) return void (tip.hidden = true);
-      tip.innerHTML = (problems.length ? `<div class="hv-sec hv-probs">${problems.map((d) => `<div class="hv-prob ${sevClass[d.severity] ?? 'info'}"><span class="hv-ico" aria-hidden="true">${SEV_ICON[d.severity] ?? 'i'}</span><div class="hv-msg">${hlHtml(codeIn(d.message))}</div></div>`).join('')}</div>` : '')
-        + (doc ? `<div class="hv-sec hv-doc">${doc}</div>` : '');
-      tip.classList.toggle('has-problems', problems.length > 0);
-      linkApiNames(tip);
-  tip.hidden = false;
-      placeTip(cm.charCoords(cm.posFromIndex(problems.length ? problems[0].start : r ? r.start : at), 'window'));
-    }, hoverDelay(280));
-  },
-  hoverEnd() {
-    clearTimeout(tipTimer);
-    hideTipSoon();
-  },
-});
 
 function describeResolved(res: Resolved, word: string): string {
   switch (res.kind) {
@@ -1394,9 +1356,7 @@ const debug = mountDebugger({
   panel: $('#panel-simulate'),
   options: simOptions,
   showTryIt: () => selectTab('simulate'),
-  showCode: () => {
-    if (viewMode !== 'code') setViewMode('code');
-  },
+  showCode: () => { if (pkgUI?.active()) pkgUI.showHandler(); },
   rerun: runSim,
   used: () => use('debugger'),
 });
@@ -1426,8 +1386,6 @@ function insertExample(path: string, m: Member, replace = false) {
   if (!r) return toast("There's no telling where the example goes: the handler doesn't parse (Check lists what's wrong), or its callback is set to a function made elsewhere. Add it by hand.");
   // Set already: "Show in handler" goes to that line and keeps the value; only "Replace with the example's value" changes it.
   if (r.action === 'same' || (r.action === 'update' && !replace)) {
-    // Shown in the Code view (Form or Blocks would leave it hidden), as Check's "Show me" does.
-    if (viewMode !== 'code') setViewMode('code');
     jumpTo(editor.indexFromPos({ line: r.line, ch: 0 }));
     editor.setSelection({ line: r.line, ch: 0 }, { line: r.line, ch: editor.getLine(r.line).length }); // the line, highlighted
     codeNote(editor, r.line, r.action === 'same' ? `The handler has this already (line ${r.line + 1}).` : `The handler sets ${path} here (line ${r.line + 1}). Your value stays.`, { mood: 'info' });
@@ -2548,7 +2506,7 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
   run[id]?.();
 });
 
-// F6 / Shift+F6, as in VS Code: the header, the Files panel, the code (or Form/Blocks), Lines and the results, in turn.
+// F6 / Shift+F6, as in VS Code: the header, the Files panel, the code, Lines and the results, in turn.
 const FOCUSABLE = 'button:not([disabled]), a[href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
 function cyclePane(dir: 1 | -1) {
   const panes = ['header', '#files-panel', '.main > .pane:not(.side)', '#lines', '.main > .pane.side']
@@ -2562,14 +2520,10 @@ function cyclePane(dir: 1 | -1) {
   const next = panes[at < 0 ? 0 : (at + dir + panes.length) % panes.length];
   // The code: handler.js's editor, or the package file open in its place (its own editor or its card).
   const shown = (el: HTMLElement) => el.offsetParent !== null && el.getClientRects().length > 0;
-  if (next.matches('.pane:not(.side)') && viewMode === 'code' && shown(editor.getWrapperElement())) editor.focus();
-  else if (next.matches('.pane:not(.side)') && viewMode === 'code') [...next.querySelectorAll<HTMLElement>(`.CodeMirror textarea, ${FOCUSABLE}`)].find(shown)?.focus();
+  if (next.matches('.pane:not(.side)') && shown(editor.getWrapperElement())) editor.focus();
+  else if (next.matches('.pane:not(.side)')) [...next.querySelectorAll<HTMLElement>(`.CodeMirror textarea, ${FOCUSABLE}`)].find(shown)?.focus();
   else if (next.matches('.pane.side')) (next.querySelector<HTMLElement>('[role=tab][aria-selected=true]') ?? [...next.querySelectorAll<HTMLElement>(FOCUSABLE)].find(shown))?.focus();
-  else {
-    // Form or Blocks: a control of the view that shows (the pane's first match can be a hidden one).
-    const view = next.matches('.pane:not(.side)') ? next.querySelector<HTMLElement>(viewMode === 'form' ? '#formview' : '#blocksview') : null;
-    [...(view ?? next).querySelectorAll<HTMLElement>(FOCUSABLE)].find(shown)?.focus();
-  }
+  else [...next.querySelectorAll<HTMLElement>(FOCUSABLE)].find(shown)?.focus();
   announce(next.getAttribute('aria-label') ?? (next.tagName === 'HEADER' ? 'Header' : 'Panel'));
 }
 /** Ctrl+Shift+M (VS Code's Problems) and the "Skip to Check" link: the problem list, its first problem focused. */
@@ -2581,12 +2535,7 @@ function goToCheck() {
 document.querySelectorAll<HTMLElement>('[data-skip]').forEach((a) => a.addEventListener('click', (e) => {
   e.preventDefault();
   if (a.dataset.skip === 'check') goToCheck();
-  else if (viewMode === 'code') editor.focus();
-  else {
-    const pane = document.querySelector<HTMLElement>('.main > .pane:not(.side)');
-    const view = pane?.querySelector<HTMLElement>(viewMode === 'form' ? '#formview' : '#blocksview') ?? pane;
-    [...(view?.querySelectorAll<HTMLElement>(FOCUSABLE) ?? [])].find((el) => el.offsetParent !== null && el.getClientRects().length > 0)?.focus();
-  }
+  else editor.focus();
 }));
 // Double Shift, as in JetBrains: Open (examples, Hub handlers, commands). Settings › Keyboard shortcuts turns it off.
 {
@@ -2672,82 +2621,26 @@ function openLearn() {
 }
 
 // ---------------------------------------------------------------------------
-// Code | Form | Blocks: the options as a form (formview.ts) and the callbacks as if / do steps (blocksview.ts), both
-// two-way with the code (the code stays the one source).
-type ViewMode = 'code' | 'form' | 'blocks';
-const VIEW_KEY = 'nucleus-workbench-view';
-// Form and Blocks are hidden for now (visual.ts: ?visual=1 brings them back): a saved Form or Blocks view opens Code,
-// and says so once.
-let viewMode: ViewMode = (() => {
-  try {
-    const v = localStorage.getItem(VIEW_KEY);
-    if ((v === 'form' || v === 'blocks') && !VISUAL) {
-      localStorage.setItem(VIEW_KEY, 'code');
-      setTimeout(() => notice(VISUAL_HIDDEN_NOTE, { kind: 'info' }), 0);
-      return 'code';
-    }
-    return v === 'form' || v === 'blocks' ? v : 'code';
-  } catch { return 'code'; }
-})();
-document.documentElement.classList.toggle('visual', VISUAL);
-// Only Code is left without them: no switcher at all.
-if (!VISUAL) document.querySelector('.view-switch')?.remove();
-let formView: FormView | null = null;
-let blocksView: BlocksView | null = null;
-const viewHost = (origin: string) => ({
-  getText: () => editor.getValue(),
-  // CodeMirror merges changes of the same "+" origin made within a second into one undo step. A view that says what
-  // was typed in (`typing`: a field, or '' for an action) gets merges per field only; actions get no "+".
-  applyEdits: (edits: TextEdit[], typing?: string) => editor.operation(() => { for (const e of [...edits].sort((a, z) => z.start - a.start)) editor.replaceRange(e.text, editor.posFromIndex(e.start), editor.posFromIndex(e.end), typing === undefined ? origin : typing ? `${origin}:${typing}` : origin.replace(/^\+/, '')); }),
-  jumpTo: (offset: number) => { setViewMode('code'); const pos = editor.posFromIndex(offset); editor.setCursor(pos); editor.scrollIntoView(pos, 80); editor.focus(); },
-  diagnostics: () => current,
-  diagnosticsText: () => currentText,
-  plain: plainFor,
-  density: checkDensity,
-});
-function setViewMode(m: ViewMode) {
-  if (!VISUAL && m !== 'code') m = 'code';
-  viewMode = m;
+// The Form and Blocks views are gone (a different visual editor is planned). Someone whose saved view was one of
+// them gets Code, and is told once.
+try {
+  const VIEW_KEY = 'nucleus-workbench-view';
+  const v = localStorage.getItem(VIEW_KEY);
+  localStorage.removeItem(VIEW_KEY);
+  localStorage.removeItem('nucleus-workbench-visual');
+  if (v === 'form' || v === 'blocks') setTimeout(() => notice('The Form and Blocks views have been removed; a different visual editor is planned. Your handler is the same, shown as code.', { kind: 'info' }), 0);
+} catch { /* storage off */ }
+/** The handler's code in the main pane (after a package file was shown there). */
+function showMainCode() {
   pkgUI?.deselect();
-  try { localStorage.setItem(VIEW_KEY, m); } catch { /* ignore */ }
-  document.querySelectorAll<HTMLButtonElement>('[data-view-mode]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.viewMode === m)));
-  $('#editor').hidden = m !== 'code';
-  $('#formview').hidden = m !== 'form';
-  $('#blocksview').hidden = m !== 'blocks';
-  if (m === 'form') {
-    use('form-view');
-    formView ??= mountFormView($('#formview'), viewHost('+form'));
-    formView.refresh();
-  } else if (m === 'blocks') {
-    use('blocks-view');
-    blocksView ??= mountBlocksView($('#blocksview'), viewHost('+blocks'));
-    blocksView.refresh();
-  } else {
-    editor.refresh();
-  }
+  $('#editor').hidden = false;
+  editor.refresh();
 }
-document.querySelectorAll<HTMLButtonElement>('[data-view-mode]').forEach((b) => b.addEventListener('click', () => setViewMode(b.dataset.viewMode as ViewMode)));
-editor.on('swapDoc', () => { formView?.refresh(); blocksView?.refresh(); });
-// Ctrl+Z / Ctrl+Y (Ctrl+Shift+Z, Cmd on a Mac) in Blocks undo and redo the handler's code, as in the Code view. A
-// small code field keeps its own undo while it has changes of its own.
-$('#blocksview').addEventListener('keydown', (ev) => {
-  if (!(ev.ctrlKey || ev.metaKey) || ev.altKey) return;
-  const k = ev.key.toLowerCase();
-  const redo = k === 'y' && !ev.shiftKey || k === 'z' && ev.shiftKey;
-  if (k !== 'z' && !redo) return;
-  const cm = (ev.target as HTMLElement).closest?.('.CodeMirror') as (HTMLElement & { CodeMirror?: { historySize(): { undo: number; redo: number } } }) | null;
-  if (cm?.CodeMirror && cm.CodeMirror.historySize()[redo ? 'redo' : 'undo'] > 0) return;
-  ev.preventDefault();
-  ev.stopPropagation();
-  if (redo) editor.redo(); else editor.undo();
-  blocksView?.refresh({ undo: true });
-}, true);
-setViewMode(viewMode);
 pkgUI = initPackageUI({
   editor,
   getFiles: () => packageFiles,
   setFiles: (files) => { packageFiles = files; storeFiles(files); if (!doc.filesEdited) { doc.filesEdited = true; saveDocMeta(); } renderDocHead(); if (tabsReady) saveTabs(); },
-  showMain: () => setViewMode(viewMode),
+  showMain: showMainCode,
   changed: () => { pkgProblems = pkgUI!.problems(); (editor as any).performLint(); },
   extraSection: gameSection,
   onExtra: (act) => void onGameAction(act),
@@ -2869,7 +2762,6 @@ initKeyHints([
   sel.addEventListener('change', () => {
     try { localStorage.setItem(DENSITY_KEY, sel.value); } catch { /* private mode */ }
     (editor as any).performLint();
-    formView?.refresh();
   });
 }
 // Feedback (feedback.ts): votes on tips and Claude's docs, anonymous counts. A 👎 on a doc points at the issue link.
@@ -3117,7 +3009,6 @@ setReportState(() => ({
     // From the saved #hub-<id> and version, not the catalogue index (a newer catalogue may have moved it).
     ...(doc.kind === 'hub' && doc.hash?.startsWith('hub-') ? { hubId: doc.hash.slice(4), hubVersion: doc.published?.version !== undefined ? String(doc.published.version) : undefined } : {}),
   },
-  view: viewMode,
 }));
 // The guided tour of the workbench (tour.ts). Each step points at the first of its parts that's shown in this layout
 // (bar or rail, wide or phone); a step with none shown is left out. Parts that are always on screen (the code, Check)
@@ -3143,7 +3034,7 @@ const tour = initTour({
     { title: 'Your handlers', text: 'Each open handler has a tab. The + starts a new one or opens yours: a file, an example or a Hub handler.', targets: ['.htabs-wrap', '.rail [data-rail=add]', '#doc-switch'], view: 'code',
       act: { text: 'Click + to see what you can open.', click: '#tab-add, .rail [data-rail=add], #doc-switch', show: '.app-menu', undo: () => closeMenu() } },
     // Always on screen: look steps.
-    { title: 'The code', text: `Write the handler here. Squiggles mark problems; hover a name for its docs. \`${labelOf('suggest')}\` suggests names, \`Alt+Enter\` fixes.`, targets: ['#editor', '#formview', '#blocksview'], view: 'code' },
+    { title: 'The code', text: `Write the handler here. Squiggles mark problems; hover a name for its docs. \`${labelOf('suggest')}\` suggests names, \`Alt+Enter\` fixes.`, targets: ['#editor'], view: 'code' },
     { title: 'Check', text: 'What Nucleus would reject or get wrong, each with why and a fix. It checks as you type. `F8` jumps to the next problem.', targets: ['.pane.side', '.pane-head [data-tab=problems]'], view: 'results', tab: 'problems' },
     { title: 'Try it', text: 'Runs the handler once per player, as Nucleus would, and shows what each one gets.', targets: ['.pane-head [data-tab=simulate]'], view: 'results', tab: 'simulate', act: { text: 'Click Try it to run the handler.', click: '.pane-head [data-tab=simulate]', show: '.pane.side' } },
     { title: 'Docs', text: 'Every option and function a handler can use, searchable. Insert into handler puts an example in your code.', targets: ['.pane-head [data-tab=api]'], view: 'results', tab: 'api', act: { text: 'Click Docs to open it.', click: '.pane-head [data-tab=api]', show: '.pane.side' } },

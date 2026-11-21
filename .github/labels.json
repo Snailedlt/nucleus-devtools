@@ -57,7 +57,7 @@
   {
     "name": "area: editor",
     "color": "1d76db",
-    "description": "The workbench editor: Code, Form, Blocks, Lines, checks"
+    "description": "The workbench editor: code, Lines, checks"
   },
   {
     "name": "area: packages",
