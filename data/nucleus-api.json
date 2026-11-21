@@ -8432,13 +8432,6 @@
         "what": "after instance loop",
         "url": "https://github.com/SplitScreen-Me/splitscreenme-nucleus/blob/4ffd0570d1b58a2232a7924e8c43df759bb23fb9/Master/NucleusGaming/Coop/Generic/GenericGameHandler.cs",
         "commit": "4ffd0570d1b58a2232a7924e8c43df759bb23fb9"
-       },
-       {
-        "project": "Nucleus devtools",
-        "file": "AGENTS.md",
-        "what": "last player's Context",
-        "url": "https://github.com/Snailedlt/nucleus-devtools/blob/f2c5b73f47240c5d61ddd5162b79d2a6dfae070d/AGENTS.md",
-        "commit": "f2c5b73f47240c5d61ddd5162b79d2a6dfae070d"
        }
       ]
      },
