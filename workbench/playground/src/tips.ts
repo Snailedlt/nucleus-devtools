@@ -191,7 +191,7 @@ const FEATURES_ = T('Feature', [
   { id: 'f-eq-values', text: 'Type a space after = (as in Game.SymlinkGame = ) and the editor suggests the values that option takes. For Game.Play it writes the whole function.' },
   { id: 'f-votes', text: 'The 👍 and 👎 next to a tip tell us whether it was useful. They\'re anonymous. The AI-written docs have them too.' },
   { id: 'f-density', text: 'Check can show more or less per problem. Settings › Check has Compact (one line each), Comfortable and Detailed.' },
-  { id: 'f-tabs', text: 'Open more than one handler: + next to the tabs opens a new one, and your changes stay in their own tab. Ctrl+Shift+[ and ] switch between them.' },
+  { id: 'f-tabs', text: 'You can have more than one handler open. The + next to the tabs opens another, and your changes stay in their own tab. {key:nextHandler} and {key:prevHandler} switch between them, and {key:closeHandler} closes the one you\'re on.' },
   { id: 'f-edge-menu', text: 'Right-click the edge between two panels (or focus it and press the keyboard\'s menu key) for its layout menu: reset its size, move Files or Lines to the other side, or hide it.' },
   { id: 'f-rail', text: 'For more room for code, Settings › Layout › Side rail puts the tools in a strip on the left. The › at its bottom shows their names. Files and Lines can sit on either side of the code.' },
   { id: 'f-gamefolder', text: 'Files › Your game on this PC: link the folder your game is installed in, and Check compares the executable and file lists with the real files, and hints at the Proto Input hooks the game\'s .exe and DLLs call for. Read in your browser only.' },

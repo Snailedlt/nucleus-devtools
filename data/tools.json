@@ -1,5 +1,9 @@
 {
-  "$comment": "What each tool is and when to use it: the introductions of the docs' Tools pages (docs/tools/…, workbench/playground/tool-docs.mjs) and the labels of their diagrams. what: a few plain sentences; explain a term a handler author may not know (language server, MCP) the first time it comes up. when: the situations it fits, one line each. not: what it can't do or who doesn't need it, with the tool that fits instead (optional). get: where to get it, a path on the site (tools/#… is the tools page). video: a demo in docs/videos (workbench: workbench/docs/videos). shots: gallery screenshots (docs/images/gallery, the workbench's in workbench/docs/images/gallery), by their name without -light/-dark; their captions come from the start page's gallery. In text: `code`, **bold**, [links](https://…), (@site:<path>) for a page of the site and (@docs:<slug>) for another page of the docs. groups: the Tools section's groups, in order. start: who should begin where (the Tools index). core: the middle of the \"one core\" diagram. flow: a handler's path, the steps of the second diagram. Write it the way you'd explain it to someone on Discord (AGENTS.md, Conventions).",
+  "$comment": "The words of the docs' Tools pages (docs/tools/…): everything a person wrote about the tools is here, and workbench/playground/tool-docs.mjs only lays it out next to the reference it generates from the tools themselves. index: the Tools page's opening and the caption of its second diagram. groups: the section's groups, in order. start: who should begin where. core: the middle of the \"one core\" diagram. flow: a handler's path, the steps of the second diagram. editorsPage: the page that compares the editors (pick: one card per choice; in the language-server card {first} is the first three editors' names and {all} every name, from data/editors.json). tools: one entry per tool. what: a few plain sentences; explain a term a handler author may not know (language server, MCP) the first time it comes up. when: the situations it fits, one line each. not: what it can't do or who doesn't need it (optional). get: where to get it, a path on the site (tools/#… is the tools page). video: a demo in docs/videos, with videoLine. shots: gallery screenshots (docs/images/gallery), by their name without -light/-dark; captions come from the start page's gallery. sections: what comes between the introduction and the generated reference, each with a heading h, text md, and optionally pair (a two-box diagram: a and b are [title, line], caption is text). refNote: the small line under the reference, saying where it comes from. Text: `code`, a key in backticks (`F5`, `Ctrl+.`), **bold**, [links](https://…), (@site:<path>) for a page of the site, (@docs:<slug>#<part>) for a docs page, {repo} for this repository's address; lines starting \"- \" are a list, \"1. \" numbered steps, and a ``` fence with a language is a code block. Write it the way you'd explain it to someone on Discord (AGENTS.md, Conventions).",
+  "index": {
+    "lead": "These are the tools for writing Nucleus Co-op handlers. They check a handler for the mistakes Nucleus doesn't warn you about, show what each player would get before you start a game, and put the docs for every option where you're typing.",
+    "path": "Every tool covers writing, checking and Try it. What comes after differs from tool to tool, and the comparison shows how."
+  },
   "groups": [
     { "id": "workbench", "title": "Workbench", "line": "An editor in your browser. There's nothing to install." },
     { "id": "editors", "title": "Editors", "line": "The same checks and docs, inside the editor you already use." },
@@ -23,6 +27,19 @@
     { "id": "test", "label": "Test", "line": "for real, in Nucleus Co-op" },
     { "id": "share", "label": "Share", "line": "upload it to the Hub" }
   ],
+  "editorsPage": {
+    "slug": "tools/editors", "title": "Compare the editors",
+    "desc": "VS Code, Notepad++, other editors and the workbench side by side, and what each one can do.",
+    "lead": "All of these give you the same checks, fixes, suggestions and docs, because they share one core. They differ in how you install them, and in what they can do once the handler is written: debugging, saving, and testing in Nucleus Co-op. The table below has the details.",
+    "pick": [
+      { "to": "tools/vscode", "title": "VS Code", "line": "The only one with a Docs panel, Try it next to your code and a debugger all in the editor. If you don't have a favourite, pick this one." },
+      { "to": "tools/notepadpp", "title": "Notepad++", "line": "The most popular editor among handler authors. Setup is a double-click. It has no debugger." },
+      { "to": "tools/other-editors", "title": "{first} and others", "line": "These need a few lines of config. There are notes for {all}, and any other editor with a language-server client can use the same server." },
+      { "to": "tools/workbench", "title": "Or no editor at all", "line": "The workbench has the same tools in a browser tab, with nothing to install." }
+    ],
+    "lspIntro": "These all run `ncdev lsp`. Here's who has tried each setup so far, and with which version. An empty cell means nobody has.",
+    "lspAfter": "The setups themselves are on [Other editors](@docs:tools/other-editors). If your editor isn't here, the same server works in any editor with a language-server client. [PORTING.md]({repo}/blob/main/PORTING.md) explains how to wire it up. If you get one working, [tell us]({repo}/issues/new?template=tester-feedback.yml) and we'll mark it."
+  },
   "tools": [
     {
       "id": "workbench", "slug": "tools/workbench", "group": "workbench", "title": "Workbench", "short": "Browser",
@@ -39,6 +56,7 @@
     },
     {
       "id": "vscode", "slug": "tools/vscode", "group": "editors", "title": "VS Code", "short": "Extension",
+      "desc": "What the VS Code extension does, with its commands, keys and settings.",
       "what": "The extension adds handler support to VS Code and VSCodium. Problems are underlined while you type and come with quick fixes. You also get suggestions, docs on hover and in a side panel, Try it, a debugger, and commands that package a handler, install it and start Nucleus Co-op with it.",
       "when": [
         "You write handlers regularly and want everything in one place.",
@@ -49,10 +67,15 @@
       "get": { "href": "tools/#get-vscode", "label": "Get the tools: VS Code" },
       "video": "vscode",
       "videoLine": "About a minute of problems, quick fixes, suggestions, parameter hints, the Docs panel and Try it.",
-      "shots": ["vscode-problems-quickfix", "vscode-hover-docs", "vscode-try-it", "vscode-debugger"]
+      "shots": ["vscode-problems-quickfix", "vscode-hover-docs", "vscode-try-it", "vscode-debugger"],
+      "sections": [
+        { "h": "How it works", "md": "- Open a handler. The extension recognises a .js file in a `handlers` folder, and any other .js file that looks like a handler. From then on it's checked while you type, with problems underlined in the code and listed in the Problems panel.\n- Press `Ctrl+.` on a problem to see its fixes. Hover a name to read its docs, and follow the link in the hover if you want the Nucleus Docs panel open beside your code.\n- If you don't have a handler yet, **Nucleus: New Handler…** starts one from a template, with your game's name and .exe filled in.\n- `F5` steps through the handler in Run and Debug, with breakpoints and the variables for each player.\n- **Nucleus: Test in Nucleus Co-op** installs the handler and starts Nucleus with the game selected. Nucleus only reads handlers when it starts, so if it's already open you're asked before it gets closed.\n- Everything else is in the command palette. Press `Ctrl+Shift+P` and type \"Nucleus\".\n\nSome options have no official docs, so an AI wrote theirs from the Nucleus source. In hovers those parts start with ✨, and the Docs panel shows them in a tinted frame." }
+      ],
+      "refNote": "These lists are generated from the extension's `package.json`."
     },
     {
       "id": "notepadpp", "slug": "tools/notepadpp", "group": "editors", "title": "Notepad++", "short": "Plugin",
+      "desc": "What the Notepad++ plugin does, and what's in its menu.",
       "what": "A plugin for Notepad++, which came first when we asked handler authors what they write in. It underlines problems while you type, fixes them with Alt+Enter, suggests names and shows docs when you hover. Try it, the Hub, packaging and testing in Nucleus Co-op are in its menu.",
       "when": [
         "You already write handlers in Notepad++ and see no reason to switch.",
@@ -63,7 +86,12 @@
       "get": { "href": "tools/#get-notepadpp", "label": "Get the tools: Notepad++" },
       "video": "notepadpp",
       "videoLine": "Under a minute. The same checks, fixes, suggestions and docs, plus the plugin's menu.",
-      "shots": ["notepadpp-problem-hover", "notepadpp-suggestions", "notepadpp-panels", "notepadpp-menu"]
+      "shots": ["notepadpp-problem-hover", "notepadpp-suggestions", "notepadpp-panels", "notepadpp-menu"],
+      "sections": [
+        { "h": "Setting it up", "md": "1. Download `ncdev.exe` from [Get the tools](@site:tools/#get-notepadpp) and close Notepad++.\n2. Double-click `ncdev.exe` and choose **Set up Notepad++**. Allow it when Windows asks for permission. (In a terminal, the same thing is `ncdev setup notepad++`.)\n3. Open a handler in Notepad++. The plugin's menu is **Plugins › Nucleus Co-op handlers**.\n\nSetup adds the plugin to Notepad++'s `plugins\\NcDev` folder and keeps a copy of ncdev in `%LOCALAPPDATA%\\ncdev`. It doesn't change anything else." },
+        { "h": "How it works", "md": "- The plugin runs `ncdev` in the background and asks it about the handler you have open. That's why Notepad++ shows the same problems and docs as the other tools.\n- Problems get underlined while you type. Hover one to read what's wrong, or press `Alt+Enter` to fix it.\n- **New handler…** in the menu starts one from a template if you don't have one yet.\n- **Test in Nucleus Co-op** installs the handler and starts Nucleus with the game selected. Nucleus only reads handlers when it starts, so if it's already open you're asked before it gets closed.\n- The rest is in the menu too, under **Plugins › Nucleus Co-op handlers**.\n\nSome options have no official docs, so an AI wrote theirs from the Nucleus source. Notepad++ marks those with [AI]." }
+      ],
+      "refNote": "This list is read from the plugin's own menu."
     },
     {
       "id": "other-editors", "slug": "tools/other-editors", "group": "editors", "title": "Other editors", "short": "ncdev lsp",
@@ -74,10 +102,15 @@
         "Your editor isn't on the list but has a language-server client. The same server works there."
       ],
       "not": "Fair warning: only some of these setups have been tested so far. [Compare the editors](@docs:tools/editors) says which. Notepad++ and VS Code have their own pages.",
-      "get": { "href": "tools/#in-your-editor", "label": "Get the tools: other editors" }
+      "get": { "href": "tools/#in-your-editor", "label": "Get the tools: other editors" },
+      "sections": [
+        { "h": "How it works", "pair": { "a": ["Your editor", "shows problems, docs and suggestions"], "b": ["ncdev lsp", "checks the handler"], "caption": "Your editor starts `ncdev lsp` and talks to it while you type. The server works out what's wrong with the handler, and your editor displays it." } },
+        { "h": "Before you paste", "md": "The snippets below start `ncdev` by name, so it has to be on your PATH ([getting ncdev](@docs:tools/ncdev#getting-it)).\n\nMost of them also turn on `compareWithHub`. That makes the server ask hub.splitscreen.me whether a handler from the Hub still has the Hub's `Game.GUID`. Leave that line out if you'd rather it didn't.\n\nThe setups come from [PORTING.md]({repo}/blob/main/PORTING.md), which also explains how to port the tools to an editor we don't cover yet. You can see [who has tried each one](@docs:tools/editors#language-server-editors)." }
+      ]
     },
     {
       "id": "ncdev", "slug": "tools/ncdev", "group": "cli-ai", "title": "ncdev (command line)", "short": "Command line",
+      "desc": "What ncdev is for, with every command and option.",
       "what": "`ncdev` is the command-line version of the tools, in one program. It checks and formats handlers, looks things up in the API, runs Try it and the debugger in a terminal, packages and installs handlers, starts Nucleus Co-op for a test, and searches the Hub. Notepad++ and the other editors run it in the background (`ncdev lsp`), and AI agents connect to it (`ncdev mcp`).",
       "when": [
         "You want to check a whole folder of handlers in one go, for example from a script.",
@@ -86,17 +119,29 @@
         "You're connecting an AI agent to the tools."
       ],
       "not": "The workbench and the VS Code extension don't need `ncdev`. If you only use those, you can skip this page.",
-      "get": { "href": "tools/#command-line", "label": "Get the tools: the command line" }
+      "get": { "href": "tools/#command-line", "label": "Get the tools: the command line" },
+      "sections": [
+        { "h": "Getting it", "md": "- On Windows, download `ncdev.exe`. On Linux (x64), download `ncdev-linux-x64`, make it runnable and name it `ncdev`. Neither needs anything else installed. Both are on [Get the tools](@site:tools/#command-line).\n- On a Mac or ARM Linux, use `nucleus.js` from the same page with Node.js 18 or newer, and write `node nucleus.js` wherever these pages say `ncdev`.\n- The editor setups start it by name, so put it in a folder that's on your PATH.\n- `ncdev update` fetches the newest version of the standalone program." },
+        { "h": "How it works", "md": "- `ncdev lint handlers/` checks every handler in a folder, and exits with an error code if one of them has errors. That's what a script needs to stop on a broken handler.\n- `ncdev simulate handler.js --players 3` is Try it in a terminal. It prints each player's window, launch arguments and file changes.\n- Add `--help` after a command to see only that command's part of the help." }
+      ],
+      "refNote": "This reference is generated from `ncdev --help`."
     },
     {
       "id": "mcp", "slug": "tools/mcp", "group": "cli-ai", "title": "MCP server (AI agents)", "short": "ncdev mcp",
+      "desc": "What the MCP server gives AI agents, tool by tool.",
       "what": "`ncdev mcp` lets an AI agent use the handler tools itself. It speaks MCP (the Model Context Protocol), which is how agents such as Claude Code, Codex and Copilot connect to outside tools. The agent can look up what the API really has, check the handler it wrote, run Try it on it and ask what a line does, so it doesn't have to guess at option names.",
       "when": [
         "You write handlers with Claude Code, Codex, Copilot or some other agent that speaks MCP.",
         "You'd like the handler to pass Check before the agent shows it to you."
       ],
       "not": "Chatbots without tools, like ChatGPT or Claude in a browser tab, can't use it. For those there's a prompt to paste on [Set up your AI](@site:ai/). And if you write handlers yourself, you don't need this page at all.",
-      "get": { "href": "ai/", "label": "Set up your AI" }
+      "get": { "href": "ai/", "label": "Set up your AI" },
+      "sections": [
+        { "h": "How it works", "pair": { "a": ["Your AI agent", "writes the handler"], "b": ["ncdev mcp", "looks things up, checks, runs Try it"], "caption": "The agent starts `ncdev mcp` and calls the tools below as it works. The prompt on [Set up your AI](@site:ai/) tells it to look a name up before using it and to run Check before it shows you the handler." } },
+        { "h": "Connecting an agent", "md": "It's a normal MCP server over stdio. The command is `ncdev mcp` ([getting ncdev](@docs:tools/ncdev#getting-it)).\n\n- Claude Code: `claude mcp add nucleus -- ncdev mcp`, or install the plugin from [Set up your AI](@site:ai/), which sets it up for you.\n- Claude Desktop, Cursor and others with an `mcpServers` list: add the entry below.\n- VS Code: nothing to do. The extension registers the server for Copilot and other agents.\n\n```json\n{ \"mcpServers\": { \"nucleus\": { \"command\": \"ncdev\", \"args\": [\"mcp\"] } } }\n```\n\nWithout the standalone ncdev, use `\"command\": \"node\", \"args\": [\"/path/to/nucleus.js\", \"mcp\"]`." }
+      ],
+      "refIntro": "The descriptions below are the ones the agent reads, so they're written for it.",
+      "refNote": "This list comes straight from what `ncdev mcp` serves."
     }
   ]
 }

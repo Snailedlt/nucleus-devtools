@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url';
 import { writeDocPages } from '../playground/docs-pages.mjs';
 import { load } from './bundle-ts.mjs';
 import { parseHelp, parseNppMenu, toolDocs, readToolSources, readGuideSources } from '../playground/tool-docs.mjs';
+import { rich, blocks } from '../playground/tool-docs-text.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
@@ -123,19 +124,21 @@ const guideFixture = () => {
   return {
     tools: {
       groups: [{ id: 'workbench', title: 'Workbench', line: 'In the browser.' }, { id: 'editors', title: 'Editors', line: 'In your editor.' }, { id: 'cli-ai', title: 'Command line and AI', line: 'For scripts.' }],
+      index: { lead: 'The tools.', path: 'A handler\'s path.' },
       start: [{ who: 'New here', md: 'Open [the workbench](@docs:tools/workbench).' }],
+      editorsPage: { slug: 'tools/editors', title: 'Compare the editors', desc: 'Side by side.', lead: 'They share one core.', pick: [{ to: 'tools/other-editors', title: '{first} and others', line: 'There are notes for {all}.' }], lspIntro: 'Who tried each.', lspAfter: 'See [PORTING.md]({repo}/blob/main/PORTING.md).' },
       core: { title: 'One core', parts: ['Checks'], line: 'All share it.' },
       flow: [{ id: 'write', label: 'Write', line: 'Type' }, { id: 'test', label: 'Test', line: 'In Nucleus' }],
       tools: [tool('workbench', 'tools/workbench', 'workbench'), tool('vscode', 'tools/vscode', 'editors'), tool('notepadpp', 'tools/notepadpp', 'editors'), tool('other-editors', 'tools/other-editors', 'editors'), tool('ncdev', 'tools/ncdev', 'cli-ai'), tool('mcp', 'tools/mcp', 'cli-ai')],
     },
     guide: { skipTips: [], pages: [
-      { id: 'overview', slug: 'tools/workbench', nav: 'Overview', title: 'Workbench', desc: 'The workbench.', sections: [{ h: 'First <minute>', md: '1. Press {key:zoom}.\n2. Then `F8`, see [Check](@guide:check) and [the site](@site:tools/).\n\nA **bold** line with `code`.' }] },
+      { id: 'overview', slug: 'tools/workbench', nav: 'Overview', title: 'Workbench', desc: 'The workbench.', map: { h: 'Where things are', alt: 'The workbench', caption: 'The numbers.', note: 'See [settings](@guide:settings).' }, flow: { h: 'A path', caption: 'The steps.', links: { write: 'writing' } }, sections: [{ h: 'First <minute>', md: '1. Press {key:zoom}.\n2. Then `F8`, see [Check](@guide:check) and [the site](@site:tools/).\n\nA **bold** line with `code`.' }] },
       pg('writing', { keys: ['zoom'], tips: ['t-one'], said: ['t-two'] }), pg('check'), pg('try-it'), pg('files'), pg('settings', { settingsTabs: true }), pg('shortcuts', { allKeys: true }),
     ] },
     tourParts: { parts: [{ id: 'code', title: 'The code', text: 'Write here. {key:zoom} zooms.', targets: ['#editor'], page: 'writing' }] },
     tips: [{ id: 't-one', text: 'A tip with {key:zoom} & more.', kind: 'gui' }, { id: 't-two', text: 'Already said.', kind: 'gui' }],
     gallery: {}, videos: {}, sizes: {}, map: { width: 200, height: 100, parts: { code: { x: 25, y: 50 } } },
-    compareHtml: '<tbody><tr><th scope="row">Feature</th></tr></tbody>', editors: { editors: [{ id: 'sample', name: 'Sample 2+', people: null, ai: 'Sample 2.1 <beta>', tile: { name: 'Sample', line: 'One line' } }] }, editorTag: (id) => `<span>tested:${id}</span>`, settingsTabs: ['Theme', 'Keys & more'],
+    compareHtml: '<tbody><tr><th scope="row">Feature</th></tr></tbody>', editors: { editors: [{ id: 'sample', name: 'Sample 2+', people: null, ai: 'Sample 2.1 <beta>', tile: { name: 'Sample', line: 'One line' } }] }, settingsTabs: ['Theme', 'Keys & more'],
   };
 };
 
@@ -200,12 +203,43 @@ test('tool docs: render commands, settings, chords and MCP input details from so
   assert.match(bySlug['tools/editors'].html, /<table class="compare">\n<tbody><tr><th scope="row">Feature<\/th><\/tr><\/tbody>\n<\/table>/);
   // Who tried each language-server setup, and with what; an empty cell when nobody has.
   assert.match(bySlug['tools/editors'].html, /<td>Sample 2\+<\/td><td>One line<\/td><td><\/td><td>Sample 2\.1 &lt;beta&gt;<\/td>/);
-  assert.match(bySlug['tools/editors'].html, /There are notes for Sample, and any other editor/);
+  assert.match(bySlug['tools/editors'].html, /<strong>Sample and others<\/strong><small>There are notes for Sample\.<\/small>/);
+  assert.match(bySlug['tools/editors'].html, /See <a href="https:\/\/example\.test\/owner\/repo\/blob\/main\/PORTING\.md">PORTING\.md<\/a>\./);
+  // The overview's own words: the screenshot's caption and note, and the path's steps that have a page.
+  assert.match(over, /<figcaption>The numbers\.<\/figcaption>/);
+  assert.match(over, /<p class="small">See <a href="__UP__docs\/tools\/workbench\/settings\/">settings<\/a>\.<\/p>/);
+  assert.match(over, /<h2 id="from-idea-to-nucleus">A path<\/h2>[\s\S]*<li><a href="__UP__docs\/tools\/workbench\/writing\/"><strong>Write<\/strong>[\s\S]*<li><span><strong>Test<\/strong>/);
   // The index: the diagram of every tool around the engine, and the pages by group (the guide's own pages under its overview).
   assert.equal((index.slice(index.indexOf('class="dg-core"'), index.indexOf('id="dg-core-cap"')).match(/<li><a href="__UP__docs\/tools\/[\w-]+\/"><strong>/g) ?? []).length, 6, 'six tools around the engine');
   assert.match(index, /<h2 id="workbench">Workbench<\/h2>\n<p>In the browser\.<\/p>\n<ul class="tool-cards"><li><a href="__UP__docs\/tools\/workbench\/"><strong>Workbench<\/strong>/);
   assert.doesNotMatch(index, /docs\/tools\/workbench\/check\//);
   assert.match(index, /<ol class="dg-flow"><li><span><strong>Write<\/strong>/);
+});
+
+test('tool docs: a tool\'s written sections are laid out from data: a diagram, steps, a code block, links', () => {
+  const d = { ...guideFixture(), help: 'Commands:\n  run'.padEnd('Commands:\n'.length + 30) + 'Run it\n\nExit code: 1 on errors;\n2 on bad usage.\n', pkg: { contributes: {} }, nppCpp: 'static FuncItem funcs[] = {};', actions: [{ id: 'zoom', label: 'Zoom', group: 'View', keys: 'Ctrl+0', where: 'app' }], porting: '## Wiring\n\n### Sample (LSP)\n\nText.\n\n### Notepad++\n\nPlugin internals.\n\n## Debugging\n', mcpTools: [], repoUrl: 'https://example.test/r' };
+  const ncdev = d.tools.tools.find((x) => x.id === 'ncdev');
+  ncdev.sections = [{ h: 'Getting it', pair: { a: ['You', 'type'], b: ['ncdev', 'answers'], caption: 'It runs `ncdev`.' }, md: '1. Download `ncdev.exe`.\n2. Press `Ctrl+.` or type `.`.\n\n```json\n{ "a": "<b>" }\n```\n\nSee [the docs](@docs:tools/mcp#tools).' }];
+  ncdev.refNote = 'From `ncdev --help`.';
+  const page = toolDocs(d).pages.find((p) => p.slug === 'tools/ncdev').html;
+  assert.match(page, /<h2 id="getting-it">Getting it<\/h2>\n<figure class="dg" aria-labelledby="dg-getting-it-cap"><ol class="dg-flow pair"><li><span><strong>You<\/strong><small>type<\/small><\/span><\/li><li><span><strong>ncdev<\/strong>/);
+  assert.match(page, /<ol class="steps"><li>Download <code class="use">ncdev\.exe<\/code>\.<\/li><li>Press <kbd>Ctrl\+\.<\/kbd> or type <code class="use">\.<\/code>\.<\/li><\/ol>/);
+  assert.match(page, /<pre class="cfg" data-lang="json"><code>\{ &quot;a&quot;: &quot;&lt;b&gt;&quot; \}<\/code><\/pre>/);
+  assert.match(page, /See <a href="__UP__docs\/tools\/mcp\/#tools">the docs<\/a>\./);
+  // The reference follows the written part: the commands, the help's exit codes, then where it all comes from.
+  assert.ok(page.indexOf('id="getting-it"') < page.indexOf('id="commands"'));
+  assert.match(page, /<p class="small">Exit code: 1 on errors; 2 on bad usage\.<\/p>/);
+  assert.match(page, /<p class="small">From <code class="use">ncdev --help<\/code>\.<\/p>\n<p class="small more">Next: /);
+  // Other editors: PORTING.md's setups without Notepad++'s notes (it has its own page), then the way on.
+  const other = toolDocs(d).pages.find((p) => p.slug === 'tools/other-editors');
+  assert.match(other.md, /### Sample \(LSP\)/);
+  assert.doesNotMatch(other.md, /Notepad|Plugin internals/);
+  assert.equal(other.desc, 'The language server and debugger setups: Sample.');
+  assert.match(other.outro, /^<p class="small more">Next: /);
+  // Text helpers on their own.
+  const c = { repo: 'https://example.test/r', keyOf: () => 'F8', guideHref: (id) => `__UP__docs/guide/${id}/` };
+  assert.equal(rich('[a]({repo}/x?y=1&z=2) and [b](@guide:check#keys), {key:any}, `F8`, `=`', c), '<a href="https://example.test/r/x?y=1&z=2">a</a> and <a href="__UP__docs/guide/check/#keys">b</a>, <kbd>F8</kbd>, <kbd>F8</kbd>, <code class="use">=</code>');
+  assert.equal(blocks('One.\n\n- a\n- b\n\n```\nx < y\n```', c), '<p>One.</p>\n<ul class="dlist"><li>a</li><li>b</li></ul>\n<pre class="cfg"><code>x &lt; y</code></pre>');
 });
 
 test('tool docs: a key, tip, page or link the guide names that does not exist stops the build', () => {
@@ -225,7 +259,7 @@ test('tool docs: a key, tip, page or link the guide names that does not exist st
 const GUIDE = readGuideSources(path.join(root, 'workbench', 'playground'));
 const { ACTIONS } = await load('playground/src/keyactions.ts');
 const { GENERAL_TIPS } = await load('playground/src/tips.ts');
-const REAL = () => toolDocs({ ...readToolSources(root), ...GUIDE, help: 'Commands:\n', mcpTools: [], actions: ACTIONS, tips: GENERAL_TIPS, repoUrl: 'https://example.test/r', compareHtml: compareHtml(), editorTag });
+const REAL = () => toolDocs({ ...readToolSources(root), ...GUIDE, help: 'Commands:\n', mcpTools: [], actions: ACTIONS, tips: GENERAL_TIPS, repoUrl: 'https://example.test/r', compareHtml: compareHtml() });
 
 test('tool docs: every tool says what it is, when it is useful and where to get it', () => {
   assert.deepEqual(GUIDE.tools.tools.map((t) => t.id), ['workbench', 'vscode', 'notepadpp', 'other-editors', 'ncdev', 'mcp']);

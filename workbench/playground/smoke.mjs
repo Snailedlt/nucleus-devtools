@@ -1117,6 +1117,47 @@ section('tabs and package files', async () => {
   check(!s.errors.length, `tabs with package files: no page errors ${s.errors.join(' ')}`);
   await s.ctx.close();
 });
+section('handler tab keys', async () => {
+  // Next / Previous open handler and Close this handler are shortcuts like the rest (keyactions.ts), so they can't
+  // take another shortcut's key: in the code Ctrl+Shift+[ folds (it used to switch handlers), and in Find Alt+W is
+  // "whole word" (it used to close the handler too).
+  const s = await page('light');
+  await s.p.goto(BASE + '#example-mistakes');
+  await s.p.waitForSelector('.CodeMirror');
+  await s.p.waitForTimeout(900);
+  await s.p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
+  const now = () => s.p.evaluate(() => ({ name: document.querySelector('#doc-name')?.textContent, tabs: document.querySelectorAll('#htabs [role=tab]').length, folded: document.querySelectorAll('.CodeMirror-foldmarker').length, word: document.querySelector('.fw-opt[data-opt=word]')?.getAttribute('aria-pressed') ?? null }));
+  const inCode = () => s.p.evaluate(() => { const cm = document.querySelector('.CodeMirror').CodeMirror; cm.focus(); cm.setCursor(cm.getValue().split('\n').findIndex((l) => l.includes('Game.Play')), 5); });
+  const start = await now();
+  await inCode();
+  await s.p.keyboard.press('Control+Shift+BracketLeft');
+  await s.p.waitForTimeout(300);
+  const folded = await now();
+  check(start.tabs >= 2 && folded.name === start.name && folded.folded === 1, `tab keys: Ctrl+Shift+[ in the code folds the block and stays on the handler (${JSON.stringify(folded)})`);
+  await s.p.keyboard.press('Control+Shift+BracketRight');
+  await s.p.keyboard.press('Alt+PageDown');
+  await s.p.waitForTimeout(400);
+  const next = await now();
+  check(next.name !== start.name && next.tabs === start.tabs, `tab keys: Alt+PageDown goes to the next open handler (${next.name})`);
+  await s.p.keyboard.press('Alt+PageUp');
+  await s.p.waitForTimeout(400);
+  check((await now()).name === start.name, 'tab keys: Alt+PageUp goes back');
+  await inCode();
+  await s.p.keyboard.press('Control+F');
+  await s.p.waitForTimeout(300);
+  await s.p.keyboard.press('Alt+W');
+  await s.p.waitForTimeout(300);
+  const find = await now();
+  check(find.word === 'true' && find.tabs === start.tabs && find.name === start.name, `tab keys: Alt+W in Find turns on whole word and closes nothing (${JSON.stringify(find)})`);
+  await s.p.keyboard.press('Escape');
+  await inCode();
+  await s.p.keyboard.press('Alt+W');
+  await s.p.waitForTimeout(400);
+  check((await now()).tabs === start.tabs - 1, 'tab keys: Alt+W in the code closes the handler');
+  check(await s.p.evaluate(() => /Next open handler/.test(document.querySelector('#help-dialog')?.textContent ?? '')), 'tab keys: they are in the shortcut list');
+  check(!s.errors.length, `tab keys: no page errors ${s.errors.join(' ')}`);
+  await s.ctx.close();
+});
 section('closing handlers', async () => {
   // Every handler can be closed, the last one too: a new one from the template takes its place (no empty page); Undo
   // brings the closed one back and the untouched template goes.

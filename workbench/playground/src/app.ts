@@ -2481,7 +2481,18 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
   if (e.key === '?' && !(e.target as HTMLElement).closest('.CodeMirror, input, textarea, select')) return void (e.preventDefault(), helpDialog.showModal());
   // The workbench's shortcuts (keybindings.ts), whatever they're set to.
   const id = appActionFor(e);
-  if (!id) return;
+  if (!id) {
+    // Ctrl+Shift+[ and ] used to switch handlers everywhere, which took Fold's key away in the code. Outside the
+    // code, where nothing else uses them, they still do (the shortcuts are Next / Previous open handler now).
+    if (!inCode && e.ctrlKey && !e.metaKey && !e.altKey && e.shiftKey && (e.code === 'BracketLeft' || e.code === 'BracketRight')) {
+      e.preventDefault();
+      stepHandler(e.code === 'BracketRight' ? 1 : -1);
+    }
+    return;
+  }
+  // The handler tabs' keys give way to whatever already used the key where the focus is (Find's Alt+W for whole
+  // word, a command of the editor's bound to the same keys).
+  if ((id === 'nextHandler' || id === 'prevHandler' || id === 'closeHandler') && e.defaultPrevented) return;
   // F6 bound to an editor command too (Settings › Keyboard): the editor already ran it, so don't also move pane.
   if ((id === 'nextPane' || id === 'prevPane') && inCode && e.defaultPrevented) return;
   e.preventDefault();
@@ -2503,9 +2514,17 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
     nextPane: () => cyclePane(1),
     prevPane: () => cyclePane(-1),
     goToCheck: () => goToCheck(),
+    nextHandler: () => stepHandler(1),
+    prevHandler: () => stepHandler(-1),
+    closeHandler: () => closeTab(activeTab),
   };
   run[id]?.();
 });
+/** The next (or previous) open handler's tab, round the ends. */
+function stepHandler(dir: 1 | -1) {
+  const i = tabs.findIndex((x) => x.id === activeTab);
+  switchTab(tabs[(i + dir + tabs.length) % tabs.length].id);
+}
 
 // F6 / Shift+F6, as in VS Code: the header, the Files panel, the code, Lines and the results, in turn.
 const FOCUSABLE = 'button:not([disabled]), a[href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
@@ -2734,17 +2753,6 @@ document.querySelectorAll<HTMLElement>('.rail [data-rail]').forEach((b) => b.add
     rs.addEventListener('click', (e) => { if (press === -1) { e.stopImmediatePropagation(); e.preventDefault(); press = 0; } }, true);
   }
 }
-// Ctrl+Shift+[ and ] go to the previous / next open handler; Alt+W closes the open one.
-document.addEventListener('keydown', (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.code === 'BracketLeft' || e.code === 'BracketRight')) {
-    e.preventDefault();
-    const i = tabs.findIndex((x) => x.id === activeTab);
-    switchTab(tabs[(i + (e.code === 'BracketRight' ? 1 : -1) + tabs.length) % tabs.length].id);
-  } else if (e.altKey && !e.ctrlKey && e.code === 'KeyW') {
-    e.preventDefault();
-    closeTab(activeTab);
-  }
-});
 
 // The common shortcuts, on hover or keyboard focus of the buttons they belong to (both modes).
 initKeyHints([

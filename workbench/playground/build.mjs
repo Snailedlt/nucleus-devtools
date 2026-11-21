@@ -835,7 +835,7 @@ let docValues = [];
     const { toolDocs: makeToolDocs, readToolSources, readGuideSources } = await import('./tool-docs.mjs');
     const src = readToolSources(coreRepo);
     const guideSrc = readGuideSources(here);
-    toolDocs = makeToolDocs({ ...src, ...guideSrc, help: C.helpText(src.pkg.version), mcpTools: C.TOOLS, actions: ACTIONS, tips: GENERAL_TIPS, repoUrl: 'https://github.com/Snailedlt/nucleus-devtools', compareHtml: RB.compareHtml(), editorTag: RB.editorTag });
+    toolDocs = makeToolDocs({ ...src, ...guideSrc, help: C.helpText(src.pkg.version), mcpTools: C.TOOLS, actions: ACTIONS, tips: GENERAL_TIPS, repoUrl: 'https://github.com/Snailedlt/nucleus-devtools', compareHtml: RB.compareHtml() });
     // The screenshots those pages show, beside the start page's gallery (which has most of them already).
     for (const n of toolDocs.media) for (const f of [`${n}-light.webp`, `${n}-dark.webp`]) {
       const to = path.join(startDir, 'gallery', f);

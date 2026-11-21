@@ -257,7 +257,7 @@ ${!v && o.toolPages?.length ? `<p class="small">The tools have their own section
       written.push(slug);
     };
     page('tools', 'Tools', 'The tools for writing Nucleus Co-op handlers, what each one is for and how it works.', o.toolsIndex ?? '', '@tools');
-    for (const t of tools) page(t.slug, t.title, t.desc, (t.intro ?? '') + (t.html ?? mdToHtml(t.md, t.mdHref ?? ((u) => u))), t.slug);
+    for (const t of tools) page(t.slug, t.title, t.desc, (t.intro ?? '') + (t.html ?? mdToHtml(t.md, t.mdHref ?? ((u) => u))) + (t.outro ? `\n${t.outro}` : ''), t.slug);
   }
   // The list the drawer shows (nav.js): each group's names with their first line, for the filter.
   const first = (d) => String(d ?? '').split('\n')[0].replace(/[`*\\_]/g, '').slice(0, 110);
