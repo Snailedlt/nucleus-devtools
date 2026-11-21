@@ -1,15 +1,21 @@
 // Zen mode, as in VS Code (Ctrl+K Z): only the code, centred, with nothing else on screen. The header, the tool rail,
 // Files, Lines and the results pane go; the code's own marks (problems, notes, fixes) stay. Esc twice, the same keys,
-// the command palette or the small "Leave Zen mode" button (it shows when the pointer nears the top, or on focus)
-// bring everything back. Not kept: a reload starts outside it. Wide screens and phones alike.
+// the command palette or the small "Leave Zen mode" button bring everything back. The button, with its keys, shows for
+// a few seconds on the way in (so nobody has to guess the way out), then when the pointer nears the top, or on focus. Not kept: a reload starts outside it. Wide screens and phones alike.
 export function initZen(opts: { refresh: () => void; focusCode: () => void; announce: (s: string) => void; keys: () => string }) {
   const root = document.documentElement;
   const exit = document.getElementById('zen-exit') as HTMLButtonElement | null;
   const on = () => root.hasAttribute('data-zen');
+  let hint = 0;
   const set = (zen: boolean) => {
     if (zen === on()) return;
     root.toggleAttribute('data-zen', zen);
-    if (exit) exit.hidden = !zen;
+    if (exit) {
+      exit.hidden = !zen;
+      clearTimeout(hint);
+      exit.classList.toggle('hint', zen);
+      if (zen) hint = window.setTimeout(() => exit.classList.remove('hint'), 4000);
+    }
     requestAnimationFrame(() => { opts.refresh(); if (zen) opts.focusCode(); });
     const keys = opts.keys();
     opts.announce(zen ? `Zen mode: only the code. Escape twice${keys ? ` or ${keys}` : ''} leaves it.` : 'Left Zen mode.');

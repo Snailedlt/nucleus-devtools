@@ -888,6 +888,20 @@ test('PR77 zen: transitions refresh and focus after layout, announce current key
   assert.equal(f.storage.length, 0);
 });
 
+test('PR77 zen: the way out shows on the way in, then steps aside', async () => {
+  const f = await zenFixture(), exit = f.ids.get('zen-exit');
+  f.zen.set(true);
+  assert.equal(exit.classList.contains('hint'), true, 'shown on entering');
+  f.tick();
+  assert.equal(exit.classList.contains('hint'), false, 'gone after its time');
+  f.zen.set(false); f.zen.set(true);
+  assert.equal(exit.classList.contains('hint'), true);
+  f.zen.set(false);
+  assert.equal(exit.classList.contains('hint'), false, 'leaving clears it');
+  f.tick();
+  assert.equal(exit.classList.contains('hint'), false);
+});
+
 test('PR77 zen: double Escape requires an interval below 600ms', async () => {
   const f = await zenFixture();
   f.zen.set(true);
