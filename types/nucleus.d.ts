@@ -797,7 +797,7 @@ interface Game {
    * In practice: Gives each instance its own user profile folders (AppData, Documents) under Nucleus' folder, by changing the environment the game starts with. The handler's `Game.UserProfileConfigPath`, `Game.UserProfileSavePath` and `Game.DocumentsConfigPath`/`DocumentsSavePath` are only copied there when it is true. Used for games that keep settings or saves in the user's profile, above all Unreal Engine games; rare in Unity games.
    * (AI-written, based on Nucleus GenericGameHandler.cs (the UserProfile/Documents copies need gen.UseNucleusEnvironment; the instance's environment); verified Hub handlers, counted 2026-11-17; Hub game engines.)
    *
-   * By engine: rarer in Unity and Source games.
+   * By engine: rarer in Unity games.
    * @example Game.UseNucleusEnvironment = false;
    */
   UseNucleusEnvironment: boolean;
@@ -1769,9 +1769,8 @@ interface GameHook {
    */
   SDL2Enabled: boolean;
   /**
-   * Which XInput DLLs the custom DLL replaces. DInput DLLs are not supported.
+   * The name of our custom DLL for gamepad control, some games need other names like xinput1_4.dll, xinput1_2.dll, xinput1_1.dll and xinput9_1_0.dll.
    * @default new string[]
-   * @example Game.Hook.XInputNames = [ "xinput1_3.dll"];
    */
   XInputNames: string[];
   /**
@@ -4230,7 +4229,7 @@ interface ProtoInputRuntime {
   var player = PlayerList[i];
   ProtoInput.EnableMessageFilter(
     player.ProtoInputInstanceHandle,
-    ProtoInput.Values.MouseButtonFilterID
+    ProtoInput.Values.RawInputFilterID
   );
 }
    */
