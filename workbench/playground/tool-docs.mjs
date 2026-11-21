@@ -39,7 +39,7 @@ export function parseHelp(help) {
     }
     return out.map((c) => ({ use: c.use, desc: c.desc.join(' ') }));
   };
-  return { commands: section('Commands'), options: section('Common options') };
+  return { commands: section('Commands'), options: section('Common options'), lint: section('Lint options') };
 }
 
 /** The Notepad++ plugin's menu, in order, with a gap where the menu has a separator. */
@@ -68,9 +68,9 @@ export function toolPages(d) {
 
   pages.push({
     slug: 'tools/workbench', group: 'Editors', title: 'Workbench', desc: 'The browser workbench\'s keyboard shortcuts.',
-    html: `<p>Generated from the workbench's own shortcut list. Change them in the workbench's Settings; <kbd>?</kbd> shows them there.</p>
+    html: `<p>Generated from the workbench's own shortcut list; <kbd>?</kbd> shows them in the workbench. Change them in its Settings, except the ones marked <em>fixed</em>.</p>
 <p class="small"><a href="__UP__">Open the workbench</a>.</p>
-${[...new Set(d.actions.map((a) => a.group))].map((g) => `<h2>${esc(g)}</h2>\n${table(['Action', 'Keys'], d.actions.filter((a) => a.group === g).map((a) => [esc(a.label), keys(a.keys) + (a.mac ? ` <span class="small">(Mac: ${keys(a.mac)})</span>` : '')]))}`).join('\n')}`,
+${[...new Set(d.actions.map((a) => a.group))].map((g) => `<h2>${esc(g)}</h2>\n${table(['Action', 'Keys'], d.actions.filter((a) => a.group === g).map((a) => [esc(a.label), keys(a.keys) + (a.mac ? ` <span class="small">(Mac: ${keys(a.mac)})</span>` : '') + (a.where === 'fixed' ? ' <span class="small">fixed</span>' : '')]))}`).join('\n')}`,
   });
   pages.push({
     slug: 'tools/vscode', group: 'Editors', title: 'VS Code', desc: 'The VS Code extension\'s commands, keys and settings.',
@@ -104,7 +104,9 @@ ${get('command-line', 'Get the tools: the command line')}
 <h2>Commands</h2>
 ${table(['Command', 'What it does'], cmds.commands.map((c) => [c.use.map(use).join('<br>'), md(c.desc)]))}
 <h2>Options for every command</h2>
-${table(['Option', 'What it does'], cmds.options.map((c) => [c.use.map(use).join('<br>'), md(c.desc)]))}`,
+${table(['Option', 'What it does'], cmds.options.map((c) => [c.use.map(use).join('<br>'), md(c.desc)]))}
+<h2>Options of <code class="use">ncdev lint</code></h2>
+${table(['Option', 'What it does'], cmds.lint.map((c) => [c.use.map(use).join('<br>'), md(c.desc)]))}`,
   });
   pages.push({
     slug: 'tools/mcp', group: 'Command line and AI', title: 'MCP server (AI agents)', desc: 'The tools AI agents get from the nucleus MCP server.',

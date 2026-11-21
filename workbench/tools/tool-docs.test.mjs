@@ -40,6 +40,14 @@ test('docs sync: README.md\'s generated parts are current (node scripts/readme-b
   assert.equal(read('README.md'), await updatedReadme(read('README.md')), 'README.md is out of date: run node scripts/readme-blocks.mjs');
 });
 
+test('ncdev --help: the lint options are read too (they have their own section in the help)', () => {
+  const src = read('src/clihelp.ts');
+  const { lint } = parseHelp(src.slice(src.indexOf('`', src.indexOf('helpText')) + 1, src.lastIndexOf('`')).replace(/\$\{[^}]*\}/g, 'x'));
+  const flags = lint.flatMap((o) => o.use.map((u) => u.split(' ')[0]));
+  for (const f of ['--fix', '--fix-dry-run', '--rule']) assert.ok(flags.includes(f), `${f} is in the lint options`);
+  assert.ok(lint.every((o) => o.desc), 'each has a description');
+});
+
 test('docs sync: every `ncdev <command>` the docs name is a real command', () => {
   const src = read('src/clihelp.ts');
   const real = new Set(parseHelp(src.slice(src.indexOf('`', src.indexOf('helpText')) + 1, src.lastIndexOf('`')).replace(/\$\{[^}]*\}/g, 'x')).commands.flatMap((c) => c.use.map((u) => u.split(' ')[0])));

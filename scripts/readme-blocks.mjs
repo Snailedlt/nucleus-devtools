@@ -27,7 +27,8 @@ async function loadCore() {
   core = await import('data:text/javascript;base64,' + Buffer.from(out.outputFiles[0].text).toString('base64'));
   return core;
 }
-const mdCell = (t) => String(t).replace(/\|/g, '\\|').replace(/\n+/g, ' ');
+// A placeholder in plain text (<Name>/) would be read as an HTML tag by GitHub and vanish: written as code.
+const mdCell = (t) => String(t).replace(/\|/g, '\\|').replace(/\n+/g, ' ').split(/(`[^`]*`)/).map((part, i) => (i % 2 ? part : part.replace(/<[A-Za-z][\w ]*>[\w./]*/g, (m) => `\`${m}\``))).join('');
 
 /** A comparison cell: "yes", "no" or "", then an optional note. */
 const cell = (c) => {
@@ -98,7 +99,9 @@ export function settingsMarkdown(pkg = readJson('package.json')) {
   return ['| Setting | Default | |', '| --- | --- | --- |', ...props.map(([k, v]) => `| \`${k}\` | ${def(v)} | ${mdCell(v.markdownDescription ?? v.description ?? '')} |`)].join('\n');
 }
 export function commandsMarkdown(pkg = readJson('package.json')) {
-  const keys = Object.fromEntries((pkg.contributes.keybindings ?? []).map((k) => [k.command, k.key.replace(/\b\w/g, (x) => x.toUpperCase())]));
+  const cap = (k) => k.replace(/\b\w/g, (x) => x.toUpperCase());
+  // A different key on a Mac is named next to the Windows/Linux one.
+  const keys = Object.fromEntries((pkg.contributes.keybindings ?? []).map((k) => [k.command, k.mac && k.mac !== k.key ? `${cap(k.key)} (Mac: ${cap(k.mac)})` : cap(k.key)]));
   return ['| Command | Keys |', '| --- | --- |', ...pkg.contributes.commands.map((c) => `| **${c.category ? `${c.category}: ` : ''}${c.title}** | ${keys[c.command] ?? ''} |`)].join('\n');
 }
 

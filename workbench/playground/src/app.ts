@@ -2231,7 +2231,7 @@ function renderOpen() {
     }
     const lay = layout(e.group);
     const art = e.mono ? monogram(e.mono, e.cover) : e.icon ? `<span class="ic" aria-hidden="true">${svgIcon(e.icon)}</span>` : '';
-    const keys = e.keys ? `<span class="keys">${e.keys.split('+').map((k) => `<kbd>${esc(k)}</kbd>`).join('')}</span>` : '';
+    const keys = e.keys ? `<span class="keys">${e.keys.split(' ').map((step) => step.split('+').map((k) => `<kbd>${esc(k)}</kbd>`).join('')).join(' then ')}</span>` : '';
     const sub = e.sub ? (lay === 'chips' ? `<span class="sr-only">${esc(e.sub)}</span>` : `<span class="s">${highlight(e.sub, words)}</span>`) : '';
     // Rows get an "Open" (or "Run") that slides in under the pointer, as in BSManager's lists.
     const go = lay === 'rows' ? `<span class="go" aria-hidden="true">${e.group === 'Actions' || commandMode ? 'Run' : 'Open'}<svg viewBox="0 0 24 24"><path d="M5 12h13m-5-5 5 5-5 5"/></svg></span>` : '';

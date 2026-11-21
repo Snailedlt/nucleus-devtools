@@ -8,7 +8,8 @@ import { keysText } from './kbd';
 import { labelOf } from './keybindings';
 
 /** A tip's {key:actionId}: that action's key as it's bound now (keyactions.ts, changed in Settings). */
-const withKeys = (text: string) => text.replace(/\{key:(\w+)\}/g, (_, id: string) => labelOf(id));
+// In backticks, so a lone key (F8) becomes a keycap too (kbd.ts keysText); an unbound action stays empty.
+const withKeys = (text: string) => text.replace(/\{key:(\w+)\}/g, (_, id: string) => { const key = labelOf(id); return key ? '`' + key + '`' : ''; });
 import { BETA } from './testplan';
 
 const ON_KEY = 'nucleus-workbench-tips';

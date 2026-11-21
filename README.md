@@ -132,7 +132,7 @@ The API model is **generated from the Nucleus C# sources** (`GenericGameInfo`, `
 | **Nucleus: Try It: Change Settings** |  |
 | **Nucleus: Try It: Test All Combinations (Players, Input, Monitors)** |  |
 | **Nucleus: Debug Handler (Step Through, Simulated)** |  |
-| **Nucleus: Explain This Line** | Ctrl+Alt+E |
+| **Nucleus: Explain This Line** | Ctrl+Alt+E (Mac: Cmd+Alt+E) |
 | **Nucleus: Fix All Problems That Can Be Fixed** |  |
 | **Nucleus: Format Handler** | Shift+Alt+F |
 | **Nucleus: Package Handler for the Hub (.nc)** |  |
@@ -185,7 +185,7 @@ Package and Install both pick this folder up automatically.
 | `splitscreenme.completion.enable` | `true` | Provide completion, hover and signature help for the Nucleus Co-op handler API. Turned off automatically by "Set Up Type Definitions", since TypeScript then provides them. |
 | `splitscreenme.showWhatsNew` | `true` | After an update of the Nucleus Co-op handler tools, show a short note with what's new (the full list is in Nucleus: What's New). |
 | `splitscreenme.lint.enable` | `true` | Report problems in Nucleus Co-op handlers (ES5-only syntax, unknown options, type mismatches, Hub install pitfalls, …). |
-| `splitscreenme.lint.packageChecks` | `true` | Check the files in a Nucleus Co-op handler's folder (<Name>/ next to <Name>.js) as they'd go into the .nc: names Windows can't install, files that overwrite each other, broken INI/JSON, very large files, and files the handler uses (Game.Folder + "\\x") that aren't there. |
+| `splitscreenme.lint.packageChecks` | `true` | Check the files in a Nucleus Co-op handler's folder (`<Name>/` next to `<Name>.js`) as they'd go into the .nc: names Windows can't install, files that overwrite each other, broken INI/JSON, very large files, and files the handler uses (Game.Folder + "\\x") that aren't there. |
 | `splitscreenme.lint.compareWithHub` | `true` | For a Nucleus Co-op handler with a Hub.Handler.Id line, compare Game.GUID with the version published on hub.splitscreen.me (guid-changed). Downloads that version once and keeps it in the cache. |
 | `splitscreenme.gameFolders` | `{}` | The game's install folder for each Nucleus Co-op handler (file name → folder), set by hand. **Nucleus: Game Folder: Link…** keeps its links on this PC instead (not in a settings file), and they come first. The handler is then checked against the real files (`ExecutableName`, `BinariesFolder`, the symlink and copy lists…), and those lists suggest the game's files. File names and sizes are read, and the game's .exe and DLLs are analysed on your PC (their import tables and names in them, never run) for hook hints; nothing leaves your PC. |
 | `splitscreenme.lint.rules` | `{}` | Override the severity of individual checks on Nucleus Co-op handlers, e.g. `{ "deprecated": "off", "unknown-member": "error" }`. See the [rule list](https://github.com/Snailedlt/nucleus-devtools#lint-rules). |
