@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import crypto from 'node:crypto';
 import path from 'node:path';
 import { execSync } from 'node:child_process';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import * as esbuild from 'esbuild';
 import { fetchPackageFiles, slimFiles } from '../tools/hub-files.mjs';
@@ -562,6 +562,7 @@ fs.mkdirSync(startDir, { recursive: true });
 const TEST_BUILD = process.argv.includes('--test-build');
 let vsix = { url: 'https://github.com/Snailedlt/nucleus-devtools/releases', name: 'the .vsix', tag: 'latest release' };
 let ncdevUrl = 'https://github.com/Snailedlt/nucleus-devtools/releases';
+let ncdevLinuxUrl = ncdevUrl;
 try {
   const api = TEST_BUILD ? 'https://api.github.com/repos/Snailedlt/nucleus-devtools/releases/tags/test-build' : 'https://api.github.com/repos/Snailedlt/nucleus-devtools/releases?per_page=30';
   const res = await fetch(api, {
@@ -574,6 +575,8 @@ try {
   if (asset) vsix = { url: asset.browser_download_url, name: asset.name, tag: TEST_BUILD ? `test build, ${rel.name.replace(/^Test build:\s*/, '')}` : rel.tag_name };
   const exe = rel?.assets.find((a) => a.name === 'ncdev.exe');
   if (exe) ncdevUrl = exe.browser_download_url;
+  const linux = rel?.assets.find((a) => a.name === 'ncdev-linux-x64');
+  if (linux) ncdevLinuxUrl = linux.browser_download_url;
   if (TEST_BUILD) console.log(`tools page: the test build (${rel.name})`);
 } catch (e) {
   if (TEST_BUILD) throw new Error(`--test-build: ${e.message}`);
@@ -653,7 +656,10 @@ const ANCHOR_SVG = '<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden=
 const escHtml = (t) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 // The start page (start/) and the tools page (tools/): the same look (start.html's head and styles), each its own
 // body. tools.html is only the body; it gets start.html's head with its own title, description and address.
-const startSrc = fs.readFileSync(path.join(here, 'src', 'start.html'), 'utf8');
+// Parts two pages share (src/partials/): written once, filled into each.
+const PARTIALS = { WORKBENCH_EXTRAS: fs.readFileSync(path.join(here, 'src', 'partials', 'workbench-extras.html'), 'utf8').replace(/^<!--[\s\S]*?-->\n/, '').trimEnd() };
+const withPartials = (src) => src.replace(/<!--([A-Z_]+)-->/g, (m, k) => PARTIALS[k] ?? m);
+const startSrc = withPartials(fs.readFileSync(path.join(here, 'src', 'start.html'), 'utf8'));
 /** A page with start.html's head (look, fonts, header) and a body of its own: its title, description and address. */
 const sitePageSrc = (file, slug, title, desc, shareTitle) => {
   const head = startSrc.slice(0, startSrc.indexOf('<body>'));
@@ -667,15 +673,24 @@ const sitePageSrc = (file, slug, title, desc, shareTitle) => {
     // Its <script> stays as written (hlLangBlocks only on the HTML around it).
     + '<body>\n' + fs.readFileSync(path.join(here, 'src', file), 'utf8').split(/(<script\b[\s\S]*?<\/script>)/i).map((part, i) => (i % 2 ? part : hlLangBlocks(part))).join('');
 };
-const toolsSrc = sitePageSrc('tools.html', 'tools',
+// Parts of the site made from the same data as the README's (scripts/readme-blocks.mjs): the comparison table
+// (data/tools-compare.json) and the Claude Code plugin's commands (.claude-plugin/marketplace.json).
+// From this checkout, not the core being built against (--core): an older core has no such script.
+const RB = await import(pathToFileURL(path.join(here, '..', '..', 'scripts', 'readme-blocks.mjs')).href);
+const plugin = RB.claudePlugin();
+const fromData = (src) => src.replace('<!--COMPARE-->', () => RB.compareHtml()).replaceAll('__CLAUDE_MARKETPLACE__', plugin.marketplace).replaceAll('__CLAUDE_PLUGIN__', plugin.plugin).replace('<!--ED_TILES-->', () => RB.editorTiles()).replace(/<!--ED:(\w+)-->/g, (_, id) => RB.editorTag(id)).replace(/<!--PORTING:(\w+)-->/g, (_, id) => RB.portingSnippet(id).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]));
+const toolsSrc = withPartials(fromData(sitePageSrc('tools.html', 'tools',
   'Get the tools: Nucleus Co-op handlers in VS Code, Notepad++, the browser and more',
   'Every Nucleus Co-op handler tool in one place: the browser workbench, VS Code, Notepad++, other editors through a language server, the ncdev command line and AI agents.',
-  'Get the tools: Nucleus Co-op handler tools');
+  'Get the tools: Nucleus Co-op handler tools')));
 // ai/: making a handler with ChatGPT, Claude, Copilot and other AI, chat or agent, checked by the tools.
-const aiSrc = sitePageSrc('ai.html', 'ai',
-  'Make a Nucleus Co-op handler with AI: ChatGPT, Claude, Copilot, Cursor',
-  'How to make a Nucleus Co-op handler with an AI chat or agent and check it before you trust it: a starter prompt, the write-check-fix loop, and what AI gets wrong.',
-  'Make a Nucleus Co-op handler with AI');
+// The chatbot prompt's rules are the core's (core/airules.ts AI_HARD_RULES), the same ones Fix with AI and the MCP
+// server give an AI, so the page can't say less or something else.
+const { AI_HARD_RULES } = await import('data:text/javascript;base64,' + Buffer.from((await esbuild.build({ entryPoints: [path.join(coreRepo, 'src', 'core', 'airules.ts')], bundle: true, format: 'esm', platform: 'node', write: false, nodePaths: [path.join(coreRepo, 'node_modules')], logLevel: 'error', banner: { js: `import { createRequire as __cr } from 'node:module'; const require = __cr(${JSON.stringify(import.meta.url)});` } })).outputFiles[0].text).toString('base64'));
+const aiSrc = fromData(sitePageSrc('ai.html', 'ai',
+  'Make a Nucleus Co-op handler with AI: Claude Code, Codex, Cursor, ChatGPT',
+  'Set up an AI to write Nucleus Co-op handlers with our tools: prompts to copy for Claude Code, other AI agents and chatbots.',
+  'Make a Nucleus Co-op handler with AI')).replace('__AI_HARD_RULES__', () => AI_HARD_RULES.map((r, i) => `${i + 1}. ${r.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}`).join('\n'));
 const toolsDir = path.join(here, 'dist', 'pages', 'tools');
 fs.mkdirSync(toolsDir, { recursive: true });
 const renderSitePage = (src, section) =>
@@ -695,6 +710,7 @@ const renderSitePage = (src, section) =>
     .replaceAll('__VSIX_NAME__', escHtml(vsix.name))
     .replaceAll('__VSIX_TAG__', escHtml(vsix.tag))
     .replaceAll('__NCDEV_URL__', escHtml(ncdevUrl))
+    .replaceAll('__NCDEV_LINUX_URL__', escHtml(ncdevLinuxUrl))
     .replace('<a id="vsix" ', () => (TEST_BUILD ? '<a id="vsix" data-pinned="test-build" ' : '<a id="vsix" '))
     .replaceAll('__PROBES__', String(probes.length))
     // Every heading with class has-anchor gets its link (GitHub's link icon, shown on hover), written here once.
@@ -793,7 +809,18 @@ let docValues = [];
   // The pages show the votes and the "Verified by people" labels from the newest votes report too.
   D.setDocVotes(docVotes);
   const { writeDocPages } = await import('./docs-pages.mjs');
-  docValues = writeDocPages({ hl: hlSem, checks: checksNav, outDir: path.join(here, 'dist', 'pages', 'docs'), startHtml: fs.readFileSync(path.join(here, 'src', 'start.html'), 'utf8'), docsPage: D.docsPage, docsView: D.docsView, docsValue: D.docsValue, allEntries: D.allEntries, groups: D.DOCS_GROUPS, enums: Object.keys(D.api.enums), docReviewUrl: D.docReviewUrl, partVotes: D.partVotes, placeAiFrames: D.placeAiFrames, aiFrameCss: D.aiFrameCss, aiTipScript: D.AI_TIP_SCRIPT, feedbackSite, countsSite, base: PAGES_BASE, preview: PREVIEW, noindex: NOINDEX });
+  // The Tools section's pages (tool-docs.mjs), from the tools' own data. A core from before they existed has none.
+  let toolPages = [];
+  if (fs.existsSync(path.join(coreRepo, 'src', 'clihelp.ts'))) {
+    const T = await esbuild.build({ stdin: { contents: "export { helpText } from './clihelp'; export { TOOLS } from './mcp';", resolveDir: path.join(coreRepo, 'src'), loader: 'ts' }, bundle: true, format: 'esm', platform: 'node', write: false, nodePaths: [path.join(coreRepo, 'node_modules')], logLevel: 'error', define: { __SIM_SANDBOX__: '""', __SIM_WORKER__: '""', __VERSION__: JSON.stringify(JSON.parse(fs.readFileSync(path.join(coreRepo, 'package.json'), 'utf8')).version), __HUB_TOOL__: '"workbench"' }, banner: { js: `import { createRequire as __cr } from 'node:module'; const require = __cr(${JSON.stringify(import.meta.url)});` } });
+    const C = await import('data:text/javascript;base64,' + Buffer.from(T.outputFiles[0].text).toString('base64'));
+    const K = await esbuild.build({ entryPoints: [path.join(here, 'src', 'keyactions.ts')], bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'error' });
+    const { ACTIONS } = await import('data:text/javascript;base64,' + Buffer.from(K.outputFiles[0].text).toString('base64'));
+    const { toolPages: makeToolPages, readToolSources } = await import('./tool-docs.mjs');
+    const src = readToolSources(coreRepo);
+    toolPages = makeToolPages({ ...src, help: C.helpText(src.pkg.version), mcpTools: C.TOOLS, actions: ACTIONS, repoUrl: 'https://github.com/Snailedlt/nucleus-devtools' });
+  }
+  docValues = writeDocPages({ hl: hlSem, checks: checksNav, toolPages, outDir: path.join(here, 'dist', 'pages', 'docs'), startHtml: fs.readFileSync(path.join(here, 'src', 'start.html'), 'utf8'), docsPage: D.docsPage, docsView: D.docsView, docsValue: D.docsValue, allEntries: D.allEntries, groups: D.DOCS_GROUPS, enums: Object.keys(D.api.enums), docReviewUrl: D.docReviewUrl, partVotes: D.partVotes, placeAiFrames: D.placeAiFrames, aiFrameCss: D.aiFrameCss, aiTipScript: D.AI_TIP_SCRIPT, feedbackSite, countsSite, base: PAGES_BASE, preview: PREVIEW, noindex: NOINDEX });
   // Each docs page in the sitemap too (written with the rule pages above).
   const sm = path.join(here, 'dist', 'pages', 'sitemap.xml');
   if (!PREVIEW && fs.existsSync(sm)) fs.writeFileSync(sm, fs.readFileSync(sm, 'utf8').replace('</urlset>', docValues.filter(Boolean).map((v) => `  <url><loc>${PAGES_BASE}docs/${v}/</loc></url>\n`).join('') + '</urlset>'));

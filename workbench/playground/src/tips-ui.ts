@@ -5,6 +5,11 @@ import { CONTEXT_TIPS, GENERAL_TIPS, Tip, TipContext, TipShow, tipShown } from '
 import { scanHandler, inCallback, Scan } from './lines';
 import { narrow } from './dom';
 import { keysText } from './kbd';
+import { labelOf } from './keybindings';
+
+/** A tip's {key:actionId}: that action's key as it's bound now (keyactions.ts, changed in Settings). */
+// In backticks, so a lone key (F8) becomes a keycap too (kbd.ts keysText); an unbound action stays empty.
+const withKeys = (text: string) => text.replace(/\{key:(\w+)\}/g, (_, id: string) => { const key = labelOf(id); return key ? '`' + key + '`' : ''; });
 import { BETA } from './testplan';
 
 const ON_KEY = 'nucleus-workbench-tips';
@@ -58,7 +63,7 @@ export function initTips({ editor, actions, toast, targets, audience }: Deps) {
     const whom = show === 'mode' ? '' : ` · for ${tip.for === 'newcomer' ? 'newcomers' : tip.for === 'developer' ? 'developers' : 'everyone'}`;
     label.textContent = (contextual ? 'Heads up' : tip.topic ?? 'Tip') + whom;
     // `code` spans; shortcuts as keys (kbd.ts: with a modifier in plain text, a lone key such as `F8` in backticks).
-    body.innerHTML = keysText(tip.text);
+    body.innerHTML = keysText(withKeys(tip.text));
     $('#tip-votes').innerHTML = voteButtons('tip', tip.id, { up: 'Useful tip', down: 'Not useful' });
     document.querySelectorAll('.tip-target').forEach((e) => e.classList.remove('tip-target'));
     if (tip.action && on) {

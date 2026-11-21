@@ -996,11 +996,19 @@ await m.ctx.close();
     await axe(s.p, `${theme}, docs page`);
     await s.p.goto(BASE + 'docs/');
     await axe(s.p, `${theme}, docs list`);
+    // Tools in the docs (tool-docs.mjs): reference tables made from the tools' own data, and their own section in the list.
+    await s.p.goto(BASE + 'docs/tools/ncdev/');
+    await s.p.waitForTimeout(300);
+    const td = await s.p.evaluate(() => ({ rows: document.querySelectorAll('main table tbody tr').length, lint: /lint <file\|dir>/.test(document.querySelector('main table')?.textContent ?? ''), sec: [...document.querySelectorAll('#dn-list .dn-sec > details > summary')].map((x) => x.textContent).join(), current: document.querySelector('#dn-list [aria-current]')?.textContent }));
+    check(td.rows > 15 && td.lint && /Tools/.test(td.sec) && td.current === 'ncdev (command line)', `docs tools ${theme}: the ncdev page lists the commands, in its own Tools section (${JSON.stringify(td)})`);
+    await axe(s.p, `${theme}, docs tools page`);
+    await s.p.goto(BASE + 'docs/tools/mcp/');
+    check((await s.p.$$('main h2 code')).length >= 10, `docs tools ${theme}: the MCP page lists the server's tools`);
     check(!s.errors.length, `docs page ${theme}: no page errors ${s.errors.join(' ')}`);
     await s.ctx.close();
   }
   const ph = await page('light', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  for (const u of ['docs/Context.ModifySaveFile/', 'rules/', 'rules/syntax-error/', 'start/', 'tools/', 'ai/']) {
+  for (const u of ['docs/Context.ModifySaveFile/', 'rules/', 'rules/syntax-error/', 'start/', 'tools/', 'ai/', 'docs/tools/ncdev/', 'docs/tools/vscode/']) {
     await ph.p.goto(BASE + u);
     const wide = await ph.p.evaluate(() => document.documentElement.scrollWidth - innerWidth);
     check(wide <= 1, `phone ${u}: no sideways scrolling, header included (${wide}px)`);

@@ -84,10 +84,10 @@ export function registerHandlerFiles(context: vscode.ExtensionContext, isHandler
     const w = vscode.workspace.createFileSystemWatcher('**/*.js');
     context.subscriptions.push(w, w.onDidCreate(check), w.onDidChange(check), w.onDidDelete(removed));
   }
-  // Detection changed (off, always, the globs): what counts as a handler is decided again, everywhere.
+  // Detection changed (off, always): what counts as a handler is decided again, everywhere.
   context.subscriptions.push(
     vscode.workspace.onDidChangeConfiguration((e) => {
-      if (!e.affectsConfiguration('splitscreenme.detection') && !e.affectsConfiguration('splitscreenme.handlerGlobs')) return;
+      if (!e.affectsConfiguration('splitscreenme.detection')) return;
       for (const p of [...paths]) removed(vscode.Uri.file(p));
       vscode.workspace.textDocuments.forEach(doc);
       if (vscode.workspace.workspaceFolders?.length) scan();

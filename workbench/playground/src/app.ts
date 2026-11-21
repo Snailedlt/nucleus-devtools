@@ -1,10 +1,10 @@
 import { RULE_DOCS, ruleUrl } from '@core/ruledocs';
+import { WORKBENCH_URL } from '@core/sharelink';
 import { inProblemList, quietInCheck, shownInCheck, countProblems } from './checklist';
 import { initKeySettings } from './kbsettings';
 import { openFind } from './findwidget';
 import { hasCredit, withCredit, withoutCredit } from './credit';
 import { definitionAt } from '@core/definition';
-import { JS_RULES } from '@core/jsrules';
 import { applyTheme, initDevBar } from './devbar';
 import { applyCodeTheme, applyCustomTheme } from './customtheme';
 import { watchPictures } from './themed';
@@ -139,38 +139,12 @@ Game.Play = function () {
 // ---------------------------------------------------------------------------
 // Editor
 
-/** Plain-language explanations for the Simple view. */
-const PLAIN: Record<string, { title: string; why: string }> = {
-  'syntax-error': { title: "Nucleus can't read this file", why: 'Something is missing or extra here, often a bracket, a quote or a comma. The rest is still checked, but Nucleus won\'t load the file until this is fixed.' },
-  'es5-only': { title: 'Newer JavaScript than Nucleus understands', why: 'Nucleus only reads an older form of JavaScript, so it stops loading the handler here.' },
-  'let-const-semantics': { title: 'Written in a newer style', why: 'Nucleus treats this like a plain "var". Usually harmless.' },
-  'unknown-member': { title: "A setting Nucleus doesn't know", why: "Nucleus skips it, so it does nothing. It's usually a typo." },
-  'readonly-member': { title: 'A value Nucleus sets by itself', why: 'Changing it here has no effect.' },
-  'type-mismatch': { title: 'The value has the wrong form', why: 'Nucleus expects a different kind of value here, for example a list in [ ] brackets, or true / false.' },
-  'wrong-arguments': { title: 'A function gets the wrong number of values', why: 'Nucleus stops with an error when it reaches this line.' },
-  'missing-required': { title: 'Required information is missing', why: "Every handler needs the game's name, a GUID and the game's .exe file name." },
-  'callback-only-global': { title: 'Code in the wrong place', why: 'This code needs the game to be starting, so it belongs inside Game.Play. Here it stops Nucleus from loading the handler.' },
-  'duplicate-assignment': { title: 'The same setting is set twice', why: 'Only the last value counts, so this one does nothing.' },
-  'hub-install-parse': { title: 'Would break installing this handler', why: 'When installing, Nucleus reads the game name and .exe from these lines in a strict way.' },
-  'guid-characters': { title: 'Special characters in the GUID', why: 'The GUID becomes a folder name. Letters, digits and spaces are safest.' },
-  'protoinput-legacy-hooks': { title: 'Old input settings are still on', why: 'With Proto Input they should be turned off, or two input systems run at once.' },
-  'protoinput-inactive': { title: "Proto Input never starts", why: "None of its start options (InjectStartup or an InjectRuntime method) is on, so Nucleus ignores every Proto Input setting here." },
-  'protoinput-needs-raw-input': { title: "Keyboard and mouse players won't get keys or the cursor", why: "These Proto Input hooks answer from each player's own keyboard and mouse, which Proto Input only reads with its raw input hook (Game.ProtoInput.RegisterRawInputHook). Without it the game sees no key pressed and a cursor that doesn't move. Turn it on." },
-  'protoinput-needs-hook': { title: 'Blocked messages and filters do nothing yet', why: "They only work inside Proto Input's message filter hook, which isn't turned on." },
-  'needs-option': { title: 'A setting that needs another one turned on', why: "Nucleus only reads it when the other setting is on, so on its own it does nothing." },
-  'blocked-message': { title: "A window message Proto Input can't block as written", why: "It isn't in Proto Input's message list (it blocks something else, or nothing), or it's in the list twice." },
-  'missing-builtin': { title: "A JavaScript function Nucleus doesn't have", why: "Nucleus uses an older JavaScript engine that lacks this function, so the handler stops with an error when it reaches this line." },
-  'unused-option': { title: 'An option nothing reads', why: 'Players can pick a value, but nothing in the handler reads it (Context.Options["key"]), so the choice changes nothing. Read it in Game.Play, or remove the option.' },
-  deprecated: { title: 'An outdated setting', why: 'It still works, but it has been replaced.' },
-};
 
 /** Plain-language text for a problem; some messages are more specific than their rule. */
 function plainFor(d: Diagnostic): { title: string; why: string } {
   if (d.rule === 'unknown-member' && /four controllers/.test(d.message)) {
     return { title: "A controller slot Nucleus doesn't have", why: 'Nucleus and Proto Input take at most four controllers per instance (ProtoController1 to 4), so this line does nothing. Removing it is safe.' };
   }
-  if (d.rule === 'guid-changed') return { title: 'A different GUID than on the Hub', why: 'Nucleus files each player\'s game and profiles under the GUID: after this update their game disappears from the list. Keep the Hub version\'s GUID.' };
-  if (d.rule === 'file-encoding') return { title: 'Not saved as UTF-8', why: 'Nucleus reads handlers as UTF-8, so accented letters arrive broken. Save the file as UTF-8 and retype them.' };
   if (d.rule === 'type-mismatch' && /saved profile/.test(d.message)) return { title: 'Option values a profile turns into text', why: 'After players save a profile, true comes back as "True" and 2 as "2", so comparisons stop matching. Use text values.' };
   if (d.rule === 'hub-install-parse' && /backslash/.test(d.message)) return { title: 'A backslash in the game name', why: 'The Hub install names the handler file after the game name, and a backslash makes it fail. Leave it out.' };
   if (d.rule === 'undefined-name') {
@@ -184,10 +158,10 @@ function plainFor(d: Diagnostic): { title: string; why: string } {
   if (d.rule === 'unknown-member' && /calling it throws/.test(d.message)) {
     return { title: "A function that doesn't exist", why: "Calling it is an error, so Nucleus stops here. It's usually a typo." };
   }
-  // General JavaScript mistakes (ESLint's rules, core/jsrules.ts) carry their own plain title and why.
-  const js = (JS_RULES as Record<string, { title: string; why: string }>)[d.rule];
-  // A rule without a plain entry yet (new in the core): its own description, so the why is never empty.
-  return PLAIN[d.rule] ?? (js ? { title: js.title, why: js.why } : { title: d.rule, why: (RULES as Record<string, { description?: string }>)[d.rule]?.description ?? '' });
+  // Every check's plain words are the core's (core/ruledocs.ts): its `plain` text for the Simple view, else its title and why.
+  const doc = RULE_DOCS[d.rule];
+  if (doc) return doc.plain ?? { title: doc.title, why: doc.why };
+  return { title: d.rule, why: (RULES as Record<string, { description?: string }>)[d.rule]?.description ?? '' };
 }
 
 const STORE_KEY = 'nucleus-workbench-draft';
@@ -2029,8 +2003,8 @@ function commandList(): OpenEntry[] {
     c('Find', labelOf('find'), 'find search', () => openFind(editor)),
     c('Find and replace', labelOf('replace'), 'replace find search', () => openFind(editor, true)),
     c('Test all combinations', labelOf('testAll'), 'matrix players monitors keyboards test all', () => { selectTab('simulate'); click('#sim-all')(); }),
-    c('Debug: step through the handler', 'F5', 'debug debugger step breakpoint trace pause', () => debug.start(), 'Pause on breakpoints, step line by line (and back), see every variable'),
-    c('Debug: toggle a breakpoint on this line', 'F9', 'debug breakpoint toggle stop line', () => debug.toggleBreakpoint()),
+    c('Debug: step through the handler', labelOf('debugGo'), 'debug debugger step breakpoint trace pause', () => debug.start(), 'Pause on breakpoints, step line by line (and back), see every variable'),
+    c('Debug: toggle a breakpoint on this line', labelOf('debugBreak'), 'debug breakpoint toggle stop line', () => debug.toggleBreakpoint()),
     c('Check: show the problems', '', 'problems lint errors warnings check', () => selectTab('problems')),
     c('Fold the block at the cursor', labelOf('fold'), 'fold collapse hide block function region', () => (editor.focus(), editor.execCommand('fold'))),
     c('Unfold the block at the cursor', labelOf('unfold'), 'unfold expand show block', () => (editor.focus(), editor.execCommand('unfold'))),
@@ -2042,8 +2016,8 @@ function commandList(): OpenEntry[] {
     c('Go to definition', labelOf('definition'), 'definition declaration where defined jump go to function variable', () => goToDefinition(), 'Where the function or variable under the cursor is declared, or the option set'),
     c('Go to the next problem', labelOf('nextProblem'), 'next problem error warning', () => stepProblem(1)),
     c('Go to the previous problem', labelOf('prevProblem'), 'previous problem error warning', () => stepProblem(-1)),
-    c('Go to line…', 'Ctrl+G', 'line jump goto', () => { editor.focus(); editor.execCommand('jumpToLine'); }),
-    c('Show or hide Lines', 'Ctrl+B', 'lines list names insert sidebar', () => lines.toggle(), 'Every option, Context member and enum, click to insert'),
+    c('Go to line…', labelOf('goToLine'), 'line jump goto', () => { editor.focus(); editor.execCommand('jumpToLine'); }),
+    c('Show or hide Lines', labelOf('lines'), 'lines list names insert sidebar', () => lines.toggle(), 'Every option, Context member and enum, click to insert'),
     c('Search the handler API', '', 'api docs reference search', () => { selectTab('api'); ($('#api-q') as HTMLInputElement).focus(); }),
     c('Open examples and Hub handlers', labelOf('open'), 'open examples hub templates switch', () => setTimeout(() => showOpen(), 0)),
     c('Open a file…', '', 'open upload import file zip nc', click('#file-open')),
@@ -2051,7 +2025,7 @@ function commandList(): OpenEntry[] {
     c('Copy the handler', '', 'copy clipboard code', () => copyCode()),
     c('Copy a link to this handler', '', 'share link url copy', click('[data-code=link]')),
     c('Share the file (.zip and a message to post)', '', 'share file zip attach discord send package', click('[data-code=file]')),
-    c('Download for Nucleus (.zip)', 'Ctrl+S', 'save download zip nc package nucleus', click('[data-code=zip]')),
+    c('Download for Nucleus (.zip)', labelOf('save'), 'save download zip nc package nucleus', click('[data-code=zip]')),
     c('Download the code (.js)', '', 'save download js file', click('[data-code=js]')),
     c('Theme: light', '', 'theme light colour color appearance', () => setThemeMode('light')),
     c('Theme: dark', '', 'theme dark colour color appearance', () => setThemeMode('dark')),
@@ -2064,7 +2038,7 @@ function commandList(): OpenEntry[] {
     c('Turn tips on or off', '', 'tips hints help', () => tips.toggle()),
     c('Reset panel sizes', '', 'layout resize panels reset width', () => panels.reset()),
     c("What's new", '', 'changelog changes news updates release notes', () => news.open()),
-    c('Keyboard shortcuts', '?', 'help keys shortcuts keybindings', () => helpDialog.showModal()),
+    c('Keyboard shortcuts', labelOf('help'), 'help keys shortcuts keybindings', () => helpDialog.showModal()),
     c('Take the tour', '', 'tour guided getting started intro welcome first walkthrough help show around', () => tour.take()),
     c('Learn: making your first handler', '', 'tutorial learn lesson course beginner how to start guide teach', () => openLearn()),
     c('Start-up questions: guided or developer, and the layout', '', 'first run beginner developer advanced guided layout rail bar nucli', () => document.dispatchEvent(new CustomEvent('open-firstrun'))),
@@ -2072,7 +2046,7 @@ function commandList(): OpenEntry[] {
     c('Move Files to the other side of the code', '', 'files panel left right side move swap', () => announce(`Files is now ${panels.flip('files')} of the code.`)),
     c('Move Lines to the other side of the code', '', 'lines list left right side move swap', () => announce(`Lines is now ${panels.flip('lines')} of the code.`)),
     c('Compare: open this handler in the previous version', '', 'previous old version compare before beta', () => void hasPrevious().then((ok) => (ok ? openInPrevious() : notice('The previous version is only on the published site (GitHub Pages).', { kind: 'info' })))),
-    c('Save into Nucleus Co-op (its handlers folder)', 'Ctrl+Alt+S', 'save install nucleus handlers folder copy into', () => void saveToNucleus()),
+    c('Save into Nucleus Co-op (its handlers folder)', labelOf('saveNucleus'), 'save install nucleus handlers folder copy into', () => void saveToNucleus()),
     c("Link your game's folder (check paths against it)", '', 'game folder install directory exe path link pick', () => void pickFolder()),
     c('Report a problem…', '', 'send feedback bug report issue github wrong problem broken error', () => openReportFlow({ kind: 'problem', handlerCode: editor.getValue() })),
     c('Request a feature… (I want to do…)', '', 'feature request idea suggest wish want missing enhancement', () => openReportFlow({ kind: 'feature' })),
@@ -2257,7 +2231,7 @@ function renderOpen() {
     }
     const lay = layout(e.group);
     const art = e.mono ? monogram(e.mono, e.cover) : e.icon ? `<span class="ic" aria-hidden="true">${svgIcon(e.icon)}</span>` : '';
-    const keys = e.keys ? `<span class="keys">${e.keys.split('+').map((k) => `<kbd>${esc(k)}</kbd>`).join('')}</span>` : '';
+    const keys = e.keys ? `<span class="keys">${e.keys.split(' ').map((step) => step.split('+').map((k) => `<kbd>${esc(k)}</kbd>`).join('')).join(' then ')}</span>` : '';
     const sub = e.sub ? (lay === 'chips' ? `<span class="sr-only">${esc(e.sub)}</span>` : `<span class="s">${highlight(e.sub, words)}</span>`) : '';
     // Rows get an "Open" (or "Run") that slides in under the pointer, as in BSManager's lists.
     const go = lay === 'rows' ? `<span class="go" aria-hidden="true">${e.group === 'Actions' || commandMode ? 'Run' : 'Open'}<svg viewBox="0 0 24 24"><path d="M5 12h13m-5-5 5 5-5 5"/></svg></span>` : '';
@@ -3393,7 +3367,7 @@ async function shareFile(trigger: HTMLElement) {
   if (!downloads) return notice("Saving files isn't available here. Share › Copy the code, and paste it into a .js file.", { kind: 'error' });
   const filename = `${handlerFileName()}.zip`;
   // The public site, not this page's own address, inside a Claude artifact or from a file on disk.
-  const site = (window as any).claude || !/^https?:$/.test(location.protocol) ? 'https://snailedlt.github.io/nucleus-devtools/' : location.href.replace(/[?#].*$/, '');
+  const site = (window as any).claude || !/^https?:$/.test(location.protocol) ? WORKBENCH_URL : location.href.replace(/[?#].*$/, '');
   const game = editor.getValue().match(/^\s*Game\.GameName\s*=\s*"([^"]*)"/m)?.[1] ?? '';
   // What's open now, before anything waits: the person may switch tab or edit while the clipboard answers.
   let data: Uint8Array;

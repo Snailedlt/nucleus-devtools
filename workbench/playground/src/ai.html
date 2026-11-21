@@ -35,8 +35,8 @@ pre.prompt { margin: 0; padding: 12px 64px 12px 14px; background: var(--code-bg)
   <div class="ai-panel" role="tabpanel" id="panel-claude" aria-labelledby="tab-claude" tabindex="0">
   <h3>1. Set up <small>(once)</small></h3>
 <pre class="prompt setup">Install the Nucleus Co-op plugin for me:
-1. Run: claude plugin marketplace add Snailedlt/nucleus-devtools
-2. Run: claude plugin install nucleus-coop@splitscreenme
+1. Run: claude plugin marketplace add __CLAUDE_MARKETPLACE__
+2. Run: claude plugin install __CLAUDE_PLUGIN__
 3. Tell me to restart Claude Code.</pre>
   <p class="small">The plugin brings the guide (a skill) and the tools (an MCP server). Needs Node.js 18 or newer.</p>
   <h3>2. Make a handler <small>(once per game, in a new chat)</small></h3>
@@ -79,14 +79,9 @@ Ask me what you need to know about the game (engine, .exe name, how multiplayer 
   </div>
 <pre class="prompt handler">Help me write a Nucleus Co-op handler for <span class="game-slot">&lt;name&gt;</span>. A handler is the JavaScript file Nucleus Co-op (SplitScreen.Me) uses to run several copies of a PC game split-screen, one per player. Follow these rules exactly:
 
-1. ES5 JavaScript only (Jint 2.11): no arrow functions, template strings, classes, let/const, destructuring, spread, default parameters, for...of, ?. or ??. No .includes(), .startsWith(), .find(), Object.assign, Map or Set.
-2. Only use options that exist. Nucleus silently ignores a misspelled or invented one. If you are not sure an option exists, say so instead of guessing.
-3. Context, Player and PlayerList only exist inside callbacks such as Game.Play. Top-level code only sets Game.* options.
-4. Required: Game.GUID (letters, digits and spaces only), Game.GameName, Game.ExecutableName (the .exe's file name, never a path).
-5. Game.GameName = "..."; and Game.ExecutableName = "..."; each on its own line, not indented, in double quotes, with no other " on the line.
-6. List options take arrays (Game.KillMutex = ["name"];). Booleans are true/false, numbers are numbers. Pass every argument to a method.
-7. Game.Play runs once per player: use Context.PlayerID (0-based), Context.Width, Context.Height, and set Context.StartArguments there.
-8. Don't add Hub.* lines.
+__AI_HARD_RULES__
+
+Game.Play runs once per player: use Context.PlayerID (0-based), Context.Width and Context.Height, and set Context.StartArguments there.
 
 When you give me a handler, tell me to paste it into https://snailedlt.github.io/nucleus-devtools/ to check it; I'll send you the problems it finds. Then fix only those, and give me the whole file.
 

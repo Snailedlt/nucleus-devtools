@@ -75,15 +75,23 @@ export function discordText(body, tag) {
   return lines.join('\n');
 }
 
-/** The GitHub release notes: the section, then how to install. */
+/** What a release uploads, from data/release-assets.json ({tag} filled in). */
+export function releaseAssets(tag) {
+  const data = JSON.parse(fs.readFileSync(new URL('../data/release-assets.json', import.meta.url), 'utf8'));
+  return data.assets.map((a) => ({ ...a, name: a.name.replaceAll('{tag}', tag) }));
+}
+
+/** The GitHub release notes: the section, then what each download is. */
 export function githubNotes(body, tag) {
   return `${body}
 
 ---
 
-📦 **Install:** download \`splitscreenme-vscode-${tag}.vsix\` below, then in VS Code run **Extensions: Install from VSIX…** (Ctrl+Shift+P). New to the tools? Start with the [intro and install guide](https://snailedlt.github.io/nucleus-devtools/start/?ref=github-release) and [TESTING.md](${repo}/blob/main/TESTING.md).
-🤖 **AI agents:** \`nucleus.js\` (below) is the command-line tool and MCP server: \`node nucleus.js mcp\`. See the [README](${repo}#ai-agents).
-🌐 **Offline workbench:** \`workbench.html\` (below) is the whole browser workbench in one file; open it locally or host it yourself.
+📦 **New to the tools?** Start with the [intro and install guide](https://snailedlt.github.io/nucleus-devtools/start/?ref=github-release) and [TESTING.md](${repo}/blob/main/TESTING.md).
+
+**Downloads** (below):
+${releaseAssets(tag).map((a) => `- \`${a.name}\`: ${a.what}`).join('\n')}
+
 💬 **Feedback:** [tester feedback form](${repo}/issues/new?template=tester-feedback.yml).`;
 }
 

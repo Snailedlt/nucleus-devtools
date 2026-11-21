@@ -5,7 +5,7 @@ import * as path from 'node:path';
 import * as fs from 'node:fs/promises';
 import { toHandlerFileName } from './core/templates';
 import { writeZip, handlerPackageEntries } from './core/zip';
-import { handlerPageUrl, HubHandler } from './core/hub';
+import { handlerPageUrl, HUB, HubHandler } from './core/hub';
 import { hubHandlers, hubPackage } from './hubcache';
 import { lint, looksLikeHandler } from './core/lint';
 import { findSkillDir, installAgentKit } from './core/pkg';
@@ -134,7 +134,7 @@ async function packageHandler(uri?: vscode.Uri) {
     ? `Packaged handler.js and ${files.length} file(s) from "${base}/" into ${path.basename(target.fsPath)}.`
     : `Packaged ${path.basename(target.fsPath)} (no "${base}/" asset folder found next to the handler).`;
   const choice = await vscode.window.showInformationMessage(msg, 'Upload on the Hub');
-  if (choice) vscode.env.openExternal(vscode.Uri.parse('https://hub.splitscreen.me/'));
+  if (choice) vscode.env.openExternal(vscode.Uri.parse(`${HUB}/`));
 }
 
 // ---------------------------------------------------------------------------

@@ -24,6 +24,7 @@ import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { publishedNow } from './published';
 import { setHubTool } from './hubcache';
+import { HUB } from './core/hub';
 import { pluginsFor } from './sandbox';
 import { simWorker, isCancelled } from './simworker';
 import { formatSimulation } from './simformat';
@@ -51,7 +52,7 @@ export interface LspSettings {
   /** The Nucleus Co-op folder (with NucleusCoop.exe and `handlers`), for Install. */
   nucleusPath?: string;
 }
-const DEFAULTS: LspSettings = { detection: 'auto', handlerGlobs: [], lint: { enable: true, rules: {}, compareWithHub: true, workspace: true }, completion: { enable: true }, gameFolders: {}, format: { quotes: 'double', semicolons: 'add' } };
+export const DEFAULTS: LspSettings = { detection: 'auto', handlerGlobs: [], lint: { enable: true, rules: {}, compareWithHub: true, workspace: true }, completion: { enable: true }, gameFolders: {}, format: { quotes: 'double', semicolons: 'add' } };
 
 export const COMMANDS = { tryIt: 'nucleus.tryIt', fixAll: 'nucleus.fixAll', workbenchLink: 'nucleus.workbenchLink', package: 'nucleus.package', install: 'nucleus.install', newHandler: 'nucleus.newHandler', testInNucleus: 'nucleus.testInNucleus', explainLine: 'nucleus.explainLine', report: 'nucleus.report' } as const;
 const FIX_ALL_KIND = 'source.fixAll.nucleus';
@@ -888,7 +889,7 @@ export class Server {
         const out = typeof (args[0] as any)?.out === 'string' ? (args[0] as any).out : file.replace(/\.js$/i, '.nc');
         const { zip, assetCount } = buildPackage(file);
         fs.writeFileSync(out, zip);
-        this.notify('window/showMessage', { type: 3, message: `Nucleus: wrote ${path.basename(out)} (handler.js + ${assetCount} file(s) from its folder). Upload it at https://hub.splitscreen.me/` });
+        this.notify('window/showMessage', { type: 3, message: `Nucleus: wrote ${path.basename(out)} (handler.js + ${assetCount} file(s) from its folder). Upload it at ${HUB}/` });
         return { file: out, assetCount };
       }
       case COMMANDS.install: {

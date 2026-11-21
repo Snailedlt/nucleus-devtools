@@ -3,6 +3,7 @@
 // splitscreenme.showWhatsNew. "Nucleus: What's New" opens the changelog any time, at the installed version.
 import * as vscode from 'vscode';
 import fs from 'node:fs';
+import { MAIN_RAW, REPO_URL } from './core/report';
 
 const KEY = 'splitscreenme.lastVersion';
 
@@ -18,8 +19,8 @@ export function highlights(changelog: string, version: string): string[] {
     .map((l) => (l.match(/^- \*\*(.+?)\*\*/)?.[1] ?? l.slice(2)).replace(/\.$/, ''));
 }
 
-const REPO_FILES = 'https://github.com/Snailedlt/nucleus-devtools/blob/main/';
-const REPO_RAW = 'https://raw.githubusercontent.com/Snailedlt/nucleus-devtools/main/';
+const REPO_FILES = `${REPO_URL}/blob/main/`;
+const REPO_RAW = MAIN_RAW;
 
 /** The changelog as What's New shows it: from the installed version down, without "Unreleased" (and anything newer
  *  than this version) or the notes for whoever writes it. Exported for tests. */

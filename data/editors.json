@@ -1,0 +1,12 @@
+{
+  "$comment": "Editors that use ncdev lsp: how far each is tested. One source for README.md's table (node scripts/readme-blocks.mjs) and the tools page's editor tiles with their Tested/Untested tags (the workbench build: <!--ED_TILES-->; tile: the tile's name, its short line, the README anchor it links to; its icon is start/editors/<id>.svg). Their setups are in PORTING.md. people/ai: what was tested, or null.",
+  "editors": [
+    { "id": "neovim", "name": "Neovim", "setup": "5 lines of Lua ([below](#neovim))", "people": null, "ai": "Neovim 0.9 (the 0.11 config is from its docs)", "tile": { "name": "Neovim", "line": "5 lines of Lua", "readme": "neovim" } },
+    { "id": "helix", "name": "Helix", "setup": "6 lines in `languages.toml` ([below](#helix))", "people": null, "ai": null, "tile": { "name": "Helix", "line": "6 lines of TOML", "readme": "helix" } },
+    { "id": "sublime", "name": "Sublime Text", "setup": "the [LSP](https://packagecontrol.io/packages/LSP) package + one client entry ([PORTING.md](PORTING.md#sublime-text-lsp-package-preferences--package-settings--lsp--settings))", "people": null, "ai": null, "tile": { "name": "Sublime Text", "line": "LSP package + one entry", "readme": "your-own-editor-for-experienced-developers" } },
+    { "id": "emacs", "name": "Emacs 29+", "setup": "one `eglot-server-programs` line ([PORTING.md](PORTING.md#emacs-eglot-built-in-since-emacs-29))", "people": null, "ai": "Emacs 29.3 (eglot)", "tile": { "name": "Emacs", "line": "One eglot line", "readme": "your-own-editor-for-experienced-developers" } },
+    { "id": "kate", "name": "Kate", "setup": "one entry in LSP Client settings ([PORTING.md](PORTING.md#kate-settings--configure-kate--lsp-client--user-server-settings))", "people": null, "ai": null, "tile": { "name": "Kate", "line": "One LSP Client entry", "readme": "your-own-editor-for-experienced-developers" } },
+    { "id": "jetbrains", "name": "JetBrains IDEs", "setup": "the [LSP4IJ](https://plugins.jetbrains.com/plugin/23257-lsp4ij) plugin, a server added in Settings ([PORTING.md](PORTING.md#jetbrains-ides-lsp4ij))", "people": null, "ai": null, "tile": { "name": "JetBrains IDEs", "line": "LSP4IJ plugin", "readme": "your-own-editor-for-experienced-developers" } },
+    { "id": "zed", "name": "Zed", "setup": "needs a small Zed extension first ([PORTING.md](PORTING.md#zed-settingsjson))", "people": null, "ai": null, "tile": { "name": "Zed", "line": "Needs a small extension", "readme": "your-own-editor-for-experienced-developers" } }
+  ]
+}

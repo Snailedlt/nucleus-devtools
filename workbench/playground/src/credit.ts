@@ -3,8 +3,9 @@
 // wasn't done to it here: checked, simulated, AI. Support helpers and experienced authors see at a glance which tools
 // touched a handler. Honour system: anyone can edit or delete the lines, so they say what the workbench saw, nothing
 // more. Off in Settings › Feedback and privacy. Pure functions; app.ts wires them.
+import { WORKBENCH_URL } from '@core/sharelink';
 
-export const CREDIT_LINK = 'https://snailedlt.github.io/nucleus-devtools/?ref=handler-comment';
+export const CREDIT_LINK = `${WORKBENCH_URL}?ref=handler-comment`;
 const FIRST = '// Made with the Nucleus Handler Workbench: ';
 /** Our block at the top of a handler (the first line, then the "// - " lines), exactly as we write it. */
 const BLOCK = /^\/\/ Made with the Nucleus Handler Workbench: \S+\r?\n(?:\/\/ - [^\n]*\r?\n)*/;

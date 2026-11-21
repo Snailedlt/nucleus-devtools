@@ -59,12 +59,12 @@ Positions in core are offsets into the text, counted in UTF-16 code units (what 
 
 `ncdev lsp` is a subcommand of the `ncdev` CLI. Any of these work:
 
-- **Standalone, nothing to install (Windows):** `ncdev.exe` from the [newest release](https://github.com/Snailedlt/nucleus-devtools/releases), then `ncdev lsp` (`ncdev update` keeps it current). In the snippets, use `ncdev` in place of `node /path/to/nucleus.js`.
+- **Standalone, nothing to install (Windows and Linux):** `ncdev.exe` or `ncdev-linux-x64` from the [newest release](https://github.com/Snailedlt/nucleus-devtools/releases). On Linux, make it runnable and put it on your PATH as `ncdev` (`chmod +x ncdev-linux-x64 && mkdir -p ~/.local/bin && mv ncdev-linux-x64 ~/.local/bin/ncdev`; `~/.local/bin` must be on your PATH). It is for x64: on other Linux machines (ARM), use the Node.js file below. `ncdev update` keeps it current.
 - **One file, with Node.js 18+:** [`plugin/skills/nucleus-handler/scripts/nucleus.js`](https://raw.githubusercontent.com/Snailedlt/nucleus-devtools/main/plugin/skills/nucleus-handler/scripts/nucleus.js) is the whole CLI bundled. Save it anywhere and run `node /path/to/nucleus.js lsp`.
 - **From a clone:** `npm ci && npm run build`, then `node dist/cli.js lsp`.
 - **With the VS Code extension installed:** its `dist/cli.js` (in `~/.vscode/extensions/splitscreenme.*/dist/`).
 
-The snippets below write the command as `node /path/to/nucleus.js lsp`; replace the path. `--stdio` is accepted and ignored (stdio is the only transport), for clients that always add it.
+The snippets below run `ncdev lsp` by name, so `ncdev` must be on your PATH: on Windows, add the folder that holds `ncdev.exe` to PATH, or write its full path in the snippet (e.g. `C:\Tools\ncdev.exe`). Without a standalone `ncdev` for your system (macOS, for one), use `node /path/to/nucleus.js` in its place. `--stdio` is accepted and ignored (stdio is the only transport), for clients that always add it.
 
 ### Settings
 
@@ -76,7 +76,8 @@ Send them as `initializationOptions`, or later as `workspace/didChangeConfigurat
   "handlerGlobs": ["**/my-handlers/*.js"],
   "lint": { "enable": true, "rules": { "unknown-member": "error" }, "compareWithHub": true, "workspace": true },
   "completion": { "enable": true },
-  "gameFolders": { "MyGame.js": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\MyGame" }
+  "gameFolders": { "MyGame.js": "C:\\Program Files (x86)\\Steam\\steamapps\\common\\MyGame" },
+  "format": { "quotes": "double", "semicolons": "add" }
 }
 ```
 
@@ -86,6 +87,7 @@ Send them as `initializationOptions`, or later as `workspace/didChangeConfigurat
 - `lint.compareWithHub`: for a handler with a `Hub.Handler.Id`, compare `Game.GUID` with the Hub's version (downloads it once, cached; the problem list updates when it arrives). `false` keeps the server offline.
 - `lint.workspace`: check every handler in the workspace folders, opened or not (default `true`), and re-check files that change on disk (when the client supports watched files: the server asks to watch `**/*.js` and each handler's `<Name>/` folder, not the whole workspace, and ignores `node_modules` and dot folders).
 - `gameFolders`: the game's install folder per handler file name. The handler is then checked against the real files (`ExecutableName`, `BinariesFolder`, the symlink and copy lists…), each problem's fix comes as a quick fix, and completion inside those lists offers the game's own files. File names and sizes are read, and the game's `.exe` and DLLs are analysed locally in the background, never run (their imports, exports and the names written in them) for quiet hints: the Proto Input hooks and Nucleus options that match what the game uses, most with a fix that adds the line (a note, such as a detected launcher, has none).
+- `format.quotes` and `format.semicolons`: how Format Document writes quotes (`double`, `single` or `keep`) and semicolons (`add` or `keep`).
 - `completion.enable`: hover, completion, signature help, inlay hints and semantic tokens (Nucleus names coloured by what they are). Turn it off if TypeScript provides them (the `.d.ts` in `types/`).
 
   The semantic tokens use JavaScript's standard types (`variable`, `property`, `method`, `class`, all `defaultLibrary`), so any theme colours them. Three modifiers of our own add Nucleus's detail for themes that want it: `group` (an object of options, or an enum: `Game.ProtoInput`, `Nucleus.Folder`), `choice` (an enum's fixed value) and `callback` (a function Nucleus calls: `Game.Play`). In Neovim, for example, style them with the `@lsp.typemod.property.group`, `@lsp.typemod.property.choice` and `@lsp.typemod.method.callback` highlight groups.
@@ -100,7 +102,7 @@ Handlers are JavaScript, so attach the server to JavaScript buffers. It ignores 
 
 ```lua
 vim.lsp.config('nucleus', {
-  cmd = { 'node', '/path/to/nucleus.js', 'lsp' },
+  cmd = { 'ncdev', 'lsp' },
   filetypes = { 'javascript' },
   root_markers = { 'handlers', '.git' },
   init_options = { lint = { compareWithHub = true } },
@@ -125,13 +127,24 @@ hl('@lsp.typemod.property.choice', { link = 'Special' }) -- InstancedGameFolder
 hl('@lsp.typemod.method.callback', { link = 'Function', bold = true }) -- Game.Play
 ```
 
-On older Neovim with [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig):
+On older Neovim, without plugins:
+
+```lua
+vim.api.nvim_create_autocmd('FileType', {
+  pattern = 'javascript',
+  callback = function()
+    vim.lsp.start({ name = 'nucleus', cmd = { 'ncdev', 'lsp' }, root_dir = vim.fn.getcwd() })
+  end,
+})
+```
+
+Or with [nvim-lspconfig](https://github.com/neovim/nvim-lspconfig):
 
 ```lua
 local configs = require('lspconfig.configs')
 if not configs.nucleus then
   configs.nucleus = { default_config = {
-    cmd = { 'node', '/path/to/nucleus.js', 'lsp' },
+    cmd = { 'ncdev', 'lsp' },
     filetypes = { 'javascript' },
     root_dir = require('lspconfig.util').root_pattern('handlers', '.git'),
   } }
@@ -143,8 +156,8 @@ require('lspconfig').nucleus.setup({})
 
 ```toml
 [language-server.nucleus]
-command = "node"
-args = ["/path/to/nucleus.js", "lsp"]
+command = "ncdev"
+args = ["lsp"]
 
 [[language]]
 name = "javascript"
@@ -163,7 +176,7 @@ name = "Nucleus"
 languages = ["JavaScript"]
 ```
 
-and a `language_server_command` (Rust, `zed_extension_api`) that returns `node /path/to/nucleus.js lsp` (see Zed's "Language Server extensions" docs). Then enable it next to the default servers:
+and a `language_server_command` (Rust, `zed_extension_api`) that returns `ncdev lsp` (see Zed's "Language Server extensions" docs). Then enable it next to the default servers:
 
 ```json
 {
@@ -179,7 +192,7 @@ and a `language_server_command` (Rust, `zed_extension_api`) that returns `node /
   "clients": {
     "nucleus": {
       "enabled": true,
-      "command": ["node", "/path/to/nucleus.js", "lsp"],
+      "command": ["ncdev", "lsp"],
       "selector": "source.js",
       "initializationOptions": { "lint": { "compareWithHub": true } }
     }
@@ -192,7 +205,7 @@ and a `language_server_command` (Rust, `zed_extension_api`) that returns `node /
 ```elisp
 (with-eval-after-load 'eglot
   (add-to-list 'eglot-server-programs
-               '((js-mode js-ts-mode) . ("node" "/path/to/nucleus.js" "lsp"))))
+               '((js-mode js-ts-mode) . ("ncdev" "lsp"))))
 ;; M-x eglot in a handler. Fix all: M-x eglot-code-action-quickfix, or
 ;; (eglot-code-actions nil nil "source.fixAll.nucleus" t)
 ```
@@ -201,7 +214,7 @@ eglot runs one server per mode; to keep a JavaScript server as well, use [lsp-mo
 
 ```elisp
 (lsp-register-client
- (make-lsp-client :new-connection (lsp-stdio-connection '("node" "/path/to/nucleus.js" "lsp"))
+ (make-lsp-client :new-connection (lsp-stdio-connection '("ncdev" "lsp"))
                   :major-modes '(js-mode js-ts-mode) :add-on? t :server-id 'nucleus))
 ```
 
@@ -210,7 +223,7 @@ eglot runs one server per mode; to keep a JavaScript server as well, use [lsp-mo
 Settings > Languages & Frameworks > Language Servers > **+**:
 
 - Name: `Nucleus`
-- Command: `node /path/to/nucleus.js lsp`
+- Command: `ncdev lsp`
 - Mappings > File name patterns: `*.js` (or Language: JavaScript)
 - Configuration > Initialization options: `{ "lint": { "compareWithHub": true } }`
 
@@ -220,7 +233,7 @@ Settings > Languages & Frameworks > Language Servers > **+**:
 {
   "servers": {
     "nucleus": {
-      "command": ["node", "/path/to/nucleus.js", "lsp"],
+      "command": ["ncdev", "lsp"],
       "highlightingModeRegex": "^JavaScript$",
       "initializationOptions": { "lint": { "compareWithHub": true } }
     }
@@ -238,7 +251,7 @@ Notepad++ has no general LSP client in Plugins Admin, so we ship our own small o
 
 ### Anything else
 
-Any LSP client: run `node /path/to/nucleus.js lsp` over stdio for JavaScript files. The server advertises what it supports in `initialize`.
+Any LSP client: run `ncdev lsp` over stdio for JavaScript files. The server advertises what it supports in `initialize`.
 
 ## Debugging: `ncdev dap`
 
@@ -248,7 +261,7 @@ Neovim ([nvim-dap](https://github.com/mfussenegger/nvim-dap)):
 
 ```lua
 local dap = require('dap')
-dap.adapters.nucleus = { type = 'executable', command = 'node', args = { '/path/to/nucleus.js', 'dap' } }
+dap.adapters.nucleus = { type = 'executable', command = 'ncdev', args = { 'dap' } }
 dap.configurations.javascript = dap.configurations.javascript or {}
 table.insert(dap.configurations.javascript, { type = 'nucleus', request = 'launch', name = 'Step through the handler', program = '${file}', players = 2 })
 ```
