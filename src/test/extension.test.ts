@@ -6,6 +6,7 @@ import * as vscode from 'vscode';
 import * as mock from './vscode-mock';
 import { activate, isHandler, problemsBesideLint } from '../extension';
 import { checksText } from '../langstatus';
+import { registerHandlerFiles } from '../handlerfiles';
 import { RULES } from '../core/lint';
 
 const m = vscode as unknown as typeof mock;
@@ -478,4 +479,31 @@ test('Docs panel: 👍/👎 inside each part as command links; the follow-up lin
   assert.match(fallbackMarkdown('[x](command:splitscreenme.showDocs?%5B%22a%22%5D)'), /href="command:splitscreenme\.showDocs\?/);
   // Without slots (hovers, the workbench) the text has no markers.
   assert.doesNotMatch(docsPage('q:Game.KillMutex', (v) => v).markdown, /@@slot/);
+});
+
+test('Explorer handler files are rechecked for detection changes but ignore the old handlerGlobs setting', (t) => {
+  const previous = m.workspace.textDocuments;
+  const doc = m.makeDocument(HEADER);
+  const listeners = m.__listeners.onDidChangeConfiguration;
+  const listenerCount = listeners.length;
+  const counts = Object.fromEntries(Object.entries(m.__listeners).map(([name, entries]) => [name, entries.length]));
+  const subscriptions: vscode.Disposable[] = [];
+  t.after(() => {
+    m.workspace.textDocuments = previous;
+    subscriptions.forEach((entry) => entry.dispose());
+    for (const [name, entries] of Object.entries(m.__listeners)) entries.length = counts[name] ?? 0;
+  });
+  m.workspace.textDocuments = [doc];
+  const classified: string[] = [];
+  registerHandlerFiles({ subscriptions } as vscode.ExtensionContext, () => false, (d) => {
+    classified.push(d.uri.toString());
+    return false;
+  });
+  const notify = listeners[listenerCount];
+  const change = (name: string) => notify({ affectsConfiguration: (key: string) => key === name });
+  assert.deepEqual(classified, [doc.uri.toString()]);
+  change('splitscreenme.handlerGlobs');
+  assert.deepEqual(classified, [doc.uri.toString()]);
+  change('splitscreenme.detection');
+  assert.deepEqual(classified, [doc.uri.toString(), doc.uri.toString()]);
 });

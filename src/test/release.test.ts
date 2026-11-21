@@ -133,3 +133,47 @@ test('announce: Discord webhooks only, never pings, and a failed post is only a 
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /::warning::Couldn't reach Discord for webhook 1/);
 });
+
+test('release notes list every uploaded asset in manifest order and substitute the release tag', async () => {
+  const { githubNotes } = await load('release-notes.mjs');
+  const { assets } = JSON.parse(fs.readFileSync(path.join(root, 'data/release-assets.json'), 'utf8')) as { assets: { name: string; what: string }[] };
+  for (const tag of ['v1.2.0', 'v10.0.1']) {
+    const notes = githubNotes('Release body', tag);
+    const downloads = notes.split('**Downloads** (below):\n')[1].split('\n\n')[0];
+    assert.deepEqual(downloads.split('\n'), assets.map(({ name, what }) => `- \`${name.replaceAll('{tag}', tag)}\`: ${what}`));
+    assert.doesNotMatch(downloads, /\{tag\}/);
+  }
+});
+
+test('Notepad++ release archives replace stale files and contain the correct DLL at the root', (t) => {
+  for (const tool of ['zip', 'unzip']) {
+    if (spawnSync('sh', ['-c', 'command -v "$1"', 'sh', tool]).status !== 0) {
+      t.skip(`requires sh and ${tool}`);
+      return;
+    }
+  }
+  const dir = tmpdir(t, 'ncdev-npp-zips-');
+  const dist = path.join(dir, 'dist-sea');
+  const scripts = path.join(dir, 'scripts');
+  const out = path.join(dir, 'asset output');
+  for (const folder of [dist, scripts, out]) fs.mkdirSync(folder);
+  const script = path.join(scripts, 'npp-zips.sh');
+  fs.copyFileSync(path.join(root, 'scripts', 'npp-zips.sh'), script);
+  const run = (file: string, args: string[], cwd = dir) => {
+    const result = spawnSync(file, args, { cwd, encoding: 'utf8', timeout: 5000 });
+    assert.equal(result.status, 0, `${file}: ${result.error ?? result.stderr}`);
+    return result.stdout;
+  };
+  fs.writeFileSync(path.join(dist, 'NcDev.dll'), '64-bit fixture');
+  fs.writeFileSync(path.join(dist, 'NcDev-x86.dll'), '32-bit fixture');
+  fs.writeFileSync(path.join(out, 'stale.txt'), 'old entry');
+  run('zip', ['-q', 'NcDev.zip', 'stale.txt'], out);
+  run('zip', ['-q', 'NcDev-x86.zip', 'stale.txt'], out);
+  run('sh', [script, 'asset output'], scripts);
+  for (const [name, contents] of [['NcDev.zip', '64-bit fixture'], ['NcDev-x86.zip', '32-bit fixture']]) {
+    const archive = path.join(out, name);
+    assert.equal(run('unzip', ['-Z1', archive]).trim(), 'NcDev.dll');
+    assert.equal(run('unzip', ['-p', archive, 'NcDev.dll']), contents);
+  }
+  assert.deepEqual(fs.readdirSync(dist).sort(), ['NcDev-x86.dll', 'NcDev.dll']);
+});
