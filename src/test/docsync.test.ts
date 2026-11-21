@@ -110,3 +110,9 @@ test('one Node.js version for working on the tools: .nvmrc, the workflows and "G
   bad.push(...DOCS.flatMap((f) => [...read(f).matchAll(/Git and Node\.js (\d+)/g)].filter((m) => m[1] !== v).map((m) => `${f}: ${m[0]}`)));
   assert.deepEqual(bad, []);
 });
+
+test('bundles carry exactly the ESLint rules core/jsrules.ts uses (scripts/eslint-slim.mjs)', async () => {
+  const { usedRules } = await import(path.join(root, 'scripts/eslint-slim.mjs'));
+  const { JS_RULES } = await import('../core/jsrules');
+  assert.deepEqual([...usedRules()].sort(), Object.keys(JS_RULES).sort());
+});

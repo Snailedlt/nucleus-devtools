@@ -436,18 +436,21 @@ const js = result.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');
 // never a mix of two builds. The single file above has everything inside it.
 const appDir = path.join(here, 'dist', 'pages', 'app');
 fs.rmSync(appDir, { recursive: true, force: true });
-const split = await esbuild.build({ ...appBundle, entryPoints: { main: path.join(here, 'src', 'app.ts'), worker: path.join(here, 'src', 'worker.ts') }, format: 'esm', splitting: true, outdir: appDir, entryNames: '[name]-[hash]', chunkNames: 'chunk-[hash]', write: true, metafile: true });
+const split = await esbuild.build({ ...appBundle, entryPoints: { main: path.join(here, 'src', 'app.ts'), worker: path.join(here, 'src', 'worker.ts'), learn: path.join(here, 'src', 'learn', 'learn.ts') }, format: 'esm', splitting: true, outdir: appDir, entryNames: '[name]-[hash]', chunkNames: 'chunk-[hash]', write: true, metafile: true });
 const appFile = (entry) => 'app/' + path.basename(Object.entries(split.metafile.outputs).find(([, o]) => o.entryPoint && o.entryPoint.replace(/\\/g, '/').endsWith(`src/${entry}.ts`))[0]);
 const APP_MAIN = appFile('app');
 const APP_WORKER = appFile('worker');
-// What the page loads at once (the entry's static imports, all the way down): preloaded together, not one after another.
-const appPreload = (() => {
+const APP_LEARN = appFile('learn/learn');
+// What a page loads at once (its entry's static imports, all the way down): preloaded together, not one after another.
+const preloadOf = (entry) => {
   const outs = split.metafile.outputs;
-  const key = Object.keys(outs).find((k) => k.endsWith(path.basename(APP_MAIN)));
+  const key = Object.keys(outs).find((k) => k.endsWith(path.basename(entry)));
   const seen = new Set([key]);
   for (const k of seen) for (const i of outs[k].imports) if (i.kind === 'import-statement' && outs[i.path]) seen.add(i.path);
   return [...seen].map((k) => 'app/' + path.basename(k));
-})();
+};
+/** The tags that load an entry of app/ from a page `up` folders below the site's root. */
+const appTags = (entry, up = '') => `${preloadOf(entry).map((f) => `<link rel="modulepreload" href="${up}${f}">`).join('\n')}\n<script type="module" src="${up}${entry}"></script>`;
 
 const cm = (p) => fs.readFileSync(path.join(here, 'node_modules', 'codemirror', p), 'utf8');
 const css = [cm('lib/codemirror.css'), cm('addon/lint/lint.css'), cm('addon/hint/show-hint.css'), cm('addon/dialog/dialog.css'), cm('addon/fold/foldgutter.css')].join('\n');
@@ -501,7 +504,7 @@ function pageHtml(inlineHub) {
     .replace('/*THEMES*/', () => themesCSS)
     .replace('/*CODEMIRROR_CSS*/', () => css)
     .replace('/*PROBES_AND_BUILD*/', () => data)
-    .replace('<script>/*APP_JS*/</script>', () => (inlineHub ? `<script>${js}</script>` : `${appPreload.map((f) => `<link rel="modulepreload" href="${f}">`).join('\n')}\n<script type="module" src="${APP_MAIN}"></script>`));
+    .replace('<script>/*APP_JS*/</script>', () => (inlineHub ? `<script>${js}</script>` : appTags(APP_MAIN)));
 }
 const html = pageHtml(true);
 // The workbench as its own page. page.html starts with what belongs in <head> (title, the theme
@@ -797,19 +800,9 @@ let checksNav = [];
   if (!PREVIEW) fs.writeFileSync(path.join(here, 'dist', 'pages', 'sitemap.xml'), `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n${[PAGES_BASE, `${PAGES_BASE}start/`, `${PAGES_BASE}tools/`, `${PAGES_BASE}ai/`, `${PAGES_BASE}rules/`, `${PAGES_BASE}learn/`, `${PAGES_BASE}docs/`, ...ruleIds.map((id) => `${PAGES_BASE}rules/${id}/`)].map((u) => `  <url><loc>${u}</loc></url>`).join('\n')}\n</urlset>\n`);
 }
 // Learn (learn/): the lessons, one page with its own small bundle (src/learn/): the editor, the checks and Try it,
-// without the rest of the workbench. ESLint's general rules stay out (the lessons only need Nucleus' own checks).
+// without the rest of the workbench. Its code is an entry of the same split build as the workbench's (app/), so the
+// two pages share the files they have in common: whoever has opened one has most of the other already.
 {
-  const learnJs = await esbuild.build({
-    entryPoints: [path.join(here, 'src', 'learn', 'learn.ts')],
-    bundle: true,
-    format: 'iife', platform: 'browser', target: 'es2020', minify: true, write: false,
-    // The reports' details (report.ts) say which build this is, as the workbench's do.
-    define: { BUILD: JSON.stringify({ bench: build.bench, core: build.core }) },
-    alias: { '@core': path.join(coreRepo, 'src', 'core'), 'eslint/universal': path.join(coreRepo, 'src', 'core', 'eslint-stub.ts'), 'node:path': 'path-browserify', path: 'path-browserify' },
-    banner: { js: "var process = globalThis.process || { env: {}, argv: [], versions: {}, platform: 'browser', cwd: function () { return '/'; }, emitWarning: function () {}, nextTick: function (f) { Promise.resolve().then(f); } };" },
-    nodePaths: [path.join(coreRepo, 'node_modules'), path.join(here, 'node_modules')],
-    logLevel: 'warning',
-  });
   const startHtml = fs.readFileSync(path.join(here, 'src', 'start.html'), 'utf8');
   const style = startHtml.slice(startHtml.indexOf('<style>') + 7);
   const tokens = style.slice(0, style.indexOf('* { box-sizing'));
@@ -819,7 +812,8 @@ let checksNav = [];
     .replace('__HEAD__', () => NOINDEX + (PREVIEW ? '' : `<link rel="canonical" href="${PAGES_BASE}learn/">`))
     .replace('/*TOKENS*/', () => tokens)
     .replace('/*CODEMIRROR_CSS*/', () => cm('lib/codemirror.css'))
-    .replace('/*LEARN_JS*/', () => learnJs.outputFiles[0].text.replace(/<\/script/gi, '<\\/script')));
+    // The reports' details (report.ts) say which build this is, as the workbench's do.
+    .replace('<script>/*LEARN_JS*/</script>', () => `<script>var BUILD = ${JSON.stringify({ bench: build.bench, core: build.core })};</script>\n${appTags(APP_LEARN, '../')}`));
 }
 // The Docs as pages (docs/, docs/<group>/, docs/<name>/), from the core's core/docspage.ts (docs-pages.mjs): linkable
 // and searchable, each with "Open in the workbench".

@@ -25,6 +25,8 @@ export function eslintSlim(coreRoot = root) {
       // One copy of acorn: our code imports it (the ESM build) and ESLint's parser requires it (the CommonJS build),
       // which would bundle both.
       build.onResolve({ filter: /^acorn$/ }, (args) => (args.kind === 'import-statement' || args.kind === 'dynamic-import' ? build.resolve('acorn', { kind: 'require-call', resolveDir: args.resolveDir }) : undefined));
+      // A core from before jsrules.ts (the workbench's compare-with-the-previous-version build) has no ESLint to trim.
+      if (!fs.existsSync(path.join(coreRoot, 'src/core/jsrules.ts'))) return;
       build.onLoad({ filter: /[\\/]eslint[\\/]lib[\\/]rules[\\/]index\.js$/ }, (args) => {
         const dir = path.dirname(args.path);
         const ids = usedRules(coreRoot);

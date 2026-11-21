@@ -21,6 +21,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 ### 🛠️ Improved
 - **Nucli reacts once, then settles.** "Nothing to fix", "Oops" and "Fixed" play once and keep their ending (the tick, the "!", the fixed code) instead of repeating every few seconds; with Motion set to lively he goes on blinking, his electrons circling. Loaders keep moving while you wait, and Test all's ring is the new one from the concept sheet: the electrons ride the front of the ring as it fills. *Still* now shows each scene's own pose (a reaction its ending) rather than a frozen moment.
 ### ⚡ Faster
+- **The workbench and Learn open faster.** The site now loads their code as files your browser keeps, shared between the two pages, instead of everything inside each page: about a third less to download the first time, and almost nothing when you go from one to the other. The Claude API part and the visual editor only load when they're used. The one-file workbench for offline use is the same as before.
 - **Mascots move only where you can see them.** Ones that are scrolled away or in a hidden panel are paused, and each starts when it first comes into view. Check, Try it, Test all and Docs keep the mascot they show while they update, so typing no longer restarts it and Test all's ring runs smoothly through the run.
 ### 🐛 Fixed
 - **Your own shortcuts, everywhere.** After you change a shortcut in Settings, the tips and the command palette show the new keys too (some still showed the defaults).

@@ -24,6 +24,10 @@ How to write it (people and AI agents read this; the release workflow publishes 
 - **ncdev for Linux.** Releases now include `ncdev-linux-x64`, the standalone ncdev for Linux (nothing else to install; `ncdev update` keeps it current), so every editor setup can run `ncdev lsp`. `nucleus.js` with Node.js still works everywhere else.
 - **The Claude Code plugin brings the tools too.** Installing the nucleus-coop plugin now also adds the `nucleus` MCP server (check, fix, Try it, API lookup, Hub search), so Claude Code calls them as tools without any setup.
 
+### ⚡ Faster
+
+- **Smaller downloads.** The extension, `ncdev` and the skill's script are each about 700 KB smaller: they carry only the general JavaScript checks the tools use, not all of ESLint's.
+
 ---
 
 ## 0.9.0 · 2026-11-19

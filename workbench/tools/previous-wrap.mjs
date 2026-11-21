@@ -42,3 +42,6 @@ html = html.replace(/<head[^>]*>/i, (m) => `${m}\n${head}`).replace(/<\/body>/i,
 fs.mkdirSync(path.dirname(out), { recursive: true });
 fs.writeFileSync(out, html);
 console.log(`${out}: the previous version (${safe}), ${(html.length / 1024).toFixed(0)} KB`);
+// A build whose page loads its code from files next to it (app/) needs them next to the wrapped page too.
+const app = path.join(path.dirname(src), 'app');
+if (fs.existsSync(app)) fs.cpSync(app, path.join(path.dirname(out), 'app'), { recursive: true });
