@@ -10,10 +10,11 @@ import { ACTIONS } from './keyactions';
 
 // A tip's {key:actionId}: that action's key as it's bound now, in backticks so it is drawn as keys (kbd.ts keysText;
 // the binding as written, "Cmd+S", which the keycaps know on every platform). An action without a key is named
-// instead, with where to find it, so the sentence still reads.
+// instead, saying it has none (true of every action; not all of them are in the command palette), so the sentence
+// still reads.
 const withKeys = (text: string) => text.replace(/\{key:(\w+)\}/g, (_, id: string) => {
   const key = binding(id);
-  return key ? '`' + key + '`' : `"${ACTIONS.find((a) => a.id === id)?.label ?? id}" in the command palette`;
+  return key ? '`' + key + '`' : `"${ACTIONS.find((a) => a.id === id)?.label ?? id}" (no key set)`;
 });
 import { BETA } from './testplan';
 
