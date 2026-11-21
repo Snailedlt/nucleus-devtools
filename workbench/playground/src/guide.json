@@ -1,0 +1,167 @@
+{
+  "$comment": "The workbench's reference in the docs (docs/tools/workbench/…, tool-docs.mjs): the overview first, then one page per area of the workbench. These are reference pages (AGENTS.md, 'How the Tools docs are organised'): each says what its part is and does, and a fact is written on one page only. The overview's summary and facts come from data/tools.json; it also has map (the labelled screenshot, whose parts are tourparts.json: heading, alt text, caption, a note under the list). Per page: slug (under docs/), nav (its name in the docs list), title, desc (one line: the page's description), intro (what this part is, a sentence or two), shots (gallery screenshots, without -light/-dark; captions from the start page's gallery, or [name, caption] for one that isn't in it), sections (a heading h, and one or more of md, the text, and rows, [name, text] pairs as a table with cols as its two headings), related (at most three links, shown last), covers (the ids of the workbench's tips, src/tips.ts, whose feature this page describes; a test checks every tip is covered by one page or is in skipTips, so a new feature's tip puts it in these pages). The Settings page also has settingsTabs: one line per section of Settings, by the section's name in the workbench (the build stops when the two differ). The shortcuts page has allKeys: every shortcut from keyactions.ts. Shortcuts are written where their feature is described, as {key:<action id>}, and listed in full on the shortcuts page only. In text: `code`, **bold**, {key:<action id>} for a shortcut, a lone key in backticks (`F8`), [links](https://…), (@guide:<page id>) for another page here, (@site:<path>) for a page of the site, (@docs:<slug>) for a docs page. Lines starting with \"- \" are a list, with \"1. \" numbered steps. It should read as if a person wrote it (AGENTS.md, Conventions).",
+  "skipTips": ["s-tutorial", "f-vscode", "f-mascots"],
+  "pages": [
+    {
+      "id": "overview", "slug": "tools/workbench", "nav": "Overview", "title": "Workbench",
+      "desc": "What the workbench is, and what each part of its screen does.",
+      "map": {
+        "h": "The screen",
+        "alt": "The workbench: the code on the left, the results on the right, the tools in a bar on top",
+        "caption": "Each number is one part of the screen. The list below says what it does.",
+        "note": "The layout can differ from the picture. The tools can sit in a rail on the side, and Files and Lines on either side of the code. On a phone the code and the results take turns."
+      },
+      "sections": [
+        { "h": "First visit", "md": "A template handler is already open. The workbench asks how much guidance you want (**Guide me** or **I write code**) and which layout you prefer. Both answers only set defaults, and Settings changes them later. A short tour of the screen follows, and **Take the tour** in the menu runs it again." },
+        { "h": "Notes", "md": "Messages appear as notes at the bottom right. Swipe one off to the right to dismiss it. Hovering the stack shows them all." },
+        { "h": "What's stored and what's sent", "md": "Handlers are kept in the browser, a tab each, and are still there on the next visit. Clearing the browser's site data deletes them.\n\nNothing you write is uploaded unless you start it yourself: a Share link carries the handler inside the link, and Fix with AI sends the code to the AI provider you set up. The 👍 and 👎 buttons send an anonymous count. So do the usage counts, which can be turned off under Settings › Feedback and privacy." }
+      ],
+      "related": ["[Learn](@site:learn/): build a first handler, step by step", "[Feature comparison](@docs:tools/compare)"],
+      "covers": ["f-swipe"]
+    },
+    {
+      "id": "editor", "slug": "tools/workbench/editor", "nav": "Editor", "title": "The editor",
+      "desc": "Suggestions, hover docs, the Docs tab, Lines, Explain and Format.",
+      "intro": "The left side is a code editor that knows the handler API. It suggests the names Nucleus has, shows their docs, and can put a working example of most options into the code.",
+      "shots": ["workbench-suggestions"],
+      "sections": [
+        { "h": "Suggestions and hover docs", "md": "- Typing `.` after `Game`, `Context` or `Nucleus` lists what exists there, with the docs of each name. {key:suggest} opens the list anywhere.\n- After a `=`, the list has the values that option accepts.\n- With the cursor on a value, the ▾ after it lists the values it can take. So does `Alt+↓`.\n- Hovering a name shows its docs. Inside a call, {key:parameterHints} shows what goes where.\n- In `Game.ProtoInput.BlockedMessages`, each number shows the name of its window message, and the + before the `]` adds the messages handlers block most." },
+        { "h": "Docs", "md": "**Docs**, on the right, is the full API reference, with a search. With the search empty it lists the names Hub handlers use most.\n\nMost entries have an example, and **Insert into handler** puts it where it belongs. An option goes with the other options. A call goes inside `Game.Play`.\n\nEvery name also has a page of its own on this site, such as `docs/Context.ModifySaveFile/`. **Open as a page** in an entry goes there." },
+        { "h": "Lines", "md": "**Lines** ({key:lines}) lists every name a handler can use, beside the code. Clicking a name inserts it, and a name the handler already sets shows its value.\n\nThe list is a tree or one flat list, grouped by object, topic, type, or where a name works (top level or inside `Game.Play`). Its ⚙ has the rest. On a wide screen, pointing at a name in Lines shows its docs in the Docs tab." },
+        { "h": "Explain a line", "md": "{key:explainLine} explains the line the cursor is on. It gives the line in plain words, the docs of the names on it, and what Check says about it." },
+        { "h": "Format", "md": "{key:format} fixes indentation and spacing, turns quotes into double quotes and adds missing semicolons. It never moves anything to another line, because Nucleus reads a handler line by line. If the result wouldn't run exactly the same, it leaves the code alone." },
+        { "h": "Editing keys", "md": "The editing keys are VS Code's. {key:comment} comments a line, `Alt+↑` and `Alt+↓` move it, `Shift+Alt+↑` and `Shift+Alt+↓` copy it, and {key:selectNext} selects the next match. {key:goToLine} goes to a line number.\n\nIn Find ({key:find}), {key:findSelectAll} selects every match. `→` then puts a cursor after each one, `←` before each, and what you type goes to all of them." }
+      ],
+      "related": ["[Keyboard shortcuts](@guide:shortcuts)", "[The handler API docs](@site:docs/)"],
+      "covers": ["s-suggest", "f-eq-values", "f-hover", "f-reference", "f-ref-home", "s-docs-insert", "f-lines", "s-lines", "s-explain", "s-format", "f-value-pick", "s-docs-page", "f-lines-ref", "c-lines", "s-edit", "s-find-all", "s-goto", "f-wm-plus"]
+    },
+    {
+      "id": "check", "slug": "tools/workbench/check", "nav": "Check", "title": "Check",
+      "desc": "What Check reports, where a problem shows, and how fixes work.",
+      "intro": "Check finds what Nucleus Co-op would reject or quietly get wrong. It runs while you type. Every problem says why it matters, and most come with a fix.",
+      "shots": ["workbench-check", ["workbench-fix-all", "Fix all shows a before and after. Nothing changes until you accept it."]],
+      "sections": [
+        { "h": "What it reports", "md": "Mistakes that Nucleus itself doesn't warn about. A few of them:\n\n- A misspelled option, like `Game.KillMutexs`. Nucleus ignores it without a word, so the setting never takes effect.\n- Newer JavaScript. The engine Nucleus uses stops at arrow functions, template strings and classes, and the handler doesn't load.\n- A wrong capital letter in a name. Nucleus only forgives the first letter.\n- A `Game.GameName` or `Game.ExecutableName` line written in a way the Hub's installer can't read.\n\n[Every check](@site:rules/) lists them all, each with an example and the reason." },
+        { "h": "Severity", "cols": ["Level", "Meaning"], "rows": [
+          ["Error", "Stops the handler from loading or running in Nucleus."],
+          ["Warning", "A line Nucleus ignores, or treats differently from how it reads."],
+          ["Hint", "A suggestion."]
+        ] },
+        { "h": "Where a problem shows", "md": "In three places: a squiggle under the code, a marker beside the line number, and a card in the **Check** tab. The card says what's wrong, why Nucleus cares and how to fix it. Clicking a marker shows that line's problems and fixes.\n\n{key:nextProblem} and {key:prevProblem} go to the next and the previous problem. How much a card shows is a setting: Compact, Comfortable or Detailed, under Settings › Check." },
+        { "h": "Fixes", "md": "- {key:quickFix} lists the fixes for the line. `Alt+Enter` does too.\n- **Fix all** applies every automatic fix at once. It shows a before and after to accept first, and **Apply without review** skips that.\n- A problem that needs a decision stays in the list, with the options.\n- With an AI set up, **Fix with AI** tries what's left." },
+        { "h": "Package files and the game folder", "md": "Check also looks at the files that ship with the handler. With the game's install folder linked in [Files](@guide:files#your-game-on-this-pc), it compares the handler with the files that are really there, and finds a misspelled file name or an executable that doesn't exist." },
+        { "h": "Reporting a wrong check", "md": "The flag on a problem, **This check is wrong**, opens a report with the check and the line filled in." }
+      ],
+      "related": ["[AI features](@guide:ai)"],
+      "covers": ["s-f8", "f-check-wrong", "f-gutter", "f-density", "c-review"]
+    },
+    {
+      "id": "try-it", "slug": "tools/workbench/try-it", "nav": "Try it", "title": "Try it",
+      "desc": "What Try it runs and shows, Test all combinations, and what it can't tell you.",
+      "intro": "Try it runs the handler once per player, the way Nucleus Co-op would, and shows what each player ends up with: the window, the launch arguments (what the game is started with) and every file change. It needs neither Nucleus nor the game, and changes nothing on the computer.",
+      "shots": ["workbench-try-it", "workbench-test-all"],
+      "sections": [
+        { "h": "The result", "md": "The **Try it** tab, or {key:tryIt}, runs it. Above the result are the number of players, the monitor size, and who has the keyboard and mouse. Each player gets a card with where the window goes, what the game is launched with, and which files are written or changed.\n\nIf the handler throws an error partway through, Try it shows where and why. In Nucleus the session would end at that point." },
+        { "h": "Test all combinations", "md": "**Test all combinations** ({key:testAll}) runs every player count, input setup and screen size, and lists the ones that fail with the reason. A handler that works for two players can still break for three." },
+        { "h": "The simulation", "md": "Try it is a simulation. It emulates Jint 2.11.58, the JavaScript engine Nucleus uses, and the handler API. File, registry and process calls are recorded and shown, never carried out.\n\nWhere it wasn't clear how Nucleus behaves, small test handlers were run in the real engine. There are more than a hundred, and they can be read under **Engine probes** in Advanced mode." },
+        { "h": "Limits", "md": "Try it shows what the handler asks Nucleus to do. It can't show how the game reacts. Whether the windows end up in place, whether focus and input work, and whether the hooks suit the game only show in a real run in Nucleus Co-op." },
+        { "h": "Reporting a difference", "md": "If Nucleus does something Try it didn't show, that's a bug in Try it. The icon in the corner of the result starts a report that puts what Try it showed next to what really happened." }
+      ],
+      "related": ["[Debugger](@guide:debugger)"],
+      "covers": ["f-tryit", "f-testall", "s-tryit", "f-tryit-differs"]
+    },
+    {
+      "id": "debugger", "slug": "tools/workbench/debugger", "nav": "Debugger", "title": "Debugger",
+      "desc": "Breakpoints, stepping forwards and back, and the variables for each player.",
+      "intro": "The debugger runs the handler one line at a time, player by player, and shows the variables at every line. It can step backwards.",
+      "shots": ["workbench-debugger"],
+      "sections": [
+        { "h": "Controls", "cols": ["Control", "What it does"], "rows": [
+          ["Breakpoint", "Pauses the run at a line. Click next to the line number, or press {key:debugBreak} on the line."],
+          ["Step through", "The button in Try it, or {key:debugGo}. Runs the handler up to the first breakpoint."],
+          ["Step", "{key:debugStep} runs the next line."],
+          ["Back", "{key:debugBack} undoes the last step."],
+          ["Stop", "{key:debugStop} ends the run."],
+          ["Timeline", "Covers every player's `Game.Play`. Dragging it jumps to that point."]
+        ] },
+        { "h": "What it shows", "md": "**Variables** has the values at the current line. Next to it is what the handler has done so far, such as the windows it placed and the files it changed." },
+        { "h": "Advanced mode", "md": "Advanced mode adds watch expressions, stepping into and out of functions, and conditions on breakpoints. Right-click a breakpoint to give it one, for example `Context.PlayerID == 1`." }
+      ],
+      "related": ["[Try it](@guide:try-it)"],
+      "covers": ["f-debug"]
+    },
+    {
+      "id": "files", "slug": "tools/workbench/files", "nav": "Files and saving", "title": "Files and saving",
+      "desc": "Opening handlers and Hub packages, the Files panel, the game folder, saving and sharing.",
+      "intro": "A handler is a `.js` file, often with a folder of other files next to it. The workbench opens and saves both, and can save straight into the Nucleus Co-op folder.",
+      "sections": [
+        { "h": "Opening", "md": "The **+** next to the tabs, or {key:open}, shows the Open list: templates, examples (the most downloaded verified Hub handlers among them), a search of the Hub, and your own files. `Ctrl+K` and pressing `Shift` twice open it too. Typing `>` there switches to commands.\n\nIt reads `.js`, `.zip` and `.nc` files, and a file can be dragged onto the page. In the list, the arrow keys move between tiles, templates and Hub rows, and `Home` and `End` go to the first and last. The icons on a Hub handler show its players, keyboards and mice, and downloads." },
+        { "h": "Tabs", "md": "Every handler opens in a tab of its own and keeps its changes there. {key:nextHandler} and {key:prevHandler} switch tabs, and {key:closeHandler} closes the current one." },
+        { "h": "The Files panel", "md": "**Files**, above the code, shows the whole package the way Nucleus installs it: each file, where it goes and what's in it. Text files open in tabs, new files can be dropped onto the panel, and saving puts them back into the package.\n\nOpening a `.zip`, a `.nc`, or a Hub handler marked \"+ N files\" brings its files along. The big files of a Hub handler aren't downloaded. They show a Hub badge and are left out of Save, which says so." },
+        { "h": "Your game on this PC", "md": "Under Files. Point it at the folder the game is installed in, and Check compares the handler's executable and file lists with the files that are there. The browser only reads the folder. Nothing is uploaded." },
+        { "h": "Saving", "cols": ["Command", "What it does"], "rows": [
+          ["**Save**, {key:save}", "Downloads the handler in the format that was picked last. To begin with that's a `.zip` with the handler and its files, which is the one to install yourself."],
+          ["The arrow beside Save, {key:saveAs}", "Picks the format: `.zip`, `.js` (the code only, without its files) or `.nc`. Save keeps using it until another is picked. A `.nc` holds the same as the `.zip`, in the Hub's package format."],
+          ["**Into Nucleus Co-op**", "Writes the handler into Nucleus' handlers folder, which you choose once. Firefox and Safari don't allow that, so there it's a `.zip` to drag onto Nucleus."],
+          ["**How to install it in Nucleus**", "The steps for installing by hand."]
+        ], "md": "Save always makes a new download and never changes the file that was opened. Only **Into Nucleus Co-op** writes into a folder on the disk." },
+        { "h": "Sharing", "md": "**Share**, next to Save, copies a link to the handler, the code, or a code block formatted for Discord. With lines selected, it shares only those." }
+      ],
+      "covers": ["f-hub", "f-files", "s-save", "f-gamefolder", "f-save-nucleus", "f-share", "s-open", "s-open-keys", "f-tabs", "f-package"]
+    },
+    {
+      "id": "ai", "slug": "tools/workbench/ai", "nav": "AI", "title": "AI features",
+      "desc": "Fix with AI, Explain with AI and the AI-written docs, and what each one sends.",
+      "intro": "Nothing in the workbench needs AI. The AI features stay off until a provider is set up under Settings › AI.",
+      "sections": [
+        { "h": "Providers", "md": "Claude, OpenAI, OpenRouter or Gemini, with your own API key from them. Or a local model through Ollama or LM Studio, which is free. API keys stay in the browser." },
+        { "h": "Fix with AI", "md": "A button in Check, for the problems the automatic fixes can't handle. It shows a before and after, and can be undone. The code is sent to the provider when the button is pressed, not before." },
+        { "h": "Explain with AI", "md": "{key:explainLine} explains a line from the docs and Check, with no AI involved. With a provider set up, **Explain with AI** adds a longer answer. It sends the code when it's clicked, and the answer is marked as AI-written." },
+        { "h": "AI-written docs", "md": "The official docs don't cover every option. For the gaps, an AI wrote docs from the Nucleus source. Those parts have a tinted frame with a ✨ in the corner, and hovering the sparkle shows what the text is based on. The 👍 and 👎 under them send an anonymous vote on whether the text is right. Tips have the same buttons." }
+      ],
+      "related": ["[Set up your AI](@site:ai/): prompts for writing a handler with a chatbot or an agent"],
+      "covers": ["f-ai-providers", "f-ai-guide", "f-votes"]
+    },
+    {
+      "id": "settings", "slug": "tools/workbench/settings", "nav": "Settings", "title": "Settings",
+      "desc": "Every section of Settings, Guided and Advanced mode, the layout, and backing up settings.",
+      "intro": "Settings changes how the workbench looks and how much it shows. It opens from the menu or with {key:settings}, and has a search box at the top.",
+      "shots": ["workbench-look-mac", ["workbench-phone", "On a phone the code and the results take turns, and there's a row of symbol keys above the keyboard."]],
+      "settingsTabs": {
+        "Theme and colours": "Light, dark or the device's setting. Four looks, among them the original alpha 8 one and a Mac style. Code colours from GitHub, VS Code, Xcode, One, Monokai or Dracula. A look can be downloaded as a theme file, edited and loaded back, and then shows next to the built-in ones.",
+        "Motion": "How much moves, from everything to nothing, with presets and a switch per kind of motion. The mascots, Duo and Nucli, are part of it.",
+        "Layout": "The tools in a bar on top or in a rail on the side, Files and Lines on either side of the code, and whether the results sit beside the code. Panel sizes are reset here.",
+        "Editor": "Text size, wrapping long lines ({key:wordWrap}), and a row of symbol keys above the keyboard on touch screens.",
+        "Keyboard shortcuts": "Changes nearly every shortcut. Double `Shift` for the Open list is turned off here.",
+        "Check": "How much each problem shows: Compact, Comfortable or Detailed.",
+        "Lines": "Shows or hides the Lines list.",
+        "Accessibility": "Colour-blind-friendly colours, the underline style of problems, a stronger focus ring, larger buttons and tabs, an easier-to-read font, and notes that stay until they're closed.",
+        "Tips and help": "The two start-up questions again, the tour, and the tips under the code. **Show heads-ups again** brings back the tips about specific lines.",
+        "AI": "The provider, API key and model for the AI features.",
+        "Feedback and privacy": "The anonymous usage counts, which can be turned off. In Advanced mode, the credit lines added when saving.",
+        "Updates and backup": "What's new, and exporting and importing settings.",
+        "Advanced": "Advanced mode, the developer bar and WakaTime."
+      },
+      "sections": [
+        { "h": "Guided and Advanced mode", "md": "**Guided** shows tips and plainer wording. **Advanced mode**, switched on in the menu at the top right, is more compact and adds rule ids, filters, the recorded calls in Try it and the engine probes." },
+        { "h": "Panels", "md": "Dragging the edge between two panels resizes them. Right-clicking the edge opens its menu: reset the size, move Files or Lines to the other side, or hide the panel. With the edge focused, the keyboard's menu key does the same. In the side rail, the › at the bottom shows the names of the tools." },
+        { "h": "A wider code editor", "md": "{key:results} hides the results pane (Check, Try it and Docs), and the code takes the full width. A **Results** button with the problem count stands in for it next to Files and Lines. The same keys, that button, or asking for one of its tabs ({key:tryIt}, {key:goToCheck}, a docs link) bring it back. It stays hidden after a reload. This is for wide screens: a phone already switches between the code and the results.\n\n**Zen mode** ({key:zen}) shows only the code, centred. The header, Files, Lines, the results, tips and the footer are hidden; problem markers and notes stay in the code. `Esc` twice leaves it, as do the same keys and the **Leave Zen mode** button. It isn't kept after a reload. Outside the code, the first key of {key:zen} opens the Open list, so the shortcut works in the code, and the menu and the command palette work from anywhere." },
+        { "h": "The command palette", "md": "{key:palette} lists every command with its shortcut: format, fix, Try it, theme and the rest. `F1` opens it too." },
+        { "h": "Moving to another computer", "md": "**Export settings…**, under Updates and backup, writes the settings to a file. **Import settings…** reads it in the other browser. Handlers aren't part of it." },
+        { "h": "Reporting a problem", "md": "**Report a problem**, in the menu and in the command palette, opens the right GitHub form, filled in with the browser, the settings and where the handler came from. The code is never included. Without a GitHub account, the report can be copied for the testers' Discord thread." },
+        { "h": "WakaTime", "md": "With a WakaTime API key set under Settings › Advanced, time spent writing, testing in Try it and reading docs is tracked as separate categories. The code is never sent." }
+      ],
+      "related": ["[Keyboard shortcuts](@guide:shortcuts)"],
+      "covers": ["f-zen", "c-advanced", "f-a11y", "f-settings-io", "f-looks-past", "f-code-colours", "c-theme", "f-custom-theme", "c-editor", "f-rail", "f-edge-menu", "f-mascot-modes", "c-tips", "c-wakatime", "f-feedback", "s-palette"]
+    },
+    {
+      "id": "shortcuts", "slug": "tools/workbench/shortcuts", "nav": "Keyboard shortcuts", "title": "Keyboard shortcuts",
+      "desc": "Every keyboard shortcut in the workbench.",
+      "intro": "Every shortcut of the workbench, with its default keys. `?` shows the same list in the workbench. Any of them can be changed under Settings › Keyboard shortcuts, apart from the ones marked *fixed*. Most match VS Code. On a Mac, Ctrl means ⌘ unless a row gives a Mac key.",
+      "allKeys": true,
+      "sections": [
+        { "h": "Not in the list", "md": "- `F1` opens the command palette, like {key:palette}.\n- Outside the code, `Ctrl+K` or pressing `Shift` twice opens the Open list, like {key:open}.\n- `Alt+Enter` shows the fixes for a line, like {key:quickFix}. On a value, `Alt+↓` opens the list of values it can take." }
+      ]
+    }
+  ]
+}

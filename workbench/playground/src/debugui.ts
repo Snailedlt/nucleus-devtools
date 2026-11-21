@@ -23,7 +23,7 @@ export interface DebugHost {
   options: () => TraceOptions;
   /** Show the Try it tab */
   showTryIt: () => void;
-  /** Show the code (not Form or Blocks) */
+  /** Show handler.js in the main pane (a package file may be open in its place). */
   showCode: () => void;
   /** Redraw Try it's normal results (after Stop) */
   rerun: () => void;
@@ -58,7 +58,7 @@ let timer: number | undefined;
 function record(src: string, opts: TraceOptions): Promise<Trace> {
   if (tw === undefined) {
     try {
-      tw = new Worker((globalThis as any).__WORKER_URL);
+      tw = new Worker((globalThis as any).__WORKER_URL, (globalThis as any).__WORKER_MODULE ? { type: 'module' } : undefined);
     } catch {
       tw = null;
     }

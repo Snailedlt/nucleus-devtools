@@ -20,6 +20,7 @@ import { prettySignature } from './pretty';
 import { WORKBENCH_URL } from './sharelink';
 import { BOM, withoutBom } from './bom';
 import { eolOf } from './eol';
+import { REPO_URL } from './report';
 
 /** Editors with their own JavaScript support (VS Code) already suggest and explain the handler's own functions and
  *  variables: `own: false` leaves those out, so they don't show twice. */
@@ -56,7 +57,7 @@ function optionKeyAt(text: string, offset: number): { key: string; start: number
 }
 
 /** Where the lint rules are documented (the README table). */
-export const RULES_URL = 'https://github.com/Snailedlt/nucleus-devtools#lint-rules';
+export const RULES_URL = `${REPO_URL}#lint-rules`;
 
 export interface Span {
   start: number;
@@ -605,7 +606,7 @@ export function quickFixes(text: string, diagnostics: Diagnostic[], rules?: Rule
 // ---------------------------------------------------------------------------
 // Formatting
 
-/** Format Document (core/format.ts: indentation and spacing only). `edits` is empty when already
+/** Format Document (core/format.ts: indentation, spacing, and quotes and semicolons as set). `edits` is empty when already
  *  formatted; `error` says why it refused (the editor should show it, not change anything). */
 /** The editor's indentation, and the style settings (core/format.ts: quotes, semicolons). */
 export interface FormatSettings {

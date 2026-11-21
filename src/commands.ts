@@ -133,8 +133,7 @@ async function packageHandler(uri?: vscode.Uri) {
   const msg = files.length
     ? `Packaged handler.js and ${files.length} file(s) from "${base}/" into ${path.basename(target.fsPath)}.`
     : `Packaged ${path.basename(target.fsPath)} (no "${base}/" asset folder found next to the handler).`;
-  const choice = await vscode.window.showInformationMessage(msg, 'Upload on the Hub');
-  if (choice) vscode.env.openExternal(vscode.Uri.parse('https://hub.splitscreen.me/'));
+  void vscode.window.showInformationMessage(msg);
 }
 
 // ---------------------------------------------------------------------------
@@ -386,7 +385,7 @@ async function setupTypes(context: vscode.ExtensionContext) {
 
 // ---------------------------------------------------------------------------
 
-/** The open handler in the browser workbench (its visual editor, Lines, Test all…), through a share link. */
+/** The open handler in the browser workbench (Lines, Test all…), through a share link. */
 async function openInWorkbench() {
   const doc = vscode.window.activeTextEditor?.document;
   const text = doc && /\.js$/i.test(doc.fileName) ? doc.getText() : undefined;

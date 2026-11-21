@@ -1,6 +1,8 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { handle, TOOLS } from '../mcp';
 
@@ -72,6 +74,28 @@ test('mcp: over stdio', () => {
   assert.equal(lines.length, 2, r.stderr);
   assert.equal(lines[0].result.serverInfo.name, 'nucleus');
   assert.match(lines[1].result.content[0].text, /unknown-member/);
+});
+
+test('mcp: the Claude plugin manifest launches the bundled server outside the plugin directory', () => {
+  const pluginRoot = path.resolve(__dirname, '..', 'plugin');
+  const manifest = JSON.parse(fs.readFileSync(path.join(pluginRoot, '.mcp.json'), 'utf8'));
+  const server = manifest.mcpServers?.nucleus;
+  assert.ok(server, 'the stable server name is nucleus');
+  assert.equal(server.command, 'node');
+  assert.ok(server.args[0].startsWith('${CLAUDE_PLUGIN_ROOT}/'), 'Claude resolves the bundle from the installed plugin');
+  const args = server.args.map((arg: string) => arg.replace('${CLAUDE_PLUGIN_ROOT}', pluginRoot));
+  const input = [
+    { jsonrpc: '2.0', id: 1, method: 'initialize', params: { protocolVersion: '2025-06-18', capabilities: {}, clientInfo: { name: 'plugin-test', version: '1' } } },
+    { jsonrpc: '2.0', method: 'notifications/initialized' },
+    { jsonrpc: '2.0', id: 2, method: 'tools/list' },
+  ].map((message) => JSON.stringify(message)).join('\n') + '\n';
+  const result = spawnSync(process.execPath, args, { cwd: os.tmpdir(), input, encoding: 'utf8', timeout: 5000 });
+  assert.ifError(result.error);
+  assert.equal(result.status, 0, result.stderr);
+  const replies = result.stdout.trim().split('\n').map((line) => JSON.parse(line));
+  assert.deepEqual(replies.map((reply) => reply.id), [1, 2]);
+  assert.equal(replies[0].result.serverInfo.name, 'nucleus');
+  assert.ok(replies[1].result.tools.some((tool: { name: string }) => tool.name === 'nucleus_lint'));
 });
 
 test('mcp: explain, debug, a check explained, docs links, the hard rules', async () => {

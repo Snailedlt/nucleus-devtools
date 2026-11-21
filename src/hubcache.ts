@@ -18,6 +18,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { fetchHandlers, packageUrl, HubHandler, hubClientHeaders, slugId, type HubFeature, type HubTool } from './core/hub';
 import { readZip, ZipEntry } from './core/zip';
+import { DATA_RAW } from './core/report';
 
 declare const __VERSION__: string;
 declare const __HUB_TOOL__: string; // per bundle (scripts/build.mjs): vscode-extension, ncdev-cli, claude-skill
@@ -106,7 +107,7 @@ export function cacheDir(): string {
 
 /** Our daily copy of the Hub's list (the hub-sync workflow, .github/workflows/hub-sync.yml), served by GitHub, so people's
  *  searches never reach the Hub's API. The Hub itself is only asked when the index is missing or stale. */
-export const HUB_INDEX_URL = 'https://raw.githubusercontent.com/Snailedlt/nucleus-devtools/data/hub-index.json';
+export const HUB_INDEX_URL = `${DATA_RAW}hub-index.json`;
 const STALE_MS = 3 * 24 * 60 * 60_000;
 
 interface Cached { at: number; list: HubHandler[]; etag?: string; from?: 'index' | 'hub'; failedAt?: number }

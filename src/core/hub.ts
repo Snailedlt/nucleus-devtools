@@ -1,6 +1,8 @@
 // The public SplitScreen.Me hub API (https://hub.splitscreen.me): types and URLs. Node hosts read it only
 // through src/hubcache.ts (cache, shared requests, retries, our User-Agent).
 
+import { REPO_URL } from './report';
+
 export const HUB = 'https://hub.splitscreen.me';
 
 export interface HubHandler {
@@ -37,7 +39,7 @@ export function handlerPageUrl(id: string): string {
 }
 
 /** The repository named in our User-Agent, so the Hub's maintainers can reach us. */
-export const DEVTOOLS_URL = 'https://github.com/Snailedlt/nucleus-devtools';
+export const DEVTOOLS_URL = REPO_URL;
 /** Which of our tools sent a request: `vscode-extension`, `ncdev-cli`, `ncdev-lsp` (`ncdev-lsp/<editor>`),
  *  `ncdev-mcp`, `notepadpp-plugin`, `claude-skill`, `workbench`. */
 export type HubTool = string;

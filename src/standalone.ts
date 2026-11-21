@@ -5,11 +5,12 @@ import os from 'node:os';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import { cacheDir } from './hubcache';
+import { TOOLS_REPO } from './core/report';
 
 declare const __VERSION__: string;
 export const VERSION = typeof __VERSION__ === 'string' ? __VERSION__ : '0.0.0';
 export const TOOL = 'ncdev';
-const REPO = 'Snailedlt/nucleus-devtools';
+const REPO = TOOLS_REPO;
 
 /** Running as the standalone ncdev (not `node cli.js`). */
 export function isStandalone(): boolean {

@@ -3,6 +3,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { handlerPackageEntries, writeZip, ZipEntry } from './zip';
+import { AI_HARD_RULES } from './airules';
 
 function listFiles(dir: string, base = dir): { rel: string; abs: string }[] {
   const out: { rel: string; abs: string }[] = [];
@@ -96,7 +97,8 @@ export function installAgentKit(skillDir: string, target: string): InstallResult
   copyDir(skillDir, skillDest);
   note(skillDest, skillExisted);
 
-  const section = fs.readFileSync(path.join(skillDir, 'templates', 'AGENTS.section.md'), 'utf8').trim();
+  // The hard rules are the core's (the same ones Fix with AI and the MCP server give an AI), so the kit can't drift.
+  const section = fs.readFileSync(path.join(skillDir, 'templates', 'AGENTS.section.md'), 'utf8').trim().replace('{{HARD_RULES}}', () => AI_HARD_RULES.map((r) => `- ${r}`).join('\n'));
   const block = `${MARK_START}\n${section}\n${MARK_END}`;
   const agents = path.join(target, 'AGENTS.md');
   if (fs.existsSync(agents)) {

@@ -1,0 +1,13 @@
+{
+  "$comment": "What a release (a v… tag) uploads, with one line each for its notes (scripts/release-notes.mjs). {tag} is the release's tag. .github/workflows/release.yml uploads exactly these (src/test/docsync.test.ts checks it).",
+  "assets": [
+    { "name": "splitscreenme-vscode-{tag}.vsix", "what": "the VS Code extension: in VS Code run **Extensions: Install from VSIX…** (Ctrl+Shift+P)" },
+    { "name": "ncdev.exe", "what": "`ncdev` for Windows, nothing else to install: the command line, the language server for other editors, and the Notepad++ setup (double-click it)" },
+    { "name": "ncdev-linux-x64", "what": "`ncdev` for Linux (x64): `chmod +x` it and put it on your PATH as `ncdev`" },
+    { "name": "nucleus.js", "what": "`ncdev` as one file for Node.js 18+, anywhere else (`node nucleus.js …`), also the MCP server for AI agents (`node nucleus.js mcp`)" },
+    { "name": "NcDev.zip", "what": "the Notepad++ plugin on its own (64-bit), for Plugins Admin" },
+    { "name": "NcDev-x86.zip", "what": "the Notepad++ plugin on its own (32-bit)" },
+    { "name": "workbench.html", "what": "the whole browser workbench in one file: open it locally or host it yourself" },
+    { "name": "SHA256SUMS.txt", "what": "checksums `ncdev update` checks the downloads against" }
+  ]
+}

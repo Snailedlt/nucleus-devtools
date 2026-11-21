@@ -267,3 +267,15 @@ test('sandbox: one handler changing the built-ins never changes the next handler
   assert.deepEqual(after.options, before.options);
   assert.equal(after.loaded, true);
 });
+
+// The sandbox's copy of the API model has no documentation (scripts/build.mjs, modelWithoutDocs): the simulator must
+// not need it. Every Jint probe gives the same result sandboxed as it does directly, with the full model.
+test('sandbox: the simulator with its trimmed API model gives the same results as with the full one', () => {
+  const dir = path.join(__dirname, '..', 'workbench', 'probes');
+  const probes = fs.readdirSync(dir).filter((f) => f.endsWith('.js'));
+  assert.ok(probes.length > 100);
+  for (const f of probes) {
+    const src = fs.readFileSync(path.join(dir, f), 'utf8');
+    for (const players of [1, 3]) assert.deepEqual(simulateIsolated(src, { ...OPTS, players }), JSON.parse(JSON.stringify(simulate(src, { ...OPTS, players }))), `${f}, ${players} player(s)`);
+  }
+});

@@ -14,9 +14,6 @@ node .claude/skills/nucleus-handler/scripts/nucleus.js hub search <game>        
 ```
 
 Non-negotiable:
-- ES5 JavaScript only (Jint 2.11): no arrow functions, template strings, classes, spread or destructuring. Use `var`. No ES2015+ built-ins either (`.includes()`, `.startsWith()`, `.find()`, `Object.assign`, `Map`): use `indexOf` and loops.
-- Only use options that exist (`api` / lint). Misspelled options are silently ignored.
-- `Context`, `Player`, `PlayerList`, `ProtoInput` only inside `Game.Play` or other callbacks.
-- Keep `Game.GameName = "...";` and `Game.ExecutableName = "...";` unindented, double-quoted, and alone on their lines.
+{{HARD_RULES}}
 - Nucleus can't run here. Finish with a concrete test plan, and ask the user for `debug-log.txt` from the Nucleus folder.
 - Put the credit lines at the top of every handler you create or change (made by which AI agent, what `lint` and `simulate` showed, not run in Nucleus): the format is in SKILL.md, "Credit lines". Facts only; keep lines others wrote.
