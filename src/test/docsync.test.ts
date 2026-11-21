@@ -66,9 +66,10 @@ test('release files: the workflow uploads what data/release-assets.json lists, a
   const line = /gh release create "\$TAG" (.*?) --target/.exec(wf)![1];
   const uploaded = line.split(/\s+/).map((f) => f.replace(/"/g, ''));
   assert.deepEqual([...uploaded].sort(), [...listed].sort(), 'release.yml uploads something other than data/release-assets.json lists');
-  // The standalone builds the release makes (build-native.sh's targets) are the ones ncdev update downloads.
+  // The standalone builds the release makes (scripts/release-files.sh's default targets) are the ones ncdev update downloads.
   const { assetName } = await import('../standalone');
-  const targets = /build-native\.sh ([\w,-]+)/.exec(wf)![1].split(',');
+  assert.match(wf, /sh scripts\/release-files\.sh\n/, 'release.yml builds the default targets of scripts/release-files.sh');
+  const targets = /TARGETS="\$\{1:-([\w,-]+)\}"/.exec(read('scripts/release-files.sh'))![1].split(',');
   const names = Object.fromEntries([...read('scripts/sea.mjs').matchAll(/'([\w-]+)': '([\w.-]+)'/g)].map((m) => [m[1], m[2]]));
   for (const t of targets) {
     const [os, arch] = t.split('-');

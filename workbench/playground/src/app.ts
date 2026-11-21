@@ -48,8 +48,8 @@ import { initMessageHints } from './wmhints';
 import { initValuePicker } from './valuepick';
 import { memberCard, syncVoteLinks } from './doccard';
 import { initKeyHints } from './keyhints';
-import { mountFormView, type FormView } from './formview';
-import { mountBlocksView, type BlocksView } from './blocksview';
+import type { FormView } from './formview';
+import type { BlocksView } from './blocksview';
 import { VISUAL, VISUAL_HIDDEN_NOTE } from './visual';
 import { initPackageUI, fileIcon } from './packageui';
 import type { PkgProblem } from './pkgcheck';
@@ -250,7 +250,7 @@ const guidOf = (src: string): string | undefined => {
   }
 };
 try {
-  worker = new Worker((globalThis as any).__WORKER_URL);
+  worker = new Worker((globalThis as any).__WORKER_URL, (globalThis as any).__WORKER_MODULE ? { type: 'module' } : undefined);
   worker.onmessage = (e: MessageEvent<Analysis & { id: number }>) => {
     const p = pending.get(e.data.id);
     pending.delete(e.data.id);
@@ -2692,6 +2692,8 @@ let viewMode: ViewMode = (() => {
 document.documentElement.classList.toggle('visual', VISUAL);
 // Only Code is left without them: no switcher at all.
 if (!VISUAL) document.querySelector('.view-switch')?.remove();
+/** A part of the workbench that's its own file didn't load (offline, or the site was updated since this page opened). */
+const lazyFailed = () => toast('Couldn’t load that part of the workbench. Check your connection, or reload the page.');
 let formView: FormView | null = null;
 let blocksView: BlocksView | null = null;
 const viewHost = (origin: string) => ({
@@ -2716,12 +2718,17 @@ function setViewMode(m: ViewMode) {
   $('#blocksview').hidden = m !== 'blocks';
   if (m === 'form') {
     use('form-view');
-    formView ??= mountFormView($('#formview'), viewHost('+form'));
-    formView.refresh();
+    // The visual editor is its own file on the site: loaded the first time a view is opened.
+    void import('./formview').then(({ mountFormView }) => {
+      formView ??= mountFormView($('#formview'), viewHost('+form'));
+      formView.refresh();
+    }, lazyFailed);
   } else if (m === 'blocks') {
     use('blocks-view');
-    blocksView ??= mountBlocksView($('#blocksview'), viewHost('+blocks'));
-    blocksView.refresh();
+    void import('./blocksview').then(({ mountBlocksView }) => {
+      blocksView ??= mountBlocksView($('#blocksview'), viewHost('+blocks'));
+      blocksView.refresh();
+    }, lazyFailed);
   } else {
     editor.refresh();
   }

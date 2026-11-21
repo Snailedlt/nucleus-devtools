@@ -101,10 +101,12 @@ test('worker: a worker that never answers is stopped by the hard limit and repla
   }
 });
 
+// Node takes 15-20 s to give up at the memory limit (it collects garbage first), so the time limit here is far
+// longer: with 20 s the two raced, and a busy machine got "did not finish" instead.
 test('worker: a handler that eats memory only takes the worker down', async () => {
   const w = new SimWorker();
   try {
-    const r = await w.simulate(HEADER + 'var a = [];\nGame.Play = function () { for (;;) { var b = []; for (var i = 0; i < 1000000; i++) b.push(i * 1.5); a.push(b); } };\n', OPTS, { timeoutMs: 20_000 });
+    const r = await w.simulate(HEADER + 'var a = [];\nGame.Play = function () { for (;;) { var b = []; for (var i = 0; i < 1000000; i++) b.push(i * 1.5); a.push(b); } };\n', OPTS, { timeoutMs: 120_000 });
     assert.equal(r.loaded, false);
     assert.match(r.loadError!, /too much memory/);
     assert.equal((await w.simulate(OK, OPTS)).players[0].startArguments, '-id 0');

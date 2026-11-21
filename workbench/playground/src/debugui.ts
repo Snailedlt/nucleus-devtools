@@ -58,7 +58,7 @@ let timer: number | undefined;
 function record(src: string, opts: TraceOptions): Promise<Trace> {
   if (tw === undefined) {
     try {
-      tw = new Worker((globalThis as any).__WORKER_URL);
+      tw = new Worker((globalThis as any).__WORKER_URL, (globalThis as any).__WORKER_MODULE ? { type: 'module' } : undefined);
     } catch {
       tw = null;
     }

@@ -31,20 +31,7 @@
 <li>Open a handler: problems are underlined, hover for docs, <kbd>Ctrl+.</kbd> for fixes, <strong>▷</strong> for Try it.</li></ol></div><div class="ed-step" id="setup-notepadpp" hidden><h3>Notepad++</h3><ol>
 <li>Download <a id="ncdev" data-asset="ncdev.exe" href="__NCDEV_URL__"><code>ncdev.exe</code></a> and close Notepad++.</li>
 <li>Double-click it and choose <strong>Set up Notepad++</strong> (or run <code class="cmd">.\ncdev setup notepad++</code> in its folder). When Windows asks for permission, allow it.</li>
-<li>Open a handler: everything is under <strong>Plugins › Nucleus Co-op handlers</strong>.</li></ol><p class="small">A portable Notepad++ (no permission needed): <code class="cmd">.\ncdev setup notepad++ --path "C:\path\to\Notepad++"</code></p></div><div class="ed-step" id="setup-neovim" hidden><h3>Neovim 0.11+</h3><ol><li>Add to your <code>init.lua</code>:
-<pre class="cfg" data-lang="lua"><code><!--PORTING:neovim--></code></pre></li>
-<li>Open a handler: problems show within a second. Older Neovim: <a href="https://github.com/Snailedlt/nucleus-devtools#neovim">the setup for it</a>.</li></ol></div><div class="ed-step" id="setup-helix" hidden><h3>Helix</h3><ol><li>Add to <code>languages.toml</code>:
-<pre class="cfg" data-lang="toml"><code><!--PORTING:helix--></code></pre></li>
-<li>Open a handler (<code>:lsp-restart</code> if Helix was already open).</li></ol></div><div class="ed-step" id="setup-sublime" hidden><h3>Sublime Text</h3><ol><li>Install the <a href="https://packagecontrol.io/packages/LSP">LSP</a> package (Package Control).</li>
-<li><strong>Preferences › Package Settings › LSP › Settings</strong>, add:
-<pre class="cfg" data-lang="json"><code><!--PORTING:sublime--></code></pre></li>
-<li>Open a handler.</li></ol></div><div class="ed-step" id="setup-emacs" hidden><h3>Emacs 29+ (eglot)</h3><ol><li>Add to your init file:
-<pre class="cfg" data-lang="commonlisp"><code><!--PORTING:emacs--></code></pre></li>
-<li>Open a handler and run <kbd>M-x eglot</kbd>.</li></ol></div><div class="ed-step" id="setup-kate" hidden><h3>Kate</h3><ol><li><strong>Settings › Configure Kate › LSP Client › User Server Settings</strong>, add:
-<pre class="cfg" data-lang="json"><code><!--PORTING:kate--></code></pre></li>
-<li>Open a handler. (Kate runs one server per language: this one takes over <code>.js</code> files.)</li></ol></div><div class="ed-step" id="setup-jetbrains" hidden><h3>JetBrains IDEs</h3><ol><li>Install the <a href="https://plugins.jetbrains.com/plugin/23257-lsp4ij">LSP4IJ</a> plugin.</li>
-<li><strong>Settings › Languages &amp; Frameworks › Language Servers › +</strong>: name <code>Nucleus</code>, command <code>ncdev lsp</code>, and under Mappings the file pattern <code>*.js</code>.</li>
-<li>Open a handler.</li></ol></div><div class="ed-step" id="setup-zed" hidden><h3>Zed</h3><ol><li>Zed only starts language servers that an extension provides, so it needs a small Zed extension first; <a href="https://github.com/Snailedlt/nucleus-devtools/blob/main/PORTING.md#zed-settingsjson">how, in PORTING.md</a>.</li></ol></div><div class="ed-step" id="setup-any" hidden><h3>Any other editor</h3><ol><li>Point its LSP client at <code>ncdev lsp</code> (stdio) for JavaScript files. It only answers for handler files, so your usual JavaScript server keeps working.</li>
+<li>Open a handler: everything is under <strong>Plugins › Nucleus Co-op handlers</strong>.</li></ol><p class="small">A portable Notepad++ (no permission needed): <code class="cmd">.\ncdev setup notepad++ --path "C:\path\to\Notepad++"</code></p></div><!--ED_STEPS--><div class="ed-step" id="setup-any" hidden><h3>Any other editor</h3><ol><li>Point its LSP client at <code>ncdev lsp</code> (stdio) for JavaScript files. It only answers for handler files, so your usual JavaScript server keeps working.</li>
 <li>Settings, Fix all, Try it and the debugger (<code>ncdev dap</code>) for each editor: <a href="https://github.com/Snailedlt/nucleus-devtools/blob/main/PORTING.md">PORTING.md</a>.</li></ol></div></div>
   <p class="small">Something wrong, or an editor that doesn't work? <a href="https://github.com/Snailedlt/nucleus-devtools/issues/new?template=tester-feedback.yml">Tell us</a>. Every editor in detail: <a href="https://github.com/Snailedlt/nucleus-devtools/blob/main/PORTING.md">PORTING.md</a>.</p>
   </section>

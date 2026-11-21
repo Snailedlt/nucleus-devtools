@@ -89,20 +89,18 @@ jobs:
           path: .sea-cache
           key: sea-${{ hashFiles('scripts/sea.mjs') }}
       # A pull request also builds ncdev.exe, so it can be tried on Windows before it's merged.
-      - run: npm run build && sh scripts/build-native.sh ${{ github.event_name == 'pull_request' && 'win-x64,linux-x64' || 'linux-x64' }}
+      - name: ncdev and the Notepad++ plugin's zips, built and tested like a release
+        run: sh scripts/release-files.sh ${{ github.event_name == 'pull_request' && 'win-x64,linux-x64' || 'linux-x64' }}
       - name: The plugin is ready for Notepad++'s Plugins Admin (DLL versions, zips)
-        run: |
-          sh scripts/npp-zips.sh
-          node scripts/npp-plugin-list.mjs
-      - run: node scripts/smoke-standalone.mjs dist-sea/ncdev-linux-x64
+        run: node scripts/npp-plugin-list.mjs
       - uses: actions/upload-artifact@v4
         id: ncdev
         if: github.event_name == 'pull_request'
         with:
           name: ncdev-and-notepadpp
           path: |
-            dist-sea/ncdev.exe
-            dist-sea/ncdev-linux-x64
+            ncdev.exe
+            ncdev-linux-x64
             NcDev.zip
             NcDev-x86.zip
     outputs:
