@@ -1,4 +1,4 @@
-// Every keyboard shortcut as data: keybindings.ts binds them, and the site's docs (docs/tools/workbench/) list them.
+// Every keyboard shortcut as data: keybindings.ts binds them, and the site's docs (docs/tools/workbench/shortcuts/, and each guide page's own keys) list them.
 // No DOM here, so the site's build can read it too.
 
 export type Group = 'Workbench' | 'Problems' | 'Find and navigate' | 'Editing' | 'Debugger';

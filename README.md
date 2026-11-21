@@ -64,6 +64,7 @@ One engine runs underneath all of them, so the checks, suggestions and docs are 
 | Suggestions, snippets, New handler | ✅ | ✅ | ✅ | ✅ |
 | Hover docs and parameter hints | ✅ | ✅ | ✅ | ✅ |
 | Docs for every option and function | ✅ panel | ✅ API reference | ✅ Docs tab | ✅ links to the docs |
+| Explain this line | ✅ | ✅ | ✅ | ✅ |
 | Format (never moves a line) | ✅ | ✅ | ✅ | ✅ |
 | Go to definition, references, rename | ✅ | ✅ | ✅ | ✅ |
 | Outline | ✅ | ✅ panel | — | ✅ |
@@ -75,6 +76,7 @@ One engine runs underneath all of them, so the checks, suggestions and docs are 
 | Package as .nc for the Hub | ✅ | ✅ | ✅ | ✅ command |
 | Install into Nucleus Co-op | ✅ | ✅ | ✅ Chrome, Edge | ✅ command |
 | Test in Nucleus Co-op (starts it) | ✅ | ✅ | — a browser can't | ✅ command |
+| AI help | ✅ its agents get the tools | — | ✅ Fix with AI | `ncdev mcp` for agents |
 | What to install | the extension | `ncdev setup notepad++` | nothing | `ncdev` |
 <!-- /generated:compare -->
 

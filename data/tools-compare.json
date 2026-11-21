@@ -12,6 +12,7 @@
     { "feature": "Suggestions, snippets, New handler", "cells": ["yes", "yes", "yes", "yes"] },
     { "feature": "Hover docs and parameter hints", "cells": ["yes", "yes", "yes", "yes"] },
     { "feature": "Docs for every option and function", "cells": ["yes: panel", "yes: API reference", "yes: Docs tab", "yes: links to the docs"] },
+    { "feature": "Explain this line", "cells": ["yes", "yes", "yes", "yes"] },
     { "feature": "Format (never moves a line)", "cells": ["yes", "yes", "yes", "yes"] },
     { "feature": "Go to definition, references, rename", "cells": ["yes", "yes", "yes", "yes"] },
     { "feature": "Outline", "cells": ["yes", "yes: panel", "no", "yes"] },
@@ -23,6 +24,7 @@
     { "feature": "Package as .nc for the Hub", "cells": ["yes", "yes", "yes", "yes: command"] },
     { "feature": "Install into Nucleus Co-op", "cells": ["yes", "yes", "yes: Chrome, Edge", "yes: command"] },
     { "feature": "Test in Nucleus Co-op (starts it)", "cells": ["yes", "yes", "no: a browser can't", "yes: command"] },
+    { "feature": "AI help", "cells": ["yes: its agents get the tools", "no", "yes: Fix with AI", ": `ncdev mcp` for agents"] },
     { "feature": "What to install", "cells": [": the extension", ": `ncdev setup notepad++`", ": nothing", ": `ncdev`"] }
   ]
 }

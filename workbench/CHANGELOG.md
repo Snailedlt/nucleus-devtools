@@ -18,7 +18,13 @@ How to write it (people and AI agents read this, and the workbench shows it):
 - **A new address: https://snailedlt.github.io/nucleus-devtools/.** The workbench moved into the tools' repository, [nucleus-devtools](https://github.com/Snailedlt/nucleus-devtools), so it's built from the same commit as the checks it runs. Update your bookmarks; your drafts and settings come along (same site, new folder). Reports go to the same forms as the other tools'.
 ### ✨ New
 - **Set up your AI for handlers.** A short page on the site (ai/): what the tools give an AI, the free and paid setups we recommend, and prompts to copy. Claude Code and other AI agents (Codex, Antigravity, Cursor) get a setup prompt to run once (it installs our plugin or adds our MCP server, so the agent checks and tries its own work) and a prompt to make a handler, once per game; chatbots (ChatGPT, Claude, Gemini, Grok) get the rules a handler must follow. Type your game once and it fills every prompt. Linked from the start and tools pages.
-- **The tools in the docs.** The docs' list has a third section, Tools: a reference page for the workbench (every keyboard shortcut), VS Code (commands, keys and settings), Notepad++ (the Nucleus menu), other editors (the language server and debugger setups), `ncdev` (every command and option) and the MCP server (the tools AI agents get). Each is made from the tool's own data, so it stays up to date.
+- **A guide to the workbench, and every tool explained.** The docs have a third section, Tools. The workbench gets a guide: a screenshot with a number on each part, then a short page each for writing code, Check, Try it, the debugger, opening and saving, AI, and Settings. Every other tool (VS Code, Notepad++, other editors, `ncdev`, the MCP server) has a page that says what it is, when it is useful and how it works, with screenshots, before its commands, keys and settings. Editors has a page that compares them.
+
+  <details><summary>Screenshot</summary>
+
+  ![The workbench with a number on each part, and what each part is](docs/images/changelog/2026-11-21-guide-light.png)
+
+  </details>
 ### 🛠️ Improved
 - **Nucli reacts once, then settles.** "Nothing to fix", "Oops" and "Fixed" play once and keep their ending (the tick, the "!", the fixed code) instead of repeating every few seconds; with Motion set to lively he goes on blinking, his electrons circling. Loaders keep moving while you wait, and Test all's ring is the new one from the concept sheet: the electrons ride the front of the ring as it fills. *Still* now shows each scene's own pose (a reaction its ending) rather than a frozen moment.
 ### ⚡ Faster
