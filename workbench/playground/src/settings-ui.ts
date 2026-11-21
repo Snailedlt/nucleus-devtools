@@ -2,6 +2,7 @@ import { PRESETS, presetOf, savedMotion, setMotion, type MascotMotion, type Pres
 import { setWrap, wrapEditor } from './wrap';
 import { confirmOn } from './toast';
 import { codeNote } from './codenote';
+import { labelOf } from './keybindings';
 // Workbench settings (the gear in the header): theme, editor, tips, the Lines column, and the
 // niche ones (Advanced mode, the dev bar) under Advanced. Also the phone helpers it controls:
 // the symbol bar above the on-screen keyboard.
@@ -407,8 +408,11 @@ export function initSettings(d: Deps) {
     save();
     applyEditor();
     ($('#set-wrap') as HTMLInputElement).checked = ed.wrap;
-    // Said in the code, where the lines just changed; a toast when the code isn't shown (Form or Blocks).
-    const msg = ed.wrap ? 'Word wrap on: long lines wrap (Alt+Z turns it off).' : 'Word wrap off: long lines scroll sideways (Alt+Z turns it on).';
+    // Said in the code, where the lines just changed; a toast when the code isn't on screen (a phone showing the
+    // results). The key is the person's own (Settings › Keyboard shortcuts), and left out when they cleared it.
+    const key = labelOf('wordWrap');
+    const how = (what: string) => (key ? ` (${key} turns it ${what})` : '');
+    const msg = ed.wrap ? `Word wrap on: long lines wrap${how('off')}.` : `Word wrap off: long lines scroll sideways${how('on')}.`;
     if (d.editor.getWrapperElement().offsetParent) codeNote(d.editor, d.editor.getCursor().line, msg, { mood: 'info' });
     else d.toast(msg);
   }

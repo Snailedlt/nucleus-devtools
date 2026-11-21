@@ -42,7 +42,7 @@ import { initTouchTitles } from './touch-titles';
 import { keepMascots, mascot, mascotsOn } from './mascots';
 import { barProgress } from './mascotprogress';
 import { fixWithNucli, applyEditsToText } from './fixfx';
-import { placeExample } from './lines';
+import { placeExample, scanHandler } from './lines';
 import { prettyCode } from '@core/pretty';
 import { codeNote } from './codenote';
 import { initMessageHints } from './wmhints';
@@ -551,9 +551,10 @@ function afterFolderChange() {
 // While a folder is read: "Reading <folder>…" with a bar (no total while listing, then the program files n of m).
 let folderProg: FolderProgress | null = null;
 const mb = (n: number) => `${(n / 1e6).toFixed(n < 1e7 ? 1 : 0)} MB`;
+// The numbers under the bar. The line above it says what is being read, so this doesn't say it again.
 function folderProgText(p: FolderProgress): string {
-  if (p.phase === 'listing') return `Reading ${p.name}… ${p.files} file${p.files === 1 ? '' : 's'} listed`;
-  if (p.phase === 'binaries') return `Reading ${p.name}'s program files for hook hints… ${p.done} of ${p.total} (${mb(p.bytes)} of ${mb(p.totalBytes)})`;
+  if (p.phase === 'listing') return `${p.files} file${p.files === 1 ? '' : 's'} listed`;
+  if (p.phase === 'binaries') return `${p.done} of ${p.total} read (${mb(p.bytes)} of ${mb(p.totalBytes)}), for the hints about hooks`;
   return '';
 }
 function folderProgHtml(): string {
@@ -1415,7 +1416,10 @@ function placeDocExample(path: string, m: Member) {
 /** Puts the example in; when it can't, says why (Docs shows it under the button). */
 function insertExample(path: string, m: Member, replace = false): string | undefined {
   const r = placeDocExample(path, m);
-  if (!r) return "There's no telling where the example goes: the handler doesn't parse (Check lists what's wrong), or its callback is set to a function made elsewhere. Add it by hand.";
+  // Two reasons, told apart so the note says the one that applies.
+  if (!r) return scanHandler(editor.getValue())
+    ? "This example goes inside a callback, and the handler sets that callback to a function made elsewhere, so there's no telling where it belongs. Add it by hand."
+    : "The handler has a syntax error (Check lists it), so there's no telling where the example goes. Fix that first, or add it by hand.";
   // Set already: "Show in handler" goes to that line and keeps the value; only "Replace with the example's value" changes it.
   if (r.action === 'same' || (r.action === 'update' && !replace)) {
     jumpTo(editor.indexFromPos({ line: r.line, ch: 0 }));

@@ -1222,6 +1222,43 @@ section('handler tab keys', async () => {
   check(!s.errors.length, `tab keys: no page errors ${s.errors.join(' ')}`);
   await s.ctx.close();
 });
+section('word wrap note', async () => {
+  // Alt+Z says what happened in the code, with the key as it is bound now (not a fixed "Alt+Z").
+  const s = await page('light');
+  await s.p.goto(BASE + '#example-mistakes');
+  await s.p.waitForSelector('.CodeMirror');
+  await s.p.waitForTimeout(900);
+  await s.p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
+  const inCode = () => s.p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.focus());
+  const note = () => s.p.evaluate(() => ({ text: document.querySelector('.code-note .cn-text')?.textContent ?? '', toasts: document.querySelectorAll('.toast').length, wraps: document.querySelector('.CodeMirror').classList.contains('CodeMirror-wrap') }));
+  const before = (await note()).wraps;
+  await inCode();
+  await s.p.keyboard.press('Alt+Z');
+  await s.p.waitForTimeout(300);
+  const first = await note();
+  check(first.wraps !== before && /^Word wrap (on|off): .*\(Alt\+Z turns it (on|off)\)\.$/.test(first.text) && !first.toasts, `word wrap: Alt+Z says so in the code, with its key and no toast (${JSON.stringify(first)})`);
+  await s.p.keyboard.press('Control+Comma');
+  await s.p.click('#st-keys');
+  await s.p.fill('#sp-keys .kb-q', 'word wrap');
+  await s.p.click('#sp-keys [data-kb-change="wordWrap"]');
+  await s.p.keyboard.press('Control+Shift+Digit9');
+  await s.p.keyboard.press('Enter');
+  await s.p.keyboard.press('Escape');
+  await inCode();
+  await s.p.keyboard.press('Control+Shift+Digit9');
+  await s.p.waitForTimeout(300);
+  const rebound = await note();
+  check(rebound.wraps === before && /9 turns it/.test(rebound.text) && !/Alt\+Z/.test(rebound.text), `word wrap: the note names the shortcut as it is bound now (${JSON.stringify(rebound)})`);
+  await s.p.keyboard.press('Control+Comma');
+  await s.p.click('#st-keys');
+  await s.p.fill('#sp-keys .kb-q', 'word wrap');
+  await s.p.click('#sp-keys [data-kb-change="wordWrap"]');
+  await s.p.click('#sp-keys [data-kb-none="wordWrap"]');
+  await s.p.keyboard.press('Escape');
+  await s.p.evaluate(() => document.querySelector('#set-wrap')?.closest('dialog')?.close());
+  check(!s.errors.length, `word wrap: no page errors ${s.errors.join(' ')}`);
+  await s.ctx.close();
+});
 section('closing handlers', async () => {
   // Every handler can be closed, the last one too: a new one from the template takes its place (no empty page); Undo
   // brings the closed one back and the untouched template goes.

@@ -153,7 +153,8 @@ export function initTryIt(deps: TryItDeps): { run: () => void; options: () => Si
           .join('')}</tr>`)
         .join('');
       const fails = [...cells.entries()].flatMap(([k, c]) => c.fail.map((f) => ({ k, ...f })));
-      // Nucli runs the relay while it tests, then shows how it went.
+      // Nucli runs the relay while it tests, then shows how it went. His ring shows the progress, so the bar under the
+      // heading is only drawn without him (mascots hidden, the alpha 8 look); screen readers get it either way.
       const nuc = mascot(finished ? (failed ? 'n-bad' : stopped ? 'n-idle' : 'n-ok') : 'n-ring', { size: 44, className: 'mx-masc', busy: !finished });
       keepMascots(box, () => box.innerHTML = `<div class="mx-head">${nuc}<strong>${stopped ? `Stopped after ${done} of ${jobs.length} combinations${failed ? `: ${failed} fail` : ''}` : finished ? (failed ? `${failed} of ${jobs.length} combinations fail` : `All ${jobs.length} combinations work`) : `Testing ${done} of ${jobs.length}…`}</strong><span class="muted">${max} player${max === 1 ? '' : 's'} max · ${MX_RES.map(([w, h]) => `${w}×${h}`).join(', ')}${finished ? ` · ${Math.round(performance.now() - t0)} ms` : ''}</span>${finished ? '' : '<button class="btn" type="button" id="mx-stop">Stop</button>'}<button class="btn icon" type="button" id="mx-close" aria-label="Close" title="Close">×</button></div>
         ${finished ? '' : `<div class="mx-bar" role="progressbar" aria-label="Combinations tested" aria-valuemin="0" aria-valuemax="${jobs.length}" aria-valuenow="${done}"><i style="width:${Math.round((done / Math.max(1, jobs.length)) * 100)}%"></i></div>`}

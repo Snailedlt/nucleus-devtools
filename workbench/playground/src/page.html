@@ -1326,6 +1326,8 @@ kbd { font: 11px var(--font-mono); border: 1px solid var(--line); border-bottom-
 }
 .mx-bar { height: 4px; border-radius: 999px; background: var(--surface-2); overflow: hidden; margin: -2px 0 10px; }
 .mx-bar i { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--accent); transition: width .2s ease; }
+/* Nucli's ring shows the same progress (mascotprogress.ts): with him there, the bar is for screen readers only. */
+:root:not([data-mascots="off"]):not([data-site="alpha8"]) .mx-bar { position: absolute; width: 1px; height: 1px; margin: 0; overflow: hidden; clip: rect(0 0 0 0); }
 /* The tab marker glides between Check, Try it and Reference (app.ts places it) */
 [role=tablist].has-ink { position: relative; }
 [role=tablist].has-ink [role=tab][aria-selected=true] { border-bottom-color: transparent; }
@@ -1818,6 +1820,7 @@ kbd.keys .kplus { color: var(--muted); padding: 0 1px; }
 .fp-game .fp-gacts { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 4px; }
 .fp-game .fp-prog { margin: 0 4px 10px; font-size: 12.5px; }
 .fp-game .fp-prog-row { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; overflow-wrap: anywhere; }
+.fp-game .fp-prog-row .link { flex: none; white-space: nowrap; }
 .fp-game .fp-prog progress { display: block; width: 100%; height: 6px; margin: 4px 0 2px; accent-color: var(--accent); }
 /* Duo pushing the bar (mascotprogress.ts) stands in for the bar; the <progress> stays for screen readers. */
 .fp-game .fp-prog .fp-duo { display: block; width: 100% !important; max-width: 240px; height: auto !important; aspect-ratio: 102 / 72; margin: 2px 0 0; }
