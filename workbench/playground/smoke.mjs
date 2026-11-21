@@ -927,22 +927,29 @@ section('docs pages', async () => {
     await axe(s.p, `${theme}, docs page`);
     await s.p.goto(BASE + 'docs/');
     await axe(s.p, `${theme}, docs list`);
-    // Tools in the docs (tool-docs.mjs): reference tables made from the tools' own data, and their own section in the list.
+    // Tools in the docs (tool-docs.mjs): reference pages with tables made from the tools' own data, setup pages, and
+    // their own section in the list.
     await s.p.goto(BASE + 'docs/tools/ncdev/');
     await s.p.waitForTimeout(300);
     const td = await s.p.evaluate(() => ({ rows: document.querySelectorAll('main table tbody tr').length, lint: /lint <file\|dir>/.test(document.querySelector('main table')?.textContent ?? ''), sec: [...document.querySelectorAll('#dn-list .dn-sec > details > summary')].map((x) => x.textContent).join(), current: document.querySelector('#dn-list [aria-current]')?.textContent }));
-    check(td.rows > 15 && td.lint && /Tools/.test(td.sec) && td.current === 'ncdev (command line)', `docs tools ${theme}: the ncdev page lists the commands, in its own Tools section (${JSON.stringify(td)})`);
+    check(td.rows > 15 && td.lint && /Tools/.test(td.sec) && td.current === 'ncdev', `docs tools ${theme}: the ncdev page lists the commands, in its own Tools section (${JSON.stringify(td)})`);
     await axe(s.p, `${theme}, docs tools page`);
     await s.p.goto(BASE + 'docs/tools/mcp/');
     check((await s.p.$$('main h3 code')).length >= 10, `docs tools ${theme}: the MCP page lists the server's tools`);
-    // What each tool is and when it is useful, on top of its page; the tools index with its diagram and groups.
-    check(await s.p.evaluate(() => !!document.querySelector('main .tool-intro .lead') && document.querySelectorAll('main .tool-intro li').length >= 2 && !!document.querySelector('main .tool-intro a.btn')), `docs tools ${theme}: the MCP page starts with what it is, when it is useful and where to get it`);
+    // A reference page starts with what the tool is and its facts, and ends with one short Related list. Its
+    // setup is a page of its own: what you need, the steps, how to see that it worked.
+    const rp = await s.p.evaluate(() => ({ lead: !!document.querySelector('main > .lead, main .lead'), facts: document.querySelectorAll('main .facts > div').length, setup: !!document.querySelector('main .facts a[href$="mcp/setup/"]'), related: document.querySelectorAll('#related + ul li').length, when: !!document.querySelector('#when') }));
+    check(rp.lead && rp.facts >= 3 && rp.setup && rp.related >= 1 && rp.related <= 3 && !rp.when, `docs tools ${theme}: the MCP page starts with what it is and its facts, links its setup page, and ends with a short Related list (${JSON.stringify(rp)})`);
+    await s.p.goto(BASE + 'docs/tools/notepadpp/setup/');
+    const su = await s.p.evaluate(() => ({ heads: [...document.querySelectorAll('main h2')].map((h) => h.textContent).join('|'), steps: document.querySelectorAll('#steps + ol li').length, current: document.querySelector('#dn-list [aria-current]')?.textContent }));
+    check(/^Before you start\|Steps\|Check that it works/.test(su.heads) && su.steps >= 3, `docs tools ${theme}: a setup page goes what you need, the steps, the check (${JSON.stringify(su)})`);
+    await axe(s.p, `${theme}, setup page`);
     await s.p.goto(BASE + 'docs/tools/');
-    const ti = await s.p.evaluate(() => ({ tools: document.querySelectorAll('.dg-core .dg-row a').length, engine: !!document.querySelector('.dg-engine'), flow: document.querySelectorAll('.dg-flow li').length, groups: [...document.querySelectorAll('main h2')].map((h) => h.textContent).join('|') }));
-    check(ti.tools === 6 && ti.engine && ti.flow >= 5 && /Workbench\|Editors\|Command line and AI/.test(ti.groups), `docs tools ${theme}: the index shows every tool around the engine, the groups and a handler's path (${JSON.stringify(ti)})`);
+    const ti = await s.p.evaluate(() => ({ tools: document.querySelectorAll('.dg-core .dg-row a').length, engine: !!document.querySelector('.dg-engine'), flow: document.querySelectorAll('.dg-flow li').length, rows: document.querySelectorAll('#the-tools + table tbody tr').length, setups: document.querySelectorAll('#the-tools + table td:last-child a').length }));
+    check(ti.tools === 6 && ti.engine && ti.flow >= 5 && ti.rows === 6 && ti.setups === 6, `docs tools ${theme}: the index has every tool in one table with its setup, the tools around the engine and a handler's path (${JSON.stringify(ti)})`);
     await axe(s.p, `${theme}, docs tools index`);
-    // The workbench guide: the labelled screenshot (a number on each part, inside the picture, the same numbers
-    // in the list below), in the page's theme, and a page per area.
+    // The workbench's pages: the labelled screenshot (a number on each part, inside the picture, the same numbers
+    // in the list below, each part's name leading to its page), in the page's theme.
     await s.p.goto(BASE + 'docs/tools/workbench/');
     await s.p.waitForTimeout(300);
     const wm = await s.p.evaluate(() => {
@@ -954,22 +961,26 @@ section('docs pages', async () => {
         inside: pins.every((p) => { const r = p.getBoundingClientRect(); return r.left >= frame.left && r.right <= frame.right && r.top >= frame.top && r.bottom <= frame.bottom; }),
         targets: pins.every((p) => document.querySelector(p.getAttribute('href'))),
         shown: shown.map((i) => i.className).join(','), loaded: shown.every((i) => i.complete && i.naturalWidth > 0),
-        pages: document.querySelectorAll('main .tool-cards a').length, flow: document.querySelectorAll('.dg-flow li a').length,
+        pages: new Set([...document.querySelectorAll('.map-legend > li strong a')].map((a) => a.getAttribute('href'))).size, facts: document.querySelectorAll('main .facts > div').length,
       };
     });
-    check(wm.pins >= 8 && wm.pins === wm.legend && wm.inside && wm.targets && wm.shown === `th-${theme}` && wm.loaded && wm.pages >= 8 && wm.flow === 4, `docs tools ${theme}: the workbench guide's labelled screenshot has a number on each part and its line below (${JSON.stringify(wm)})`);
+    check(wm.pins >= 8 && wm.pins === wm.legend && wm.inside && wm.targets && wm.shown === `th-${theme}` && wm.loaded && wm.pages >= 4 && wm.facts >= 3, `docs tools ${theme}: the workbench page's labelled screenshot has a number on each part and its line below (${JSON.stringify(wm)})`);
     await axe(s.p, `${theme}, workbench guide`);
     await s.p.click('.map-pin');
     check(await s.p.evaluate(() => !!document.querySelector('.map-legend > li:target')), `docs tools ${theme}: a number on the screenshot leads to its line`);
     await s.p.goto(BASE + 'docs/tools/workbench/check/');
     await s.p.waitForSelector('#dn-list [aria-current]', { timeout: 5000 }).catch(() => {});
-    const gp =await s.p.evaluate(() => ({ lead: !!document.querySelector('main .lead'), shots: [...document.querySelectorAll('main .shot img')].filter((i) => i.getClientRects().length).length, keys: document.querySelectorAll('#keys + table kbd').length, tips: document.querySelectorAll('.tips li').length, nav: [...document.querySelectorAll('.guide-nav a')].map((a) => a.rel).join(','), current: document.querySelector('#dn-list [aria-current]')?.textContent }));
-    check(gp.lead && gp.shots === 2 && gp.keys >= 4 && gp.tips >= 2 && gp.nav === 'prev,next' && gp.current === 'Check', `docs tools ${theme}: a guide page has its introduction, screenshots, keys, tips and Before/Next (${JSON.stringify(gp)})`);
+    const gp =await s.p.evaluate(() => ({ lead: !!document.querySelector('main .lead'), shots: [...document.querySelectorAll('main .shot img')].filter((i) => i.getClientRects().length).length, keys: document.querySelectorAll('main kbd').length, levels: document.querySelectorAll('#severity + table tbody tr').length, related: document.querySelectorAll('#related + ul li').length, repeats: document.querySelectorAll('#keys, #tips, .guide-nav').length, current: document.querySelector('#dn-list [aria-current]')?.textContent }));
+    check(gp.lead && gp.shots === 2 && gp.keys >= 4 && gp.levels === 3 && gp.related >= 1 && gp.related <= 3 && gp.repeats === 0 && gp.current === 'Check', `docs tools ${theme}: a workbench page says what the part is, with its screenshots and its keys where they're used, and has no key table or tips list of its own (${JSON.stringify(gp)})`);
     await axe(s.p, `${theme}, workbench guide page`);
-    await s.p.goto(BASE + 'docs/tools/editors/');
-    const ed = await s.p.evaluate(() => ({ cols: document.querySelectorAll('table.compare thead th').length, rows: document.querySelectorAll('table.compare tbody tr').length, lsp: document.querySelectorAll('#language-server-editors ~ table tbody tr').length }));
-    check(ed.cols === 5 && ed.rows >= 15 && ed.lsp >= 5, `docs tools ${theme}: the editors page compares them and lists the language-server editors (${JSON.stringify(ed)})`);
-    await axe(s.p, `${theme}, editors page`);
+    await s.p.goto(BASE + 'docs/tools/compare/');
+    const ed = await s.p.evaluate(() => ({ cols: document.querySelectorAll('table.compare thead th').length, rows: document.querySelectorAll('table.compare tbody tr').length }));
+    check(ed.cols === 5 && ed.rows >= 15, `docs tools ${theme}: the comparison page has every feature by tool (${JSON.stringify(ed)})`);
+    await axe(s.p, `${theme}, comparison page`);
+    await s.p.goto(BASE + 'docs/tools/lsp/setup/');
+    const ls = await s.p.evaluate(() => ({ tested: document.querySelectorAll('#how-far-each-editor-is-tested + table tbody tr').length, editors: [...document.querySelectorAll('main h2')].filter((h) => /Neovim|Helix|Emacs/.test(h.textContent)).length, code: document.querySelectorAll('main pre[data-lang]').length }));
+    check(ls.tested >= 5 && ls.editors >= 3 && ls.code >= 4, `docs tools ${theme}: the other editors' setup page has a section per editor and how far each is tested (${JSON.stringify(ls)})`);
+    await axe(s.p, `${theme}, other editors setup page`);
     await s.p.goto(BASE + 'docs/tools/vscode/');
     check(await s.p.evaluate(() => !!document.querySelector('main video[poster]') && [...document.querySelectorAll('main .shot img')].filter((i) => i.getClientRects().length).length >= 3), `docs tools ${theme}: the VS Code page shows its video and screenshots`);
     await axe(s.p, `${theme}, VS Code tool page`);
@@ -977,7 +988,7 @@ section('docs pages', async () => {
     await s.ctx.close();
   }
   const ph = await page('light', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  for (const u of ['docs/Context.ModifySaveFile/', 'rules/', 'rules/syntax-error/', 'start/', 'tools/', 'ai/', 'docs/tools/ncdev/', 'docs/tools/vscode/', 'docs/tools/', 'docs/tools/workbench/', 'docs/tools/workbench/settings/', 'docs/tools/workbench/shortcuts/', 'docs/tools/editors/', 'docs/tools/other-editors/', 'docs/tools/mcp/']) {
+  for (const u of ['docs/Context.ModifySaveFile/', 'rules/', 'rules/syntax-error/', 'start/', 'tools/', 'ai/', 'docs/tools/ncdev/', 'docs/tools/vscode/', 'docs/tools/', 'docs/tools/workbench/', 'docs/tools/workbench/settings/', 'docs/tools/workbench/shortcuts/', 'docs/tools/compare/', 'docs/tools/lsp/', 'docs/tools/lsp/setup/', 'docs/tools/notepadpp/setup/', 'docs/tools/mcp/']) {
     await ph.p.goto(BASE + u);
     const wide = await ph.p.evaluate(() => document.documentElement.scrollWidth - innerWidth);
     check(wide <= 1, `phone ${u}: no sideways scrolling, header included (${wide}px)`);

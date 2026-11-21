@@ -1,5 +1,5 @@
 {
-  "$comment": "The parts of the workbench the guided tour points at (src/tour.ts; app.ts adds each step's action by id), in the tour's order. The same list is the legend of the labelled screenshot in the docs (docs/tools/workbench/, tool-docs.mjs): tools/screenshots.cjs --only map marks each part's first shown target (or `mark`, where the tour's cut-out is a whole pane) and writes the positions to docs/images/guide/workbench-map.json. text: plain words, keys in backticks, {key:<action id>} for a shortcut from keyactions.ts. page: the guide page (src/guide.json) that explains the part.",
+  "$comment": "The parts of the workbench the guided tour points at (src/tour.ts; app.ts adds each step's action by id), in the tour's order. The same list is the legend of the labelled screenshot in the docs (docs/tools/workbench/, tool-docs.mjs): tools/screenshots.cjs --only map marks each part's first shown target (or `mark`, where the tour's cut-out is a whole pane) and writes the positions to docs/images/guide/workbench-map.json. text: plain words, keys in backticks, {key:<action id>} for a shortcut from keyactions.ts. page: the page of the workbench reference (src/guide.json) that describes the part.",
   "parts": [
     {
       "id": "handlers",
@@ -22,7 +22,7 @@
         "#editor"
       ],
       "view": "code",
-      "page": "writing"
+      "page": "editor"
     },
     {
       "id": "check",
@@ -57,7 +57,7 @@
       ],
       "view": "results",
       "tab": "api",
-      "page": "writing"
+      "page": "editor"
     },
     {
       "id": "lines",
@@ -68,7 +68,7 @@
         ".rail [data-rail=lines]"
       ],
       "view": "code",
-      "page": "writing"
+      "page": "editor"
     },
     {
       "id": "files",

@@ -26,8 +26,9 @@ const KEYISH = new RegExp(`^(?:(?:${MOD})+[.,[\\]]|(?:${MOD})*(?:F\\d{1,2}|Esc|T
 
 /**
  * One line of written text: `code` and `keys`, **bold**, *emphasis*, {key:<action id>} for a shortcut, {repo} for
- * this repository, and links: https://…, @guide:<page id>, @site:<path>, @docs:<slug>, each with an optional #part.
- * `c`: { keyOf(id), guideHref(id), repo }. Something it names that doesn't exist stops the build.
+ * this repository, {vscodeVersion} for the oldest VS Code the extension runs in, and links: https://…,
+ * @guide:<page id>, @site:<path>, @docs:<slug>, each with an optional #part.
+ * `c`: { keyOf(id), guideHref(id), docHref(slug), repo, vscodeVersion }. Something it names that doesn't exist stops the build.
  */
 export function rich(t, c) {
   const link = (u) => {
@@ -35,10 +36,10 @@ export function rich(t, c) {
     const m = /^@(guide|site|docs):([^#]*)(#.*)?$/.exec(u);
     if (!m) throw new Error(`tool docs: a link to "${u}": use https://…, @guide:<page>, @site:<path> or @docs:<slug>.`);
     const [, kind, to, part = ''] = m;
-    return (kind === 'guide' ? c.guideHref(to) : kind === 'docs' ? `__UP__docs/${to}/` : `__UP__${to}`) + part;
+    return (kind === 'guide' ? c.guideHref(to) : kind === 'docs' ? (c.docHref ? c.docHref(to) : `__UP__docs/${to}/`) : `__UP__${to}`) + part;
   };
   return esc(t)
-    .replaceAll('{repo}', c.repo ?? '')
+    .replace(/\{(repo|vscodeVersion)\}/g, (_, name) => c[name] ?? '')
     .replace(/\{key:(\w+)\}/g, (_, id) => keys(c.keyOf(id)))
     .replace(/`([^`]+)`/g, (_, x) => (KEYISH.test(x) ? `<kbd>${x}</kbd>` : `<code class="use">${x}</code>`))
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')

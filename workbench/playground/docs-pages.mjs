@@ -245,7 +245,7 @@ ${!v && o.toolPages?.length ? `<p class="small">The tools have their own section
     fs.writeFileSync(path.join(dir, 'index.html'), head(v ? `${title}: Nucleus Co-op handler docs` : 'Docs: every Nucleus Co-op handler option and call', first || 'Nucleus Co-op handler docs.', `${o.base}docs/${v ? `${v}/` : ''}`, up, v || '@api') + body + foot(up));
     written.push(v);
   }
-  // Tools (tool-docs.mjs): docs/tools/ (what the tools are, by group) and their pages: what each is, how it works, its reference.
+  // Tools (tool-docs.mjs): docs/tools/ (every tool in one table) and their pages: a reference page per tool and per part of the workbench, a setup page per tool that is installed.
   const tools = o.toolPages ?? [];
   if (tools.length) {
     const page = (slug, title, desc, inner, here0) => {
@@ -256,7 +256,7 @@ ${!v && o.toolPages?.length ? `<p class="small">The tools have their own section
       fs.writeFileSync(path.join(dir, 'index.html'), head(`${title}: Nucleus Co-op handler tools`, desc, `${o.base}docs/${slug}/`, up, here0) + `<p class="crumbs">${crumbs.join(' › ')}</p>\n<h1>${esc(title)}</h1>\n${inner.replaceAll('__UP__', up)}\n` + foot(up));
       written.push(slug);
     };
-    page('tools', 'Tools', 'The tools for writing Nucleus Co-op handlers, what each one is for and how it works.', o.toolsIndex ?? '', '@tools');
+    page('tools', 'Tools', 'The tools for writing Nucleus Co-op handlers: what each one is, how to set it up, and its reference.', o.toolsIndex ?? '', '@tools');
     for (const t of tools) page(t.slug, t.title, t.desc, (t.intro ?? '') + (t.html ?? mdToHtml(t.md, t.mdHref ?? ((u) => u))) + (t.outro ? `\n${t.outro}` : ''), t.slug);
   }
   // The list the drawer shows (nav.js): each group's names with their first line, for the filter.
@@ -266,8 +266,8 @@ ${!v && o.toolPages?.length ? `<p class="small">The tools have their own section
     .concat([{ sec: 'api', key: '', title: 'Nucleus values (enums)', items: (o.enums ?? []).map((n) => ({ p: `Nucleus.${n}`, d: '' })) }])
     // The checks (rules-pages.mjs): their own section, each item linking to rules/<id>/ by its title.
     .concat((o.checks ?? []).map((g) => ({ sec: 'checks', key: g.key, title: g.title, items: g.items })))
-    // Tools (tool-docs.mjs): its groups (Workbench, Editors, Command line and AI); the AI setup page is the last item.
-    .concat([...new Set(tools.map((t) => t.group))].map((g, i, all) => ({ sec: 'tools', key: `tools:${g}`, title: g, items: tools.filter((t) => t.group === g).map((t) => ({ p: t.slug, t: t.nav ?? t.title, d: t.desc, u: `docs/${t.slug}/` })).concat(i === all.length - 1 ? [{ p: 'ai', t: 'Set up your AI', d: 'Prompts for Claude Code, other AI agents and chatbots', u: 'ai/' }] : []) })));
+    // Tools (tool-docs.mjs): its groups (Get started, Workbench, Reference); the AI setup page ends the first, with the other setups.
+    .concat([...new Set(tools.map((t) => t.group))].map((g, i, all) => ({ sec: 'tools', key: `tools:${g}`, title: g, items: tools.filter((t) => t.group === g).map((t) => ({ p: t.slug, t: t.nav ?? t.title, d: t.desc, u: `docs/${t.slug}/` })).concat(i === 0 ? [{ p: 'ai', t: 'Set up your AI', d: 'Prompts for Claude Code, other AI agents and chatbots', u: 'ai/' }] : []) })));
   fs.writeFileSync(path.join(o.outDir, 'nav.json'), JSON.stringify(nav));
   fs.writeFileSync(path.join(o.outDir, 'nav.js'), NAV_JS);
   return written;
