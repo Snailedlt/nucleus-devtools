@@ -584,6 +584,20 @@ for (const theme of ['light', 'dark']) section(`workbench, ${theme}`, async () =
     check(/^4 of/.test(await q.textContent('#tour-count')), `${theme}: Continue picks up at the skipped step`);
     for (let i = 0; i < 12 && await q.$eval('#tour', (d) => d.open); i++) await q.click('[data-tour=next]');
     check((await q.evaluate(() => JSON.parse(localStorage.getItem('nucleus-workbench-tour'))))?.state === 'done', `${theme}: Finish ends the tour and remembers it`);
+    // A shortcut changed since the page loaded: the tour names the new keys (it looks them up when a step is shown),
+    // which are the ones the step's action listens for.
+    await q.keyboard.press('Control+Comma');
+    await q.click('#st-keys');
+    await q.fill('#sp-keys .kb-q', 'lines');
+    await q.click('#sp-keys [data-kb-change="lines"]');
+    await q.keyboard.press('Control+Shift+Digit9');
+    await q.keyboard.press('Enter');
+    await q.keyboard.press('Escape');
+    await takeTour();
+    for (let i = 0; i < 12 && (await q.textContent('#tour-title')) !== 'Lines'; i++) { await q.click('[data-tour=next]'); await q.waitForTimeout(200); }
+    const linesStep = await q.evaluate(() => ({ title: document.getElementById('tour-title').textContent, keys: [...document.querySelectorAll('#tour-text kbd')].map((k) => k.textContent).join('+') }));
+    check(linesStep.title === 'Lines' && /9/.test(linesStep.keys) && !/B/.test(linesStep.keys), `${theme}: the tour names a shortcut as it is bound now, without a reload (${JSON.stringify(linesStep)})`);
+    await q.keyboard.press('Escape');
     await fresh.close();
   }
   // One handler per tab: another handler opens a new tab; one that's already open switches to its tab.
@@ -927,19 +941,68 @@ section('docs pages', async () => {
     await axe(s.p, `${theme}, docs page`);
     await s.p.goto(BASE + 'docs/');
     await axe(s.p, `${theme}, docs list`);
-    // Tools in the docs (tool-docs.mjs): reference tables made from the tools' own data, and their own section in the list.
+    // Tools in the docs (tool-docs.mjs): reference pages with tables made from the tools' own data, setup pages, and
+    // their own section in the list.
     await s.p.goto(BASE + 'docs/tools/ncdev/');
     await s.p.waitForTimeout(300);
     const td = await s.p.evaluate(() => ({ rows: document.querySelectorAll('main table tbody tr').length, lint: /lint <file\|dir>/.test(document.querySelector('main table')?.textContent ?? ''), sec: [...document.querySelectorAll('#dn-list .dn-sec > details > summary')].map((x) => x.textContent).join(), current: document.querySelector('#dn-list [aria-current]')?.textContent }));
-    check(td.rows > 15 && td.lint && /Tools/.test(td.sec) && td.current === 'ncdev (command line)', `docs tools ${theme}: the ncdev page lists the commands, in its own Tools section (${JSON.stringify(td)})`);
+    check(td.rows > 15 && td.lint && /Tools/.test(td.sec) && td.current === 'ncdev', `docs tools ${theme}: the ncdev page lists the commands, in its own Tools section (${JSON.stringify(td)})`);
     await axe(s.p, `${theme}, docs tools page`);
     await s.p.goto(BASE + 'docs/tools/mcp/');
-    check((await s.p.$$('main h2 code')).length >= 10, `docs tools ${theme}: the MCP page lists the server's tools`);
+    check((await s.p.$$('main h3 code')).length >= 10, `docs tools ${theme}: the MCP page lists the server's tools`);
+    // A reference page starts with what the tool is and its facts, and ends with one short Related list. Its
+    // setup is a page of its own: what you need, the steps, how to see that it worked.
+    const rp = await s.p.evaluate(() => ({ lead: !!document.querySelector('main > .lead, main .lead'), facts: document.querySelectorAll('main .facts > div').length, setup: !!document.querySelector('main .facts a[href$="mcp/setup/"]'), related: document.querySelectorAll('#related + ul li').length, when: !!document.querySelector('#when') }));
+    check(rp.lead && rp.facts >= 3 && rp.setup && rp.related >= 1 && rp.related <= 3 && !rp.when, `docs tools ${theme}: the MCP page starts with what it is and its facts, links its setup page, and ends with a short Related list (${JSON.stringify(rp)})`);
+    await s.p.goto(BASE + 'docs/tools/notepadpp/setup/');
+    const su = await s.p.evaluate(() => ({ heads: [...document.querySelectorAll('main h2')].map((h) => h.textContent).join('|'), steps: document.querySelectorAll('#steps + ol li').length, current: document.querySelector('#dn-list [aria-current]')?.textContent }));
+    check(/^Before you start\|Steps\|Check that it works/.test(su.heads) && su.steps >= 3, `docs tools ${theme}: a setup page goes what you need, the steps, the check (${JSON.stringify(su)})`);
+    await axe(s.p, `${theme}, setup page`);
+    await s.p.goto(BASE + 'docs/tools/');
+    const ti = await s.p.evaluate(() => ({ tools: document.querySelectorAll('.dg-core .dg-row a').length, engine: !!document.querySelector('.dg-engine'), flow: document.querySelectorAll('.dg-flow li').length, rows: document.querySelectorAll('#the-tools + table tbody tr').length, setups: document.querySelectorAll('#the-tools + table td:last-child a').length }));
+    check(ti.tools === 6 && ti.engine && ti.flow >= 5 && ti.rows === 6 && ti.setups === 6, `docs tools ${theme}: the index has every tool in one table with its setup, the tools around the engine and a handler's path (${JSON.stringify(ti)})`);
+    await axe(s.p, `${theme}, docs tools index`);
+    // The workbench's pages: the labelled screenshot (a number on each part, inside the picture, the same numbers
+    // in the list below, each part's name leading to its page), in the page's theme.
+    await s.p.goto(BASE + 'docs/tools/workbench/');
+    await s.p.waitForTimeout(300);
+    const wm = await s.p.evaluate(() => {
+      const frame = document.querySelector('.map-frame').getBoundingClientRect();
+      const pins = [...document.querySelectorAll('.map-pin')];
+      const shown = [...document.querySelectorAll('.map-frame img')].filter((i) => i.getClientRects().length);
+      return {
+        pins: pins.length, legend: document.querySelectorAll('.map-legend > li').length,
+        inside: pins.every((p) => { const r = p.getBoundingClientRect(); return r.left >= frame.left && r.right <= frame.right && r.top >= frame.top && r.bottom <= frame.bottom; }),
+        targets: pins.every((p) => document.querySelector(p.getAttribute('href'))),
+        shown: shown.map((i) => i.className).join(','), loaded: shown.every((i) => i.complete && i.naturalWidth > 0),
+        pages: new Set([...document.querySelectorAll('.map-legend > li strong a')].map((a) => a.getAttribute('href'))).size, facts: document.querySelectorAll('main .facts > div').length,
+      };
+    });
+    check(wm.pins >= 8 && wm.pins === wm.legend && wm.inside && wm.targets && wm.shown === `th-${theme}` && wm.loaded && wm.pages >= 4 && wm.facts >= 3, `docs tools ${theme}: the workbench page's labelled screenshot has a number on each part and its line below (${JSON.stringify(wm)})`);
+    await axe(s.p, `${theme}, workbench guide`);
+    await s.p.click('.map-pin');
+    check(await s.p.evaluate(() => !!document.querySelector('.map-legend > li:target')), `docs tools ${theme}: a number on the screenshot leads to its line`);
+    await s.p.goto(BASE + 'docs/tools/workbench/check/');
+    await s.p.waitForSelector('#dn-list [aria-current]', { timeout: 5000 }).catch(() => {});
+    const gp =await s.p.evaluate(() => ({ lead: !!document.querySelector('main .lead'), shots: [...document.querySelectorAll('main .shot img')].filter((i) => i.getClientRects().length).length, keys: document.querySelectorAll('main kbd').length, levels: document.querySelectorAll('#severity + table tbody tr').length, related: document.querySelectorAll('#related + ul li').length, repeats: document.querySelectorAll('#keys, #tips, .guide-nav').length, current: document.querySelector('#dn-list [aria-current]')?.textContent }));
+    check(gp.lead && gp.shots === 2 && gp.keys >= 4 && gp.levels === 3 && gp.related >= 1 && gp.related <= 3 && gp.repeats === 0 && gp.current === 'Check', `docs tools ${theme}: a workbench page says what the part is, with its screenshots and its keys where they're used, and has no key table or tips list of its own (${JSON.stringify(gp)})`);
+    await axe(s.p, `${theme}, workbench guide page`);
+    await s.p.goto(BASE + 'docs/tools/compare/');
+    const ed = await s.p.evaluate(() => ({ cols: document.querySelectorAll('table.compare thead th').length, rows: document.querySelectorAll('table.compare tbody tr').length }));
+    check(ed.cols === 5 && ed.rows >= 15, `docs tools ${theme}: the comparison page has every feature by tool (${JSON.stringify(ed)})`);
+    await axe(s.p, `${theme}, comparison page`);
+    await s.p.goto(BASE + 'docs/tools/lsp/setup/');
+    const ls = await s.p.evaluate(() => ({ tested: document.querySelectorAll('#how-far-each-editor-is-tested + table tbody tr').length, editors: [...document.querySelectorAll('main h2')].filter((h) => /Neovim|Helix|Emacs/.test(h.textContent)).length, code: document.querySelectorAll('main pre[data-lang]').length }));
+    check(ls.tested >= 5 && ls.editors >= 3 && ls.code >= 4, `docs tools ${theme}: the other editors' setup page has a section per editor and how far each is tested (${JSON.stringify(ls)})`);
+    await axe(s.p, `${theme}, other editors setup page`);
+    await s.p.goto(BASE + 'docs/tools/vscode/');
+    check(await s.p.evaluate(() => !!document.querySelector('main video[poster]') && [...document.querySelectorAll('main .shot img')].filter((i) => i.getClientRects().length).length >= 3), `docs tools ${theme}: the VS Code page shows its video and screenshots`);
+    await axe(s.p, `${theme}, VS Code tool page`);
     check(!s.errors.length, `docs page ${theme}: no page errors ${s.errors.join(' ')}`);
     await s.ctx.close();
   }
   const ph = await page('light', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  for (const u of ['docs/Context.ModifySaveFile/', 'rules/', 'rules/syntax-error/', 'start/', 'tools/', 'ai/', 'docs/tools/ncdev/', 'docs/tools/vscode/']) {
+  for (const u of ['docs/Context.ModifySaveFile/', 'rules/', 'rules/syntax-error/', 'start/', 'tools/', 'ai/', 'docs/tools/ncdev/', 'docs/tools/vscode/', 'docs/tools/', 'docs/tools/workbench/', 'docs/tools/workbench/settings/', 'docs/tools/workbench/shortcuts/', 'docs/tools/compare/', 'docs/tools/lsp/', 'docs/tools/lsp/setup/', 'docs/tools/notepadpp/setup/', 'docs/tools/mcp/']) {
     await ph.p.goto(BASE + u);
     const wide = await ph.p.evaluate(() => document.documentElement.scrollWidth - innerWidth);
     check(wide <= 1, `phone ${u}: no sideways scrolling, header included (${wide}px)`);
@@ -1077,6 +1140,47 @@ section('tabs and package files', async () => {
     check(backOnB && await flagged(), "tabs: a Check started in the other tab and finished after the switch doesn't replace this tab's result");
   } else say('skip: no Hub handler in this build for the two-tab Check test');
   check(!s.errors.length, `tabs with package files: no page errors ${s.errors.join(' ')}`);
+  await s.ctx.close();
+});
+section('handler tab keys', async () => {
+  // Next / Previous open handler and Close this handler are shortcuts like the rest (keyactions.ts), so they can't
+  // take another shortcut's key: in the code Ctrl+Shift+[ folds (it used to switch handlers), and in Find Alt+W is
+  // "whole word" (it used to close the handler too).
+  const s = await page('light');
+  await s.p.goto(BASE + '#example-mistakes');
+  await s.p.waitForSelector('.CodeMirror');
+  await s.p.waitForTimeout(900);
+  await s.p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
+  const now = () => s.p.evaluate(() => ({ name: document.querySelector('#doc-name')?.textContent, tabs: document.querySelectorAll('#htabs [role=tab]').length, folded: document.querySelectorAll('.CodeMirror-foldmarker').length, word: document.querySelector('.fw-opt[data-opt=word]')?.getAttribute('aria-pressed') ?? null }));
+  const inCode = () => s.p.evaluate(() => { const cm = document.querySelector('.CodeMirror').CodeMirror; cm.focus(); cm.setCursor(cm.getValue().split('\n').findIndex((l) => l.includes('Game.Play')), 5); });
+  const start = await now();
+  await inCode();
+  await s.p.keyboard.press('Control+Shift+BracketLeft');
+  await s.p.waitForTimeout(300);
+  const folded = await now();
+  check(start.tabs >= 2 && folded.name === start.name && folded.folded === 1, `tab keys: Ctrl+Shift+[ in the code folds the block and stays on the handler (${JSON.stringify(folded)})`);
+  await s.p.keyboard.press('Control+Shift+BracketRight');
+  await s.p.keyboard.press('Alt+PageDown');
+  await s.p.waitForTimeout(400);
+  const next = await now();
+  check(next.name !== start.name && next.tabs === start.tabs, `tab keys: Alt+PageDown goes to the next open handler (${next.name})`);
+  await s.p.keyboard.press('Alt+PageUp');
+  await s.p.waitForTimeout(400);
+  check((await now()).name === start.name, 'tab keys: Alt+PageUp goes back');
+  await inCode();
+  await s.p.keyboard.press('Control+F');
+  await s.p.waitForTimeout(300);
+  await s.p.keyboard.press('Alt+W');
+  await s.p.waitForTimeout(300);
+  const find = await now();
+  check(find.word === 'true' && find.tabs === start.tabs && find.name === start.name, `tab keys: Alt+W in Find turns on whole word and closes nothing (${JSON.stringify(find)})`);
+  await s.p.keyboard.press('Escape');
+  await inCode();
+  await s.p.keyboard.press('Alt+W');
+  await s.p.waitForTimeout(400);
+  check((await now()).tabs === start.tabs - 1, 'tab keys: Alt+W in the code closes the handler');
+  check(await s.p.evaluate(() => /Next open handler/.test(document.querySelector('#help-dialog')?.textContent ?? '')), 'tab keys: they are in the shortcut list');
+  check(!s.errors.length, `tab keys: no page errors ${s.errors.join(' ')}`);
   await s.ctx.close();
 });
 section('closing handlers', async () => {

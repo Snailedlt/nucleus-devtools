@@ -826,17 +826,26 @@ let docValues = [];
   D.setDocVotes(docVotes);
   const { writeDocPages } = await import('./docs-pages.mjs');
   // The Tools section's pages (tool-docs.mjs), from the tools' own data. A core from before they existed has none.
-  let toolPages = [];
+  let toolDocs = null;
   if (fs.existsSync(path.join(coreRepo, 'src', 'clihelp.ts'))) {
     const T = await esbuild.build({ stdin: { contents: "export { helpText } from './clihelp'; export { TOOLS } from './mcp';", resolveDir: path.join(coreRepo, 'src'), loader: 'ts' }, bundle: true, format: 'esm', platform: 'node', write: false, nodePaths: [path.join(coreRepo, 'node_modules')], logLevel: 'error', define: { __SIM_SANDBOX__: '""', __SIM_WORKER__: '""', __VERSION__: JSON.stringify(JSON.parse(fs.readFileSync(path.join(coreRepo, 'package.json'), 'utf8')).version), __HUB_TOOL__: '"workbench"' }, banner: { js: `import { createRequire as __cr } from 'node:module'; const require = __cr(${JSON.stringify(import.meta.url)});` } });
     const C = await import('data:text/javascript;base64,' + Buffer.from(T.outputFiles[0].text).toString('base64'));
-    const K = await esbuild.build({ entryPoints: [path.join(here, 'src', 'keyactions.ts')], bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'error' });
-    const { ACTIONS } = await import('data:text/javascript;base64,' + Buffer.from(K.outputFiles[0].text).toString('base64'));
-    const { toolPages: makeToolPages, readToolSources } = await import('./tool-docs.mjs');
+    const K = await esbuild.build({ stdin: { contents: "export { ACTIONS } from './keyactions'; export { GENERAL_TIPS } from './tips';", resolveDir: path.join(here, 'src'), loader: 'ts' }, bundle: true, format: 'esm', platform: 'node', write: false, logLevel: 'error' });
+    const { ACTIONS, GENERAL_TIPS } = await import('data:text/javascript;base64,' + Buffer.from(K.outputFiles[0].text).toString('base64'));
+    const { toolDocs: makeToolDocs, readToolSources, readGuideSources } = await import('./tool-docs.mjs');
     const src = readToolSources(coreRepo);
-    toolPages = makeToolPages({ ...src, help: C.helpText(src.pkg.version), mcpTools: C.TOOLS, actions: ACTIONS, repoUrl: 'https://github.com/Snailedlt/nucleus-devtools' });
+    const guideSrc = readGuideSources(here);
+    toolDocs = makeToolDocs({ ...src, ...guideSrc, help: C.helpText(src.pkg.version), mcpTools: C.TOOLS, actions: ACTIONS, repoUrl: 'https://github.com/Snailedlt/nucleus-devtools', compareHtml: RB.compareHtml() });
+    // The screenshots those pages show, beside the start page's gallery (which has most of them already).
+    for (const n of toolDocs.media) for (const f of [`${n}-light.webp`, `${n}-dark.webp`]) {
+      const to = path.join(startDir, 'gallery', f);
+      if (fs.existsSync(to)) continue;
+      const from = guideSrc.galleryDirs.map((dir) => path.join(dir, f)).find((x) => fs.existsSync(x));
+      if (!from) throw new Error(`build: the screenshot ${f} is missing (the docs' Tools pages show it): looked in ${guideSrc.galleryDirs.join(', ')}.`);
+      fs.copyFileSync(from, to);
+    }
   }
-  docValues = writeDocPages({ hl: hlSem, checks: checksNav, toolPages, outDir: path.join(here, 'dist', 'pages', 'docs'), startHtml: fs.readFileSync(path.join(here, 'src', 'start.html'), 'utf8'), docsPage: D.docsPage, docsView: D.docsView, docsValue: D.docsValue, allEntries: D.allEntries, groups: D.DOCS_GROUPS, enums: Object.keys(D.api.enums), docReviewUrl: D.docReviewUrl, partVotes: D.partVotes, placeAiFrames: D.placeAiFrames, aiFrameCss: D.aiFrameCss, aiTipScript: D.AI_TIP_SCRIPT, feedbackSite, countsSite, base: PAGES_BASE, preview: PREVIEW, noindex: NOINDEX });
+  docValues = writeDocPages({ hl: hlSem, checks: checksNav, toolPages: toolDocs?.pages ?? [], toolsIndex: toolDocs?.index, toolCss: toolDocs?.css, outDir: path.join(here, 'dist', 'pages', 'docs'), startHtml: fs.readFileSync(path.join(here, 'src', 'start.html'), 'utf8'), docsPage: D.docsPage, docsView: D.docsView, docsValue: D.docsValue, allEntries: D.allEntries, groups: D.DOCS_GROUPS, enums: Object.keys(D.api.enums), docReviewUrl: D.docReviewUrl, partVotes: D.partVotes, placeAiFrames: D.placeAiFrames, aiFrameCss: D.aiFrameCss, aiTipScript: D.AI_TIP_SCRIPT, feedbackSite, countsSite, base: PAGES_BASE, preview: PREVIEW, noindex: NOINDEX });
   // Each docs page in the sitemap too (written with the rule pages above).
   const sm = path.join(here, 'dist', 'pages', 'sitemap.xml');
   if (!PREVIEW && fs.existsSync(sm)) fs.writeFileSync(sm, fs.readFileSync(sm, 'utf8').replace('</urlset>', docValues.filter(Boolean).map((v) => `  <url><loc>${PAGES_BASE}docs/${v}/</loc></url>\n`).join('') + '</urlset>'));

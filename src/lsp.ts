@@ -24,7 +24,6 @@ import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { publishedNow } from './published';
 import { setHubTool } from './hubcache';
-import { HUB } from './core/hub';
 import { pluginsFor } from './sandbox';
 import { simWorker, isCancelled } from './simworker';
 import { formatSimulation } from './simformat';
@@ -721,10 +720,10 @@ export class Server {
       edit: { changes: { [doc.uri]: a.edits.map((e) => ({ range: l.range(e), newText: e.text })) } },
     });
     // Source actions (an editor's "Source Action…" menu, or every action when it asks for no kind): the handler's
-    // .nc package for the Hub, and installing it into Nucleus Co-op.
+    // .nc package (the Hub's format), and installing it into Nucleus Co-op.
     const source: unknown[] = [];
     if (pathOf(doc.uri) && (!only || only.some((k) => k === 'source' || k.startsWith('source.nucleus')))) {
-      source.push({ title: 'Nucleus: Package as .nc (for the Hub)', kind: 'source.nucleus.package', command: { title: 'Package', command: COMMANDS.package, arguments: [{ uri: doc.uri }] } });
+      source.push({ title: 'Nucleus: Package as .nc', kind: 'source.nucleus.package', command: { title: 'Package', command: COMMANDS.package, arguments: [{ uri: doc.uri }] } });
       if (this.settings.nucleusPath) source.push({ title: 'Nucleus: Install to Nucleus Co-op', kind: 'source.nucleus.install', command: { title: 'Install', command: COMMANDS.install, arguments: [{ uri: doc.uri }] } });
     }
     if (wantsFixAll && !only!.includes('quickfix')) {
@@ -881,7 +880,7 @@ export class Server {
         return workbenchLinkFor(doc?.text, ref);
       }
       case COMMANDS.package: {
-        // The .nc package for the Hub: handler.js + the <Name>/ folder (core/pkg.ts), next to the handler.
+        // The .nc package (the Hub's format): handler.js + the <Name>/ folder (core/pkg.ts), next to the handler.
         const file = typeof a.uri === 'string' ? pathOf(a.uri) : undefined;
         if (!file) throw new Error('nucleus.package: give { uri } of a handler file.');
         const errors = lint(doc?.text ?? fs.readFileSync(file, 'utf8')).filter((d) => d.severity === 'error').length;
@@ -889,7 +888,7 @@ export class Server {
         const out = typeof (args[0] as any)?.out === 'string' ? (args[0] as any).out : file.replace(/\.js$/i, '.nc');
         const { zip, assetCount } = buildPackage(file);
         fs.writeFileSync(out, zip);
-        this.notify('window/showMessage', { type: 3, message: `Nucleus: wrote ${path.basename(out)} (handler.js + ${assetCount} file(s) from its folder). Upload it at ${HUB}/` });
+        this.notify('window/showMessage', { type: 3, message: `Nucleus: wrote ${path.basename(out)} (handler.js + ${assetCount} file(s) from its folder).` });
         return { file: out, assetCount };
       }
       case COMMANDS.install: {

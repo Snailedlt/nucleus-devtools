@@ -149,7 +149,7 @@
       },
       {
         "command": "splitscreenme.packageHandler",
-        "title": "Package Handler for the Hub (.nc)",
+        "title": "Package Handler (.nc)",
         "category": "Nucleus"
       },
       {
@@ -1622,7 +1622,7 @@
       {
         "id": "nucleus.start",
         "title": "Make a Nucleus Co-op handler",
-        "description": "From an empty file to a handler players can download from the Hub: write it, let it check itself, try it, step through it, test it in Nucleus Co-op, share it.",
+        "description": "From an empty file to a handler that works in Nucleus Co-op: write it, let it check itself, try it, step through it, test it in Nucleus Co-op, package it.",
         "when": "true",
         "steps": [
           {
@@ -1744,8 +1744,8 @@
           },
           {
             "id": "share",
-            "title": "Share it on the Hub",
-            "description": "Package makes the .nc file the Hub takes: the handler and its folder. Upload it at [hub.splitscreen.me](https://hub.splitscreen.me/).\n[Package Handler for the Hub](command:splitscreenme.packageHandler)",
+            "title": "Package it",
+            "description": "Package makes a .nc file: the handler and its folder, in the Hub's package format.\n[Package Handler](command:splitscreenme.packageHandler)",
             "media": {
               "markdown": "media/walkthrough/share.md"
             },

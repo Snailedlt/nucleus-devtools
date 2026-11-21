@@ -2322,7 +2322,7 @@ static void cmdHub() {
   });
 }
 
-// Package as .nc…: handler.js and its <Name>/ folder, ready to upload to the Hub (ncdev package).
+// Package as .nc…: handler.js and its <Name>/ folder, in the Hub's package format (ncdev package).
 static void cmdPackage() {
   Doc* d = currentDoc();
   if (!d) return needHandler();
@@ -2502,7 +2502,7 @@ static FuncItem funcs[] = {
     {L"Test in Nucleus Co-op", cmdTestInNucleus, 0, false, nullptr},
     {L"Open Nucleus' debug log", cmdOpenNucleusLog, 0, false, nullptr},
     {L"Install to Nucleus Co-op", cmdInstall, 0, false, nullptr},
-    {L"Package as .nc (for the Hub)…", cmdPackage, 0, false, nullptr},
+    {L"Package as .nc…", cmdPackage, 0, false, nullptr},
     {L"Set the Nucleus Co-op folder…", cmdSetNucleus, 0, false, nullptr},
     {L"", nullptr, 0, false, nullptr},
     {L"Link the game's folder…", cmdLinkFolder, 0, false, nullptr},

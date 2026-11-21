@@ -62,8 +62,8 @@ Commands:
                               Save the browser workbench as one offline HTML file (from the newest
                               release), to open locally or host yourself
   mcp                         Run as an MCP server (stdio) for AI agents: Claude Desktop, Cursor,
-                              VS Code Copilot, ... Tools: lint, fix, simulate, API lookup/search,
-                              templates, Hub search and verified Hub handlers
+                              VS Code Copilot, ... Its tools check, fix, format, simulate, debug
+                              and explain handlers, and look things up in the API and on the Hub
   lsp [--stdio]               Run as a Language Server (stdio) for other editors: Neovim, Helix,
                               Zed, Sublime Text, Emacs, JetBrains (LSP4IJ), Kate, ... (PORTING.md)
   setup notepad++ [--path <folder>] [--check] [--remove]

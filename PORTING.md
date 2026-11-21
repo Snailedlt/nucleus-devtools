@@ -285,7 +285,7 @@ Unsaved buffers (no `file:` URI) count when the client calls them `javascript` a
 | **Try it** panel (players, keyboard, monitor size as links; "Test all combinations") | `nucleus.tryIt` command (`{ uri, players, width, height, keyboardPlayer }`; `keyboardPlayer` is 1-based, `"all"` or `"none"`), or `ncdev simulate MyGame.js --players 4 --keyboard none --resolution 2560x1440` in a terminal. Show the returned text in a split or a floating window. |
 | **New Handler** wizard | `ncdev new --name "My Game" --exe game.exe --features …` (`ncdev --help` lists the features) |
 | **Hub** browser (search, open, install) | `ncdev hub search <words>`, `ncdev hub fetch <id> --out dir` |
-| **Package** / **Install** | `ncdev package MyGame.js` (a `.nc` for the Hub); to install, copy `MyGame.js` and its `MyGame/` folder into Nucleus' `handlers` folder |
+| **Package** / **Install** | `ncdev package MyGame.js` (a `.nc` package); to install, copy `MyGame.js` and its `MyGame/` folder into Nucleus' `handlers` folder |
 | **Report a Problem…** / **Request a Feature…** / *This check is wrong* | `nucleus.report` (`{ kind: "problem" }`, `"feature"`, or the code action on a problem), or `ncdev report` / `ncdev report feature` / `ncdev report --check <rule> MyGame.js` in a terminal |
 | **Lint all handlers** | `ncdev lint path/to/handlers` (`--fix` applies the safe fixes) |
 | **Set Up Type Definitions** | Point your TypeScript server at `types/nucleus.d.ts` |

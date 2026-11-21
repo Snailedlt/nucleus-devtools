@@ -1,0 +1,106 @@
+{
+  "$comment": "The parts of the workbench the guided tour points at (src/tour.ts; app.ts adds each step's action by id), in the tour's order. The same list is the legend of the labelled screenshot in the docs (docs/tools/workbench/, tool-docs.mjs): tools/screenshots.cjs --only map marks each part's first shown target (or `mark`, where the tour's cut-out is a whole pane) and writes the positions to docs/images/guide/workbench-map.json. text: plain words, keys in backticks, {key:<action id>} for a shortcut from keyactions.ts. page: the page of the workbench reference (src/guide.json) that describes the part.",
+  "parts": [
+    {
+      "id": "handlers",
+      "title": "Your handlers",
+      "text": "Each open handler has its own tab. Use the + to start a new one, or to open a file, an example or a Hub handler.",
+      "mark": ".htab-w.on",
+      "targets": [
+        ".htabs-wrap",
+        ".rail [data-rail=add]",
+        "#doc-switch"
+      ],
+      "view": "code",
+      "page": "files"
+    },
+    {
+      "id": "code",
+      "title": "The code",
+      "text": "Write the handler here. Squiggles mark problems, and hovering a name shows its docs. {key:suggest} suggests names and `Alt+Enter` fixes things.",
+      "targets": [
+        "#editor"
+      ],
+      "view": "code",
+      "page": "editor"
+    },
+    {
+      "id": "check",
+      "title": "Check",
+      "text": "Check lists what Nucleus would reject or get wrong, with the reason and a fix for each. It runs while you type. {key:nextProblem} jumps to the next problem.",
+      "targets": [
+        ".pane.side",
+        ".pane-head [data-tab=problems]"
+      ],
+      "view": "results",
+      "tab": "problems",
+      "mark": ".pane-head [data-tab=problems]",
+      "page": "check"
+    },
+    {
+      "id": "tryit",
+      "title": "Try it",
+      "text": "Runs the handler once per player, like Nucleus would, and shows what each one gets.",
+      "targets": [
+        ".pane-head [data-tab=simulate]"
+      ],
+      "view": "results",
+      "tab": "simulate",
+      "page": "try-it"
+    },
+    {
+      "id": "docs",
+      "title": "Docs",
+      "text": "Every option and function a handler can use, with search. Insert into handler puts an example into your code.",
+      "targets": [
+        ".pane-head [data-tab=api]"
+      ],
+      "view": "results",
+      "tab": "api",
+      "page": "editor"
+    },
+    {
+      "id": "lines",
+      "title": "Lines",
+      "text": "A list of every name a handler can use, beside the code. Click one to insert it. {key:lines} opens and closes the list.",
+      "targets": [
+        "#lines-toggle",
+        ".rail [data-rail=lines]"
+      ],
+      "view": "code",
+      "page": "editor"
+    },
+    {
+      "id": "files",
+      "title": "Files",
+      "text": "The files that go with the handler. Link your game's folder under Your game on this PC, and Check compares paths with the real files.",
+      "targets": [
+        "#files-toggle"
+      ],
+      "view": "code",
+      "page": "files"
+    },
+    {
+      "id": "save",
+      "title": "Save",
+      "text": "Saves the handler for Nucleus as a .zip, .js or .nc file, or straight into Nucleus Co-op's handlers folder. {key:save} saves.",
+      "targets": [
+        "#save-more",
+        ".rail [data-rail=save]",
+        "#code-menu-phone"
+      ],
+      "view": "code",
+      "page": "files"
+    },
+    {
+      "id": "menu",
+      "title": "Settings and help",
+      "text": "Settings, Advanced mode, keyboard shortcuts and What's new are in this menu. So is Take the tour, if you want to see this again.",
+      "targets": [
+        "#app-menu-open",
+        ".rail [data-rail=menu]"
+      ],
+      "page": "settings"
+    }
+  ]
+}

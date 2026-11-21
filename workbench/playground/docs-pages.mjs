@@ -36,12 +36,26 @@ function inline(t, href) {
     .replace(/(^|[\s(])_([^_]+)_(?=$|[\s.,)])/g, '$1<em>$2</em>');
   return s.replace(/\u0000(\d+)\u0000/g, (_, i) => parts[Number(i)]).replace(/&lt;code&gt;/g, '<code>');
 }
+/** A fenced block's language as the name build.mjs colours it by (its MODES). */
+export const FENCE_LANGS = { lua: 'lua', toml: 'toml', elisp: 'commonlisp', lisp: 'commonlisp', commonlisp: 'commonlisp', json: 'json', jsonc: 'json', sh: 'shell', bash: 'shell', shell: 'shell' };
+const HANDLER_LANGS = new Set(['js', 'javascript', 'ts', 'typescript']);
 /** The core's docs Markdown as HTML: headings, fenced code, lists, tables, paragraphs. */
 function mdToHtml(md, href) {
   const out = [];
-  const chunks = md.split(/```\w*\n([\s\S]*?)```/g);
+  // text, a fence's language, its code, text, …
+  const chunks = md.split(/```(\w*)\n([\s\S]*?)```/g);
   chunks.forEach((c, i) => {
-    if (i % 2) { out.push(`<pre class="cfg hl"><code>${hl(c.replace(/\n$/, ''))}</code></pre>`); return; }
+    if (i % 3 === 1) return;
+    if (i % 3 === 2) {
+      const lang = chunks[i - 1].toLowerCase();
+      const code = c.replace(/\n$/, '');
+      // Handler code (no language, or js) gets the handler colours here. Another language (an editor's config in
+      // Lua, TOML, JSON, Emacs Lisp; a shell command) is marked with data-lang, and the site's page pass colours it
+      // with that language's own rules (build.mjs hlLangBlocks). A language we have no colours for stays plain.
+      if (!lang || HANDLER_LANGS.has(lang)) out.push(`<pre class="cfg hl"><code>${hl(code)}</code></pre>`);
+      else out.push(`<pre class="cfg"${FENCE_LANGS[lang] ? ` data-lang="${FENCE_LANGS[lang]}"` : ''}><code>${esc(code)}</code></pre>`);
+      return;
+    }
     for (const block of c.split(/\n{2,}/)) {
       const b = block.trim();
       if (!b) continue;
@@ -152,7 +166,7 @@ ${o.aiFrameCss ? o.aiFrameCss({ fg: 'var(--fg)', muted: 'var(--muted)', line: 'v
 ${SITE_HEADER_CSS}${DOC_FEEDBACK_CSS}
 ${DRAWER_CSS}
 table { border-collapse: collapse; margin: 0 0 16px; font-size: 14px; display: block; max-width: 100%; overflow-x: auto; } th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
-</style>
+${o.toolCss ?? ''}</style>
 </head>
 <body>
 ${siteHeader(up, 'docs/')}
@@ -224,14 +238,14 @@ ${docsDrawer(up, here0, o.groups.map((g) => `<li><a href="${up}docs/${g.key}/">$
     const body = `<p class="crumbs">${crumbs.join(' › ')}</p>
 <h1>${esc(v ? title : 'Docs')}</h1>
 <p class="open-wb"><a href="${up}#docs${v ? `-${encodeURIComponent(v)}` : ''}">Open in the workbench</a> (search, and try it in a handler)</p>
-${!v && o.toolPages?.length ? `<p class="small">For the tools themselves (the workbench, VS Code, Notepad++, ncdev, the MCP server): their commands, settings and shortcuts are under <a href="tools/">Tools</a>.</p>\n` : ''}${withVotes(page, members.get(page.path), href)}
+${!v && o.toolPages?.length ? `<p class="small">The tools have their own section. <a href="tools/">Tools</a> explains what the workbench, VS Code, Notepad++, ncdev and the MCP server are for, and lists their commands, settings and shortcuts.</p>\n` : ''}${withVotes(page, members.get(page.path), href)}
 `;
     const dir = v ? path.join(o.outDir, v) : o.outDir;
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, 'index.html'), head(v ? `${title}: Nucleus Co-op handler docs` : 'Docs: every Nucleus Co-op handler option and call', first || 'Nucleus Co-op handler docs.', `${o.base}docs/${v ? `${v}/` : ''}`, up, v || '@api') + body + foot(up));
     written.push(v);
   }
-  // Tools (tool-docs.mjs): docs/tools/ and a page per tool, reference only.
+  // Tools (tool-docs.mjs): docs/tools/ (every tool in one table) and their pages: a reference page per tool and per part of the workbench, a setup page per tool that is installed.
   const tools = o.toolPages ?? [];
   if (tools.length) {
     const page = (slug, title, desc, inner, here0) => {
@@ -242,9 +256,8 @@ ${!v && o.toolPages?.length ? `<p class="small">For the tools themselves (the wo
       fs.writeFileSync(path.join(dir, 'index.html'), head(`${title}: Nucleus Co-op handler tools`, desc, `${o.base}docs/${slug}/`, up, here0) + `<p class="crumbs">${crumbs.join(' › ')}</p>\n<h1>${esc(title)}</h1>\n${inner.replaceAll('__UP__', up)}\n` + foot(up));
       written.push(slug);
     };
-    page('tools', 'Tools', 'The commands, settings and shortcuts of the Nucleus Co-op handler tools.', `<p>The reference for each tool: commands, settings, keys and setup. They share one engine, so a handler checked in one is checked the same in the others. To install them, see <a href="__UP__tools/">Get the tools</a>.</p>
-<ul class="dlist">${tools.map((t) => `<li><a href="__UP__docs/${t.slug}/">${esc(t.title)}</a>: ${esc(t.desc)}</li>`).join('')}<li><a href="__UP__ai/">Set up your AI</a>: prompts for Claude Code, other AI agents and chatbots.</li></ul>`, '@tools');
-    for (const t of tools) page(t.slug, t.title, t.desc, (t.intro ?? '') + (t.html ?? mdToHtml(t.md, t.mdHref ?? ((u) => u))), t.slug);
+    page('tools', 'Tools', 'The tools for writing Nucleus Co-op handlers: what each one is, how to set it up, and its reference.', o.toolsIndex ?? '', '@tools');
+    for (const t of tools) page(t.slug, t.title, t.desc, (t.intro ?? '') + (t.html ?? mdToHtml(t.md, t.mdHref ?? ((u) => u))) + (t.outro ? `\n${t.outro}` : ''), t.slug);
   }
   // The list the drawer shows (nav.js): each group's names with their first line, for the filter.
   const first = (d) => String(d ?? '').split('\n')[0].replace(/[`*\\_]/g, '').slice(0, 110);
@@ -253,8 +266,8 @@ ${!v && o.toolPages?.length ? `<p class="small">For the tools themselves (the wo
     .concat([{ sec: 'api', key: '', title: 'Nucleus values (enums)', items: (o.enums ?? []).map((n) => ({ p: `Nucleus.${n}`, d: '' })) }])
     // The checks (rules-pages.mjs): their own section, each item linking to rules/<id>/ by its title.
     .concat((o.checks ?? []).map((g) => ({ sec: 'checks', key: g.key, title: g.title, items: g.items })))
-    // Tools (tool-docs.mjs): its groups (Editors, Command line and AI); the AI setup page is the last item.
-    .concat([...new Set(tools.map((t) => t.group))].map((g, i, all) => ({ sec: 'tools', key: `tools:${g}`, title: g, items: tools.filter((t) => t.group === g).map((t) => ({ p: t.slug, t: t.title, d: t.desc, u: `docs/${t.slug}/` })).concat(i === all.length - 1 ? [{ p: 'ai', t: 'Set up your AI', d: 'Prompts for Claude Code, other AI agents and chatbots', u: 'ai/' }] : []) })));
+    // Tools (tool-docs.mjs): its groups (Get started, Workbench, Reference); the AI setup page ends the first, with the other setups.
+    .concat([...new Set(tools.map((t) => t.group))].map((g, i, all) => ({ sec: 'tools', key: `tools:${g}`, title: g, items: tools.filter((t) => t.group === g).map((t) => ({ p: t.slug, t: t.nav ?? t.title, d: t.desc, u: `docs/${t.slug}/` })).concat(i === 0 ? [{ p: 'ai', t: 'Set up your AI', d: 'Prompts for Claude Code, other AI agents and chatbots', u: 'ai/' }] : []) })));
   fs.writeFileSync(path.join(o.outDir, 'nav.json'), JSON.stringify(nav));
   fs.writeFileSync(path.join(o.outDir, 'nav.js'), NAV_JS);
   return written;

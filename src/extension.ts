@@ -251,7 +251,7 @@ export function activate(context: vscode.ExtensionContext) {
             })
           : [],
     }),
-    // Format Document (Shift+Alt+F): indentation and spacing only (core/format.ts).
+    // Format Document (Shift+Alt+F): indentation, spacing, and quotes and semicolons as set (core/format.ts).
     vscode.languages.registerDocumentFormattingEditProvider(SELECTOR, {
       provideDocumentFormattingEdits: (doc, opts) => (isHandler(doc) ? formatEdits(doc, opts) : []),
     }),

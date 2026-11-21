@@ -50,7 +50,7 @@ Every tool is on one page, with the install steps: **[the tools page](https://sn
 - **Docs for every option and function**, in hovers, suggestions and a page each, with examples from real Hub handlers.
 - **Try it**: what Nucleus would set up for each player (windows, launch arguments, the files it changes), without Nucleus or the game; and a **debugger** that steps through the handler per player. See [Try it](#try-it).
 - **Hub handlers**: search every handler on the Hub and open any of them, to see how others solved a problem.
-- **New handler, package, install**: a handler from a template, the `.nc` package for the Hub, and on Windows, install it and start Nucleus Co-op with the game selected.
+- **New handler, package, install**: a handler from a template, a `.nc` package, and on Windows, install it and start Nucleus Co-op with the game selected.
 
 ## Every editor, side by side
 
@@ -64,6 +64,7 @@ One engine runs underneath all of them, so the checks, suggestions and docs are 
 | Suggestions, snippets, New handler | ✅ | ✅ | ✅ | ✅ |
 | Hover docs and parameter hints | ✅ | ✅ | ✅ | ✅ |
 | Docs for every option and function | ✅ panel | ✅ API reference | ✅ Docs tab | ✅ links to the docs |
+| Explain this line | ✅ | ✅ | ✅ | ✅ |
 | Format (never moves a line) | ✅ | ✅ | ✅ | ✅ |
 | Go to definition, references, rename | ✅ | ✅ | ✅ | ✅ |
 | Outline | ✅ | ✅ panel | — | ✅ |
@@ -72,9 +73,10 @@ One engine runs underneath all of them, so the checks, suggestions and docs are 
 | Lines (every name, one click to insert) | — | — | ✅ | — |
 | Checks against the game's folder | ✅ | ✅ | ✅ | ✅ |
 | Browse and open Hub handlers | ✅ | ✅ | ✅ | `ncdev hub` |
-| Package as .nc for the Hub | ✅ | ✅ | ✅ | ✅ command |
+| Package as .nc | ✅ | ✅ | ✅ | ✅ command |
 | Install into Nucleus Co-op | ✅ | ✅ | ✅ Chrome, Edge | ✅ command |
 | Test in Nucleus Co-op (starts it) | ✅ | ✅ | — a browser can't | ✅ command |
+| AI help | ✅ its agents get the tools | — | ✅ Fix with AI | `ncdev mcp` for agents |
 | What to install | the extension | `ncdev setup notepad++` | nothing | `ncdev` |
 <!-- /generated:compare -->
 
@@ -102,7 +104,7 @@ The extension for VS Code (and VSCodium).
 - **Format Document** (also a selection, and as you type): indentation, spacing, double quotes and semicolons (both [configurable](#settings)). No line moves (Nucleus runs handlers line by line), and the result is checked to parse to exactly the same program, so formatting never changes what the handler does. Also `ncdev format`.
 - **Quick fixes**: did-you-mean for typos, `"true"` → `true`, template string → concatenation, wrap a value in an array, add missing required options, and more.
 - **New Handler** wizard that generates a handler which passes the linter, with optional Proto Input, Goldberg, INI resolution and user-option sections.
-- **Package for the Hub**: builds a `.nc` package laid out the way Nucleus' installer expects.
+- **Package**: builds a `.nc` package laid out the way Nucleus' installer expects.
 - **Install into Nucleus**: copies the handler and its asset folder into your Nucleus `handlers` folder.
 - **Test in Nucleus Co-op** (Windows): the Run button (▷) above a handler installs it and starts Nucleus Co-op with its game selected. The same button's menu has **Try It** and **Debug**.
 - **Go to definition** (F12) and the **Outline** of the handler's options, functions and variables.
@@ -135,7 +137,7 @@ The API model is **generated from the Nucleus C# sources** (`GenericGameInfo`, `
 | **Nucleus: Explain This Line** | Ctrl+Alt+E (Mac: Cmd+Alt+E) |
 | **Nucleus: Fix All Problems That Can Be Fixed** |  |
 | **Nucleus: Format Handler** | Shift+Alt+F |
-| **Nucleus: Package Handler for the Hub (.nc)** |  |
+| **Nucleus: Package Handler (.nc)** |  |
 | **Nucleus: Install Handler into Nucleus Co-op** |  |
 | **Nucleus: Test in Nucleus Co-op** |  |
 | **Nucleus: Open Nucleus Co-op's Debug Log** |  |
@@ -237,7 +239,7 @@ This installs the **Nucleus Co-op handlers** plugin and puts `ncdev` in `%LOCALA
 - **Quick fix**: the fixes for the line. **Plugins › Nucleus Co-op handlers** has *Fix all*, *Format handler*, *Try it* (what Nucleus would set up for 1–4 players, in a new tab), a *Problems panel* (double-click to jump, right-click for the fixes), *Link the game's folder…*, *Open in the browser workbench* (this handler, in the workbench, with Test all), the *API reference*, *Check for updates*, and *Report a problem…* / *Request a feature…* (the quick fix on a problem also has *This check is wrong*). Every command can get a shortcut in *Settings › Shortcut Mapper*.
 - **New handler…** asks the game's name, its .exe and what to start with, then creates and opens the handler. **Install to Nucleus Co-op** copies it (and its `<Name>/` folder) into Nucleus' `handlers` folder, asking first if it has errors or is already installed. The **Outline panel** lists the handler's options, functions and variables; click one to jump there.
 - **Test in Nucleus Co-op** installs the handler and starts Nucleus with its game selected (restarting an open one, with your OK); **Open Nucleus' debug log** shows what happened.
-- **Browse the Hub…** lists the Hub's handlers (most downloaded first, or search by game), and downloads one with its files and opens it. **Package as .nc…** makes the file to upload to the Hub.
+- **Browse the Hub…** lists the Hub's handlers (most downloaded first, or search by game), and downloads one with its files and opens it. **Package as .nc…** makes a `.nc` package, the Hub's format.
 - **Settings…**: how each check is shown (error, warning, info, hint or off), and the format style (quotes, semicolons).
 - A **Run › Nucleus: check this handler** entry runs `ncdev lint` on the open file in a console.
 - Every menu entry and its keys: [Tools › Notepad++](https://snailedlt.github.io/nucleus-devtools/docs/tools/notepadpp/).
@@ -255,7 +257,7 @@ This installs the **Nucleus Co-op handlers** plugin and puts `ncdev` in `%LOCALA
 <!-- generated:editors -->
 | Editor | Setup | Tested by people | Tested by AI |
 | --- | --- | --- | --- |
-| Neovim | 5 lines of Lua ([below](#neovim)) | not yet | ✅ Neovim 0.9 (the 0.11 config is from its docs) |
+| Neovim | a few lines of Lua ([below](#neovim)) | not yet | ✅ Neovim 0.9 (the 0.11 config is from its docs) |
 | Helix | 6 lines in `languages.toml` ([below](#helix)) | not yet | not yet |
 | Sublime Text | the [LSP](https://packagecontrol.io/packages/LSP) package + one client entry ([PORTING.md](PORTING.md#sublime-text-lsp-package-preferences--package-settings--lsp--settings)) | not yet | not yet |
 | Emacs 29+ | one `eglot-server-programs` line ([PORTING.md](PORTING.md#emacs-eglot-built-in-since-emacs-29)) | not yet | ✅ Emacs 29.3 (eglot) |

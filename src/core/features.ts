@@ -606,7 +606,7 @@ export function quickFixes(text: string, diagnostics: Diagnostic[], rules?: Rule
 // ---------------------------------------------------------------------------
 // Formatting
 
-/** Format Document (core/format.ts: indentation and spacing only). `edits` is empty when already
+/** Format Document (core/format.ts: indentation, spacing, and quotes and semicolons as set). `edits` is empty when already
  *  formatted; `error` says why it refused (the editor should show it, not change anything). */
 /** The editor's indentation, and the style settings (core/format.ts: quotes, semicolons). */
 export interface FormatSettings {
