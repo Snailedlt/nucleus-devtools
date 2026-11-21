@@ -1,26 +1,28 @@
 {
   "$comment": "The workbench guide in the docs (docs/tools/workbench/…, tool-docs.mjs): one short page per area. The first page is the overview (its what/when comes from data/tools.json; it also shows the labelled screenshot from tourparts.json and the list of these pages). Per page: slug (under docs/), nav (its name in the list), title, desc (one line: the page's description and its line in lists), intro (what this part is, a sentence or two), shots (gallery screenshots, without -light/-dark; captions from the start page's gallery, or [name, caption] for one that isn't in it), sections (h + md: how it works, short), keys (action ids from keyactions.ts: the page's shortcut table), tips (ids from tips.ts: shown under \"Tips from the workbench\"), said (tips the page's own text already covers, so they aren't repeated; a test checks every workbench tip is in one page's tips or said, or in skipTips). In text: `code`, **bold**, {key:<action id>} for a shortcut, a lone key in backticks (`F8`), [links](https://…), (@guide:<page id>) for another page here, (@site:<path>) for a page of the site, (@docs:<slug>) for a docs page. Lines starting with \"- \" are a list, with \"1. \" numbered steps. Write it the way you'd explain it to someone on Discord (AGENTS.md, Conventions).",
-  "skipTips": ["s-tutorial", "f-vscode"],
+  "skipTips": ["s-tutorial", "f-vscode", "f-mascots"],
   "pages": [
     {
       "id": "overview", "slug": "tools/workbench", "nav": "Overview", "title": "Workbench",
       "desc": "What the workbench is, where everything is, and a guide to each part.",
       "sections": [
-        {"h": "Your first minute", "md": "1. [Open the workbench](@site:). There's already a template handler in the editor, so you have something to play with.\n2. On your first visit it asks two things. Do you want guidance (**Guide me**) or would you rather get on with it (**I write code**), and which layout do you prefer. Both only set defaults, and you can change everything later in Settings.\n3. After that a short tour points out the parts of the screen. If you skip it, **Take the tour** in the menu brings it back.\n\nYour handlers are kept in the browser you're using. Each one gets a tab, and they're still there next time."}
+        {"h": "Your first minute", "md": "1. [Open the workbench](@site:). There's already a template handler in the editor, so you have something to play with.\n2. On your first visit it asks two things. Do you want guidance (**Guide me**) or would you rather get on with it (**I write code**), and which layout do you prefer. Both only set defaults, and you can change everything later in Settings.\n3. After that a short tour points out the parts of the screen. If you skip it, **Take the tour** in the menu brings it back."},
+        {"h": "Making your first handler", "md": "If you've never written one, start with [Learn](@site:learn/). It builds a handler for a free game with you, a few lines at a time, and checks each step.\n\nIf you'd rather find your own way, this is the usual order:\n\n1. Start from the template, or from a Hub handler for a game on the same engine. The Hub ([hub.splitscreen.me](https://hub.splitscreen.me)) is where handlers are published, and the **+** next to the tabs can search it.\n2. Put in your game's name and the name of its .exe.\n3. Fix what [Check](@guide:check) finds.\n4. Run [Try it](@guide:try-it) to see what each player would get.\n5. [Save](@guide:files) it and test it in Nucleus Co-op itself. Try it can't tell you whether the game's windows, focus and input behave."},
+        {"h": "What's kept where", "md": "Your handlers are kept in the browser you're using. Each one gets a tab, and they're still there next time. Clearing the browser's site data deletes them, so save anything you want to keep.\n\nNothing you write is uploaded. The exceptions are the things you start yourself: a Share link carries the handler inside the link, and [Fix with AI](@guide:ai) sends the code to the AI provider you set up. The 👍 and 👎 buttons send an anonymous count, nothing else."}
       ],
-      "tips": ["f-mascots", "f-swipe"]
+      "tips": ["f-swipe"]
     },
     {
       "id": "writing", "slug": "tools/workbench/writing", "nav": "Writing code", "title": "Writing code in the workbench",
       "desc": "Suggestions, hover docs, the Docs tab, Lines and the editing keys.",
-      "intro": "The left side is a code editor that knows the handler API. While you type it suggests names that really exist and shows their docs, and for most options it can drop a working example into your code.",
+      "intro": "The left side is a code editor that knows the handler API. While you type it suggests the names Nucleus has and shows their docs, and for most options it can drop a working example into your code.",
       "shots": ["workbench-suggestions"],
       "sections": [
         {"h": "Suggestions and docs while you type", "md": "- Type `.` after `Game`, `Context` or `Nucleus` to see what exists there, with the docs for each name. {key:suggest} opens the same list anywhere.\n- Hover a name to read its docs. Inside a call, {key:parameterHints} tells you what goes where.\n- After a `=` the editor offers the values that option accepts."},
-        {"h": "The Docs tab", "md": "**Docs**, on the right, is the full reference. Search it for an option, a `Context` member or a Nucleus value, or leave the search empty and browse. The empty view also lists the names Hub handlers use most, which is a decent place to start.\n\nMost entries come with an example, and **Insert into handler** puts it in the right spot for you. An option goes with your other options. A call goes inside `Game.Play`."},
+        {"h": "The Docs tab", "md": "**Docs**, on the right, is the full reference. Search it for an option, a `Context` member or a Nucleus value, or leave the search empty and browse. The empty view also lists the names Hub handlers use most, which helps when you don't know what you're looking for.\n\nMost entries come with an example, and **Insert into handler** puts it in the right spot for you. An option goes with your other options. A call goes inside `Game.Play`."},
         {"h": "Lines, if you'd rather click than type", "md": "**Lines** ({key:lines}) lists every name a handler can use, next to the code. Click one and it's inserted. Names your handler already sets show their current value."},
         {"h": "Explaining a line", "md": "Put the cursor on a line and press {key:explainLine}. You get the line in plain words, the docs for the names on it, and anything Check has to say about it. It's handy when you're reading someone else's handler."},
-        {"h": "Formatting", "md": "{key:format} tidies indentation and spacing. It never moves anything to another line. Nucleus reads handlers line by line, and we don't want formatting to change what it sees."}
+        {"h": "Formatting", "md": "{key:format} tidies the handler. It fixes indentation and spacing, turns quotes into double quotes and adds missing semicolons. It never moves anything to another line, because Nucleus reads handlers line by line and formatting shouldn't change what it sees. If the result wouldn't run exactly the same, it leaves your code alone."}
       ],
       "keys": ["suggest", "parameterHints", "explainLine", "format", "lines", "find", "replace", "goToLine", "definition", "references", "rename", "comment", "wordWrap"],
       "tips": ["f-value-pick", "s-docs-page", "f-lines-ref", "c-lines", "s-edit", "s-find-all", "s-goto", "f-wm-plus"],
@@ -32,10 +34,11 @@
       "intro": "Check looks for things Nucleus Co-op would reject or quietly get wrong, and it does that while you type. Each problem comes with the reason it matters, and usually with a fix.",
       "shots": ["workbench-check", ["workbench-fix-all", "Fix all shows a before and after. Nothing changes until you accept it."]],
       "sections": [
-        {"h": "Reading a problem", "md": "You'll see a problem in three places. There's a squiggle under the code, a marker beside the line number, and a card in the **Check** tab on the right. The card tells you what's wrong, why Nucleus cares, and how to fix it.\n\nErrors mean the handler won't work. Warnings and hints won't stop it, but they're usually worth reading."},
+        {"h": "What it catches", "md": "These are mistakes Nucleus doesn't warn you about. A few of them:\n\n- A misspelled option, like `Game.KillMutexs`. Nucleus ignores it without a word, so the setting never takes effect.\n- Newer JavaScript. The engine Nucleus uses stops at arrow functions, template strings and classes, and the handler doesn't load.\n- A wrong capital letter in a name. Nucleus only forgives the first letter.\n- A `Game.GameName` or `Game.ExecutableName` line written in a way the Hub's installer can't read.\n\n[Every check](@site:rules/) has the full list, with an example and the reasoning for each."},
+        {"h": "Reading a problem", "md": "You'll see a problem in three places. There's a squiggle under the code, a marker beside the line number, and a card in the **Check** tab on the right. The card tells you what's wrong, why Nucleus cares, and how to fix it.\n\nAn error stops the handler from loading or running in Nucleus. A warning is a line Nucleus ignores or treats differently from how it reads. Hints are suggestions."},
         {"h": "Fixing things", "md": "- For one line, press {key:quickFix} (`Alt+Enter` works too) and pick a fix.\n- **Fix all** does every automatic fix in one go. It shows you a before and after first.\n- Some problems need you to decide something. Those stay in the list, with the options you have.\n- If you've set up an AI, [Fix with AI](@guide:ai) can try the ones that are left."},
-        {"h": "Files and the game folder", "md": "Check doesn't stop at the code. It also looks at the files that ship with the handler. If you link your game's install folder in [Files](@guide:files), it compares the handler against what's really there and catches things like a misspelled file name or an executable that doesn't exist."},
-        {"h": "When Check is wrong", "md": "Every check has its own page with an example and the reasoning behind it, and [Every check](@site:rules/) lists them. If one fires on code that works fine in Nucleus, please tell us. The flag on the problem (**This check is wrong**) opens a report with the check and the line already filled in."}
+        {"h": "Files and the game folder", "md": "Check also looks at the files that ship with the handler. If you link your game's install folder in [Files](@guide:files), it compares the handler against what's really there and catches things like a misspelled file name or an executable that doesn't exist."},
+        {"h": "When Check is wrong", "md": "If a check fires on code that works fine in Nucleus, please tell us. The flag on the problem (**This check is wrong**) opens a report with the check and the line already filled in."}
       ],
       "keys": ["nextProblem", "prevProblem", "quickFix", "goToCheck", "explainLine"],
       "tips": ["f-gutter", "f-density", "c-review"],
@@ -44,12 +47,13 @@
     {
       "id": "try-it", "slug": "tools/workbench/try-it", "nav": "Try it", "title": "Try it: what each player gets",
       "desc": "See what each player would get, and test every combination.",
-      "intro": "Try it runs your handler once per player, the way Nucleus Co-op would, and shows what each player ends up with. That means the window, the launch arguments and every file change. You don't need Nucleus or the game for it, and it doesn't touch anything on your computer.",
+      "intro": "Try it runs your handler once per player, the way Nucleus Co-op would, and shows what each player ends up with. That means the window, the launch arguments (what the game is started with) and every file change. You don't need Nucleus or the game for it, and it doesn't touch anything on your computer.",
       "shots": ["workbench-try-it", "workbench-test-all"],
       "sections": [
         {"h": "Running it", "md": "1. Open the **Try it** tab on the right or press {key:tryIt}.\n2. Above the result, pick how many players there are, the monitor size, and who gets the keyboard and mouse.\n3. Read through the player cards. Each one shows where the window goes, what the game is launched with, and which files get written or changed.\n\nIf the handler throws an error partway through, Try it shows where it happened and why. In Nucleus that's the point where the session would end."},
         {"h": "Test all combinations", "md": "A handler that works for two players can still break for three. **Test all combinations** ({key:testAll}) runs every player count, input setup and screen size, then lists the ones that fail and why."},
-        {"h": "How it works", "md": "Try it is a simulation. It emulates Jint, the JavaScript engine Nucleus uses, along with the handler API. File, registry and process calls are recorded and shown to you, but never carried out.\n\nWhere we weren't sure how Nucleus behaves, we ran small test handlers in the real engine. You can look at those under **Engine probes** in Advanced mode."},
+        {"h": "What it can't tell you", "md": "Try it shows what your handler asks Nucleus to do. It can't show how the game reacts. Whether the windows end up where they should, whether focus and input work, and whether the hooks you turned on suit the game are things only a real run in Nucleus Co-op will tell you.\n\nSo a clean Try it means the handler loads and does what you meant. It doesn't mean the game works yet."},
+        {"h": "How it works", "md": "Try it is a simulation. It emulates Jint 2.11.58, the JavaScript engine Nucleus uses, along with the handler API. File, registry and process calls are recorded and shown to you, but never carried out.\n\nWhere we weren't sure how Nucleus behaves, we wrote small test handlers and ran them in the real engine. There are more than a hundred of those, and you can read them under **Engine probes** in Advanced mode."},
         {"h": "If Nucleus does something different", "md": "That would be a bug in Try it, and we'd like to hear about it. The icon in the corner of the result starts a report that puts what Try it showed next to what really happened."}
       ],
       "keys": ["tryIt", "testAll", "debugGo"],
@@ -59,10 +63,10 @@
     {
       "id": "debugger", "slug": "tools/workbench/debugger", "nav": "Debugger", "title": "The debugger: step through a handler",
       "desc": "Breakpoints, stepping forwards and back, and the variables for each player.",
-      "intro": "The debugger runs your handler one line at a time, player by player, so you can watch the variables change. It can also go backwards, which most debuggers can't.",
+      "intro": "The debugger runs your handler one line at a time, player by player, so you can watch the variables change. It can step backwards too.",
       "shots": ["workbench-debugger"],
       "sections": [
-        {"h": "Stepping through", "md": "1. Click next to a line number to put a breakpoint there. `F9` does the same for the line you're on.\n2. In **Try it**, click **Step through** or press {key:debugGo}. The handler runs until it reaches the breakpoint.\n3. `F10` runs the next line. If you went one too far, **Back** undoes the step.\n4. The timeline covers every player's `Game.Play`. Drag it to jump around.\n\n**Variables** shows the values at the current line. You can also see what the handler has done up to that point, such as the windows it placed and the files it changed."},
+        {"h": "Stepping through", "md": "1. Click next to a line number to put a breakpoint there, which is a marker that pauses the run at that line. `F9` does the same for the line you're on.\n2. In **Try it**, click **Step through** or press {key:debugGo}. The handler runs until it reaches the breakpoint.\n3. `F10` runs the next line. If you went one too far, **Back** undoes the step.\n4. The timeline covers every player's `Game.Play`. Drag it to jump around.\n\n**Variables** shows the values at the current line. You can also see what the handler has done up to that point, such as the windows it placed and the files it changed."},
         {"h": "More in Advanced mode", "md": "Advanced mode adds a few things. You can watch an expression of your own, step into and out of functions, and put a condition on a breakpoint by right-clicking it, for example `Context.PlayerID == 1`."}
       ],
       "keys": ["debugBreak", "debugGo", "debugStep", "debugBack", "debugStop"],
@@ -77,20 +81,21 @@
         {"h": "Opening a handler", "md": "Click the **+** next to the tabs or press {key:open}. From there you can start from a template, open one of the examples (the most downloaded verified Hub handlers are among them), search the Hub for a game, or open a file of your own. It reads .js, .zip and .nc files, and you can also drag a file onto the page.\n\nWhatever you open gets its own tab."},
         {"h": "Files", "md": "The **Files** button above the code shows the whole package the way Nucleus installs it. You can open the text files in tabs and drop new files onto the panel. When you save, they go back into the package."},
         {"h": "Your game on this PC", "md": "Under Files you'll find **Your game on this PC**. Point it at the folder your game is installed in, and Check will compare the handler's executable and file lists with the files that are really there. The folder is only read by your browser. Nothing gets uploaded."},
-        {"h": "Saving", "md": "- {key:save} saves a .zip, which is what Nucleus Co-op installs.\n- The arrow beside **Save** (or {key:saveAs}) lets you pick .js or .nc instead. The .nc format is what the Hub uses.\n- **Into Nucleus Co-op** writes the handler directly into the handlers folder. You choose the folder once. Firefox and Safari don't allow that, so there you get the .zip to drag onto Nucleus.\n- **How to install it in Nucleus** walks you through installing it by hand."},
-        {"h": "Sharing", "md": "**Share** sits next to Save. It copies a link to your handler, the code itself, or a code block formatted for Discord. If you select some lines first, it shares only those."}
+        {"h": "Saving", "md": "- {key:save} downloads a .zip with the handler and its files. That's the one to install yourself.\n- The arrow beside **Save** (or {key:saveAs}) lets you pick .js or .nc instead. A .nc holds the same things as the .zip and is the package the Hub takes.\n- **Into Nucleus Co-op** writes the handler directly into the handlers folder. You choose the folder once. Firefox and Safari don't allow that, so there you get the .zip to drag onto Nucleus.\n- **How to install it in Nucleus** walks you through installing it by hand.\n\nSave always makes a new download and never changes the file you opened. Only **Into Nucleus Co-op** writes into a folder on your disk."},
+        {"h": "Sharing", "md": "**Share** sits next to Save. It copies a link to your handler, the code itself, or a code block formatted for Discord. If you select some lines first, it shares only those."},
+        {"h": "Publishing on the Hub", "md": "The workbench doesn't upload anything. When your handler works in Nucleus, save it as .nc and upload that file yourself on [hub.splitscreen.me](https://hub.splitscreen.me)."}
       ],
       "keys": ["open", "save", "saveAs", "palette"],
-      "tips": ["s-open", "s-open-keys", "f-tabs", "f-package", "f-save-nucleus", "f-share"],
-      "said": ["f-hub", "f-files", "s-save", "f-gamefolder"]
+      "tips": ["s-open", "s-open-keys", "f-tabs", "f-package"],
+      "said": ["f-hub", "f-files", "s-save", "f-gamefolder", "f-save-nucleus", "f-share"]
     },
     {
       "id": "ai", "slug": "tools/workbench/ai", "nav": "AI", "title": "AI in the workbench",
       "desc": "Fix with AI, Explain with AI, AI-written docs, and using a chatbot or agent.",
       "intro": "Nothing in the workbench needs AI. There are a few AI features, and they stay switched off until you set one up.",
       "sections": [
-        {"h": "Fix with AI", "md": "Once you've picked a provider under Settings › AI, a **Fix with AI** button shows up in Check. It's meant for the problems the automatic fixes can't handle. You get a before and after, and Undo if you don't like the result. You can use Claude, OpenAI, OpenRouter, Gemini, or a free local model through Ollama or LM Studio.\n\nYour code is sent to that provider when you press the button, not before. API keys stay in your browser."},
-        {"h": "Explain with AI", "md": "{key:explainLine} explains a line using the docs and Check, with no AI involved. If you have a provider set up, **Explain with AI** can add a longer answer. That answer is marked as AI-written."},
+        {"h": "Fix with AI", "md": "Once you've picked a provider under Settings › AI, a **Fix with AI** button shows up in Check. It's meant for the problems the automatic fixes can't handle. You get a before and after, and Undo if you don't like the result.\n\nYou can use Claude, OpenAI, OpenRouter or Gemini with your own API key from them, or a local model through Ollama or LM Studio, which is free.\n\nYour code is sent to that provider when you press the button, not before. API keys stay in your browser."},
+        {"h": "Explain with AI", "md": "{key:explainLine} explains a line using the docs and Check, with no AI involved. If you have a provider set up, **Explain with AI** can add a longer answer. It sends the code to your provider when you click it, and the answer is marked as AI-written."},
         {"h": "AI-written docs", "md": "The official docs don't cover every option. For the gaps, an AI wrote docs from the Nucleus source code. You can tell those parts by the tinted frame and the ✨ in the corner. Hover the sparkle to see what the text is based on, and use the 👍 or 👎 underneath to tell us whether it's right."},
         {"h": "Writing a handler with an AI", "md": "If you're having ChatGPT, Claude, Codex or another AI write the handler, give it our prompt first. [Set up your AI](@site:ai/) has one for agents and one for chatbots. It teaches the AI the rules Nucleus has and makes it check its own work. Agents can go a step further and use the tools directly through the [MCP server](@docs:tools/mcp)."}
       ],
@@ -109,7 +114,7 @@
         {"h": "Layout", "md": "The tools sit in a bar at the top by default. You can move them into a rail on the side, and put Files and Lines on either side of the code. Drag the edge between two panels to resize them, or right-click it for more options."},
         {"h": "Keyboard", "md": "Nearly every shortcut can be changed under Settings › Keyboard shortcuts. [Shortcuts](@guide:shortcuts) has the full list, and pressing `?` in the workbench shows it too."},
         {"h": "Accessibility", "md": "This section has colour-blind-friendly colours, a way to mark problems that doesn't rely on colour, a stronger focus ring, bigger buttons and an easier-to-read font. Notes can also be set to stay until you close them."},
-        {"h": "Moving to another computer", "md": "Settings › Updates and backup can export your settings to a file. Import that file in the other browser and you're set up the same way."}
+        {"h": "Moving to another computer", "md": "Settings › Updates and backup can export your settings to a file, which you then import in the other browser. Your handlers aren't part of it, so save those separately."}
       ],
       "settingsTabs": true,
       "keys": ["settings", "palette", "nextPane", "prevPane", "wordWrap", "help"],
@@ -119,7 +124,10 @@
     {
       "id": "shortcuts", "slug": "tools/workbench/shortcuts", "nav": "Shortcuts", "title": "Workbench shortcuts",
       "desc": "Every keyboard shortcut in the workbench.",
-      "intro": "This is the workbench's own shortcut list. Press `?` in the workbench to see it there. You can change any of them under Settings › Keyboard shortcuts, apart from the ones marked *fixed*. Most match VS Code.",
+      "intro": "This is the workbench's own shortcut list. Press `?` in the workbench to see it there. You can change any of them under Settings › Keyboard shortcuts, apart from the ones marked *fixed*. Most match VS Code. On a Mac, Ctrl means ⌘ unless the row gives a Mac key.",
+      "sections": [
+        {"h": "A few that aren't in the list", "md": "- `F1` opens the command palette, like {key:palette}.\n- Outside the code, `Ctrl+K` or pressing `Shift` twice opens the Open list, like {key:open}.\n- `Ctrl+Shift+[` and `Ctrl+Shift+]` switch between open handlers, and `Alt+W` closes the one you're on.\n- `Alt+Enter` shows the fixes for a line, like {key:quickFix}. On a value, `Alt+↓` opens the list of values it can take."}
+      ],
       "allKeys": true
     }
   ]

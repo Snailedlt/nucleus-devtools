@@ -1954,7 +1954,7 @@ const click = (sel: string) => () => ($(sel) as HTMLElement).click();
 function commandList(): OpenEntry[] {
   const c = (title: string, keys: string, keywords: string, run: () => void, sub?: string): OpenEntry => ({ group: 'Actions', title, keys, keywords, run, sub, icon: OI.command });
   const list: OpenEntry[] = [
-    c('Format document', labelOf('format'), 'format indent pretty beautify prettier whitespace tidy', formatDocument, 'Indentation and spacing only: no line moves, no code changes'),
+    c('Format document', labelOf('format'), 'format indent pretty beautify prettier whitespace tidy', formatDocument, 'Indentation, spacing, double quotes and semicolons. No line moves'),
     c('Explain this line', labelOf('explainLine'), 'explain line what does this do help understand', () => setTimeout(() => (editor.focus(), explainAtCursor()), 0), 'What the line at the cursor does, in plain words'),
     c('Fix problems automatically', '', 'fix all repair autofix', click('#fix-all'), 'Every safe automatic fix, with a before/after to review'),
     c('Try it: simulate the handler', labelOf('tryIt'), 'run play simulate try', () => selectTab('simulate')),
@@ -2025,7 +2025,7 @@ function setThemeMode(m: 'light' | 'dark' | 'auto') {
   applyTheme();
 }
 
-/** Format document: indentation and spacing (core/format.ts guarantees the tokens don't change). */
+/** Format document: indentation, spacing, double quotes and missing semicolons (core/format.ts guarantees no line moves and the program stays the same). */
 function formatDocument() {
   use('format');
   const text = editor.getValue();
@@ -2038,7 +2038,7 @@ function formatDocument() {
   d.replaceRange(r.code, d.posFromIndex(0), d.posFromIndex(text.length), '+format');
   editor.setCursor({ line: Math.min(cur.line, editor.lineCount() - 1), ch: cur.ch });
   editor.scrollTo(null, top);
-  codeNote(editor, editor.getCursor().line, 'Formatted: indentation and spacing.', { action: undoAction });
+  codeNote(editor, editor.getCursor().line, 'Formatted: indentation, spacing, quotes and semicolons.', { action: undoAction });
 }
 
 const hubLint = new Map<number, string>();

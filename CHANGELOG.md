@@ -28,6 +28,10 @@ How to write it (people and AI agents read this; the release workflow publishes 
 
 - **Smaller downloads.** `ncdev` and the skill's script are about 1.6 MB smaller and the extension about 1.2 MB: they carry only the general JavaScript checks the tools use, not all of ESLint's, and the Try it simulator's own copy of the API no longer includes the documentation.
 
+### 🐛 Fixed
+
+- **Format says what it changes.** The MCP server and the skill described Format as changing indentation and spacing only. By default it also switches to double quotes and adds missing semicolons, and they say so now. It still never moves a line.
+
 ---
 
 ## 0.9.0 · 2026-11-19

@@ -92,7 +92,8 @@ test('tool docs: parse both forms of report as one command from actual CLI help'
   assert.ok(commands.some(({ use }) => use[0] === 'dap'), 'the next command is separate');
   assert.ok(options.some(({ use }) => use.includes('-h, --help')));
   assert.ok(lint.some(({ use }) => use.includes('--hub')));
-  assert.deepEqual(parseHelp('Usage: ncdev <command>'), { commands: [], options: [], lint: [] });
+  assert.deepEqual(parseHelp('Usage: ncdev <command>'), { commands: [], options: [], lint: [], exit: '' });
+  assert.match(parseHelp(help).exit, /^1 when lint finds errors.*2 on bad usage\.$/);
 });
 
 test('tool docs: menu parser keeps only menu rows, with keyless entries and separators', () => {
@@ -122,7 +123,8 @@ const guideFixture = () => {
   return {
     tools: {
       groups: [{ id: 'workbench', title: 'Workbench', line: 'In the browser.' }, { id: 'editors', title: 'Editors', line: 'In your editor.' }, { id: 'cli-ai', title: 'Command line and AI', line: 'For scripts.' }],
-      core: { title: 'One engine', parts: ['Checks'], line: 'All share it.' },
+      start: [{ who: 'New here', md: 'Open [the workbench](@docs:tools/workbench).' }],
+      core: { title: 'One core', parts: ['Checks'], line: 'All share it.' },
       flow: [{ id: 'write', label: 'Write', line: 'Type' }, { id: 'test', label: 'Test', line: 'In Nucleus' }],
       tools: [tool('workbench', 'tools/workbench', 'workbench'), tool('vscode', 'tools/vscode', 'editors'), tool('notepadpp', 'tools/notepadpp', 'editors'), tool('other-editors', 'tools/other-editors', 'editors'), tool('ncdev', 'tools/ncdev', 'cli-ai'), tool('mcp', 'tools/mcp', 'cli-ai')],
     },
@@ -133,7 +135,7 @@ const guideFixture = () => {
     tourParts: { parts: [{ id: 'code', title: 'The code', text: 'Write here. {key:zoom} zooms.', targets: ['#editor'], page: 'writing' }] },
     tips: [{ id: 't-one', text: 'A tip with {key:zoom} & more.', kind: 'gui' }, { id: 't-two', text: 'Already said.', kind: 'gui' }],
     gallery: {}, videos: {}, sizes: {}, map: { width: 200, height: 100, parts: { code: { x: 25, y: 50 } } },
-    compareHtml: '<tbody><tr><th scope="row">Feature</th></tr></tbody>', editors: { editors: [{ id: 'sample', name: 'Sample 2+', tile: { name: 'Sample', line: 'One line' } }] }, editorTag: (id) => `<span>tested:${id}</span>`, settingsTabs: ['Theme', 'Keys & more'],
+    compareHtml: '<tbody><tr><th scope="row">Feature</th></tr></tbody>', editors: { editors: [{ id: 'sample', name: 'Sample 2+', people: null, ai: 'Sample 2.1 <beta>', tile: { name: 'Sample', line: 'One line' } }] }, editorTag: (id) => `<span>tested:${id}</span>`, settingsTabs: ['Theme', 'Keys & more'],
   };
 };
 
@@ -196,7 +198,9 @@ test('tool docs: render commands, settings, chords and MCP input details from so
   assert.match(bySlug['tools/workbench/settings'].html, /<ul class="chips"><li>Theme<\/li><li>Keys &amp; more<\/li><\/ul>/);
   // Editors: the comparison and how far each language-server editor is tested.
   assert.match(bySlug['tools/editors'].html, /<table class="compare">\n<tbody><tr><th scope="row">Feature<\/th><\/tr><\/tbody>\n<\/table>/);
-  assert.match(bySlug['tools/editors'].html, /<td>Sample 2\+<\/td><td>One line<\/td><td><span>tested:sample<\/span><\/td>/);
+  // Who tried each language-server setup, and with what; an empty cell when nobody has.
+  assert.match(bySlug['tools/editors'].html, /<td>Sample 2\+<\/td><td>One line<\/td><td><\/td><td>Sample 2\.1 &lt;beta&gt;<\/td>/);
+  assert.match(bySlug['tools/editors'].html, /There are notes for Sample, and any other editor/);
   // The index: the diagram of every tool around the engine, and the pages by group (the guide's own pages under its overview).
   assert.equal((index.slice(index.indexOf('class="dg-core"'), index.indexOf('id="dg-core-cap"')).match(/<li><a href="__UP__docs\/tools\/[\w-]+\/"><strong>/g) ?? []).length, 6, 'six tools around the engine');
   assert.match(index, /<h2 id="workbench">Workbench<\/h2>\n<p>In the browser\.<\/p>\n<ul class="tool-cards"><li><a href="__UP__docs\/tools\/workbench\/"><strong>Workbench<\/strong>/);
@@ -265,13 +269,13 @@ test('tool docs: the labelled screenshot and the tour point at the same parts', 
 test('tool docs: the real pages build, link only to pages that exist, and their pictures are there in both themes', () => {
   const { pages, index, media } = REAL();
   const slugs = new Set(pages.map((p) => p.slug));
-  const site = new Set(['', 'tools/', 'ai/', 'rules/', 'start/', 'learn/']);
+  const site = new Set(['', 'tools/', 'ai/', 'rules/', 'start/', 'learn/', 'docs/', 'docs/tools/']);
   for (const p of [...pages, { slug: 'tools', html: index }]) {
     const html = (p.intro ?? '') + (p.html ?? '');
     assert.doesNotMatch(html, /\{key:|undefined|@guide:|@site:|@docs:/, p.slug);
     for (const m of html.matchAll(/href="__UP__([^"#]*)(#[^"]*)?"/g)) {
       const to = m[1];
-      if (to.startsWith('docs/tools/')) assert.ok(slugs.has(to.slice(5, -1)), `${p.slug}: links to ${to}, which is not a page`);
+      if (to.startsWith('docs/tools/') && to !== 'docs/tools/') assert.ok(slugs.has(to.slice(5, -1)), `${p.slug}: links to ${to}, which is not a page`);
       else if (!to.startsWith('start/')) assert.ok(site.has(to), `${p.slug}: links to ${to}, which is not a page of the site`);
     }
     for (const m of html.matchAll(/<img class="th-light"[^>]* alt="([^"]*)"/g)) assert.ok(m[1].length > 8, `${p.slug}: a picture without a description`);

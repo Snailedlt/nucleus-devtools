@@ -257,7 +257,7 @@ This installs the **Nucleus Co-op handlers** plugin and puts `ncdev` in `%LOCALA
 <!-- generated:editors -->
 | Editor | Setup | Tested by people | Tested by AI |
 | --- | --- | --- | --- |
-| Neovim | 5 lines of Lua ([below](#neovim)) | not yet | ✅ Neovim 0.9 (the 0.11 config is from its docs) |
+| Neovim | a few lines of Lua ([below](#neovim)) | not yet | ✅ Neovim 0.9 (the 0.11 config is from its docs) |
 | Helix | 6 lines in `languages.toml` ([below](#helix)) | not yet | not yet |
 | Sublime Text | the [LSP](https://packagecontrol.io/packages/LSP) package + one client entry ([PORTING.md](PORTING.md#sublime-text-lsp-package-preferences--package-settings--lsp--settings)) | not yet | not yet |
 | Emacs 29+ | one `eglot-server-programs` line ([PORTING.md](PORTING.md#emacs-eglot-built-in-since-emacs-29)) | not yet | ✅ Emacs 29.3 (eglot) |

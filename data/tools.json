@@ -1,14 +1,19 @@
 {
-  "$comment": "What each tool is and when to use it: the introductions of the docs' Tools pages (docs/tools/…, workbench/playground/tool-docs.mjs) and the labels of their diagrams. what: a few plain sentences. when: the situations it fits, one line each. not: what it can't do, with the tool that can (optional). get: where to get it, a path on the site (tools/#… is the tools page). video: a demo in docs/videos (workbench: workbench/docs/videos). shots: gallery screenshots (docs/images/gallery, the workbench's in workbench/docs/images/gallery), by their name without -light/-dark; their captions come from the start page's gallery. In text: `code`, **bold**, [links](https://…), (@site:<path>) for a page of the site and (@docs:<slug>) for another page of the docs. groups: the Tools section's groups, in order. core: the middle of the \"one engine\" diagram. flow: a handler's path, the steps of the second diagram. Write it the way you'd explain it to someone on Discord (AGENTS.md, Conventions).",
+  "$comment": "What each tool is and when to use it: the introductions of the docs' Tools pages (docs/tools/…, workbench/playground/tool-docs.mjs) and the labels of their diagrams. what: a few plain sentences; explain a term a handler author may not know (language server, MCP) the first time it comes up. when: the situations it fits, one line each. not: what it can't do or who doesn't need it, with the tool that fits instead (optional). get: where to get it, a path on the site (tools/#… is the tools page). video: a demo in docs/videos (workbench: workbench/docs/videos). shots: gallery screenshots (docs/images/gallery, the workbench's in workbench/docs/images/gallery), by their name without -light/-dark; their captions come from the start page's gallery. In text: `code`, **bold**, [links](https://…), (@site:<path>) for a page of the site and (@docs:<slug>) for another page of the docs. groups: the Tools section's groups, in order. start: who should begin where (the Tools index). core: the middle of the \"one core\" diagram. flow: a handler's path, the steps of the second diagram. Write it the way you'd explain it to someone on Discord (AGENTS.md, Conventions).",
   "groups": [
     { "id": "workbench", "title": "Workbench", "line": "An editor in your browser. There's nothing to install." },
     { "id": "editors", "title": "Editors", "line": "The same checks and docs, inside the editor you already use." },
-    { "id": "cli-ai", "title": "Command line and AI", "line": "For terminals, scripts and AI agents." }
+    { "id": "cli-ai", "title": "Command line and AI", "line": "For terminals, scripts and AI agents. You don't need these to write a handler." }
+  ],
+  "start": [
+    { "who": "You've never written a handler", "md": "Open [the workbench](@docs:tools/workbench) and do [Learn](@site:learn/), which builds a first handler with you. You can ignore the rest of this page for now." },
+    { "who": "You already write handlers", "md": "Get the tools for the editor you use: [Notepad++](@docs:tools/notepadpp) or [VS Code](@docs:tools/vscode). They check your handler while you type and can start Nucleus Co-op with it." },
+    { "who": "You use another editor, a terminal or an AI agent", "md": "See [Other editors](@docs:tools/other-editors), [ncdev](@docs:tools/ncdev) or the [MCP server](@docs:tools/mcp)." }
   ],
   "core": {
-    "title": "One engine",
+    "title": "One core",
     "parts": ["Checks", "Try it", "Debugger", "API docs"],
-    "line": "It's the same engine in all of them, so you get the same problems and the same Try it result whichever one you use."
+    "line": "They're all built on the same core, so you get the same checks and the same Try it result whichever one you use."
   },
   "flow": [
     { "id": "write", "label": "Write", "line": "with suggestions and docs" },
@@ -25,6 +30,7 @@
       "when": [
         "You want to write or fix a handler right now and don't want to install anything.",
         "You're new to handlers. The tour, the Lines list, the tips and Learn are there to help.",
+        "You already write handlers and want to check a quick change, or open one somebody sent you as a link.",
         "You're curious how a handler on the Hub works. Open it and run Check and Try it on it.",
         "You're not at your own PC. Any modern browser will do, a phone included."
       ],
@@ -35,10 +41,10 @@
       "id": "vscode", "slug": "tools/vscode", "group": "editors", "title": "VS Code", "short": "Extension",
       "what": "The extension adds handler support to VS Code and VSCodium. Problems are underlined while you type and come with quick fixes. You also get suggestions, docs on hover and in a side panel, Try it, a debugger, and commands that package a handler, install it and start Nucleus Co-op with it.",
       "when": [
-        "You write handlers regularly. This is the setup with the most in it.",
+        "You write handlers regularly and want everything in one place.",
         "You already use VS Code for other things.",
-        "You want real breakpoints, in VS Code's own Run and Debug.",
-        "You use Copilot or another agent in VS Code. The extension hands it the Nucleus tools."
+        "You want breakpoints and stepping in VS Code's own Run and Debug.",
+        "You use Copilot or another agent in VS Code. The extension gives it the Nucleus tools."
       ],
       "get": { "href": "tools/#get-vscode", "label": "Get the tools: VS Code" },
       "video": "vscode",
@@ -50,7 +56,7 @@
       "what": "A plugin for Notepad++, which came first when we asked handler authors what they write in. It underlines problems while you type, fixes them with Alt+Enter, suggests names and shows docs when you hover. Try it, the Hub, packaging and testing in Nucleus Co-op are in its menu.",
       "when": [
         "You already write handlers in Notepad++ and see no reason to switch.",
-        "You like a light editor. Setup is one command, `ncdev setup notepad++`.",
+        "You like a light editor. Setup is a double-click on `ncdev.exe`.",
         "You want Install and Test in Nucleus Co-op in a menu."
       ],
       "not": "There's no debugger in the plugin. To step through a handler, use VS Code or the workbench.",
@@ -61,34 +67,35 @@
     },
     {
       "id": "other-editors", "slug": "tools/other-editors", "group": "editors", "title": "Other editors", "short": "ncdev lsp",
-      "what": "`ncdev lsp` is a language server for handlers. If your editor can talk to language servers, it gets the same problems, fixes, suggestions, hover docs, outline and formatting as VS Code. Editors with a debug client can also use `ncdev dap` for the debugger.",
+      "what": "`ncdev lsp` is a language server for handlers. That's a small program your editor runs in the background and asks for problems, suggestions and docs. Any editor with language-server support gets the same checks, fixes, hover docs, outline and formatting as VS Code. If it also has a debug client, `ncdev dap` adds the debugger.",
       "when": [
-        "You use Neovim, Helix, Emacs, Kate, Sublime Text, a JetBrains IDE or Zed, and you're staying.",
+        "You use Neovim, Helix, Emacs, Kate, Sublime Text, a JetBrains IDE or Zed and want to keep using it.",
         "You don't mind adding a few lines to your editor's config.",
         "Your editor isn't on the list but has a language-server client. The same server works there."
       ],
-      "not": "Fair warning: only some of these setups have been tested so far. [The tools page](@site:tools/#in-your-editor) says which.",
+      "not": "Fair warning: only some of these setups have been tested so far. [Compare the editors](@docs:tools/editors) says which. Notepad++ and VS Code have their own pages.",
       "get": { "href": "tools/#in-your-editor", "label": "Get the tools: other editors" }
     },
     {
       "id": "ncdev", "slug": "tools/ncdev", "group": "cli-ai", "title": "ncdev (command line)", "short": "Command line",
       "what": "`ncdev` is the command-line version of the tools, in one program. It checks and formats handlers, looks things up in the API, runs Try it and the debugger in a terminal, packages and installs handlers, starts Nucleus Co-op for a test, and searches the Hub. Notepad++ and the other editors run it in the background (`ncdev lsp`), and AI agents connect to it (`ncdev mcp`).",
       "when": [
-        "You want to check a whole folder of handlers in one go, maybe in a script or in CI.",
+        "You want to check a whole folder of handlers in one go, for example from a script.",
         "You want a quick answer without opening an editor, like `ncdev api KillMutex`.",
         "You're setting up Notepad++ or another editor. They need it.",
         "You're connecting an AI agent to the tools."
       ],
+      "not": "The workbench and the VS Code extension don't need `ncdev`. If you only use those, you can skip this page.",
       "get": { "href": "tools/#command-line", "label": "Get the tools: the command line" }
     },
     {
       "id": "mcp", "slug": "tools/mcp", "group": "cli-ai", "title": "MCP server (AI agents)", "short": "ncdev mcp",
-      "what": "`ncdev mcp` is an MCP server. It lets an AI agent use the handler tools itself. The agent can look up what the API really has, check the handler it wrote, run Try it on it and ask what a line does. That beats an AI guessing at option names.",
+      "what": "`ncdev mcp` lets an AI agent use the handler tools itself. It speaks MCP (the Model Context Protocol), which is how agents such as Claude Code, Codex and Copilot connect to outside tools. The agent can look up what the API really has, check the handler it wrote, run Try it on it and ask what a line does, so it doesn't have to guess at option names.",
       "when": [
         "You write handlers with Claude Code, Codex, Copilot or some other agent that speaks MCP.",
         "You'd like the handler to pass Check before the agent shows it to you."
       ],
-      "not": "Chatbots without tools, like ChatGPT or Claude in a browser tab, can't use it. For those there's a prompt to paste on [Set up your AI](@site:ai/).",
+      "not": "Chatbots without tools, like ChatGPT or Claude in a browser tab, can't use it. For those there's a prompt to paste on [Set up your AI](@site:ai/). And if you write handlers yourself, you don't need this page at all.",
       "get": { "href": "ai/", "label": "Set up your AI" }
     }
   ]
