@@ -431,7 +431,7 @@ const appBundle = {
 const result = await esbuild.build(appBundle);
 const js = result.outputFiles[0].text.replace(/<\/script/gi, '<\\/script');
 // The site's workbench gets the same code as files next to the page (dist/pages/app/): the page and its lint worker
-// share chunks, and the parts few people use (the Anthropic SDK, the visual editor) are only fetched when they're
+// share chunks, and the parts few people use (the Anthropic SDK) are only fetched when they're
 // first needed (the `import()`s in src/). Every name carries a hash of its content, so a browser's cached copy is
 // never a mix of two builds. The single file above has everything inside it.
 const appDir = path.join(here, 'dist', 'pages', 'app');

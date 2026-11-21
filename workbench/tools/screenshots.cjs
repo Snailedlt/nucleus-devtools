@@ -11,7 +11,7 @@ const { execFileSync } = require('child_process');
 const { chromium, devices } = require('playwright');
 const args = process.argv.slice(2);
 const onlyAt = args.indexOf('--only');
-// --only <names>: just these (comma-separated). Gallery: check, suggestions, try-it, debugger, test-all, form, blocks,
+// --only <names>: just these (comma-separated). Gallery: check, suggestions, try-it, debugger, test-all,
 // looks, fix-all, phone. Release notes: lines, whats-new.
 const ONLY = onlyAt >= 0 ? args[onlyAt + 1].split(',') : null;
 const want = (name) => !ONLY || ONLY.includes(name);
@@ -126,29 +126,6 @@ const box = (p, sel) => p.$eval(sel, (e) => { const r = e.getBoundingClientRect(
     await p.waitForTimeout(300);
     await p.mouse.move(2, 590);
     await gallery(p, 'debugger', t);
-    await ctx.close();
-    }
-
-    // Form: the visual editor, one option open with its docs.
-    if (want('form')) {
-    ({ ctx, p } = await open(b, t, GAL, 'hub-' + STARDEW));
-    await p.click('[data-view-mode=form]');
-    await p.waitForTimeout(800);
-    await p.click('.fv-row[data-key="Game.HandlerInterval#0"] .fv-toggle');
-    await p.click('.fv-row[data-key="Game.HandlerInterval#0"] .fv-info');
-    await p.waitForTimeout(600);
-    await p.mouse.move(2, 590);
-    await gallery(p, 'form', t);
-    await ctx.close();
-    }
-
-    // Blocks: Game.Play as steps.
-    if (want('blocks')) {
-    ({ ctx, p } = await open(b, t, GAL, 'hub-' + STARDEW));
-    await p.click('[data-view-mode=blocks]');
-    await p.waitForTimeout(1000);
-    await p.mouse.move(2, 590);
-    await gallery(p, 'blocks', t);
     await ctx.close();
     }
 

@@ -23,8 +23,6 @@ export interface DebugHost {
   options: () => TraceOptions;
   /** Show the Try it tab */
   showTryIt: () => void;
-  /** Show the code (not Form or Blocks) */
-  showCode: () => void;
   /** Redraw Try it's normal results (after Stop) */
   rerun: () => void;
   /** Counted as used (feedback.ts) */
@@ -342,7 +340,6 @@ export function mountDebugger(host: DebugHost): Debugger {
   async function start(first: 'breakpoint' | 'step' = 'breakpoint') {
     if (busy) return;
     if (panel.hidden) host.showTryIt();
-    host.showCode();
     host.used?.();
     busy = true;
     note = null;
@@ -616,7 +613,6 @@ export function mountDebugger(host: DebugHost): Debugger {
       })());
     } else if (b.dataset.line) {
       const line0 = Number(b.dataset.line) - 1;
-      host.showCode();
       editor.setCursor({ line: line0, ch: 0 });
       editor.scrollIntoView({ line: line0, ch: 0 }, 80);
     }

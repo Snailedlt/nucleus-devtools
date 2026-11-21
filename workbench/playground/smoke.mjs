@@ -40,8 +40,6 @@ async function page(theme, opts = { viewport: { width: 1280, height: 800 } }) {
   await ctx.addInitScript(() => {
     try {
       localStorage.setItem('nucleus-workbench-welcomed', '1');
-      // Form and Blocks are hidden unless turned on (src/visual.ts); their checks below still run.
-      localStorage.setItem('nucleus-workbench-visual', '1');
     } catch {}
   });
   // Only the page's own origin: the release lookup, fonts and the Hub are not needed here.
@@ -590,29 +588,12 @@ for (const theme of ['light', 'dark']) {
   await p.locator('.vp-chip').click();
   await p.locator('.vp-menu button', { hasText: 'true' }).click();
   check(await p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getLine(1)) === 'Game.SymlinkGame = true;', `${theme}: the value picker changes the value`);
-  // Form: one line per option, more on request, fixes work, and back to Code.
+  // A fresh copy of the example with mistakes, for the debugger.
   await p.goto(BASE + '#example-mistakes');
   await p.waitForTimeout(800);
   // Already open with changes (from the checks above): open a fresh copy.
   const fresh = p.locator('button', { hasText: 'Open a fresh copy' });
   if (await fresh.count()) { await fresh.first().click(); await p.waitForTimeout(800); }
-  await p.click('[data-view-mode=form]');
-  await p.waitForSelector('#formview .fv-row', { timeout: 10000 }).catch(() => {});
-  await p.waitForTimeout(300);
-  const fvRows = await p.$$('#formview .fv-row');
-  const openRows = await p.$$('#formview .fv-more:not([hidden])');
-  check(fvRows.length >= 6 && openRows.length === 0, `${theme}: Form shows one line per option, details closed (${fvRows.length} rows)`);
-  await p.click('#formview .fv-row.fv-has-prob .fv-toggle');
-  await p.waitForTimeout(150);
-  check((await p.$$('#formview .fv-more:not([hidden]) .fv-acts button')).length >= 2, `${theme}: opening an option shows its docs and actions`);
-  await axe(p, `${theme}, Form`);
-  const fvBefore = await p.$$eval('#formview .fv-row.fv-has-prob', (r) => r.length);
-  await p.click('#formview .fv-row.fv-has-prob:not(.fv-open) .fv-sum .fv-fix.primary');
-  await p.waitForTimeout(800);
-  const fvAfter = await p.$$eval('#formview .fv-row.fv-has-prob', (r) => r.length);
-  check(fvAfter < fvBefore, `${theme}: a fix in Form fixes it (${fvBefore} -> ${fvAfter} options with problems)`);
-  await p.click('[data-view-mode=code]');
-  await p.waitForTimeout(200);
   // The debugger: a breakpoint, Step through, step, step back, the banner and the current line.
   await p.goto(BASE + '#example-mistakes');
   await p.waitForTimeout(1200);
@@ -655,7 +636,7 @@ for (const theme of ['light', 'dark']) {
   await p.click('#dbg-stop');
   await p.waitForTimeout(200);
   check((await p.isHidden('#dbg')) && (await p.innerText('#sim-out')).length > 50, `${theme}: Stop closes the debugger and shows Try it's results`);
-  // Code colours everywhere, small code editors in Blocks and Form (#12), fields that grow and expand (#15).
+  // Code colours everywhere.
   {
     const DESC = 'Java version only. If you use multiple keyboards and mice, set the input in the options first, then start the game and wait for every window to open.';
     await p.evaluate((c) => document.querySelector('.CodeMirror').CodeMirror.setValue(c), `Game.GUID = "Demo";\nGame.GameName = "Demo";\nGame.ExecutableName = "demo.exe";\nGame.Description = "${DESC}";\nGame.HandlerInterval = 1000 * 2;\nGame.Play = function () {\n    Context.StartArguments = "-windowed";\n    for (var i = 0; i < 2; i++) { Context.StartArguments += " x"; }\n};\n`);
@@ -744,95 +725,6 @@ for (const theme of ['light', 'dark']) {
       await p.evaluate((t) => document.querySelector('.CodeMirror').CodeMirror.setValue(t), was);
       await p.waitForTimeout(300);
     }
-    // Blocks: a code step is a small CodeMirror with the colours, and typing in it edits the handler.
-    await p.click('[data-view-mode=blocks]');
-    await p.waitForTimeout(800);
-    check((await p.$$('#blocksview .bv-codeblock .CodeMirror .cm-keyword')).length > 0, `${theme}: a Blocks code step is a code editor with the code colours`);
-    await p.click('#blocksview .bv-codeblock .CodeMirror');
-    await p.keyboard.press('End');
-    await p.keyboard.type(' // b');
-    await p.waitForTimeout(400);
-    check((await p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue())).includes('" x"; } // b'), `${theme}: typing in a Blocks code step edits the handler`);
-    await p.mouse.move(5, 5);
-    await p.keyboard.press('Escape');
-    await p.waitForTimeout(400);
-    await axe(p, `${theme}, Blocks with a code editor`);
-    // Blocks, compact (#25): no Action tags, kind pickers only on the value with the focus, repeated steps grouped.
-    {
-      const before = await p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue());
-      const rep = 'Game.GUID = "Demo";\nGame.GameName = "Demo";\nGame.ExecutableName = "demo.exe";\nGame.Play = function () {\n    Context.StartArguments = "-windowed";\n' + [1, 2, 3, 4].map((i) => `    Context.CopyScriptFolder("a${i}");\n`).join('') + '};\n';
-      await p.evaluate((c) => document.querySelector('.CodeMirror').CodeMirror.setValue(c), rep);
-      await p.waitForTimeout(900);
-      const g = '#blocksview .bv-group';
-      check((await p.$$(g)).length === 1 && /4 steps/.test(await p.innerText(`${g} .bv-g-toggle`)) && (await p.$$(`${g} .bv-g-line`)).length === 4 && (await p.getAttribute(`${g} .bv-g-toggle`, 'aria-expanded')) === 'false', `${theme}: four Context.CopyScriptFolder steps are one group with a count and a line each`);
-      check(!/\bAction\b/i.test(await p.innerText('#blocksview')), `${theme}: Blocks has no Action tags`);
-      const shownKinds = () => p.$$eval('#blocksview .bv-kind', (ks) => ks.filter((k) => getComputedStyle(k).opacity !== '0').length);
-      check((await shownKinds()) === 0, `${theme}: no kind pickers while nothing is selected`);
-      await p.click(`${g} .bv-g-line >> nth=2`);
-      await p.waitForTimeout(200);
-      check((await p.getAttribute(`${g} .bv-g-toggle`, 'aria-expanded')) === 'true' && (await p.evaluate(() => document.activeElement?.closest('.bv-row')?.getAttribute('data-key'))) === 'Play/3' && (await shownKinds()) === 1, `${theme}: a click on a line opens the group at that step, and only its value shows the kind picker`);
-      await axe(p, `${theme}, Blocks with a group open`);
-      await p.keyboard.press('ControlOrMeta+a');
-      await p.keyboard.type('b3');
-      await p.waitForTimeout(400);
-      check((await p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue())) === rep.replace('"a3"', '"b3"'), `${theme}: editing a step in a group changes only that value in the code`);
-      // The kind picker floats below the value being edited (above only without room below), never over it.
-      check(await p.evaluate(() => { const k = document.activeElement.closest('.bv-val').querySelector(':scope > .bv-kind'); return k.getBoundingClientRect().top >= document.activeElement.getBoundingClientRect().bottom; }), `${theme}: the kind picker shows below the value`);
-      // A long comment folds to its first line and "… N more lines", which unfolds it.
-      const long = 'Game.GUID = "Demo";\nGame.GameName = "Demo";\nGame.ExecutableName = "demo.exe";\nGame.Play = function () {\n    // one\n    // two\n    // three\n    // four\n    // five\n    Context.StartArguments = "-windowed";\n};\n';
-      await p.evaluate((c) => document.querySelector('.CodeMirror').CodeMirror.setValue(c), long);
-      await p.waitForTimeout(700);
-      const more = '#blocksview .bv-note-long .bv-note-more';
-      check((await p.innerText(more)).includes('4 more lines') && (await p.getAttribute(more, 'aria-expanded')) === 'false' && !(await p.isVisible('#blocksview .bv-note-rest')), `${theme}: a five-line comment folds to its first line and "… 4 more lines"`);
-      await p.focus(more);
-      await p.keyboard.press('Enter');
-      await p.waitForTimeout(150);
-      check((await p.getAttribute(more, 'aria-expanded')) === 'true' && (await p.isVisible('#blocksview .bv-note-rest')), `${theme}: Enter on "… 4 more lines" unfolds the comment`);
-      // Moving a step: focus and its open row go with it; each move is its own Ctrl+Z, from Blocks too.
-      const steps = 'Game.GUID = "Demo";\nGame.GameName = "Demo";\nGame.ExecutableName = "demo.exe";\nGame.Play = function () {\n    Context.Wait(1);\n    var a = 2;\n    if (a > 1) {\n        Context.Wait(5);\n    }\n    Context.StartArguments = "-d";\n};\n';
-      await p.evaluate((c) => document.querySelector('.CodeMirror').CodeMirror.setValue(c), steps);
-      await p.waitForTimeout(700);
-      const playLines = async () => (await p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue())).split('\n').slice(4, 10).map((l) => l.trim()).join(' ');
-      const where = () => p.evaluate(() => [document.activeElement?.getAttribute('data-bv'), [...document.querySelectorAll('#blocksview .bv-open')].map((e) => e.getAttribute('data-key')).join()]);
-      await p.click('[data-bv="Play/0:more"]');
-      await p.click('[data-bv="Play/0:down"]');
-      await p.waitForTimeout(250);
-      await p.keyboard.press('Enter');
-      await p.waitForTimeout(250);
-      const [f1, o1] = await where();
-      const moved = await playLines();
-      check(f1 === 'Play/2:down' && o1 === 'Play/2' && /^var a = 2; if .* Context\.Wait\(1\); Context\.StartArguments/.test(moved), `${theme}: Move down twice in Blocks moves one step two places, focus and its open row with it (${f1}, ${o1})`);
-      await p.keyboard.press('ControlOrMeta+z');
-      await p.waitForTimeout(250);
-      const undone = await playLines();
-      await p.keyboard.press('ControlOrMeta+y');
-      await p.waitForTimeout(250);
-      check(/^var a = 2; Context\.Wait\(1\); if/.test(undone) && (await playLines()) === moved, `${theme}: Ctrl+Z in Blocks undoes one move, Ctrl+Y redoes it`);
-      await p.evaluate((c) => document.querySelector('.CodeMirror').CodeMirror.setValue(c), before);
-      await p.waitForTimeout(600);
-    }
-    // Form: a long Game.Description is readable in full, and expands (Alt+Enter) with its docs; Esc goes back.
-    await p.click('[data-view-mode=form]');
-    await p.waitForTimeout(600);
-    const desc = '#formview .fv-row[data-key^="Game.Description"] textarea';
-    // Plain names (#24): the plain label and the API name both in the label.
-    const lab = await p.innerText('#formview .fv-row[data-key^="Game.GameName"] .fv-label');
-    check(/Game name/.test(lab) && /Game\.GameName/.test(lab), `${theme}: Form names an option in plain words and keeps its API name (${lab.replace(/\s+/g, ' ')})`);
-    const full = await p.$eval(desc, (t) => t.value.length > 100 && t.scrollHeight <= t.clientHeight + 2 && t.getBoundingClientRect().height > 40);
-    check(full && (await p.isVisible('#formview .fv-row[data-key^="Game.Description"] .xf-btn')), `${theme}: a long Game.Description wraps in Form and shows in full, with an expand button`);
-    check((await p.$$('#formview .fv-row[data-key^="Game.HandlerInterval"] .fv-src.hl .cm-number')).length > 0, `${theme}: a code value in Form is coloured like the code`);
-    await p.focus(desc);
-    await p.keyboard.press('Alt+Enter');
-    await p.waitForTimeout(200);
-    check(await p.isVisible('.xf-panel .xf-big') && /\S/.test(await p.innerText('.xf-panel .xf-doc').catch(() => '')), `${theme}: Alt+Enter opens the larger editor with the option's docs`);
-    await axe(p, `${theme}, Form with a value expanded`);
-    await p.keyboard.press('End');
-    await p.keyboard.type(' More.');
-    await p.keyboard.press('Escape');
-    await p.waitForTimeout(300);
-    check(!(await p.$('.xf-panel')) && (await p.evaluate(() => document.activeElement?.closest('[data-key^="Game.Description"]') !== null)) && (await p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue())).includes('to open. More."'), `${theme}: typing there edits the value; Esc closes it and goes back to the field`);
-    await p.click('[data-view-mode=code]');
-    await p.waitForTimeout(200);
   }
   check(!errors.length, `${theme}: no page errors${errors.length ? `: ${errors.join('; ')}` : ''}`);
   await ctx.close();
@@ -899,17 +791,6 @@ await m.p.waitForTimeout(300);
 check(await m.p.isVisible('.CodeMirror'), 'phone: the Handler view shows the code');
 await m.p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.setValue('Game.GUID = "Demo";\nGame.GameName = "Demo";\nGame.ExecutableName = "demo.exe";\nGame.Description = "Java version only. If you use multiple keyboards and mice, set the input in the options first, then start the game.";\n'));
 await m.p.waitForTimeout(800);
-await m.p.$eval('[data-view-mode=form]', (b) => b.click());
-await m.p.waitForTimeout(600);
-const mDesc = '#formview .fv-row[data-key^="Game.Description"] textarea';
-check(await m.p.$eval(mDesc, (t) => t.scrollHeight <= t.clientHeight + 2 && t.getBoundingClientRect().right <= innerWidth), 'phone: a long Game.Description wraps and shows in full');
-await m.p.tap('#formview .fv-row[data-key^="Game.Description"] .xf-btn');
-await m.p.waitForTimeout(300);
-check(await m.p.isVisible('dialog.xf-dialog .xf-big'), 'phone: the expand button opens the value in a dialog');
-await axe(m.p, 'phone, expanded value');
-await m.p.keyboard.press('Escape');
-await m.p.waitForTimeout(200);
-check(!(await m.p.$('dialog.xf-dialog')), 'phone: Esc closes it');
 await m.ctx.close();
 
 // Help test the beta: pin a task, and it floats over the workbench while you test (testpins.ts).

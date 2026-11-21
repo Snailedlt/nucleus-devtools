@@ -14,6 +14,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 ## Unreleased
 ### ⚠️ Changed
+- **The Form and Blocks views have been removed.** They were hidden since the last release; a different visual editor is planned instead. If your saved view was one of them, the workbench opens your handler as code and says so once.
 - **A new address: https://snailedlt.github.io/nucleus-devtools/.** The workbench moved into the tools' repository, [nucleus-devtools](https://github.com/Snailedlt/nucleus-devtools), so it's built from the same commit as the checks it runs. Update your bookmarks; your drafts and settings come along (same site, new folder). Reports go to the same forms as the other tools'.
 ### ✨ New
 - **Set up your AI for handlers.** A short page on the site (ai/): what the tools give an AI, the free and paid setups we recommend, and prompts to copy. Claude Code and other AI agents (Codex, Antigravity, Cursor) get a setup prompt to run once (it installs our plugin or adds our MCP server, so the agent checks and tries its own work) and a prompt to make a handler, once per game; chatbots (ChatGPT, Claude, Gemini, Grok) get the rules a handler must follow. Type your game once and it fills every prompt. Linked from the start and tools pages.

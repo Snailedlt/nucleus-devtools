@@ -386,7 +386,7 @@ async function setupTypes(context: vscode.ExtensionContext) {
 
 // ---------------------------------------------------------------------------
 
-/** The open handler in the browser workbench (its visual editor, Lines, Test all…), through a share link. */
+/** The open handler in the browser workbench (Lines, Test all…), through a share link. */
 async function openInWorkbench() {
   const doc = vscode.window.activeTextEditor?.document;
   const text = doc && /\.js$/i.test(doc.fileName) ? doc.getText() : undefined;

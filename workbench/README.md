@@ -17,11 +17,11 @@ Runs [Nucleus Co-op](https://github.com/SplitScreen-Me/splitscreenme-nucleus) ga
   <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/gallery/workbench-phone-dark.webp"><img src="docs/images/gallery/workbench-phone-light.webp" width="24%" alt="The workbench on a phone: the Check results for the example handler"></picture>
 </p>
 
-More views (suggestions, the debugger, Test all, the visual editor, the four looks) are in the [start page's gallery](https://snailedlt.github.io/nucleus-devtools/start/?ref=workbench-readme-md#see-it).
+More views (suggestions, the debugger, Test all, the four looks) are in the [start page's gallery](https://snailedlt.github.io/nucleus-devtools/start/?ref=workbench-readme-md#see-it).
 
 **In motion** (a minute or two each, captioned, no sound): [▶ the workbench](docs/videos/workbench.mp4) · [▶ VS Code](https://github.com/Snailedlt/nucleus-devtools/blob/main/docs/videos/vscode.mp4) · [▶ Notepad++](https://github.com/Snailedlt/nucleus-devtools/blob/main/docs/videos/notepadpp.mp4)
 
-[![The workbench in motion: code colours, checks, fixes, suggestions, Docs, Try it, the visual editor, the debugger and the settings](docs/videos/workbench-poster.jpg)](docs/videos/workbench.mp4)
+[![The workbench in motion: code colours, checks, fixes, suggestions, Docs, Try it, the debugger and the settings](docs/videos/workbench-poster.jpg)](docs/videos/workbench.mp4)
 
 ## What it does
 
@@ -105,7 +105,7 @@ Handlers get .NET access through Jint (`System.IO`, `System.Diagnostics`, …), 
 
 - a short guided tour of the workbench on a first visit (skip it, take it again from the menu), and **Learn** (`learn/`): lessons that walk you through a first handler, with Check beside the code;
 - a code editor with the same features as the VS Code extension: live squiggles and quick fixes, suggestions (API members, option values, your own functions and variables, `Context.Options` keys, snippets, the template in an empty file), hovers and parameter hints styled like VS Code's, F12, rename (F2), find and replace, folding, Format Document, and VS Code's shortcuts (all rebindable); its code colours, *Nucleus (follows the look)*, give `Game`/`Context`/`Nucleus`, option groups (`Game.Hook`), fixed choices (`Nucleus.Folder.InstancedGameFolder`) and callbacks (`Game.Play`) colours of their own, or pick VS Code's, Notepad++'s and other editors' colours in Settings;
-- **Lines** (every option Nucleus has, grouped, insertable). The visual editor (**Form** and **Blocks**) is hidden for now while it's reworked, and may not come back in this form;
+- **Lines** (every option Nucleus has, grouped, insertable);
 - a **debugger**: breakpoints, stepping, variables and watches, per player;
 - **Files**: open a whole `.zip`/`.nc` package, edit its text files, with the package checks; and **Your game on this PC**: link the game's install folder to check paths against it;
 - **Docs**: every name with its docs, searchable; `#docs-<name>` links open one (e.g. `#docs-Context.ModifySaveFile`), and the address follows what you browse. Every name also has a page of its own (`docs/Context.ModifySaveFile/`), and every check one under `rules/`;
