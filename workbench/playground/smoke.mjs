@@ -584,6 +584,20 @@ for (const theme of ['light', 'dark']) section(`workbench, ${theme}`, async () =
     check(/^4 of/.test(await q.textContent('#tour-count')), `${theme}: Continue picks up at the skipped step`);
     for (let i = 0; i < 12 && await q.$eval('#tour', (d) => d.open); i++) await q.click('[data-tour=next]');
     check((await q.evaluate(() => JSON.parse(localStorage.getItem('nucleus-workbench-tour'))))?.state === 'done', `${theme}: Finish ends the tour and remembers it`);
+    // A shortcut changed since the page loaded: the tour names the new keys (it looks them up when a step is shown),
+    // which are the ones the step's action listens for.
+    await q.keyboard.press('Control+Comma');
+    await q.click('#st-keys');
+    await q.fill('#sp-keys .kb-q', 'lines');
+    await q.click('#sp-keys [data-kb-change="lines"]');
+    await q.keyboard.press('Control+Shift+Digit9');
+    await q.keyboard.press('Enter');
+    await q.keyboard.press('Escape');
+    await takeTour();
+    for (let i = 0; i < 12 && (await q.textContent('#tour-title')) !== 'Lines'; i++) { await q.click('[data-tour=next]'); await q.waitForTimeout(200); }
+    const linesStep = await q.evaluate(() => ({ title: document.getElementById('tour-title').textContent, keys: [...document.querySelectorAll('#tour-text kbd')].map((k) => k.textContent).join('+') }));
+    check(linesStep.title === 'Lines' && /9/.test(linesStep.keys) && !/B/.test(linesStep.keys), `${theme}: the tour names a shortcut as it is bound now, without a reload (${JSON.stringify(linesStep)})`);
+    await q.keyboard.press('Escape');
     await fresh.close();
   }
   // One handler per tab: another handler opens a new tab; one that's already open switches to its tab.

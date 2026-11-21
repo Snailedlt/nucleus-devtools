@@ -3043,12 +3043,14 @@ const tour = initTour({
   setView,
   getTab: visibleTab,
   selectTab,
+  // Shortcuts named in a step's text ({key:…}) show as they are bound when the step comes up.
+  keyLabel: labelOf,
   // Finishing the tour ticks its task in Help test this beta.
   finished: () => { if (BETA && !testDone('tour')) setTestDone('tour', true); },
   // Title, text and where each step points come from tourparts.json (the docs' labelled screenshot uses the same
   // list); here, what a step's part does when it's clicked. A step without an entry is a "look" step.
   steps: [
-    ...TOUR_PARTS.parts.map((p): TourStep => ({ title: p.title, text: p.text.replace(/\{key:(\w+)\}/g, (_, id: string) => '`' + labelOf(id) + '`'), targets: p.targets, view: p.view as TourStep['view'], tab: p.tab, act: TOUR_ACTS[p.id] })),
+    ...TOUR_PARTS.parts.map((p): TourStep => ({ title: p.title, text: p.text, targets: p.targets, view: p.view as TourStep['view'], tab: p.tab, act: TOUR_ACTS[p.id] })),
     // During the beta: how to help, and the guide one click away (its "Take the tour" task is ticked by Finish).
     ...(BETA ? [{ title: 'Help test the beta', text: "Try new things and tell us what works and what doesn't. The guide picks tasks that fit you, each with a Report button; a tick marks what you've tried.", targets: ['.rail [data-rail=test]', '#test-open'],
       act: { text: 'Click Help test this beta to open the guide.', click: '.rail [data-rail=test], #test-open', end: true },
