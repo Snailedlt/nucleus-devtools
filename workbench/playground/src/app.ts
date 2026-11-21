@@ -1959,6 +1959,9 @@ function commandList(): OpenEntry[] {
     c('Fix problems automatically', '', 'fix all repair autofix', click('#fix-all'), 'Every safe automatic fix, with a before/after to review'),
     c('Try it: simulate the handler', labelOf('tryIt'), 'run play simulate try', () => selectTab('simulate')),
     c('Go to line', labelOf('goToLine'), 'go to line number jump column', () => setTimeout(() => showOpen('line'), 0)),
+    c('Next open handler', labelOf('nextHandler'), 'next handler tab switch', () => stepHandler(1)),
+    c('Previous open handler', labelOf('prevHandler'), 'previous handler tab switch', () => stepHandler(-1)),
+    c('Close this handler', labelOf('closeHandler'), 'close handler tab', () => closeTab(activeTab)),
     c('Find', labelOf('find'), 'find search', () => openFind(editor)),
     c('Find and replace', labelOf('replace'), 'replace find search', () => openFind(editor, true)),
     c('Test all combinations', labelOf('testAll'), 'matrix players monitors keyboards test all', () => { selectTab('simulate'); click('#sim-all')(); }),
@@ -2481,15 +2484,7 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
   if (e.key === '?' && !(e.target as HTMLElement).closest('.CodeMirror, input, textarea, select')) return void (e.preventDefault(), helpDialog.showModal());
   // The workbench's shortcuts (keybindings.ts), whatever they're set to.
   const id = appActionFor(e);
-  if (!id) {
-    // Ctrl+Shift+[ and ] used to switch handlers everywhere, which took Fold's key away in the code. Outside the
-    // code, where nothing else uses them, they still do (the shortcuts are Next / Previous open handler now).
-    if (!inCode && e.ctrlKey && !e.metaKey && !e.altKey && e.shiftKey && (e.code === 'BracketLeft' || e.code === 'BracketRight')) {
-      e.preventDefault();
-      stepHandler(e.code === 'BracketRight' ? 1 : -1);
-    }
-    return;
-  }
+  if (!id) return;
   // The handler tabs' keys give way to whatever already used the key where the focus is (Find's Alt+W for whole
   // word, a command of the editor's bound to the same keys).
   if ((id === 'nextHandler' || id === 'prevHandler' || id === 'closeHandler') && e.defaultPrevented) return;
@@ -3166,7 +3161,7 @@ type SaveKind = 'zip' | 'js' | 'nc';
 const SAVE_KEY = 'nucleus-workbench-save-format';
 const STEPS_KEY = 'nucleus-workbench-install-steps-seen';
 const saveKind = (): SaveKind => { try { const v = localStorage.getItem(SAVE_KEY); return v === 'js' || v === 'nc' ? v : 'zip'; } catch { return 'zip'; } };
-const SAVE_LABEL: Record<SaveKind, string> = { zip: 'For Nucleus Co-op (.zip)', js: 'The code only (.js)', nc: 'Package for the Hub (.nc)' };
+const SAVE_LABEL: Record<SaveKind, string> = { zip: 'For Nucleus Co-op (.zip)', js: 'The code only (.js)', nc: 'Hub-format package (.nc)' };
 function syncSaveButton() {
   const k = saveKind();
   $('#code-menu-open').setAttribute('aria-label', `Save the handler: ${SAVE_LABEL[k]}`);

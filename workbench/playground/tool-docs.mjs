@@ -63,7 +63,7 @@ function mapSection(c, page) {
   const { map, tourParts } = c.d;
   const text = page.map;
   const pin = (p) => `<a class="map-pin" href="#part-${p.id}" style="left:${map.parts[p.id].x}%;top:${map.parts[p.id].y}%" aria-label="${c.partNo[p.id]}: ${esc(p.title)}">${c.partNo[p.id]}</a>`;
-  const picture = (theme) => `<img class="th-${theme}" src="__UP__start/gallery/workbench-map-${theme}.webp" alt="${theme === 'light' ? esc(text.alt) : ''}"${theme === 'dark' ? ' aria-hidden="true"' : ''} width="${map.width}" height="${map.height}">`;
+  const picture = (theme) => `<img class="th-${theme}" src="__UP__start/gallery/workbench-map-${theme}.webp" alt="${esc(text.alt)}" width="${map.width}" height="${map.height}">`;
   if (map) c.used.add('workbench-map');
   const figure = map ? `<figure class="shot wb-map"><div class="map-scroll"><div class="map-frame">${picture('light')}${picture('dark')}${tourParts.parts.filter((p) => map.parts[p.id]).map(pin).join('')}</div></div>
 <figcaption>${esc(text.caption)}</figcaption></figure>\n` : '';
@@ -147,10 +147,14 @@ function portingSection(porting, heading) {
   if (from < 0) throw new Error(`tool docs: PORTING.md has no "${heading}" section any more; update tool-docs.mjs to match.`);
   const next = new RegExp(`^#{1,${heading.match(/^#+/)[0].length}} `);
   const out = [];
-  let fenced = false; // a "# comment" inside a code block is not a heading
+  // A "# comment" inside a code block is not a heading. A block opened by ``` or ~~~ ends at a line of the same
+  // marker, at least as long, with nothing after it.
+  let fence = '';
   for (const line of lines.slice(from + 1)) {
-    if (line.startsWith('```')) fenced = !fenced;
-    else if (!fenced && next.test(line)) break;
+    const mark = /^(`{3,}|~{3,})/.exec(line)?.[1];
+    if (mark && !fence) fence = mark;
+    else if (mark && mark[0] === fence[0] && mark.length >= fence.length && !line.slice(mark.length).trim()) fence = '';
+    else if (!fence && next.test(line)) break;
     out.push(line);
   }
   return out.join('\n').trim();

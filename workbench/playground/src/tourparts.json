@@ -27,7 +27,7 @@
     {
       "id": "check",
       "title": "Check",
-      "text": "Check lists what Nucleus would reject or get wrong, with the reason and a fix for each. It runs while you type. `F8` jumps to the next problem.",
+      "text": "Check lists what Nucleus would reject or get wrong, with the reason and a fix for each. It runs while you type. {key:nextProblem} jumps to the next problem.",
       "targets": [
         ".pane.side",
         ".pane-head [data-tab=problems]"
@@ -62,7 +62,7 @@
     {
       "id": "lines",
       "title": "Lines",
-      "text": "A list of every name a handler can use, beside the code. Click one to insert it. `Ctrl+B` opens and closes the list.",
+      "text": "A list of every name a handler can use, beside the code. Click one to insert it. {key:lines} opens and closes the list.",
       "targets": [
         "#lines-toggle",
         ".rail [data-rail=lines]"
@@ -83,7 +83,7 @@
     {
       "id": "save",
       "title": "Save",
-      "text": "Saves the handler for Nucleus as a .zip, .js or .nc file, or straight into Nucleus Co-op's handlers folder. `Ctrl+S` saves.",
+      "text": "Saves the handler for Nucleus as a .zip, .js or .nc file, or straight into Nucleus Co-op's handlers folder. {key:save} saves.",
       "targets": [
         "#save-more",
         ".rail [data-rail=save]",

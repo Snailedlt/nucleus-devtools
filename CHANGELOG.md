@@ -18,6 +18,7 @@ How to write it (people and AI agents read this; the release workflow publishes 
 ### ⚠️ Changed
 
 - **One home for the tools: nucleus-devtools.** This repository is now [Snailedlt/nucleus-devtools](https://github.com/Snailedlt/nucleus-devtools) (old links redirect), and the browser workbench moved into it: its address is now https://snailedlt.github.io/nucleus-devtools/, which every tool's links (Open in the Browser Workbench, the docs and check pages) now use. Reports from every tool, the workbench included, go to the same forms here.
+- **Package no longer points at the Hub.** While the tools are in beta they don't ask you to upload handlers. The command is now **Nucleus: Package Handler (.nc)**, in Notepad++ **Package as .nc…**, the "Upload on the Hub" button after packaging is gone, and the walkthrough's last step is *Package it*. A `.nc` is still the Hub's package format.
 
 ### ✨ New
 

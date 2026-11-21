@@ -143,7 +143,7 @@ const guideFixture = () => {
     compareHtml: '<tbody><tr><th scope="row">Feature</th></tr></tbody>', editors: { editors: [{ id: 'sample', name: 'Sample 2+', people: null, ai: 'Sample 2.1 <beta>', tile: { name: 'Sample', line: 'One line' } }] }, settingsTabs: ['Theme', 'Keys & more'],
   };
 };
-const PORTING = '# Porting\n\n### Settings\n\nSend `them`.\n\n```toml\n# not a heading\nkey = 1\n```\n\n## Wiring `ncdev lsp` into an editor\n\nAttach it to JavaScript.\n\n### Sample (LSP)\n\nSee [setup](docs/setup.md) or [above](#intro).\n\n### Notepad++\n\nPlugin internals.\n\n### Anything else\n\nAny client.\n\n## Debugging: `ncdev dap`\n\nDebug here.\n\n## How handler files are detected\n\nBy name.\n\n## What\'s VS Code only today, and how to get it elsewhere\n\n| VS Code | Elsewhere |\n|---|---|\n| Try it | `ncdev simulate` |\n\n## Not part of the docs\n\nNo.\n';
+const PORTING = '# Porting\n\n### Settings\n\nSend `them`.\n\n```toml\n# not a heading\nkey = 1\n```\n\n~~~sh\n# nor this\n```\n## still code\n~~~\n\n## Wiring `ncdev lsp` into an editor\n\nAttach it to JavaScript.\n\n### Sample (LSP)\n\nSee [setup](docs/setup.md) or [above](#intro).\n\n### Notepad++\n\nPlugin internals.\n\n### Anything else\n\nAny client.\n\n## Debugging: `ncdev dap`\n\nDebug here.\n\n## How handler files are detected\n\nBy name.\n\n## What\'s VS Code only today, and how to get it elsewhere\n\n| VS Code | Elsewhere |\n|---|---|\n| Try it | `ncdev simulate` |\n\n## Not part of the docs\n\nNo.\n';
 const fixtureSources = () => ({
   help: 'Commands:\n  run <file>'.padEnd('Commands:\n'.length + 30) + 'Read `<file>` & **check** it\n\nExit code: 1 on errors;\n2 on bad usage.\n',
   pkg: { engines: { vscode: '^1.85.0' }, contributes: {
@@ -191,7 +191,7 @@ test('tool docs: the pages are a setup page and a reference page per tool, the w
   // The language server's reference is PORTING.md's own sections; a "# comment" in a code block doesn't end one.
   const lsp = bySlug['tools/lsp'];
   assert.match(lsp.intro, /^<p class="lead">What lsp is\.<\/p>/);
-  assert.match(lsp.md, /^## Settings\n\nSend `them`\.\n\n```toml\n# not a heading\nkey = 1\n```\n\n## Handler detection\n\nBy name\.\n\n## Commands in place of VS Code's panels\n\n\| VS Code \| Elsewhere \|/);
+  assert.match(lsp.md, /^## Settings\n\nSend `them`\.\n\n```toml\n# not a heading\nkey = 1\n```\n\n~~~sh\n# nor this\n```\n## still code\n~~~\n\n## Handler detection\n\nBy name\.\n\n## Commands in place of VS Code's panels\n\n\| VS Code \| Elsewhere \|/);
   assert.doesNotMatch(lsp.md, /Not part of the docs|Sample \(LSP\)/);
   assert.match(lsp.outro, /<h2 id="related">Related<\/h2>/);
   assert.equal(lsp.mdHref('docs/setup.md'), 'https://example.test/owner/repo/blob/main/docs/setup.md');
@@ -258,6 +258,8 @@ test('tool docs: written sections are laid out from data: a diagram, steps, a co
   const c = { repo: 'https://example.test/r', keyOf: () => 'F8', guideHref: (id) => `__UP__docs/guide/${id}/` };
   assert.equal(rich('[a]({repo}/x?y=1&z=2) and [b](@guide:check#keys), {key:any}, `F8`, `=`', c), '<a href="https://example.test/r/x?y=1&z=2">a</a> and <a href="__UP__docs/guide/check/#keys">b</a>, <kbd>F8</kbd>, <kbd>F8</kbd>, <code class="use">=</code>');
   assert.equal(blocks('One.\n\n- a\n- b\n\n```\nx < y\n```', c), '<p>One.</p>\n<ul class="dlist"><li>a</li><li>b</li></ul>\n<pre class="cfg"><code>x &lt; y</code></pre>');
+  // A fence closes on a line of its own: ``` inside a line of code doesn't end the block.
+  assert.equal(blocks('```js\nvar marker = "```";\nvar b = 1;\n```\n\nAfter.', c), '<pre class="cfg" data-lang="js"><code>var marker = &quot;```&quot;;\nvar b = 1;</code></pre>\n<p>After.</p>');
 });
 
 test('tool docs: a key, page, link, picture or section that does not exist stops the build', () => {
@@ -336,7 +338,9 @@ test('tool docs: a page says a thing once and links sparingly', () => {
     if (p.slug.startsWith('tools/workbench')) assert.doesNotMatch(html, /<h2 id="keys">/, `${p.slug}: its keys are written where they're used, and listed on the shortcuts page`);
     assert.doesNotMatch(html, /class="guide-nav"|class="small more"/, `${p.slug}: no previous/next or "Next:" line`);
   }
-  // Until the full release the docs don't tell people to upload to the Hub (AGENTS.md).
+  // Until the full release neither the docs nor the tools tell people to upload to the Hub (AGENTS.md).
+  for (const f of ['package.json', 'media/walkthrough/share.md', 'src/commands.ts', 'src/lsp.ts', 'npp-plugin/src/NcDev.cpp', 'README.md', 'PORTING.md', 'workbench/playground/src/tips.ts', 'workbench/playground/src/app.ts', 'data/tools-compare.json'])
+    assert.doesNotMatch(read(f), /upload[^.\n]{0,40}(the Hub|hub\.splitscreen\.me|\$\{HUB\})|for the Hub \(\.nc\)|\(for the Hub\)/i, `${f}: a call to upload to the Hub`);
   for (const p of pages) assert.doesNotMatch((p.intro ?? '') + (p.html ?? '') + (p.outro ?? ''), /upload[^.<]*\bHub\b|\bHub\b[^.<]*upload|hub\.splitscreen\.me"/i, `${p.slug}: a Hub upload step`);
   // Shortcuts are tabulated on one page.
   const tables = pages.filter((p) => /<th>Action<\/th><th>Keys<\/th>/.test(p.html ?? ''));
@@ -371,7 +375,8 @@ test('tool docs: the real pages build, link only to pages that exist, and their 
       if (to.startsWith('docs/tools/') && to !== 'docs/tools/') assert.ok(slugs.has(to.slice(5, -1)), `${p.slug}: links to ${to}, which is not a page`);
       else if (!to.startsWith('start/')) assert.ok(site.has(to), `${p.slug}: links to ${to}, which is not a page of the site`);
     }
-    for (const m of html.matchAll(/<img class="th-light"[^>]* alt="([^"]*)"/g)) assert.ok(m[1].length > 8, `${p.slug}: a picture without a description`);
+    // Both themes' pictures carry the description: only the shown one is read out, and in dark mode that's the dark one.
+    for (const m of html.matchAll(/<img class="th-(?:light|dark)"[^>]*>/g)) assert.ok(/ alt="[^"]{9,}"/.test(m[0]) && !/aria-hidden/.test(m[0]), `${p.slug}: a picture without a description (${m[0].slice(0, 80)})`);
   }
   for (const p of GUIDE.guide.pages.slice(1)) assert.ok(p.intro?.length > 40, `workbench page ${p.id}: what the part is`);
   for (const n of media) for (const t of ['light', 'dark']) assert.ok(GUIDE.galleryDirs.some((dir) => fs.existsSync(path.join(dir, `${n}-${t}.webp`))), `${n}-${t}.webp is in a gallery folder`);

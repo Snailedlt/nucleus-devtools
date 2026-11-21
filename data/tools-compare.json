@@ -21,7 +21,7 @@
     { "feature": "Lines (every name, one click to insert)", "cells": ["no", "no", "yes", "no"] },
     { "feature": "Checks against the game's folder", "cells": ["yes", "yes", "yes", "yes"] },
     { "feature": "Browse and open Hub handlers", "cells": ["yes", "yes", "yes", ": `ncdev hub`"] },
-    { "feature": "Package as .nc for the Hub", "cells": ["yes", "yes", "yes", "yes: command"] },
+    { "feature": "Package as .nc", "cells": ["yes", "yes", "yes", "yes: command"] },
     { "feature": "Install into Nucleus Co-op", "cells": ["yes", "yes", "yes: Chrome, Edge", "yes: command"] },
     { "feature": "Test in Nucleus Co-op (starts it)", "cells": ["yes", "yes", "no: a browser can't", "yes: command"] },
     { "feature": "AI help", "cells": ["yes: its agents get the tools", "no", "yes: Fix with AI", ": `ncdev mcp` for agents"] },

@@ -1,6 +1,6 @@
 // The package files next to a handler on disk, for the package checks (core/pkgcheck.ts): `<dir>/<Name>.js` and its
 // folder `<dir>/<Name>/` (Nucleus' Game.Folder), named as they go into the .nc (`<Name>/<path>`, the same as
-// Package Handler for the Hub). Shared by the extension, the CLI and `nucleus lsp`. Node only.
+// Package Handler). Shared by the extension, the CLI and `nucleus lsp`. Node only.
 import fs from 'node:fs';
 import path from 'node:path';
 import type { PackageFile } from './core/pkgcheck';

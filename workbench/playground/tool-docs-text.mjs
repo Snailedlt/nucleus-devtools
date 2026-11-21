@@ -48,7 +48,8 @@ export function rich(t, c) {
 }
 
 /** Written text of more than a line: paragraphs, "- " lists, "1. " steps, and ``` fences (a code block, coloured by
- *  the site's page pass when the fence names a language it knows). */
+ *  the site's page pass when the fence names a language it knows). A fence opens and closes on a line of its own, so
+ *  ``` inside a line of code stays code. */
 export function blocks(text, c) {
   const paragraphs = (part) => part.split(/\n{2,}/).filter((b) => b.trim()).map((b) => {
     const out = [];
@@ -69,7 +70,7 @@ export function blocks(text, c) {
     return out.join('\n');
   });
   // text, a fence's language, its code, text, …
-  return text.split(/```(\w*)\n([\s\S]*?)```/g).flatMap((part, i, all) => {
+  return text.split(/^```(\w*)\n([\s\S]*?)^```[ \t]*$/gm).flatMap((part, i, all) => {
     if (i % 3 === 1) return [];
     if (i % 3 === 2) return [`<pre class="cfg"${all[i - 1] ? ` data-lang="${all[i - 1]}"` : ''}><code>${esc(part.replace(/\n$/, ''))}</code></pre>`];
     return paragraphs(part);

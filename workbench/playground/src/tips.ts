@@ -114,7 +114,7 @@ const BEST = T('Best practice', [
   { id: 'b-utf8', text: 'Save handlers as UTF-8: Nucleus reads them that way, so accented letters in an ANSI file arrive broken.' },
   { id: 'b-gamename', text: 'Keep `Game.GameName` unique and free of `\\`: the Hub install names the handler’s file and folder after it, so two handlers with the same name overwrite each other.' },
   { id: 'b-plugins', text: 'A handler can bring .NET plugins: list them in `pluginsInfo.txt` in its folder (`#Name#MyLib.dll#MyLib.MyClass`) and Nucleus adds `Name` as a global.' },
-  { id: 'b-test-before-upload', text: 'Before uploading: Check with no errors, Test all combinations in Try it, then one real run in Nucleus with two players. Windows, focus and input only show there.' },
+  { id: 'b-test-before-upload', text: 'Before you share a handler: Check with no errors, Test all combinations in Try it, then one real run in Nucleus with two players. Windows, focus and input only show there.' },
 ]);
 
 const PITFALLS = T('Pitfall', [

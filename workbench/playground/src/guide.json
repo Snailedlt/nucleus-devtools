@@ -100,8 +100,8 @@
         { "h": "The Files panel", "md": "**Files**, above the code, shows the whole package the way Nucleus installs it: each file, where it goes and what's in it. Text files open in tabs, new files can be dropped onto the panel, and saving puts them back into the package.\n\nOpening a `.zip`, a `.nc`, or a Hub handler marked \"+ N files\" brings its files along. The big files of a Hub handler aren't downloaded. They show a Hub badge and are left out of Save, which says so." },
         { "h": "Your game on this PC", "md": "Under Files. Point it at the folder the game is installed in, and Check compares the handler's executable and file lists with the files that are there. The browser only reads the folder. Nothing is uploaded." },
         { "h": "Saving", "cols": ["Command", "What it does"], "rows": [
-          ["**Save**, {key:save}", "Downloads a `.zip` with the handler and its files. That's the one to install yourself."],
-          ["The arrow beside Save, {key:saveAs}", "Saves a `.js` or a `.nc` instead. A `.nc` holds the same as the `.zip`, in the Hub's package format."],
+          ["**Save**, {key:save}", "Downloads the handler in the format that was picked last. To begin with that's a `.zip` with the handler and its files, which is the one to install yourself."],
+          ["The arrow beside Save, {key:saveAs}", "Picks the format: `.zip`, `.js` (the code only, without its files) or `.nc`. Save keeps using it until another is picked. A `.nc` holds the same as the `.zip`, in the Hub's package format."],
           ["**Into Nucleus Co-op**", "Writes the handler into Nucleus' handlers folder, which you choose once. Firefox and Safari don't allow that, so there it's a `.zip` to drag onto Nucleus."],
           ["**How to install it in Nucleus**", "The steps for installing by hand."]
         ], "md": "Save always makes a new download and never changes the file that was opened. Only **Into Nucleus Co-op** writes into a folder on the disk." },

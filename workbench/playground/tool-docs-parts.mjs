@@ -6,9 +6,10 @@ import { esc, keys, table, rich, blocks, slug } from './tool-docs-text.mjs';
 /** The most links a page's Related list may have: more than that and it is a second table of contents. */
 export const RELATED_MAX = 3;
 
-/** A screenshot in the page's theme: the light and the dark one, the right one shown by CSS (.th-light / .th-dark). */
+/** A screenshot in the page's theme: the light and the dark one, the right one shown by CSS (.th-light / .th-dark).
+ *  Both carry the description: the one that isn't shown is display:none, so only the visible one is read out. */
 function shot(name, caption, alt, [w, h] = [1920, 1200]) {
-  const img = (t) => `<img class="th-${t}" src="__UP__start/gallery/${name}-${t}.webp" alt="${t === 'light' ? esc(alt) : ''}" width="${w}" height="${h}" loading="lazy" decoding="async"${t === 'dark' ? ' aria-hidden="true"' : ''}>`;
+  const img = (t) => `<img class="th-${t}" src="__UP__start/gallery/${name}-${t}.webp" alt="${esc(alt)}" width="${w}" height="${h}" loading="lazy" decoding="async">`;
   return `<figure class="shot${h > w ? ' tall' : ''}">${img('light')}${img('dark')}<figcaption>${esc(caption)}</figcaption></figure>`;
 }
 
