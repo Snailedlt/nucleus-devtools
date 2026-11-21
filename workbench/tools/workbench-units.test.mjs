@@ -659,6 +659,9 @@ test('shortcuts as keys: plain sentences and backticked keys', async () => {
   const T = await load('playground/src/codetext.ts');
   assert.equal(T.looksLikeCodeText('Ctrl+.'), false, 'a shortcut in backticks is keys, not coloured code');
   assert.equal(T.looksLikeCodeText('Game.Play'), true);
+  // File names and command lines aren't handler code, so they stay plain: no member colours on ".toml", no operator on "++".
+  for (const plain of ['languages.toml', 'settings.json', 'ncdev.exe', '*.js', '.js', 'SHA256SUMS.txt', 'init.lua', 'ncdev setup notepad++', 'node /path/to/nucleus.js lsp', 'npm run build']) assert.equal(T.looksLikeCodeText(plain), false, plain);
+  for (const code of ['Context.GetFolder(Nucleus.Folder.InstancedGameFolder)', 'Game.SymlinkGame = true;', '"-windowed"', 'System.IO.File.Copy', 'x.length']) assert.equal(T.looksLikeCodeText(code), true, code);
 });
 
 test('doc votes: live counts keep the snapshot on a counter error, and keep the vote they were read with', async () => {

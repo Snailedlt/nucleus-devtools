@@ -12,13 +12,15 @@ const { chromium, devices } = require('playwright');
 const args = process.argv.slice(2);
 const onlyAt = args.indexOf('--only');
 // --only <names>: just these (comma-separated). Gallery: check, suggestions, try-it, debugger, test-all,
-// looks, fix-all, phone. Release notes: lines, whats-new.
+// looks, fix-all, phone. The docs' guide: map. Release notes: lines, whats-new, guide.
 const ONLY = onlyAt >= 0 ? args[onlyAt + 1].split(',') : null;
 const want = (name) => !ONLY || ONLY.includes(name);
 const BASE = args.find((a, i) => !a.startsWith('--') && (onlyAt < 0 || i !== onlyAt + 1)) || 'http://127.0.0.1:8765/';
 const IMG = path.join(__dirname, '..', 'docs', 'images');
 const GALLERY = path.join(IMG, 'gallery');
 const CH = path.join(IMG, 'changelog');
+// The docs' guide pictures (docs/tools/workbench/…): the labelled screenshot and its positions.
+const GUIDE = path.join(IMG, 'guide');
 // A gallery picture: a 960×600 window at 2× (1920×1200), saved as WebP.
 const GAL = { viewport: { width: 960, height: 600 }, deviceScaleFactor: 2 };
 async function gallery(p, name, theme) {
@@ -137,6 +139,34 @@ const box = (p, sel) => p.$eval(sel, (e) => { const r = e.getBoundingClientRect(
       await ctx.close();
     }
 
+    // The docs' labelled screenshot (docs/tools/workbench/): the workbench as it opens, with the template handler, and
+    // where each part the tour points at is (playground/src/tourparts.json), as a share of the picture. The page
+    // draws the numbers.
+    if (want('map')) {
+    ({ ctx, p } = await open(b, t, GAL));
+    await p.mouse.move(2, 590);
+    const parts = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'playground', 'src', 'tourparts.json'), 'utf8')).parts;
+    const at = await p.evaluate((list) => {
+      const out = {};
+      for (const part of list) {
+        const el = [part.mark, ...part.targets].filter(Boolean).map((sel) => document.querySelector(sel)).find((e) => e && e.getClientRects().length && e.getBoundingClientRect().width > 0);
+        if (!el) continue;
+        const r = el.getBoundingClientRect();
+        // A big part (the code) gets its number in the middle; a button gets it just under, so its label stays readable.
+        const big = r.width > 220 && r.height > 120;
+        out[part.id] = { x: +(((r.x + r.width / 2) / innerWidth) * 100).toFixed(2), y: +(((big ? r.y + r.height / 2 : r.bottom + 9) / innerHeight) * 100).toFixed(2) };
+      }
+      return out;
+    }, parts);
+    const tmp = path.join(os.tmpdir(), `wb-map-${t}.png`);
+    await p.screenshot({ path: tmp });
+    fs.mkdirSync(GUIDE, { recursive: true });
+    execFileSync('python3', ['-I', '-c', 'import sys\nfrom PIL import Image\nImage.open(sys.argv[1]).convert("RGB").save(sys.argv[2], "WEBP", quality=82, method=6)', tmp, path.join(GUIDE, `workbench-map-${t}.webp`)]);
+    fs.rmSync(tmp, { force: true });
+    if (t === 'light') fs.writeFileSync(path.join(GUIDE, 'workbench-map.json'), JSON.stringify({ width: GAL.viewport.width * GAL.deviceScaleFactor, height: GAL.viewport.height * GAL.deviceScaleFactor, parts: at }, null, 2) + '\n');
+    await ctx.close();
+    }
+
     // Fix all on the example with common mistakes (README).
     if (want('fix-all')) {
     ({ ctx, p } = await open(b, t, GAL, 'example-mistakes'));
@@ -165,6 +195,19 @@ const box = (p, sel) => p.$eval(sel, (e) => { const r = e.getBoundingClientRect(
     await p.click('#news-open-2');
     await p.waitForTimeout(500);
     await p.screenshot({ path: path.join(CH, `whats-new-${t}.png`), clip: await box(p, '#news-dialog') });
+    await ctx.close();
+    }
+
+    // Changelog: the guide's labelled screenshot with its numbers and their lines, as the docs page shows it.
+    if (want('guide')) {
+    ctx = await b.newContext({ colorScheme: t, viewport: { width: 1180, height: 900 }, deviceScaleFactor: 1 });
+    p = await ctx.newPage();
+    await p.goto(BASE + 'docs/tools/workbench/');
+    await p.waitForSelector('.map-pin');
+    await p.waitForTimeout(500);
+    const top = await box(p, '.wb-map');
+    const list = await box(p, '.map-legend');
+    await p.screenshot({ path: path.join(CH, `2026-11-21-guide-${t}.png`), fullPage: true, clip: { x: top.x - 8, y: top.y - 8, width: top.width + 16, height: list.y + list.height - top.y + 16 } });
     await ctx.close();
     }
 

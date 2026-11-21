@@ -130,7 +130,7 @@ Handlers get .NET access through Jint (`System.IO`, `System.Diagnostics`, …), 
 
 You can open handler `.js`, `.zip` or `.nc` files by picking them or dropping them on the page. Linting runs in a Web Worker so typing stays smooth in long handlers, and on phones a Handler / Results switch shows one pane at a time.
 
-Everything is reachable from the keyboard: **?** lists the shortcuts in the workbench, each can be changed in Settings, and [Tools › Workbench](https://snailedlt.github.io/nucleus-devtools/docs/tools/workbench/) lists the defaults.
+Everything is reachable from the keyboard: **?** lists the shortcuts in the workbench, each can be changed in Settings, and [Tools › Workbench › Shortcuts](https://snailedlt.github.io/nucleus-devtools/docs/tools/workbench/shortcuts/) lists the defaults. The same section is a [guide to the workbench](https://snailedlt.github.io/nucleus-devtools/docs/tools/workbench/): where things are and how each part works.
 
 **Theme and dev bar.** The page uses splitscreen.me's theme (brand blue, system fonts, light and dark). A dev bar sets the colour mode and checks the WCAG contrast of the theme's text colours. Open it with Ctrl+Alt+D (remembered), a `#dev` link (this page load only), or "Show or hide the dev bar" under Examples… (Ctrl K).
 

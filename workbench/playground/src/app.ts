@@ -18,7 +18,7 @@ import 'codemirror/addon/edit/matchbrackets';
 import 'codemirror/addon/edit/closebrackets';
 import { semanticMarks } from './semmarks';
 import { codeHandlers, fixedCodeKeys, foldRange, keysByPosition, lineCommentFold, selectReferences, vscodeMouse } from './keys';
-import { ACTIONS, appActionFor, codeKeyMap, keyLabel, labelOf, binding, onBindingsChange, stepOf, type Group } from './keybindings';
+import { ACTIONS, appActionFor, codeKeyMap, keyLabel, labelOf, noKeyText, binding, onBindingsChange, stepOf, type Group } from './keybindings';
 import { lint, Diagnostic, RULES, lineOf, pluginGlobals, type TextEdit } from '@core/lint';
 import { api, ownerLabel, Resolved, type Member } from '@core/api';
 import { resolveAt } from '@core/complete';
@@ -71,7 +71,8 @@ import { initWakaTime } from './wakatime';
 import { mountDebugger } from './debugui';
 import { hlCode, hlHtml, modeFor } from './codehl';
 import { $, esc, md, narrow, onNarrowChange } from './dom';
-import { initTour } from './tour';
+import { initTour, type TourStep } from './tour';
+import TOUR_PARTS from './tourparts.json';
 import { initDocs, linkApiNames, wireApiLinkClicks } from './docs-ui';
 import { initTryIt } from './tryit-ui';
 import { initFixes } from './aifix-ui';
@@ -1953,11 +1954,14 @@ const click = (sel: string) => () => ($(sel) as HTMLElement).click();
 function commandList(): OpenEntry[] {
   const c = (title: string, keys: string, keywords: string, run: () => void, sub?: string): OpenEntry => ({ group: 'Actions', title, keys, keywords, run, sub, icon: OI.command });
   const list: OpenEntry[] = [
-    c('Format document', labelOf('format'), 'format indent pretty beautify prettier whitespace tidy', formatDocument, 'Indentation and spacing only: no line moves, no code changes'),
+    c('Format document', labelOf('format'), 'format indent pretty beautify prettier whitespace tidy', formatDocument, 'Indentation, spacing, double quotes and semicolons. No line moves'),
     c('Explain this line', labelOf('explainLine'), 'explain line what does this do help understand', () => setTimeout(() => (editor.focus(), explainAtCursor()), 0), 'What the line at the cursor does, in plain words'),
     c('Fix problems automatically', '', 'fix all repair autofix', click('#fix-all'), 'Every safe automatic fix, with a before/after to review'),
     c('Try it: simulate the handler', labelOf('tryIt'), 'run play simulate try', () => selectTab('simulate')),
     c('Go to line', labelOf('goToLine'), 'go to line number jump column', () => setTimeout(() => showOpen('line'), 0)),
+    c('Next open handler', labelOf('nextHandler'), 'next handler tab switch', () => stepHandler(1)),
+    c('Previous open handler', labelOf('prevHandler'), 'previous handler tab switch', () => stepHandler(-1)),
+    c('Close this handler', labelOf('closeHandler'), 'close handler tab', () => closeTab(activeTab)),
     c('Find', labelOf('find'), 'find search', () => openFind(editor)),
     c('Find and replace', labelOf('replace'), 'replace find search', () => openFind(editor, true)),
     c('Test all combinations', labelOf('testAll'), 'matrix players monitors keyboards test all', () => { selectTab('simulate'); click('#sim-all')(); }),
@@ -2024,7 +2028,7 @@ function setThemeMode(m: 'light' | 'dark' | 'auto') {
   applyTheme();
 }
 
-/** Format document: indentation and spacing (core/format.ts guarantees the tokens don't change). */
+/** Format document: indentation, spacing, double quotes and missing semicolons (core/format.ts guarantees no line moves and the program stays the same). */
 function formatDocument() {
   use('format');
   const text = editor.getValue();
@@ -2037,7 +2041,7 @@ function formatDocument() {
   d.replaceRange(r.code, d.posFromIndex(0), d.posFromIndex(text.length), '+format');
   editor.setCursor({ line: Math.min(cur.line, editor.lineCount() - 1), ch: cur.ch });
   editor.scrollTo(null, top);
-  codeNote(editor, editor.getCursor().line, 'Formatted: indentation and spacing.', { action: undoAction });
+  codeNote(editor, editor.getCursor().line, 'Formatted: indentation, spacing, quotes and semicolons.', { action: undoAction });
 }
 
 const hubLint = new Map<number, string>();
@@ -2481,6 +2485,9 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
   // The workbench's shortcuts (keybindings.ts), whatever they're set to.
   const id = appActionFor(e);
   if (!id) return;
+  // The handler tabs' keys give way to whatever already used the key where the focus is (Find's Alt+W for whole
+  // word, a command of the editor's bound to the same keys).
+  if ((id === 'nextHandler' || id === 'prevHandler' || id === 'closeHandler') && e.defaultPrevented) return;
   // F6 bound to an editor command too (Settings › Keyboard): the editor already ran it, so don't also move pane.
   if ((id === 'nextPane' || id === 'prevPane') && inCode && e.defaultPrevented) return;
   e.preventDefault();
@@ -2502,9 +2509,17 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
     nextPane: () => cyclePane(1),
     prevPane: () => cyclePane(-1),
     goToCheck: () => goToCheck(),
+    nextHandler: () => stepHandler(1),
+    prevHandler: () => stepHandler(-1),
+    closeHandler: () => closeTab(activeTab),
   };
   run[id]?.();
 });
+/** The next (or previous) open handler's tab, round the ends. */
+function stepHandler(dir: 1 | -1) {
+  const i = tabs.findIndex((x) => x.id === activeTab);
+  switchTab(tabs[(i + dir + tabs.length) % tabs.length].id);
+}
 
 // F6 / Shift+F6, as in VS Code: the header, the Files panel, the code, Lines and the results, in turn.
 const FOCUSABLE = 'button:not([disabled]), a[href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])';
@@ -2733,17 +2748,6 @@ document.querySelectorAll<HTMLElement>('.rail [data-rail]').forEach((b) => b.add
     rs.addEventListener('click', (e) => { if (press === -1) { e.stopImmediatePropagation(); e.preventDefault(); press = 0; } }, true);
   }
 }
-// Ctrl+Shift+[ and ] go to the previous / next open handler; Alt+W closes the open one.
-document.addEventListener('keydown', (e) => {
-  if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.code === 'BracketLeft' || e.code === 'BracketRight')) {
-    e.preventDefault();
-    const i = tabs.findIndex((x) => x.id === activeTab);
-    switchTab(tabs[(i + (e.code === 'BracketRight' ? 1 : -1) + tabs.length) % tabs.length].id);
-  } else if (e.altKey && !e.ctrlKey && e.code === 'KeyW') {
-    e.preventDefault();
-    closeTab(activeTab);
-  }
-});
 
 // The common shortcuts, on hover or keyboard focus of the buttons they belong to (both modes).
 initKeyHints([
@@ -3022,32 +3026,32 @@ const tourToggle = (isOn: () => boolean, flip: () => void) => {
   return { start: () => { was = isOn(); }, undo: () => { if (isOn() !== was) flip(); } };
 };
 const filesOn = () => !$('#files-panel').hidden;
+/** What clicking each tour part does (tourparts.json has the words). The arrow (Save as), not Save itself: the tour
+ *  never downloads a file; where there's no arrow (the side rail, a phone), that step is look-only. */
+const TOUR_ACTS: Record<string, TourStep['act']> = {
+  handlers: { text: 'Click + to see what you can open.', click: '#tab-add, .rail [data-rail=add], #doc-switch', show: '.app-menu', undo: () => closeMenu() },
+  tryit: { text: 'Click Try it to run the handler.', click: '.pane-head [data-tab=simulate]', show: '.pane.side' },
+  docs: { text: 'Click Docs to open it.', click: '.pane-head [data-tab=api]', show: '.pane.side' },
+  lines: { text: 'Click Lines to open it.', click: '#lines-toggle, .rail [data-rail=lines]', key: (e) => stepOf(e) === binding('lines'), run: () => lines.toggle(), show: '#lines', ...tourToggle(() => lines.isOpen(), () => lines.toggle()) },
+  files: { text: 'Click Files to open it.', click: '#files-toggle', show: '#files-panel', ...tourToggle(filesOn, () => ($('#files-toggle') as HTMLButtonElement).click()) },
+  save: { text: 'Click the arrow to see the ways to save.', click: '#save-more', show: '.app-menu', undo: () => closeMenu() },
+  menu: { text: 'Click the menu to open it.', click: '#app-menu-open, .rail [data-rail=menu]', show: '.app-menu', undo: () => closeMenu() },
+};
 const tour = initTour({
   narrow,
   getView: () => ($('#main').dataset.view === 'code' ? 'code' : 'results'),
   setView,
   getTab: visibleTab,
   selectTab,
+  // Shortcuts named in a step's text ({key:…}) show as they are bound when the step comes up; an action whose
+  // shortcut was cleared is named instead, as in the tips.
+  keyText: (id) => { const keys = labelOf(id); return keys ? '`' + keys + '`' : noKeyText(id); },
   // Finishing the tour ticks its task in Help test this beta.
   finished: () => { if (BETA && !testDone('tour')) setTestDone('tour', true); },
+  // Title, text and where each step points come from tourparts.json (the docs' labelled screenshot uses the same
+  // list); here, what a step's part does when it's clicked. A step without an entry is a "look" step.
   steps: [
-    { title: 'Your handlers', text: 'Each open handler has a tab. The + starts a new one or opens yours: a file, an example or a Hub handler.', targets: ['.htabs-wrap', '.rail [data-rail=add]', '#doc-switch'], view: 'code',
-      act: { text: 'Click + to see what you can open.', click: '#tab-add, .rail [data-rail=add], #doc-switch', show: '.app-menu', undo: () => closeMenu() } },
-    // Always on screen: look steps.
-    { title: 'The code', text: `Write the handler here. Squiggles mark problems; hover a name for its docs. \`${labelOf('suggest')}\` suggests names, \`Alt+Enter\` fixes.`, targets: ['#editor'], view: 'code' },
-    { title: 'Check', text: 'What Nucleus would reject or get wrong, each with why and a fix. It checks as you type. `F8` jumps to the next problem.', targets: ['.pane.side', '.pane-head [data-tab=problems]'], view: 'results', tab: 'problems' },
-    { title: 'Try it', text: 'Runs the handler once per player, as Nucleus would, and shows what each one gets.', targets: ['.pane-head [data-tab=simulate]'], view: 'results', tab: 'simulate', act: { text: 'Click Try it to run the handler.', click: '.pane-head [data-tab=simulate]', show: '.pane.side' } },
-    { title: 'Docs', text: 'Every option and function a handler can use, searchable. Insert into handler puts an example in your code.', targets: ['.pane-head [data-tab=api]'], view: 'results', tab: 'api', act: { text: 'Click Docs to open it.', click: '.pane-head [data-tab=api]', show: '.pane.side' } },
-    { title: 'Lines', text: 'Every name a handler can use, in a list beside the code. Click one to insert it. `Ctrl+B` opens and closes it.', targets: ['#lines-toggle', '.rail [data-rail=lines]'], view: 'code',
-      act: { text: 'Click Lines to open it.', click: '#lines-toggle, .rail [data-rail=lines]', key: (e) => stepOf(e) === binding('lines'), run: () => lines.toggle(), show: '#lines', ...tourToggle(() => lines.isOpen(), () => lines.toggle()) } },
-    { title: 'Files', text: "The files that go with the handler. Your game on this PC links the game's folder, so Check compares paths with the real files.", targets: ['#files-toggle'], view: 'code',
-      act: { text: 'Click Files to open it.', click: '#files-toggle', show: '#files-panel', ...tourToggle(filesOn, () => ($('#files-toggle') as HTMLButtonElement).click()) } },
-    // The arrow (Save as), not Save itself: the tour never downloads a file. Where there's no arrow (the side rail,
-    // a phone), a look-only step.
-    { title: 'Save', text: "Saves the handler for Nucleus: as a .zip, .js or .nc file, or straight into Nucleus Co-op's handlers folder. `Ctrl+S` saves.", targets: ['#save-more', '.rail [data-rail=save]', '#code-menu-phone'], view: 'code',
-      act: { text: 'Click the arrow to see the ways to save.', click: '#save-more', show: '.app-menu', undo: () => closeMenu() } },
-    { title: 'Settings and help', text: "Settings, Advanced mode, keyboard shortcuts and What's new. Take the tour is here too, to see this again.", targets: ['#app-menu-open', '.rail [data-rail=menu]'],
-      act: { text: 'Click the menu to open it.', click: '#app-menu-open, .rail [data-rail=menu]', show: '.app-menu', undo: () => closeMenu() } },
+    ...TOUR_PARTS.parts.map((p): TourStep => ({ title: p.title, text: p.text, targets: p.targets, view: p.view as TourStep['view'], tab: p.tab, act: TOUR_ACTS[p.id] })),
     // During the beta: how to help, and the guide one click away (its "Take the tour" task is ticked by Finish).
     ...(BETA ? [{ title: 'Help test the beta', text: "Try new things and tell us what works and what doesn't. The guide picks tasks that fit you, each with a Report button; a tick marks what you've tried.", targets: ['.rail [data-rail=test]', '#test-open'],
       act: { text: 'Click Help test this beta to open the guide.', click: '.rail [data-rail=test], #test-open', end: true },
@@ -3160,7 +3164,7 @@ type SaveKind = 'zip' | 'js' | 'nc';
 const SAVE_KEY = 'nucleus-workbench-save-format';
 const STEPS_KEY = 'nucleus-workbench-install-steps-seen';
 const saveKind = (): SaveKind => { try { const v = localStorage.getItem(SAVE_KEY); return v === 'js' || v === 'nc' ? v : 'zip'; } catch { return 'zip'; } };
-const SAVE_LABEL: Record<SaveKind, string> = { zip: 'For Nucleus Co-op (.zip)', js: 'The code only (.js)', nc: 'Package for the Hub (.nc)' };
+const SAVE_LABEL: Record<SaveKind, string> = { zip: 'For Nucleus Co-op (.zip)', js: 'The code only (.js)', nc: 'Hub-format package (.nc)' };
 function syncSaveButton() {
   const k = saveKind();
   $('#code-menu-open').setAttribute('aria-label', `Save the handler: ${SAVE_LABEL[k]}`);

@@ -59,6 +59,9 @@ export function keyLabel(keys: string): string {
   return isMac ? keys.replace(/Cmd\+/g, '⌘').replace(/Alt\+/g, '⌥').replace(/Shift\+/g, '⇧').replace(/Ctrl\+/g, '⌃') : keys;
 }
 export const labelOf = (id: string) => keyLabel(binding(id));
+/** What text says in place of a shortcut's keys when the action has none (its shortcut was cleared): the action
+ *  by name, so the sentence still reads. Tips and the tour use it. */
+export const noKeyText = (id: string) => `"${ACTIONS.find((a) => a.id === id)?.label ?? id}" (no key set)`;
 
 // ---------------------------------------------------------------------------
 // Keys from events, and matching
