@@ -33,11 +33,12 @@ npm run typecheck   # tsc --noEmit
 npm run package     # .vsix
 npm run standalone  # dist-sea/: NcDev.dll (Notepad++ plugin, needs MinGW) + ncdev.exe / ncdev-linux-x64 (Node SEA); then node scripts/smoke-standalone.mjs
 npm run check-links # every AI docs source link works (network; CI and the Sync workflow run it)
+node scripts/readme-blocks.mjs   # rewrite README.md's generated blocks (--check: are they current? a test runs it)
 npm run generate    # regenerate data/nucleus-api.json + types/nucleus.d.ts (needs ../splitscreenme-nucleus and ../splitscreenme-www clones; the Sync workflow does this daily by PR)
 claude plugin validate .   # validate .claude-plugin/marketplace.json and the plugin
 ```
 
-Run `npm test` and `npm run typecheck` before finishing. Run `npm run build` after changing anything under `src/` and commit the regenerated `plugin/skills/nucleus-handler/reference/api.md` (CI checks it). The skill's bundle, `scripts/nucleus.js` (2.6 MB), is committed **only in the release commit** (run `npm run build` there and commit it; the Release workflow refuses a stale one). Every other commit leaves it as it is (`git checkout -- plugin/skills/nucleus-handler/scripts/nucleus.js`), so the history doesn't grow by a bundle per change. Plugin users get the released bundle from `main`.
+Run `npm test` and `npm run typecheck` before finishing. Run `npm run build` after changing anything under `src/` and commit the regenerated `plugin/skills/nucleus-handler/reference/api.md` (CI checks it). The skill's bundle, `scripts/nucleus.js` (several MB), is committed **only in the release commit** (run `npm run build` there and commit it; the Release workflow refuses a stale one, and CI fails a pull request that changes it without a version bump: `scripts/check-skill-bundle.sh`). Every other commit leaves it as it is (`git checkout -- plugin/skills/nucleus-handler/scripts/nucleus.js`), so the history doesn't grow by a bundle per change. Plugin users get the released bundle from `main`.
 
 ## Layout
 
@@ -72,6 +73,9 @@ Run `npm test` and `npm run typecheck` before finishing. Run `npm run build` aft
 - `src/test/`: tests. `vscode-mock.ts` stands in for the `vscode` module, via an esbuild alias in `scripts/build.mjs`.
 - `scripts/issue-bots.mjs`: the issue bots (`doc-review.yml`, `report-details.yml` call it; the Release workflow, and `pages.yml` for workbench updates, call `runFixedComments`: "Fixed in vX.Y.Z" or "Added in vX.Y.Z", with the release notes link, on the issues a release delivers (marked "(#12)" on their CHANGELOG line, or "Fixes #12" in a commit), this repository's only, once each, never failing the release). `src/test/bots.test.ts` checks them on real issue bodies and against the forms in `.github/ISSUE_TEMPLATE/`; rename a form field and that test fails. The details checksum must match the workbench's (`workbench/playground/src/checksum.ts`; both test the same block).
 - `scripts/generate-api.mjs`: builds the API model from the Nucleus C# sources + splitscreen.me docs, `data/claude-*.json` and `data/hub-examples.json`. A doc belongs to the option it is written next to: a `//` comment only on the same line (or directly above one option, no blank line), a table row's description only for the options the row starts with.
+- `scripts/build.mjs`: every bundle. `scripts/eslint-slim.mjs` is its esbuild plugin (the workbench's build uses it too): bundles carry only the ESLint rules in `core/jsrules.ts` (ESLint's own rule map lists all ~290) and one copy of acorn. Add a rule to `JS_RULES` and it is bundled; a test checks the two agree.
+- `scripts/release-files.sh`: what a release hands out besides the .vsix (ncdev for each target, tested; the Notepad++ plugin's zips, `scripts/npp-zips.sh`; the checksums), for CI and the Release workflow. `data/release-assets.json` lists a release's files with a line each (the release notes and the tools page read it; a test checks `release.yml` uploads exactly those). `.nvmrc` is the Node.js version for working on the tools (the workflows read it).
+- **Docs come from data** (keep it that way: add to the data, not to a page). `scripts/readme-blocks.mjs` writes README.md's `<!-- generated:… -->` blocks and gives the workbench's build the same content: the tools' comparison (`data/tools-compare.json`), the editors that use `ncdev lsp` with their test status, tools-page tile and setup steps (`data/editors.json`; the snippets are PORTING.md's own code blocks), the checks, settings, commands and MCP tools (from `RULES`, `package.json`, `TOOLS`). `src/clihelp.ts` is `ncdev --help` and the docs' command page. One address each, as constants: the site (`core/sharelink.ts` `WORKBENCH_URL`), this repository and its raw files (`core/report.ts` `TOOLS_REPO`, `REPO_URL`, `DATA_RAW`, `MAIN_RAW`), Discord and Reddit (`core/report.ts`), the Hub (`core/hub.ts` `HUB`). `src/test/docsync.test.ts` checks what docs still say by hand (names of commands, tools, settings, versions) against the code.
 - `plugin/`: the Claude Code plugin (`.claude-plugin/plugin.json`, `skills/nucleus-handler/`). `.claude-plugin/marketplace.json` at the root publishes it.
 - `docs/images/gallery/`: the VS Code and Notepad++ screenshots, one set per view (`<tool>-<view>-{light,dark}.webp`), shown by the README and by the workbench's start page gallery (its build copies them from here, like `docs/videos/`, and stops if one is missing; the workbench's own are in `workbench/docs/images/gallery`). Retake a view in place, light (Light Modern) and dark (Dark Modern); don't add separate copies.
 - `workbench/`: the browser workbench and site, and the Jint testbench: see [The workbench](#the-workbench-workbench).
@@ -122,7 +126,7 @@ Where to look things up, and which to trust when they disagree (current code fir
 
 1. Add or change the rule in `RULES` and implement it in `Analyzer` (`src/core/lint.ts`).
 2. Add tests in `src/test/lint.test.ts`, including a no-false-positive case.
-3. Keep the rule list in sync: `package.json` → `contributes.configuration` → `splitscreenme.lint.rules.properties` (a test checks this), and the README table.
+3. Keep the rule list in sync: `package.json` → `contributes.configuration` → `splitscreenme.lint.rules.properties` (a test checks this), its docs in `core/ruledocs.ts` (`plain` is the workbench's short title and why), and the README table (`node scripts/readme-blocks.mjs` rewrites it).
 4. Check for false positives against real handlers: download some from the Hub (`node dist/cli.js hub fetch <id> --out /tmp/x`) and lint them. Published, working handlers should produce **no errors**.
 
 ## The workbench (`workbench/`)
@@ -137,7 +141,7 @@ cd workbench/playground && npm ci
 node build.mjs --preview          # dist/: the site (dist/pages), the single-file workbench; --preview shows "Unreleased" and makes links relative + noindex; --core <dir> or CORE_DIR builds against another commit's core (pages.yml's /previous/ build)
 npm test                          # unit tests of the pure modules and every published link (../tools/workbench-units.test.mjs, ../tools/links.test.mjs)
 npx tsc --noEmit -p .             # typecheck (tsconfig.json's paths point @core at the repository root)
-node smoke.mjs                    # browser smoke test of dist/pages (Playwright + axe-core); pages.yml runs it before every deploy
+node smoke.mjs                    # browser smoke test of dist/pages (Playwright + axe-core), about 1.5 minutes: its sections run in parallel; --only <part of a name> runs one (--list names them, --jobs <n>); pages.yml runs it before every deploy
 node sim-parity.mjs               # Try it against the real Jint results in ../probes/expected.txt (and --isolated, through ncdev simulate: npm run build at the root first)
 node ../tools/screenshots.cjs     # retake the workbench screenshots, light and dark (serve dist/pages on :8765 first): workbench/docs/images/gallery (start page and README) and the release-note ones
 ```
@@ -146,6 +150,8 @@ The other unit tests run from `workbench/`: `node tools/hub-files.test.mjs`, `to
 
 ### Where things are (`workbench/playground/src`)
 
+- The build (`build.mjs`): the single-file workbench has everything inside it; the site's pages (the workbench and Learn) load the same code from `dist/pages/app/` instead, as hashed ES modules they share (one esbuild build with splitting; the lint worker is one of its entries). A part few people need is loaded with `import()` the first time it's used (the Anthropic SDK), which the single file simply includes. New code must work both ways: no `document.currentScript`, and a failed `import()` says so instead of breaking the page.
+- The site's Tools docs (`docs/tools/…`, `tool-docs.mjs`) are generated from each tool's own data (`keyactions.ts`, `package.json`, `NcDev.cpp`'s menu, PORTING.md, `src/clihelp.ts`, the MCP `TOOLS`); `workbench/tools/tool-docs.test.mjs` checks them and every command the docs name. Tips name a shortcut as `{key:<action id>}`, so they show the person's own binding.
 - Looks are data: `themes.json` (`looks`: www, v3, mac, alpha8; `codeThemes`). `themekit.ts` (no DOM; also run by `build.mjs`) resolves a look's `base` and derived tokens and writes the CSS that replaces `/*THEMES*/` in `page.html`. Look-specific rules beyond tokens (Mac windows, alpha 8's flat buttons) are in `page.html` under `[data-site="…"]`.
 - `customtheme.ts`: theme files (JSON) people add, validated by `parseTheme` (known tokens only, no `url()`), the list in localStorage, code colours (`pickCodeTheme`). `settings-ui.ts` draws the Theme tab's cards.
 - `keyboard.ts`: on-screen keyboard height for every text field (`html.kb-up`, `--kb`, `--vvh`).
