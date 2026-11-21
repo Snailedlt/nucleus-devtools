@@ -43,13 +43,24 @@ const check = (ok, what) => {
 };
 const sections = [];
 const section = (name, run) => sections.push({ name, run });
-const arg = (flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : undefined);
+/** An option's value; undefined when the option isn't given. Given without a value (or with the next option as one) is a mistake. */
+const arg = (flag) => {
+  const i = process.argv.indexOf(flag);
+  if (i < 0) return undefined;
+  const v = process.argv[i + 1];
+  if (v === undefined || v.startsWith('--') || !v.trim()) throw new Error(`${flag} needs a value (node smoke.mjs --list names the sections).`);
+  return v;
+};
+// Checked before the browser starts.
+const ONLY = arg('--only')?.toLowerCase();
+const JOBS = arg('--jobs');
+if (JOBS !== undefined && !/^[1-9]\d*$/.test(JOBS)) throw new Error(`--jobs needs a whole number from 1 up, not "${JOBS}".`);
 async function runSections() {
   if (process.argv.includes('--list')) return void console.log(sections.map((s) => s.name).join('\n'));
-  const only = arg('--only')?.toLowerCase();
+  const only = ONLY;
   const todo = sections.filter((s) => !only || only.split(',').some((o) => s.name.toLowerCase().includes(o.trim())));
   if (!todo.length) throw new Error(`No section matches --only ${only}. They are: ${sections.map((s) => s.name).join(', ')}`);
-  const jobs = Math.max(1, Number(arg('--jobs')) || Math.min(4, os.availableParallelism?.() ?? os.cpus().length));
+  const jobs = JOBS ? Number(JOBS) : Math.max(1, Math.min(4, os.availableParallelism?.() ?? os.cpus().length));
   const started = Date.now();
   let next = 0;
   await Promise.all(Array.from({ length: Math.min(jobs, todo.length) }, async () => {

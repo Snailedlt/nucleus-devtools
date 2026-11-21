@@ -5,11 +5,16 @@ import { CONTEXT_TIPS, GENERAL_TIPS, Tip, TipContext, TipShow, tipShown } from '
 import { scanHandler, inCallback, Scan } from './lines';
 import { narrow } from './dom';
 import { keysText } from './kbd';
-import { labelOf } from './keybindings';
+import { binding } from './keybindings';
+import { ACTIONS } from './keyactions';
 
-/** A tip's {key:actionId}: that action's key as it's bound now (keyactions.ts, changed in Settings). */
-// In backticks, so a lone key (F8) becomes a keycap too (kbd.ts keysText); an unbound action stays empty.
-const withKeys = (text: string) => text.replace(/\{key:(\w+)\}/g, (_, id: string) => { const key = labelOf(id); return key ? '`' + key + '`' : ''; });
+// A tip's {key:actionId}: that action's key as it's bound now, in backticks so it is drawn as keys (kbd.ts keysText;
+// the binding as written, "Cmd+S", which the keycaps know on every platform). An action without a key is named
+// instead, with where to find it, so the sentence still reads.
+const withKeys = (text: string) => text.replace(/\{key:(\w+)\}/g, (_, id: string) => {
+  const key = binding(id);
+  return key ? '`' + key + '`' : `"${ACTIONS.find((a) => a.id === id)?.label ?? id}" in the command palette`;
+});
 import { BETA } from './testplan';
 
 const ON_KEY = 'nucleus-workbench-tips';

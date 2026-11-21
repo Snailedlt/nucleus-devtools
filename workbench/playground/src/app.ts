@@ -1356,6 +1356,7 @@ const debug = mountDebugger({
   panel: $('#panel-simulate'),
   options: simOptions,
   showTryIt: () => selectTab('simulate'),
+  showCode: () => { if (pkgUI?.active()) pkgUI.showHandler(); },
   rerun: runSim,
   used: () => use('debugger'),
 });
