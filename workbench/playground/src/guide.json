@@ -101,12 +101,11 @@
         { "h": "Your game on this PC", "md": "Under Files. Point it at the folder the game is installed in, and Check compares the handler's executable and file lists with the files that are there. The browser only reads the folder. Nothing is uploaded." },
         { "h": "Saving", "cols": ["Command", "What it does"], "rows": [
           ["**Save**, {key:save}", "Downloads a `.zip` with the handler and its files. That's the one to install yourself."],
-          ["The arrow beside Save, {key:saveAs}", "Saves a `.js` or a `.nc` instead. A `.nc` holds the same as the `.zip` and is the package the Hub takes."],
+          ["The arrow beside Save, {key:saveAs}", "Saves a `.js` or a `.nc` instead. A `.nc` holds the same as the `.zip`, in the Hub's package format."],
           ["**Into Nucleus Co-op**", "Writes the handler into Nucleus' handlers folder, which you choose once. Firefox and Safari don't allow that, so there it's a `.zip` to drag onto Nucleus."],
           ["**How to install it in Nucleus**", "The steps for installing by hand."]
         ], "md": "Save always makes a new download and never changes the file that was opened. Only **Into Nucleus Co-op** writes into a folder on the disk." },
-        { "h": "Sharing", "md": "**Share**, next to Save, copies a link to the handler, the code, or a code block formatted for Discord. With lines selected, it shares only those." },
-        { "h": "The Hub", "md": "The workbench doesn't upload to the Hub. A `.nc` saved here is uploaded by hand on [hub.splitscreen.me](https://hub.splitscreen.me)." }
+        { "h": "Sharing", "md": "**Share**, next to Save, copies a link to the handler, the code, or a code block formatted for Discord. With lines selected, it shares only those." }
       ],
       "covers": ["f-hub", "f-files", "s-save", "f-gamefolder", "f-save-nucleus", "f-share", "s-open", "s-open-keys", "f-tabs", "f-package"]
     },

@@ -336,6 +336,8 @@ test('tool docs: a page says a thing once and links sparingly', () => {
     if (p.slug.startsWith('tools/workbench')) assert.doesNotMatch(html, /<h2 id="keys">/, `${p.slug}: its keys are written where they're used, and listed on the shortcuts page`);
     assert.doesNotMatch(html, /class="guide-nav"|class="small more"/, `${p.slug}: no previous/next or "Next:" line`);
   }
+  // Until the full release the docs don't tell people to upload to the Hub (AGENTS.md).
+  for (const p of pages) assert.doesNotMatch((p.intro ?? '') + (p.html ?? '') + (p.outro ?? ''), /upload[^.<]*\bHub\b|\bHub\b[^.<]*upload|hub\.splitscreen\.me"/i, `${p.slug}: a Hub upload step`);
   // Shortcuts are tabulated on one page.
   const tables = pages.filter((p) => /<th>Action<\/th><th>Keys<\/th>/.test(p.html ?? ''));
   assert.deepEqual(tables.map((p) => p.slug), ['tools/workbench/shortcuts']);

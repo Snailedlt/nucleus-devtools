@@ -22,7 +22,7 @@
     { "id": "try", "label": "Try it", "line": "see what each player gets" },
     { "id": "save", "label": "Save", "line": "as a .zip or .nc, or into Nucleus" },
     { "id": "test", "label": "Test", "line": "for real, in Nucleus Co-op" },
-    { "id": "share", "label": "Share", "line": "upload it to the Hub" }
+    { "id": "share", "label": "Share", "line": "as a link or a file" }
   ],
   "compare": {
     "slug": "tools/compare", "title": "Feature comparison", "nav": "Feature comparison",
@@ -85,7 +85,7 @@
         ],
         "verify": "Type a mistake into the handler, such as `Game.KillMutexs = [];`. It gets underlined, and hovering `Game` shows its docs. If nothing happens, the file wasn't recognised as a handler ([Handler files](@docs:tools/vscode#handler-files)).",
         "after": [
-          { "h": "A guided first handler", "md": "The extension comes with a walkthrough, **Make a Nucleus Co-op handler**. It's on VS Code's Welcome page (**Help › Welcome**) and goes from an empty file to a handler on the Hub." },
+          { "h": "A guided first handler", "md": "The extension comes with a walkthrough, **Make a Nucleus Co-op handler**. It's on VS Code's Welcome page (**Help › Welcome**) and goes through writing a handler, checking it, trying it and testing it in Nucleus Co-op." },
           { "h": "Updating", "md": "Install the newer `.vsix` the same way. It replaces the old one." }
         ],
         "related": ["[VS Code extension](@docs:tools/vscode): commands, keys and settings"]
