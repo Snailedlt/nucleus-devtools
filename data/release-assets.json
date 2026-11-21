@@ -3,7 +3,7 @@
   "assets": [
     { "name": "splitscreenme-vscode-{tag}.vsix", "what": "the VS Code extension: in VS Code run **Extensions: Install from VSIX…** (Ctrl+Shift+P)" },
     { "name": "ncdev.exe", "what": "`ncdev` for Windows, nothing else to install: the command line, the language server for other editors, and the Notepad++ setup (double-click it)" },
-    { "name": "ncdev-linux-x64", "what": "`ncdev` for Linux: `chmod +x` it and put it on your PATH as `ncdev`" },
+    { "name": "ncdev-linux-x64", "what": "`ncdev` for Linux (x64): `chmod +x` it and put it on your PATH as `ncdev`" },
     { "name": "nucleus.js", "what": "`ncdev` as one file for Node.js 18+, anywhere else (`node nucleus.js …`), also the MCP server for AI agents (`node nucleus.js mcp`)" },
     { "name": "NcDev.zip", "what": "the Notepad++ plugin on its own (64-bit), for Plugins Admin" },
     { "name": "NcDev-x86.zip", "what": "the Notepad++ plugin on its own (32-bit)" },

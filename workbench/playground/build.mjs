@@ -699,7 +699,8 @@ const sitePageSrc = (file, slug, title, desc, shareTitle) => {
 };
 // Parts of the site made from the same data as the README's (scripts/readme-blocks.mjs): the comparison table
 // (data/tools-compare.json) and the Claude Code plugin's commands (.claude-plugin/marketplace.json).
-const RB = await import(pathToFileURL(path.join(coreRepo, 'scripts', 'readme-blocks.mjs')).href);
+// From this checkout, not the core being built against (--core): an older core has no such script.
+const RB = await import(pathToFileURL(path.join(here, '..', '..', 'scripts', 'readme-blocks.mjs')).href);
 const plugin = RB.claudePlugin();
 const fromData = (src) => src.replace('<!--COMPARE-->', () => RB.compareHtml()).replaceAll('__CLAUDE_MARKETPLACE__', plugin.marketplace).replaceAll('__CLAUDE_PLUGIN__', plugin.plugin).replace('<!--ED_TILES-->', () => RB.editorTiles()).replace('<!--ED_STEPS-->', () => RB.editorSteps()).replace(/<!--ED:(\w+)-->/g, (_, id) => RB.editorTag(id)).replace(/<!--PORTING:(\w+)-->/g, (_, id) => RB.portingSnippet(id).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' })[c]));
 const toolsSrc = withPartials(fromData(sitePageSrc('tools.html', 'tools',

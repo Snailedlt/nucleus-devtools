@@ -59,7 +59,7 @@ Positions in core are offsets into the text, counted in UTF-16 code units (what 
 
 `ncdev lsp` is a subcommand of the `ncdev` CLI. Any of these work:
 
-- **Standalone, nothing to install (Windows and Linux):** `ncdev.exe` or `ncdev-linux-x64` from the [newest release](https://github.com/Snailedlt/nucleus-devtools/releases). On Linux, make it runnable and put it on your PATH as `ncdev` (`chmod +x ncdev-linux-x64 && mv ncdev-linux-x64 ~/.local/bin/ncdev`). `ncdev update` keeps it current.
+- **Standalone, nothing to install (Windows and Linux):** `ncdev.exe` or `ncdev-linux-x64` from the [newest release](https://github.com/Snailedlt/nucleus-devtools/releases). On Linux, make it runnable and put it on your PATH as `ncdev` (`chmod +x ncdev-linux-x64 && mkdir -p ~/.local/bin && mv ncdev-linux-x64 ~/.local/bin/ncdev`; `~/.local/bin` must be on your PATH). It is for x64: on other Linux machines (ARM), use the Node.js file below. `ncdev update` keeps it current.
 - **One file, with Node.js 18+:** [`plugin/skills/nucleus-handler/scripts/nucleus.js`](https://raw.githubusercontent.com/Snailedlt/nucleus-devtools/main/plugin/skills/nucleus-handler/scripts/nucleus.js) is the whole CLI bundled. Save it anywhere and run `node /path/to/nucleus.js lsp`.
 - **From a clone:** `npm ci && npm run build`, then `node dist/cli.js lsp`.
 - **With the VS Code extension installed:** its `dist/cli.js` (in `~/.vscode/extensions/splitscreenme.*/dist/`).
