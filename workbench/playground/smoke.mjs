@@ -4,9 +4,11 @@
 // the theme of the screenshots, keyboard access, and no accessibility violations (axe-core).
 //
 //   npm run build   (or: node build.mjs --preview)
-//   node smoke.mjs  [--headed] [--ai-guide]
+//   node smoke.mjs  [--headed] [--ai-guide] [--only <part of a section's name>[,…]] [--jobs <n>] [--list]
 import fs from 'node:fs';
 import http from 'node:http';
+import os from 'node:os';
+import { AsyncLocalStorage } from 'node:async_hooks';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
@@ -30,10 +32,43 @@ await new Promise((r) => server.listen(0, '127.0.0.1', r));
 const BASE = `http://127.0.0.1:${server.address().port}/`;
 
 let failures = 0;
+// The checks are grouped in sections, each with its own pages, so several run at once (--jobs <n>; default: one per
+// CPU core, at most 4) and one can be run alone while working on it (--only learn, or any part of a name; --list names
+// them). A section's lines are printed together when it ends, with how long it took.
+const out = new AsyncLocalStorage();
+const say = (line) => (out.getStore() ?? { push: (l) => console.log(l) }).push(line);
 const check = (ok, what) => {
-  console.log(`${ok ? 'ok  ' : 'FAIL'} ${what}`);
+  say(`${ok ? 'ok  ' : 'FAIL'} ${what}`);
   if (!ok) failures++;
 };
+const sections = [];
+const section = (name, run) => sections.push({ name, run });
+const arg = (flag) => (process.argv.includes(flag) ? process.argv[process.argv.indexOf(flag) + 1] : undefined);
+async function runSections() {
+  if (process.argv.includes('--list')) return void console.log(sections.map((s) => s.name).join('\n'));
+  const only = arg('--only')?.toLowerCase();
+  const todo = sections.filter((s) => !only || only.split(',').some((o) => s.name.toLowerCase().includes(o.trim())));
+  if (!todo.length) throw new Error(`No section matches --only ${only}. They are: ${sections.map((s) => s.name).join(', ')}`);
+  const jobs = Math.max(1, Number(arg('--jobs')) || Math.min(4, os.availableParallelism?.() ?? os.cpus().length));
+  const started = Date.now();
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(jobs, todo.length) }, async () => {
+    while (next < todo.length) {
+      const s = todo[next++];
+      const lines = [];
+      const t = Date.now();
+      try {
+        await out.run(lines, s.run);
+      } catch (e) {
+        lines.push(`FAIL ${s.name}: stopped by an error: ${String(e?.stack ?? e).split('\n').slice(0, 4).join(' | ')}`);
+        failures++;
+      }
+      console.log(`\n== ${s.name} (${((Date.now() - t) / 1000).toFixed(0)} s)\n${lines.join('\n')}`);
+    }
+  }));
+  console.log(`\n${todo.length} section(s), ${jobs} at a time, ${((Date.now() - started) / 1000).toFixed(0)} s`);
+}
+
 const browser = await chromium.launch({ headless: !process.argv.includes('--headed') });
 async function page(theme, opts = { viewport: { width: 1280, height: 800 } }) {
   const ctx = await browser.newContext({ colorScheme: theme, ...opts });
@@ -127,7 +162,7 @@ if (process.argv.includes('--ai-guide')) {
   process.exit(failures ? 1 : 0);
 }
 
-for (const theme of ['light', 'dark']) {
+for (const theme of ['light', 'dark']) section(`workbench, ${theme}`, async () => {
   // Check, Fix all, then editing: the fix box closes and Check counts the new problem.
   const { ctx, p, errors } = await page(theme);
   await p.goto(BASE + '#example-mistakes');
@@ -374,7 +409,7 @@ for (const theme of ['light', 'dark']) {
     // Built from the data branch (Pages): package files appear only once the daily Hub sync has mirrored them
     // (tools/hub-mirror.mjs, a few days after it first runs), so none yet is fine there. The snapshot build has them.
     const fromMirror = await p.evaluate(() => !!HUB_EXAMPLES.all);
-    if (!pick && fromMirror) console.log(`skip ${theme}: no Hub package files mirrored yet (the daily Hub sync adds them)`);
+    if (!pick && fromMirror) say(`skip ${theme}: no Hub package files mirrored yet (the daily Hub sync adds them)`);
     else check(!!pick, `${theme}: a Hub handler in this build has package files`);
     if (pick) {
       await p.goto(BASE + '#hub-' + pick.id);
@@ -777,9 +812,10 @@ for (const theme of ['light', 'dark']) {
   }
   check(!s.errors.length, `${theme}: tools page and the headers: no page errors ${s.errors.join(' ')}`);
   await s.ctx.close();
-}
+});
 
 // A phone
+section('phone', async () => {
 const m = await page('dark', { ...devices['Pixel 7'] });
 await m.p.goto(BASE + '#example-mistakes');
 await m.p.waitForSelector('.CodeMirror');
@@ -792,9 +828,10 @@ check(await m.p.isVisible('.CodeMirror'), 'phone: the Handler view shows the cod
 await m.p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.setValue('Game.GUID = "Demo";\nGame.GameName = "Demo";\nGame.ExecutableName = "demo.exe";\nGame.Description = "Java version only. If you use multiple keyboards and mice, set the input in the options first, then start the game.";\n'));
 await m.p.waitForTimeout(800);
 await m.ctx.close();
+});
 
 // Help test the beta: pin a task, and it floats over the workbench while you test (testpins.ts).
-{
+section('test pins', async () => {
   const s = await page('light', { viewport: { width: 1440, height: 900 } });
   await s.ctx.addInitScript(() => {
     try {
@@ -857,8 +894,8 @@ await m.ctx.close();
   check(await s.p.isHidden('#test-pins'), 'pinned tasks: unpinning the last one hides the window');
   check(!s.errors.length, `pinned tasks: no page errors ${s.errors.join(' ')}`);
   await s.ctx.close();
-}
-{
+});
+section('docs pages', async () => {
   // The docs as pages: the site header, the page, the votes (kept in the browser, pressed state shown) and the
   // report link; axe in light and dark; nothing cut off on a phone.
   for (const theme of ['light', 'dark']) {
@@ -895,8 +932,8 @@ await m.ctx.close();
     check(wide <= 1, `phone ${u}: no sideways scrolling, header included (${wide}px)`);
   }
   await ph.ctx.close();
-}
-{
+});
+section('game folder progress', async () => {
   // Linking the game's folder shows progress: listing, then the program files (n of m), and "Reading your game's
   // files…" in Check until their hints are in; all gone when done. A folder picker that answers slowly stands in.
   const s = await page('light');
@@ -925,8 +962,8 @@ await m.ctx.close();
   check(!done.prog && !done.check, `game folder: the progress is gone when done (${JSON.stringify(done)})`);
   check(!s.errors.length, `game folder progress: no page errors ${s.errors.join(' ')}`);
   await s.ctx.close();
-}
-{
+});
+section('game folder two reads', async () => {
   // Two reads at once (a second folder picked while the first's program files are still being read): the label names
   // the newest read, the one Cancel stops; after Cancel the first read shows again and runs to its end.
   const s = await page('light');
@@ -955,8 +992,8 @@ await m.ctx.close();
   check(/FirstGame/.test(after), `game folder: after Cancel the other read shows again (${after})`);
   check(!s.errors.length, `game folder, two reads: no page errors ${s.errors.join(' ')}`);
   await s.ctx.close();
-}
-{
+});
+section('tabs and package files', async () => {
   // Two tabs with the same code but different package files (pluginsInfo.txt in one): a Check still running when the
   // tab changes is dropped, so each tab shows its own result (the plugin known in one tab, flagged in the other).
   const s = await page('light');
@@ -1025,11 +1062,11 @@ await m.ctx.close();
     await s.p.waitForTimeout(1500);
     const backOnB = await s.p.evaluate(() => document.querySelector('#htabs [aria-selected=true]')?.dataset.tabId === window.__tabB);
     check(backOnB && await flagged(), "tabs: a Check started in the other tab and finished after the switch doesn't replace this tab's result");
-  } else console.log('skip: no Hub handler in this build for the two-tab Check test');
+  } else say('skip: no Hub handler in this build for the two-tab Check test');
   check(!s.errors.length, `tabs with package files: no page errors ${s.errors.join(' ')}`);
   await s.ctx.close();
-}
-{
+});
+section('closing handlers', async () => {
   // Every handler can be closed, the last one too: a new one from the template takes its place (no empty page); Undo
   // brings the closed one back and the untouched template goes.
   const s = await page('light');
@@ -1047,8 +1084,8 @@ await m.ctx.close();
   check((await tabsNow()) === 1 && (await s.p.textContent('#doc-name')) === lastName, `tabs: Undo brings the last one back, with the untouched template gone (${lastName})`);
   check(!s.errors.length, `tabs: no page errors ${s.errors.join(' ')}`);
   await s.ctx.close();
-}
-{
+});
+section('learn', async () => {
   // Learn (learn/): the intro scene step by step; a lesson ticks when its code is done; Solve; Try it; the test
   // lesson's download; the lesson list; axe in light and dark; nothing cut off on a phone. #learn in the workbench
   // leads there.
@@ -1192,8 +1229,8 @@ await m.ctx.close();
     check(/\/learn\//.test(s.p.url()), `learn: the workbench's #learn link leads to the lessons (${s.p.url()})`);
     await s.ctx.close();
   }
-}
-for (const theme of ['light', 'dark']) {
+});
+for (const theme of ['light', 'dark']) section(`check pages, ${theme}`, async () => {
   // One page per check, and the list of them: they load, the examples are there, the filter works, accessible.
   const s = await page(theme);
   await s.p.goto(BASE + 'rules/');
@@ -1208,8 +1245,8 @@ for (const theme of ['light', 'dark']) {
   await axe(s.p, `${theme}, a rule's page`);
   check(!s.errors.length, `${theme}: rules pages: no page errors ${s.errors.join(' ')}`);
   await s.ctx.close();
-}
-{
+});
+section('touch laptop', async () => {
   // A laptop with a touch screen has a real keyboard: a text field getting focus inside a frame (the claude.ai
   // preview) must not shrink the page for an on-screen keyboard that isn't there.
   const s = await page('dark', { viewport: { width: 1600, height: 730 } }); // a mouse (fine pointer) ...
@@ -1225,8 +1262,8 @@ for (const theme of ['light', 'dark']) {
   await f.waitForTimeout(1200);
   check(await f.evaluate(() => !document.documentElement.classList.contains('kb-up') && document.querySelector('.app').getBoundingClientRect().height >= innerHeight - 2), 'touch-screen laptop, in a frame: the page keeps its height when a text field gets focus');
   await s.ctx.close();
-}
-{
+});
+section('phone keyboard', async () => {
   const s = await page('dark', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   await s.ctx.addInitScript(() => {
     try {
@@ -1239,11 +1276,11 @@ for (const theme of ['light', 'dark']) {
   const r = await s.p.$eval('#test-pins', (e) => { const b = e.getBoundingClientRect(); return { l: b.left, r: b.right, b: b.bottom }; });
   check(r.l >= 0 && r.r <= 390 && r.b <= 844, 'phone: pinned tasks dock at the bottom, inside the screen');
   await s.ctx.close();
-}
+});
 
 // Start-up with each general tip first (the first one is random): none may stop the page (a tip's highlight once
 // asked for a control declared later in app.ts, and the whole workbench failed to start).
-{
+section('tips at start-up', async () => {
   let crashed = 0;
   for (let i = 0; i < 40; i++) {
     const s = await page('light');
@@ -1258,10 +1295,10 @@ for (const theme of ['light', 'dark']) {
     await s.ctx.close();
   }
   check(crashed === 0, `start-up with every possible first tip: no page errors (${crashed} of 40 failed)`);
-}
+});
 // The main button stays readable in every look (light and dark): the looks restyle .btn.
 for (const site of ['v3', 'mac', 'alpha8'])
-  for (const theme of ['light', 'dark']) {
+  for (const theme of ['light', 'dark']) section(`look ${site}, ${theme}`, async () => {
     const s = await page(theme);
     await s.ctx.addInitScript((v) => {
       try {
@@ -1275,8 +1312,9 @@ for (const site of ['v3', 'mac', 'alpha8'])
     const bad = await s.p.evaluate(async () => (await axe.run('#code-menu-open, #save-more', { runOnly: ['color-contrast'] })).violations.length);
     check(bad === 0, `${site} look, ${theme}: Save is readable (contrast)`);
     await s.ctx.close();
-  }
+  });
 
+await runSections();
 await browser.close();
 server.close();
 console.log(failures ? `\n${failures} check(s) failed.` : '\nAll checks passed.');
