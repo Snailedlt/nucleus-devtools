@@ -64,7 +64,7 @@ Positions in core are offsets into the text, counted in UTF-16 code units (what 
 - **From a clone:** `npm ci && npm run build`, then `node dist/cli.js lsp`.
 - **With the VS Code extension installed:** its `dist/cli.js` (in `~/.vscode/extensions/splitscreenme.*/dist/`).
 
-The snippets below run `ncdev lsp`. Without a standalone `ncdev` for your system (macOS, for one), use `node /path/to/nucleus.js` in its place. `--stdio` is accepted and ignored (stdio is the only transport), for clients that always add it.
+The snippets below run `ncdev lsp` by name, so `ncdev` must be on your PATH: on Windows, add the folder that holds `ncdev.exe` to PATH, or write its full path in the snippet (e.g. `C:\Tools\ncdev.exe`). Without a standalone `ncdev` for your system (macOS, for one), use `node /path/to/nucleus.js` in its place. `--stdio` is accepted and ignored (stdio is the only transport), for clients that always add it.
 
 ### Settings
 

@@ -55,7 +55,7 @@ const NUCLEUS: Record<string, RuleDoc> = {
     fix: 'Use `var`, so the code says what Nucleus does.',
   },
   'unknown-member': {
-    plain: { title: "A setting Nucleus doesn't know", why: "Nucleus skips it, so it does nothing. It's usually a typo." },
+    plain: { title: "A name Nucleus doesn't know", why: "Setting it does nothing (Nucleus skips it); calling it stops the handler. It's usually a typo." },
     title: 'A name Nucleus doesn\'t have',
     why: 'This option or method doesn\'t exist on that Nucleus object, usually a typo. Setting it does nothing (Jint ignores it without an error), reading it gives `undefined`, and calling it stops the handler.',
     bad: 'Game.KillMutexs = ["Mutex"];',
