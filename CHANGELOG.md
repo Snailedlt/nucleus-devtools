@@ -26,7 +26,7 @@ How to write it (people and AI agents read this; the release workflow publishes 
 
 ### ⚡ Faster
 
-- **Smaller downloads.** The extension, `ncdev` and the skill's script are each about 700 KB smaller: they carry only the general JavaScript checks the tools use, not all of ESLint's.
+- **Smaller downloads.** `ncdev` and the skill's script are about 1.6 MB smaller and the extension about 1.2 MB: they carry only the general JavaScript checks the tools use, not all of ESLint's, and the Try it simulator's own copy of the API no longer includes the documentation.
 
 ---
 

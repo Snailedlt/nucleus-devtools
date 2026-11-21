@@ -19,10 +19,19 @@ const common = {
   logLevel: 'info',
 };
 
+// The simulator only needs the API model's names, kinds and types: its copy (inside the sandbox string, next to the
+// full one in the bundle around it) leaves the documentation out, which is most of the model.
+const DOC_FIELDS = new Set(['doc', 'docBasis', 'docBy', 'checkedBy', 'checkedOn', 'practice', 'practiceBasis', 'paramsBasis', 'example', 'exampleNote', 'exampleIn', 'exampleBy', 'engineUse', 'byEngine', 'hubUse']);
+const modelWithoutDocs = {
+  name: 'model-without-docs',
+  setup(build) {
+    build.onLoad({ filter: /[\\/]data[\\/]nucleus-api\.json$/ }, (args) => ({ contents: JSON.stringify(JSON.parse(fs.readFileSync(args.path, 'utf8')), (k, v) => (DOC_FIELDS.has(k) ? undefined : v)), loader: 'json' }));
+  },
+};
 // The "Try it" simulator, bundled to a string that src/sandbox.ts evaluates inside an isolated
 // vm context (see there). Built first so the other bundles can embed it.
 const simSandbox = (
-  await esbuild.build({ ...common, entryPoints: ['src/sim-sandbox-entry.ts'], format: 'iife', platform: 'neutral', alias: { 'eslint/universal': './src/core/eslint-stub.ts' }, mainFields: ['module', 'main'], sourcemap: false, minify: true, write: false, logLevel: 'warning' })
+  await esbuild.build({ ...common, plugins: [...common.plugins, modelWithoutDocs], entryPoints: ['src/sim-sandbox-entry.ts'], format: 'iife', platform: 'neutral', alias: { 'eslint/universal': './src/core/eslint-stub.ts' }, mainFields: ['module', 'main'], sourcemap: false, minify: true, write: false, logLevel: 'warning' })
 ).outputFiles[0].text;
 // The worker thread that owns that sandbox (src/simworker.ts), also a string: started with `eval: true`,
 // so the standalone ncdev (one file) can run it. The simulator reaches it as workerData.
