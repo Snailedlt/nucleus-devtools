@@ -2,6 +2,7 @@
 import * as esbuild from 'esbuild';
 import fs from 'node:fs';
 import { execFileSync } from 'node:child_process';
+import { eslintSlim } from './eslint-slim.mjs';
 
 const watch = process.argv.includes('--watch');
 const tests = process.argv.includes('--tests');
@@ -9,6 +10,7 @@ const production = process.argv.includes('--production');
 
 const common = {
   bundle: true,
+  plugins: [eslintSlim()],
   platform: 'node',
   format: 'cjs',
   target: 'node18',

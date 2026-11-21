@@ -13,6 +13,7 @@ import { execSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { createRequire } from 'node:module';
 import * as esbuild from 'esbuild';
+import { eslintSlim } from '../../scripts/eslint-slim.mjs';
 import { fetchPackageFiles, slimFiles } from '../tools/hub-files.mjs';
 import { hubClientHeaders } from '../tools/hub-client.mjs';
 
@@ -414,6 +415,7 @@ const CHANGES = changes();
 const result = await esbuild.build({
   entryPoints: [path.join(here, 'src', 'main.ts')],
   bundle: true,
+  plugins: [eslintSlim(coreRepo)],
   format: 'iife',
   platform: 'browser',
   target: 'es2020',
@@ -780,7 +782,8 @@ let checksNav = [];
 {
   const learnJs = await esbuild.build({
     entryPoints: [path.join(here, 'src', 'learn', 'learn.ts')],
-    bundle: true, format: 'iife', platform: 'browser', target: 'es2020', minify: true, write: false,
+    bundle: true,
+    format: 'iife', platform: 'browser', target: 'es2020', minify: true, write: false,
     // The reports' details (report.ts) say which build this is, as the workbench's do.
     define: { BUILD: JSON.stringify({ bench: build.bench, core: build.core }) },
     alias: { '@core': path.join(coreRepo, 'src', 'core'), 'eslint/universal': path.join(coreRepo, 'src', 'core', 'eslint-stub.ts'), 'node:path': 'path-browserify', path: 'path-browserify' },
