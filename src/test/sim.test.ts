@@ -276,6 +276,6 @@ test('sandbox: the simulator with its trimmed API model gives the same results a
   assert.ok(probes.length > 100);
   for (const f of probes) {
     const src = fs.readFileSync(path.join(dir, f), 'utf8');
-    for (const players of [1, 3]) assert.deepEqual(simulateIsolated(src, { players }), JSON.parse(JSON.stringify(simulate(src, { players }))), `${f}, ${players} player(s)`);
+    for (const players of [1, 3]) assert.deepEqual(simulateIsolated(src, { ...OPTS, players }), JSON.parse(JSON.stringify(simulate(src, { ...OPTS, players }))), `${f}, ${players} player(s)`);
   }
 });
