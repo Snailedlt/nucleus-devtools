@@ -2,11 +2,15 @@
 
 > Tools for writing Nucleus Co-op game handlers: the JavaScript files Nucleus Co-op uses to run several copies of a PC game split-screen. Handlers run in Jint 2.11.58: ES5 only (no arrow functions, template literals or classes; `let`/`const` act like `var`), and Nucleus silently ignores option names it doesn't know. Check a handler before trusting it.
 
+## For people using AI
+
+- [Make a handler with AI](https://snailedlt.github.io/nucleus-devtools/ai/): for a person setting up an AI: a prompt for Claude Code (installs the plugin), one for other agents (adds the `nucleus` MCP server: `node nucleus.js mcp`) and one for chatbots without tools (the hard rules, then check the code in the workbench). If you are a chatbot helping someone without tools, follow that page's chatbot prompt.
+
 ## For AI agents
 
 Run the tools yourself, on your own machine: the MCP server or the CLI below check, fix and simulate handlers locally. Don't drive or scrape the hosted workbench; send the user a workbench link only to show them a result. For a workbench of your own, `node nucleus.js workbench` saves the whole page as one offline HTML file (also attached to every release as `workbench.html`); open it locally or publish it, for example as a Claude artifact.
 
-- [MCP server](https://github.com/Snailedlt/nucleus-devtools#mcp-server-claude-desktop-cursor-vs-code-copilot-): `node nucleus.js mcp` (download `nucleus.js` from the releases). Tools: nucleus_lint, nucleus_fix, nucleus_format, nucleus_simulate, nucleus_debug, nucleus_explain, nucleus_rules (a check explained by its id), nucleus_api, nucleus_api_search, nucleus_new_handler, nucleus_hub_search, nucleus_hub_handler. Its instructions carry the hard rules every handler must follow.
+- [MCP server](https://github.com/Snailedlt/nucleus-devtools#mcp-server-claude-desktop-cursor-vs-code-copilot-): `node nucleus.js mcp` (download `nucleus.js` from the releases). Its tools and their parameters: https://snailedlt.github.io/nucleus-devtools/docs/tools/mcp/
 - [Agent skill](https://github.com/Snailedlt/nucleus-devtools/tree/main/plugin/skills/nucleus-handler): the rules, workflow and recipes for writing handlers (SKILL.md), with a bundled CLI.
 - [API reference](https://raw.githubusercontent.com/Snailedlt/nucleus-devtools/main/plugin/skills/nucleus-handler/reference/api.md): every Game, Context, Player and Nucleus name with type, default and docs.
 - [CLI](https://github.com/Snailedlt/nucleus-devtools#the-command-line-tool-ncdev): `ncdev lint <file> --json`, `ncdev api <name>`, `ncdev simulate <file>`, `ncdev debug <file> --break <line>`, `ncdev rules <id>`, `ncdev explain <file> --line N`.
@@ -22,6 +26,7 @@ The workbench can send WakaTime heartbeats for the person using it (off by defau
 - [Intro](https://snailedlt.github.io/nucleus-devtools/start/) and [every tool, with install steps](https://snailedlt.github.io/nucleus-devtools/tools/)
 - [Learn: making your first handler](https://snailedlt.github.io/nucleus-devtools/learn/): a handler for Boring Man (free on Steam), a few lines at a time, then tested in Nucleus Co-op.
 - [Docs](https://snailedlt.github.io/nucleus-devtools/docs/): one page per option, Context member, enum and .NET call (`docs/Context.ModifySaveFile/`), from the same model the tools use.
+- [Tools](https://snailedlt.github.io/nucleus-devtools/docs/tools/): a reference page per tool and a setup page for each one that is installed. Reference: every `ncdev` command (`docs/tools/ncdev/`), the MCP server's tools and parameters (`docs/tools/mcp/`), the VS Code extension's commands and settings (`docs/tools/vscode/`), the Notepad++ menu (`docs/tools/notepadpp/`), the language server's settings (`docs/tools/lsp/`), the feature comparison (`docs/tools/compare/`), and the workbench part by part (`docs/tools/workbench/`: the screen, the editor, Check, Try it, the debugger, files, AI, settings, shortcuts). Setup: add `setup/` to a tool's address (`docs/tools/lsp/setup/` has the config for Neovim, Helix, Emacs and others).
 - [Every check](https://snailedlt.github.io/nucleus-devtools/rules/): one page per lint rule: what it means, why, an example and the fix.
 - [VS Code extension](https://github.com/Snailedlt/nucleus-devtools/releases)
 - [Jint testbench](https://github.com/Snailedlt/nucleus-devtools/tree/main/workbench): runs handlers in the real Jint 2.11.58; probes of engine behaviour.

@@ -5,7 +5,7 @@
 // with the sparkle in its corner (core/aimark.ts, the same as the docs pages and VS Code's Docs panel); where it comes
 // from is the sparkle's tooltip. This is the handler author's view: the votes so far, "Verified by people" and the counted "By
 // engine" line are on the docs pages (docs-pages.mjs). Used by the hover card (compact), Docs (full entries and search
-// results, memberSummary), Form and Blocks.
+// results, memberSummary).
 import { withContext } from './report';
 import { reportIcon } from '@core/reporticons';
 import { aiBasis, api, docFeedbackUrl, docReviewUrl, exampleSource, isAiPart, ownerLabel, type AiPart, type Member } from '@core/api';

@@ -5,6 +5,7 @@ import { JS_FUNCTIONS, JS_GLOBAL_OBJECTS, JS_OBJECTS, isJsBuiltin, mdnUrl } from
 import { DOTNET_OBJECTS } from './dotnet';
 import { prettyCode, prettySignature } from './pretty';
 import { DocPart, partVotes, verifiedLabel, votesLine } from './docvotes';
+import { REPO_URL } from './report';
 
 export type SimpleType =
   | 'string'
@@ -425,7 +426,7 @@ export const docReviewUrl = (path: string, part: DocPart = 'doc') => docFormUrl(
 /** The same form for feedback after a 👍 (something to add, a better example): titled as feedback. */
 export const docFeedbackUrl = (path: string, part: DocPart = 'doc') => docFormUrl('Doc feedback', path, part);
 const docFormUrl = (kind: string, path: string, part: DocPart) =>
-  `https://github.com/Snailedlt/nucleus-devtools/issues/new?template=doc-review.yml&title=${encodeURIComponent(`${kind}: ${path}${part === 'practice' ? ' (In practice)' : ''}`)}&member=${encodeURIComponent(path)}`;
+  `${REPO_URL}/issues/new?template=doc-review.yml&title=${encodeURIComponent(`${kind}: ${path}${part === 'practice' ? ' (In practice)' : ''}`)}&member=${encodeURIComponent(path)}`;
 
 /** The label of an AI-written "In practice" part (empty without one). */
 export const practiceNote = (m: Member) =>

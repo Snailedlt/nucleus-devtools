@@ -4,7 +4,6 @@
 // General tips come in five topics: best practices and pitfalls (writing handlers: Nucleus and Jint
 // behaviour), and shortcuts, settings and features (using this workbench). Add one with every new
 // workbench feature.
-import { aboutVisual, VISUAL } from './visual';
 
 export interface TipContext {
   text: string;
@@ -31,7 +30,7 @@ const has = (c: TipContext, s: string) => c.text.includes(s);
 export const CONTEXT_TIPS: Tip[] = [
   {
     id: 'start',
-    text: 'Starting from scratch? A template or a Hub handler for a similar game gets you most of the way.',
+    text: 'A template or a Hub handler for a similar game gets you most of the way when you start from scratch.',
     when: (c) => c.text.trim().length < 120,
     action: { label: 'New handler…', run: 'new' },
   },
@@ -72,7 +71,7 @@ export const CONTEXT_TIPS: Tip[] = [
   },
   {
     id: 'mutex',
-    text: 'Not sure which mutex to kill? Hub handlers for games on the same engine often use the same one. Search the examples.',
+    text: 'Hub handlers for games on the same engine often kill the same mutex. If you don\'t know which one this game needs, search the examples.',
     when: (c) => /KillMutex\b/.test(c.lineText),
     action: { label: 'Examples', run: 'examples' },
   },
@@ -115,7 +114,7 @@ const BEST = T('Best practice', [
   { id: 'b-utf8', text: 'Save handlers as UTF-8: Nucleus reads them that way, so accented letters in an ANSI file arrive broken.' },
   { id: 'b-gamename', text: 'Keep `Game.GameName` unique and free of `\\`: the Hub install names the handler’s file and folder after it, so two handlers with the same name overwrite each other.' },
   { id: 'b-plugins', text: 'A handler can bring .NET plugins: list them in `pluginsInfo.txt` in its folder (`#Name#MyLib.dll#MyLib.MyClass`) and Nucleus adds `Name` as a global.' },
-  { id: 'b-test-before-upload', text: 'Before uploading: Check with no errors, Test all combinations in Try it, then one real run in Nucleus with two players. Windows, focus and input only show there.' },
+  { id: 'b-test-before-upload', text: 'Before you share a handler: Check with no errors, Test all combinations in Try it, then one real run in Nucleus with two players. Windows, focus and input only show there.' },
 ]);
 
 const PITFALLS = T('Pitfall', [
@@ -140,81 +139,79 @@ const PITFALLS = T('Pitfall', [
 ]);
 
 const SHORTCUTS = T('Shortcut', [
-  { id: 's-palette', text: 'Ctrl+Shift+P (or `F1`) opens the command palette, as in VS Code: format, fix, Try it, theme and the rest, each with its shortcut.' },
-  { id: 's-open', text: 'Ctrl+P (or Ctrl+K, or Shift twice) opens the examples, templates and Hub handlers. Type `>` there to switch to commands. Double Shift can be turned off in Settings › Keyboard shortcuts.', action: { label: 'Examples', run: 'examples' } },
-  { id: 'f-looks-past', text: 'Miss the old Nucleus Co-op? Settings (Ctrl+,) → Theme has vlxst\'s Mac style and the original alpha 8 look, light and dark.' },
-  { id: 'f-code-colours', text: 'Prefer your editor\'s colours? Settings (Ctrl+,) → Theme → Code colours: GitHub, VS Code, Xcode, One, Monokai or Dracula, with any look.' },
-  { id: 'f-custom-theme', text: 'Make the workbench yours: Settings (Ctrl+,) → Theme → "Download this look as a theme file", keep only the colours you change, then "Load a theme file…". It shows up under Look, next to the built-in ones.' },
-  { id: 'f-ref-home', text: 'Not sure what an option is called? Open Docs with nothing typed and browse Game, Context, Player and the rest, or see the names Hub handlers use most.' },
-  { id: 'f-lines-ref', text: 'Open the Docs tab, then point at names in Lines (Ctrl+B): each one\'s full docs show in Docs, on a wide screen.', action: { label: 'Lines', run: 'lines' } },
-  { id: 's-open-keys', text: 'In Open (Ctrl+K), the arrow keys move between tiles, templates and Hub rows; `Home` and `End` jump to the first and last. Hover a Hub handler\'s icons for players, keyboards and mice, and downloads.', action: { label: 'Examples', run: 'examples' } },
-  { id: 's-format', text: 'Shift+Alt+F formats the code: indentation and spacing only. Nothing moves to another line, so Nucleus reads it exactly as before.' },
-  { id: 's-f8', text: '`F8` jumps to the next problem, Shift+F8 to the one before. Ctrl+. shows the fixes for the line you’re on.' },
-  { id: 's-tryit', text: 'Ctrl+F5 runs Try it on the code as it is now (VS Code\'s Run Without Debugging); Ctrl+; A (one after the other) tests all combinations.', action: { label: 'Try it', run: 'tryit' } },
-  { id: 's-lines', text: 'Ctrl+B shows or hides Lines (Ctrl+Shift+L too, outside the code: in the code it selects every occurrence, as in VS Code).', action: { label: 'Show Lines', run: 'lines' } },
+  { id: 's-palette', text: '{key:palette} (or `F1`) opens the command palette, as in VS Code: format, fix, Try it, theme and the rest, each with its shortcut.' },
+  { id: 's-open', text: '{key:open} (or Ctrl+K, or Shift twice) opens the examples, templates and Hub handlers. Type `>` there to switch to commands. Double Shift can be turned off in Settings › Keyboard shortcuts.', action: { label: 'Examples', run: 'examples' } },
+  { id: 'f-looks-past', text: 'If you miss the old Nucleus Co-op look, Settings ({key:settings}) → Theme has vlxst\'s Mac style and the original alpha 8 look, each in light and dark.' },
+  { id: 'f-code-colours', text: 'The code can use your editor\'s colours. Settings ({key:settings}) → Theme → Code colours has GitHub, VS Code, Xcode, One, Monokai and Dracula, and they work with any look.' },
+  { id: 'f-custom-theme', text: 'You can make your own look. In Settings ({key:settings}) → Theme, choose "Download this look as a theme file", keep only the colours you want to change, then "Load a theme file…". It appears under Look next to the built-in ones.' },
+  { id: 'f-ref-home', text: 'When you don\'t know what an option is called, open Docs with nothing typed. You can browse Game, Context, Player and the rest, or look at the names Hub handlers use most.' },
+  { id: 'f-lines-ref', text: 'Open the Docs tab, then point at names in Lines ({key:lines}): each one\'s full docs show in Docs, on a wide screen.', action: { label: 'Lines', run: 'lines' } },
+  { id: 's-open-keys', text: 'In the Open list ({key:open}), the arrow keys move between tiles, templates and Hub rows, and `Home` and `End` jump to the first and last. Hover a Hub handler\'s icons to see its players, keyboards and mice, and downloads.', action: { label: 'Examples', run: 'examples' } },
+  { id: 's-format', text: '{key:format} formats the code. It fixes indentation and spacing, uses double quotes and adds missing semicolons. Nothing moves to another line, so Nucleus reads it exactly as before.' },
+  { id: 's-f8', text: '{key:nextProblem} jumps to the next problem, {key:prevProblem} to the one before. {key:quickFix} shows the fixes for the line you’re on.' },
+  { id: 's-tryit', text: '{key:tryIt} runs Try it on the code as it is now (VS Code\'s Run Without Debugging); {key:testAll} (one after the other) tests all combinations.', action: { label: 'Try it', run: 'tryit' } },
+  { id: 's-lines', text: '{key:lines} shows or hides Lines (Ctrl+Shift+L too, outside the code: in the code it selects every occurrence, as in VS Code).', action: { label: 'Show Lines', run: 'lines' } },
   { id: 's-docs-insert', text: 'Docs show an example for most names: Insert into handler puts it where it belongs (an option with the others, a call in `Game.Play`), or updates the value when the handler sets it already. Ctrl+Z undoes it.' },
   { id: 's-docs-page', text: 'Every name in Docs has a page of its own to link to: open one and choose Open as a page, or send someone docs/Context.ModifySaveFile/ on the site.' },
-  { id: 's-tutorial', text: 'New to handlers? Learn walks you through making your first one, for a free game, a few lines at a time, checked as you type. At the end, you test it in Nucleus Co-op. Stuck on a step? Hint says what\'s missing without giving the answer away.', action: { label: 'Start it', run: 'tutorial' } },
-  { id: 's-find-all', text: 'Add the same text after every match: Ctrl+F, type what to find, Alt+Enter selects every match, then `→` puts a cursor after each (`←` before each) and you type once for all.' },
-  { id: 's-edit', text: 'VS Code’s editing keys work: Ctrl+/ comments a line, Alt+↑/↓ moves it, Shift+Alt+↑/↓ copies it, Ctrl+D selects the next match.' },
-  { id: 's-explain', text: 'Not sure what a line does? Put the cursor on it and press Ctrl+Alt+E: what it does in plain words, the docs of its names, and what Check says about it.' },
-  { id: 's-goto', text: 'Ctrl+G goes to a line number, handy with a line from a Nucleus error message.' },
-  { id: 's-suggest', text: 'Type `.` after `Game`, `Context` or `Nucleus`, or press Ctrl+Space, for the names that exist there, with their docs.' },
-  { id: 's-save', text: 'Ctrl+S saves the handler as a .zip Nucleus Co-op can install; Ctrl+Shift+S (or the arrow next to Save) picks .js or .nc. Ctrl+, opens Settings, and ? lists every shortcut.' },
+  { id: 's-tutorial', text: 'If you\'re new to handlers, Learn walks you through making your first one for a free game, a few lines at a time, checked as you type. At the end you test it in Nucleus Co-op. When you\'re stuck on a step, Hint tells you what\'s missing without giving the answer away.', action: { label: 'Start it', run: 'tutorial' } },
+  { id: 's-find-all', text: 'Add the same text after every match: {key:find}, type what to find, {key:findSelectAll} selects every match, then `→` puts a cursor after each (`←` before each) and you type once for all.' },
+  { id: 's-edit', text: 'VS Code’s editing keys work: {key:comment} comments a line, Alt+↑/↓ moves it, Shift+Alt+↑/↓ copies it, {key:selectNext} selects the next match.' },
+  { id: 's-explain', text: 'To find out what a line does, put the cursor on it and press {key:explainLine}. You get the line in plain words, the docs of its names, and what Check says about it.' },
+  { id: 's-goto', text: '{key:goToLine} goes to a line number, handy with a line from a Nucleus error message.' },
+  { id: 's-suggest', text: 'Type `.` after `Game`, `Context` or `Nucleus`, or press {key:suggest}, for the names that exist there, with their docs.' },
+  { id: 's-save', text: '{key:save} saves the handler as a .zip Nucleus Co-op can install; {key:saveAs} (or the arrow next to Save) picks .js or .nc. {key:settings} opens Settings, and ? lists every shortcut.' },
 ]);
 
 const SETTINGS = T('Setting', [
-  { id: 'c-theme', text: 'Light, dark or your device’s theme: Settings (the gear, or Ctrl+,), or type "theme" in the command palette (Ctrl+Shift+P).' },
+  { id: 'c-theme', text: 'Light, dark or your device’s theme: Settings (the gear, or {key:settings}), or type "theme" in the command palette ({key:palette}).' },
   { id: 'c-editor', text: 'Settings has the text size, line wrapping and, on phones, a row of symbol keys (; = " ( ) { } [ ]) above the keyboard.' },
   { id: 'c-advanced', text: 'Advanced mode (top right) adds rule ids, filters, recorded calls in Try it, and the engine probes behind the checks.' },
   { id: 'c-lines', text: 'Lines can show a tree or one list, grouped by object, topic, type or where names work (top level or inside Game.Play). The ⚙ has more, like a wider column.', action: { label: 'Show Lines', run: 'lines' } },
   { id: 'c-review', text: 'Fix all shows a before/after to accept first. Tick Apply without review to skip that.' },
   { id: 'c-tips', text: 'Turn tips off with "Tips: on" at the bottom, or in Settings. "Show heads-ups again" there brings back the ones about specific lines.' },
-  { id: 'c-wakatime', text: 'Use WakaTime? Add your API key in Settings: writing, testing in Try it and reading docs show up as separate categories. The code is never sent.' },
+  { id: 'c-wakatime', text: 'If you use WakaTime, add your API key in Settings. Writing, testing in Try it and reading docs then show up as separate categories. Your code is never sent.' },
 ]);
 
 const FEATURES_ = T('Feature', [
-  { id: 'f-lines', text: 'Lines lists every name a handler can use. Names already in the handler show their value; click one to insert it. It works in Form and Blocks too.', action: { label: 'Show Lines', run: 'lines' } },
+  { id: 'f-lines', text: 'Lines lists every name a handler can use. Names already in the handler show their value; click one to insert it.', action: { label: 'Show Lines', run: 'lines' } },
   { id: 'f-hover', text: 'Hover any name in the code for its docs. In Lines, the (i) next to a name also says how many Hub handlers use it.' },
   { id: 'f-tryit', text: 'Try it shows what each player gets: window, launch arguments and every file change, without Nucleus or the game.', action: { label: 'Try it', run: 'tryit' } },
-  { id: 'f-debug', text: 'Step through your handler: click beside a line number for a breakpoint, then Try it › Step through (`F5`). Next line (`F10`), Back to undo a step, and drag the timeline through every player’s Game.Play.', action: { label: 'Try it', run: 'tryit' } },
+  { id: 'f-debug', text: 'Step through your handler: click beside a line number for a breakpoint, then Try it › Step through ({key:debugGo}). Next line (`F10`), Back to undo a step, and drag the timeline through every player’s Game.Play.', action: { label: 'Try it', run: 'tryit' } },
   { id: 'f-testall', text: 'Test all combinations runs every player count, input setup and monitor size, and lists what fails and why.', action: { label: 'Try it', run: 'tryit' } },
   { id: 'f-share', text: 'Share (next to Save) copies a link to the handler, the code, or a Discord-ready code block. Select some lines first to share only those. Too big for a link, or it has files? Share the file: whoever gets the .zip drops it on this page.', action: { label: 'Copy link', run: 'share' } },
   { id: 'f-package', text: 'Open a .zip or .nc, or a Hub handler marked "+ N files" in the Open list, and its other files come along: "+ N files" shows each one, where Nucleus installs it and what’s inside, and saving puts them back. Big Hub files show a Hub badge: get those from the original package.' },
   { id: 'f-reference', text: 'The Docs tab searches every option, Context member and Nucleus enum with its docs: try "window title" or "mutex".' },
   { id: 'f-mascots', text: 'Meet Nucli, the quiet atom who checks your handler: he dozes until there\'s code, cheers when there\'s nothing to fix and runs Test all. Duo, splitscreen.me\'s split-screen ball, turns up when something won\'t load.' },
-  { id: 'f-mascot-modes', text: 'Want Duo and Nucli livelier, or nothing moving at all? Settings → Theme → Motion: pick Animations (All, Balanced, Some or None), or set each kind of motion yourself, including Nucli editing the code during fixes.' },
+  { id: 'f-mascot-modes', text: 'Settings › Motion decides how lively Duo and Nucli are, down to nothing moving at all. Pick Animations (All, Balanced, Some or None), or set each kind of motion yourself, including Nucli editing the code during fixes.' },
+  { id: 'f-ai-guide', text: 'If you write handlers with ChatGPT, Claude, Codex or another AI, give it our prompt first. The site’s AI page has one for agents and one for chatbots, so the AI follows Nucleus’ rules and checks its work.' },
   { id: 'f-ai-providers', text: 'Fix with AI works with Claude, OpenAI, OpenRouter, Gemini or a free local model (Ollama, LM Studio): pick one in Settings › AI.' },
-  { id: 'f-save-nucleus', text: 'Save straight into Nucleus Co-op: Ctrl+Alt+S (or Save ▾ › Into Nucleus Co-op) writes the handler into its handlers folder. Pick the folder once; in Firefox and Safari it saves the .zip to drag onto Nucleus.' },
-  { id: 'f-value-pick', text: 'Not sure what a value can be? Put the cursor on it, like the false in Game.SymlinkGame = false;, and tap the ▾ after it (or press Alt+↓) to pick from the values it takes.' },
-  { id: 'f-wm-plus', text: 'Blocking window messages with Proto Input? Each number in Game.ProtoInput.BlockedMessages shows its name, and the + before the ] adds the ones handlers block most.' },
+  { id: 'f-save-nucleus', text: 'Save straight into Nucleus Co-op: {key:saveNucleus} (or Save ▾ › Into Nucleus Co-op) writes the handler into its handlers folder. Pick the folder once; in Firefox and Safari it saves the .zip to drag onto Nucleus.' },
+  { id: 'f-value-pick', text: 'To see what a value can be, put the cursor on it (like the false in Game.SymlinkGame = false;) and tap the ▾ after it, or press Alt+↓. You can pick from the values it takes.' },
+  { id: 'f-wm-plus', text: 'When you block window messages with Proto Input, each number in Game.ProtoInput.BlockedMessages shows its name, and the + before the ] adds the ones handlers block most.' },
   { id: 'f-eq-values', text: 'Type a space after = (as in Game.SymlinkGame = ) and the editor suggests the values that option takes. For Game.Play it writes the whole function.' },
-  { id: 'f-votes', text: 'Was a tip useful? The 👍 and 👎 next to it tell us, anonymously. The AI-written docs have them too.' },
-  { id: 'f-density', text: 'Want more or less in Check? Settings › Check: Compact (one line each), Comfortable or Detailed.' },
-  { id: 'f-tabs', text: 'Open more than one handler: + next to the tabs opens a new one, and your changes stay in their own tab. Ctrl+Shift+[ and ] switch between them.' },
+  { id: 'f-votes', text: 'The 👍 and 👎 next to a tip tell us whether it was useful. They\'re anonymous. The AI-written docs have them too.' },
+  { id: 'f-density', text: 'Check can show more or less per problem. Settings › Check has Compact (one line each), Comfortable and Detailed.' },
+  { id: 'f-tabs', text: 'You can have more than one handler open. The + next to the tabs opens another, and your changes stay in their own tab. {key:nextHandler} and {key:prevHandler} switch between them, and {key:closeHandler} closes the one you\'re on.' },
   { id: 'f-edge-menu', text: 'Right-click the edge between two panels (or focus it and press the keyboard\'s menu key) for its layout menu: reset its size, move Files or Lines to the other side, or hide it.' },
-  { id: 'f-rail', text: 'Want more room for code? Settings › Layout › Side rail puts the tools in a strip on the left; › at its bottom shows their names. Files and Lines can sit on either side of the code.' },
+  { id: 'f-rail', text: 'For more room for code, Settings › Layout › Side rail puts the tools in a strip on the left. The › at its bottom shows their names. Files and Lines can sit on either side of the code.' },
   { id: 'f-gamefolder', text: 'Files › Your game on this PC: link the folder your game is installed in, and Check compares the executable and file lists with the real files, and hints at the Proto Input hooks the game\'s .exe and DLLs call for. Read in your browser only.' },
-  { id: 'f-expand', text: 'A long value in Form or Blocks? Alt+Enter (or the expand button next to it) opens it in a larger editor, with the option’s docs beside it. `Esc` takes you back.' },
-  { id: 'f-blocks', text: 'Blocks, next to Code and Form, shows Game.Play as steps: "If … then", "Set … to", "Do …". Every change edits the code, and your comments stay.' },
-  { id: 'f-settings-io', text: 'New computer or browser? Settings › Updates and backup exports your settings to a file, and imports them there.' },
-  { id: 'f-feedback', text: 'Found something odd? Report a problem (menu or Ctrl+Shift+P) opens the right GitHub form already filled in with your browser, settings and where the handler came from, never your code. No GitHub account? Copy the report for the testers\u2019 Discord thread.' },
-  { id: 'f-check-wrong', text: 'A warning on code that works in Nucleus? Open the problem in Check (or hover it) and use the flag, This check is wrong: the check and the line are filled in for you.' },
-  { id: 'f-tryit-differs', text: 'Nucleus did something Try it didn\u2019t show? The icon in the corner of Try it\u2019s result reports what it showed, next to what really happened.' },
+  { id: 'f-settings-io', text: 'Settings › Updates and backup exports your settings to a file, so you can import them on another computer or browser.' },
+  { id: 'f-feedback', text: 'If something looks wrong, use Report a problem (in the menu, or {key:palette}). It opens the right GitHub form, filled in with your browser, your settings and where the handler came from, but never your code. Without a GitHub account you can copy the report for the testers’ Discord thread instead.' },
+  { id: 'f-check-wrong', text: 'If Check warns about code that works in Nucleus, open the problem in Check (or hover it) and use the flag, This check is wrong. The check and the line are filled in for you.' },
+  { id: 'f-tryit-differs', text: 'If Nucleus did something Try it didn’t show, use the icon in the corner of Try it’s result. It reports what Try it showed next to what really happened.' },
   { id: 'f-a11y', text: 'Settings › Accessibility: colour-blind-friendly colours, another underline for problems, a strong focus ring, larger buttons, an easier-to-read font, and notes that stay until you close them.' },
-  { id: 'f-form', text: 'Prefer switches over code? Form, above the code, shows the options as a form; every change edits the code.' },
-  { id: 'f-files', text: 'A handler with extra files (ini, dlls…)? Files, above the code, shows the package as Nucleus installs it; open its text files in tabs, and drop files on it to add them.' },
-  { id: 'f-swipe', text: 'Done with a note at the bottom right? Swipe it away to the right, or hover the stack to read them all.' },
+  { id: 'f-files', text: 'For a handler with extra files (ini, dlls…), Files above the code shows the package as Nucleus installs it. You can open its text files in tabs and drop files on it to add them.' },
+  { id: 'f-swipe', text: 'When you\'re done with a note at the bottom right, swipe it off to the right. Hover the stack to read them all.' },
   { id: 'f-gutter', text: 'Click a marker next to a line number for that line’s problems and fixes.' },
   { id: 'f-hub', text: 'The examples include the most-downloaded verified Hub handlers. Check and Try it work on them, so you can see how others solved a problem.', action: { label: 'Examples', run: 'examples' } },
-  { id: 'f-vscode', text: 'Prefer your own editor? The VS Code extension has the same checks, docs on hover and Try it, for the files in your handlers folder.' },
+  { id: 'f-vscode', text: 'If you\'d rather use your own editor, the VS Code extension has the same checks, docs on hover and Try it, for the files in your handlers folder.' },
 ]);
 
 // Who each tip is for (Tip.for). Unset: useful to everyone. Guided shows newcomer tips, Advanced mode
 // developer tips; both show the rest. Things an experienced author already knows (how to get suggestions,
-// VS Code's editing keys, Form and Blocks, the mascots) are for newcomers; power-user shortcuts and
+// VS Code's editing keys, the mascots) are for newcomers; power-user shortcuts and
 // workflow settings are for developers.
-const NEWCOMER = new Set(['start', 'in-play', 's-tutorial', 's-suggest', 's-edit', 'c-theme', 'c-editor', 'c-advanced', 'f-form', 'f-blocks', 'f-expand', 'f-mascots', 'f-mascot-modes', 'f-swipe', 'f-gutter', 'f-hover', 'f-votes', 'f-eq-values', 'f-value-pick', 'f-reference', 'f-ref-home', 'f-lines']);
+const NEWCOMER = new Set(['start', 'in-play', 's-tutorial', 's-suggest', 's-edit', 'c-theme', 'c-editor', 'c-advanced', 'f-mascots', 'f-mascot-modes', 'f-swipe', 'f-gutter', 'f-hover', 'f-votes', 'f-eq-values', 'f-value-pick', 'f-reference', 'f-ref-home', 'f-lines']);
 const DEVELOPER = new Set(['s-find-all', 's-goto', 's-open-keys', 'f-vscode', 'f-custom-theme', 'f-settings-io', 'c-review', 'c-wakatime', 'f-save-nucleus', 'f-ai-providers']);
 for (const t of [...CONTEXT_TIPS, ...PITFALLS, ...SHORTCUTS, ...BEST, ...FEATURES_, ...SETTINGS]) {
   if (NEWCOMER.has(t.id)) t.for = 'newcomer';
@@ -228,13 +225,6 @@ export type TipShow = 'mode' | 'all' | 'newcomer' | 'developer' | 'everyone';
 export const tipShown = (t: Tip, show: TipShow, who: 'newcomer' | 'developer') =>
   show === 'mode' ? tipFor(t, who) : show === 'all' ? true : show === 'everyone' ? !t.for : t.for === show;
 
-// Form and Blocks are hidden for now (visual.ts): their tips go with them, and the others don't mention them.
-if (!VISUAL) {
-  for (const g of [CONTEXT_TIPS, PITFALLS, SHORTCUTS, BEST, FEATURES_, SETTINGS]) {
-    for (const t of g) t.text = t.text.replace(/ It works in Form and Blocks too\./, '');
-    for (let i = g.length - 1; i >= 0; i--) if (aboutVisual(g[i].text)) g.splice(i, 1);
-  }
-}
 const GROUPS = [PITFALLS, SHORTCUTS, BEST, FEATURES_, SETTINGS];
 /** Every general tip, the topics taking turns, so Next goes round them. */
 export const GENERAL_TIPS: Tip[] = Array.from({ length: Math.max(...GROUPS.map((g) => g.length)) }, (_, i) => GROUPS.map((g) => g[i])).flat().filter(Boolean);

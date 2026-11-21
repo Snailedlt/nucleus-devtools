@@ -23,7 +23,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
       - name: Read the Hub list once
         run: node workbench/tools/hub-sync.mjs "$RUNNER_TEMP/hub-index.json"
       - name: Take the data branch as it is (usage counts, mirrored handlers, covers)

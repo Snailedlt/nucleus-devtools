@@ -6,7 +6,7 @@
 #   sh scripts/build-native.sh [targets]
 set -e
 TARGETS="${1:-win-x64,linux-x64}"
-docker run --rm -v "$PWD:/w" -w /w -e HOME=/tmp/home node:22-bookworm sh -ec "
+docker run --rm -v "$PWD:/w" -w /w -e HOME=/tmp/home "node:$(cat .nvmrc)-bookworm" sh -ec "
   apt-get -o Acquire::Retries=3 update -qq
   apt-get -o Acquire::Retries=3 install -y -qq --no-install-recommends g++-mingw-w64-x86-64-posix g++-mingw-w64-i686-posix osslsigncode >/dev/null
   sh npp-plugin/build.sh

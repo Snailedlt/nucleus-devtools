@@ -207,7 +207,9 @@ test('start page: the old anchors still lead somewhere (on the page, or forwarde
   const aliases = [...startSrc.matchAll(/<span id="([^"]+)" class="anchor-alias"/g)].map((m) => m[1]);
   const startIds = new Set([...startSrc.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]));
   const moved = JSON.parse(startSrc.match(/var MOVED = (\[[^\]]*\])/)[1].replace(/'/g, '"'));
-  const toolsIds = new Set([...toolsSrc.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]));
+  // …plus the editors' setup steps, which the build writes from data/editors.json (<!--ED_STEPS-->).
+  const editors = JSON.parse(fs.readFileSync(new URL('../../data/editors.json', import.meta.url), 'utf8')).editors;
+  const toolsIds = new Set([...[...toolsSrc.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]), ...editors.map((e) => `setup-${e.id}`)]);
   for (const id of moved) assert.ok(toolsIds.has(id), `moved #${id} exists on tools/`);
   for (const old of ['catches', 'see', 'install', 'help', 'what-it-catches', 'see-it', 'try-it-in-5-minutes', 'get-vscode', 'get-notepadpp', 'any-editor-with-a-language-server-lsp', 'compare-the-editors', 'works-in-your-editor', 'also-in-the-workbench', 'want-to-help-build-it', 'in-motion', 'screenshots'])
     assert.ok(aliases.includes(old) || startIds.has(old) || moved.includes(old), old);
@@ -219,6 +221,30 @@ test('start page as built: each heading carries its link', { skip: !fs.existsSyn
   for (const m of html.matchAll(/<(h[2-4]) id="([^"]+)" class="[^"]*has-anchor[^"]*">[^<]+<a class="anchor" href="#([^"]+)"/g)) assert.equal(m[3], m[2]);
   assert.equal([...html.matchAll(/class="anchor" href=/g)].length, [...startSrc.matchAll(/<h[2-4] id="[^"]+" class="[^"]*\bhas-anchor\b/g)].length);
   for (const m of html.matchAll(/href="#([^"]*)"/g)) if (m[1]) assert.ok(ids.has(m[1]), `#${m[1]}`);
+});
+
+test('AI guide as built: preview stays unindexed and the live page advertises its own URL', { skip: !fs.existsSync(builtStart) && 'not built' }, () => {
+  const pages = path.join(root, 'playground/dist/pages');
+  const start = fs.readFileSync(builtStart, 'utf8');
+  const ai = fs.readFileSync(path.join(pages, 'ai/index.html'), 'utf8');
+  const tools = fs.readFileSync(path.join(pages, 'tools/index.html'), 'utf8');
+  assert.match(ai, /<title>[^<]*Nucleus Co-op handler with AI[^<]*<\/title>/);
+  for (const html of [start, tools]) assert.match(html, /href="\.\.\/ai\/"/);
+  assert.match(tools, /id="ai-agents"/, 'published tools-page bookmark still works');
+  assert.doesNotMatch(ai, /__BASE__/);
+
+  if (start.includes('<meta name="robots" content="noindex, nofollow">')) {
+    assert.match(ai, /<meta name="robots" content="noindex, nofollow">/);
+    assert.doesNotMatch(ai, /rel="canonical"|property="og:url"/);
+  } else {
+    const base = 'https://snailedlt.github.io/nucleus-devtools/';
+    assert.ok(ai.includes(`<link rel="canonical" href="${base}ai/">`));
+    assert.ok(ai.includes(`<meta property="og:url" content="${base}ai/">`));
+    for (const meta of ['property="og:image"', 'name="twitter:image"']) {
+      assert.ok(ai.includes(`<meta ${meta} content="${base}start/og.png">`), meta);
+    }
+    assert.ok(fs.readFileSync(path.join(pages, 'sitemap.xml'), 'utf8').includes(`<loc>${base}ai/</loc>`));
+  }
 });
 
 // ---------------------------------------------------------------------------
@@ -256,7 +282,7 @@ test('?ref= links name the tool in plain words', () => {
 });
 
 test('release and Hub links have the expected form', () => {
-  for (const { file, m } of found(/https:\/\/github\.com\/Snailedlt\/[\w-]+\/releases[^\s"'`)<>]*/g)) assert.match(m[0], /\/releases(\/latest|\/tag\/[\w.$%{}-]+|\/download\/[^\s]+)?\/?$/, `${file}: ${m[0]}`);
+  for (const { file, m } of found(/https:\/\/github\.com\/Snailedlt\/[\w-]+\/releases[^\s"'`)<>]*/g)) assert.match(m[0], /\/releases(\/latest\/download\/[^\s]+|\/latest|\/tag\/[\w.$%{}-]+|\/download\/[^\s]+)?\/?$/, `${file}: ${m[0]}`);
   for (const { file, m } of found(/https:\/\/hub\.splitscreen\.me\/[^\s"'`)<>]*/g)) assert.match(m[0], /^https:\/\/hub\.splitscreen\.me\/?(handler\/|api\/|cdn\/|$|\$\{)/, `${file}: ${m[0]}`);
 });
 

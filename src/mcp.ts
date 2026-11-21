@@ -115,7 +115,7 @@ export const TOOLS: Tool[] = [
   {
     name: 'nucleus_format',
     title: 'Format a handler',
-    description: 'Format a handler: indentation and the spacing between tokens only. No line breaks move (Nucleus runs handlers line by line), tokens and comments stay exactly the same (checked), and top-level lines stay unindented for the Hub install. With path and write: true, saves the file.',
+    description: 'Format a handler: indentation, the spacing between tokens, double quotes around strings and a semicolon where a statement ends without one. No line breaks move (Nucleus runs handlers line by line), comments stay as they are, the result is checked to be the same program (otherwise nothing changes), and top-level lines stay unindented for the Hub install. With path and write: true, saves the file.',
     inputSchema: { type: 'object', properties: { ...SOURCE, write: { type: 'boolean', description: 'Save the formatted file (only with path).', default: false } } },
     annotations: { destructiveHint: false, idempotentHint: true },
     run: (a) => {

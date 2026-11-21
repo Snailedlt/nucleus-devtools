@@ -5,6 +5,16 @@ import { CONTEXT_TIPS, GENERAL_TIPS, Tip, TipContext, TipShow, tipShown } from '
 import { scanHandler, inCallback, Scan } from './lines';
 import { narrow } from './dom';
 import { keysText } from './kbd';
+import { binding, noKeyText } from './keybindings';
+
+// A tip's {key:actionId}: that action's key as it's bound now, in backticks so it is drawn as keys (kbd.ts keysText;
+// the binding as written, "Cmd+S", which the keycaps know on every platform). An action without a key is named
+// instead, saying it has none (true of every action; not all of them are in the command palette), so the sentence
+// still reads.
+const withKeys = (text: string) => text.replace(/\{key:(\w+)\}/g, (_, id: string) => {
+  const key = binding(id);
+  return key ? '`' + key + '`' : noKeyText(id);
+});
 import { BETA } from './testplan';
 
 const ON_KEY = 'nucleus-workbench-tips';
@@ -58,7 +68,7 @@ export function initTips({ editor, actions, toast, targets, audience }: Deps) {
     const whom = show === 'mode' ? '' : ` · for ${tip.for === 'newcomer' ? 'newcomers' : tip.for === 'developer' ? 'developers' : 'everyone'}`;
     label.textContent = (contextual ? 'Heads up' : tip.topic ?? 'Tip') + whom;
     // `code` spans; shortcuts as keys (kbd.ts: with a modifier in plain text, a lone key such as `F8` in backticks).
-    body.innerHTML = keysText(tip.text);
+    body.innerHTML = keysText(withKeys(tip.text));
     $('#tip-votes').innerHTML = voteButtons('tip', tip.id, { up: 'Useful tip', down: 'Not useful' });
     document.querySelectorAll('.tip-target').forEach((e) => e.classList.remove('tip-target'));
     if (tip.action && on) {

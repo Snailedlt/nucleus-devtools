@@ -8,6 +8,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { mergeNotepadPP, notepadPPVersion } from './core/notepadpp';
+import { REPO_URL } from './core/report';
 
 declare const __VERSION__: string;
 const VERSION = typeof __VERSION__ === 'string' ? __VERSION__ : '0.0.0';
@@ -149,7 +150,7 @@ export function setupNotepadPP(opts: SetupOptions): SetupResult {
       if (!fs.existsSync(backup)) fs.copyFileSync(file, backup);
       fs.writeFileSync(file, mergeNotepadPP(fs.readFileSync(backup, 'utf8'), VERSION));
       lines.push(`Added the Nucleus names and call tips to Notepad++ (${file}); its own JavaScript words are kept. Restart Notepad++ to use them.`);
-      if (opts.plugins && !plugin) lines.push(`There's no plugin for ${arch} Notepad++ yet, so it gets the names and call tips instead. Ask for one: https://github.com/Snailedlt/nucleus-devtools/issues`);
+      if (opts.plugins && !plugin) lines.push(`There's no plugin for ${arch} Notepad++ yet, so it gets the names and call tips instead. Ask for one: ${REPO_URL}/issues`);
     }
   } catch (e: any) {
     if (e?.code === 'EACCES' || e?.code === 'EPERM') return { ok: false, denied: true, lines: [`Notepad++'s folder isn't writable (${dir}). Run this once from a terminal opened as administrator (right-click › Run as administrator), or use a portable Notepad++ with --path.`] };

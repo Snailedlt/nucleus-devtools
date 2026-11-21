@@ -18,6 +18,20 @@ How to write it (people and AI agents read this; the release workflow publishes 
 ### ⚠️ Changed
 
 - **One home for the tools: nucleus-devtools.** This repository is now [Snailedlt/nucleus-devtools](https://github.com/Snailedlt/nucleus-devtools) (old links redirect), and the browser workbench moved into it: its address is now https://snailedlt.github.io/nucleus-devtools/, which every tool's links (Open in the Browser Workbench, the docs and check pages) now use. Reports from every tool, the workbench included, go to the same forms here.
+- **Package no longer points at the Hub.** While the tools are in beta they don't ask you to upload handlers. The command is now **Nucleus: Package Handler (.nc)**, in Notepad++ **Package as .nc…**, the "Upload on the Hub" button after packaging is gone, and the walkthrough's last step is *Package it*. A `.nc` is still the Hub's package format.
+
+### ✨ New
+
+- **ncdev for Linux.** Releases now include `ncdev-linux-x64`, the standalone ncdev for Linux (nothing else to install; `ncdev update` keeps it current), so every editor setup can run `ncdev lsp`. `nucleus.js` with Node.js still works everywhere else.
+- **The Claude Code plugin brings the tools too.** Installing the nucleus-coop plugin now also adds the `nucleus` MCP server (check, fix, Try it, API lookup, Hub search), so Claude Code calls them as tools without any setup.
+
+### ⚡ Faster
+
+- **Smaller downloads.** `ncdev` and the skill's script are about 1.6 MB smaller and the extension about 1.2 MB: they carry only the general JavaScript checks the tools use, not all of ESLint's, and the Try it simulator's own copy of the API no longer includes the documentation.
+
+### 🐛 Fixed
+
+- **Format says what it changes.** The MCP server and the skill described Format as changing indentation and spacing only. By default it also switches to double quotes and adds missing semicolons, and they say so now. It still never moves a line.
 
 ---
 

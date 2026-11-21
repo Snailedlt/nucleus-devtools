@@ -17,11 +17,11 @@ Runs [Nucleus Co-op](https://github.com/SplitScreen-Me/splitscreenme-nucleus) ga
   <picture><source media="(prefers-color-scheme: dark)" srcset="docs/images/gallery/workbench-phone-dark.webp"><img src="docs/images/gallery/workbench-phone-light.webp" width="24%" alt="The workbench on a phone: the Check results for the example handler"></picture>
 </p>
 
-More views (suggestions, the debugger, Test all, the visual editor, the four looks) are in the [start page's gallery](https://snailedlt.github.io/nucleus-devtools/start/?ref=workbench-readme-md#see-it).
+More views (suggestions, the debugger, Test all, the four looks) are in the [start page's gallery](https://snailedlt.github.io/nucleus-devtools/start/?ref=workbench-readme-md#see-it).
 
 **In motion** (a minute or two each, captioned, no sound): [▶ the workbench](docs/videos/workbench.mp4) · [▶ VS Code](https://github.com/Snailedlt/nucleus-devtools/blob/main/docs/videos/vscode.mp4) · [▶ Notepad++](https://github.com/Snailedlt/nucleus-devtools/blob/main/docs/videos/notepadpp.mp4)
 
-[![The workbench in motion: code colours, checks, fixes, suggestions, Docs, Try it, the visual editor, the debugger and the settings](docs/videos/workbench-poster.jpg)](docs/videos/workbench.mp4)
+[![The workbench in motion: code colours, checks, fixes, suggestions, Docs, Try it, the debugger and the settings](docs/videos/workbench-poster.jpg)](docs/videos/workbench.mp4)
 
 ## What it does
 
@@ -82,9 +82,9 @@ python3 -I tools/fetch_verified.py --limit 150        # or: --id <handlerId>
 
 **Hub index** (`.github/workflows/hub-sync.yml`, daily): the only place that reads hub.splitscreen.me's handler list. `tools/hub-sync.mjs` writes `hub-index.json` to the `data` branch (<https://raw.githubusercontent.com/Snailedlt/nucleus-devtools/data/hub-index.json>), and the workbench build, the weekly check and the extension's CLI, MCP server and Browse the Hub read that instead of the Hub API (which stays the fallback). Each entry keeps the fields the tools use, including the game's IGDB link (`gameUrl`), which the extension's `scripts/hub-engines.mjs` uses to find the game's engine on Wikidata. Handler packages come from the Hub's storage, once per version. The same run mirrors every handler for the workbench (`tools/hub-mirror.mjs`): `hub/<id>.js`, `hub/packages.json`, the covers, and each package's other files (`hub/<id>.files.json` from `tools/hub-files.mjs`: small files with content, big ones by name and size; `HUB_MIRROR_PKG_MAX` package downloads a run, default 60), so Hub handlers open in the workbench with their whole package listed.
 
-**Lines column usage counts** (`playground/src/usage.json`): how many Hub handlers use each API name, shown in the workbench's Lines column. Regenerate from handlers you already downloaded (`ncdev hub fetch`, one folder per handler) with `node tools/usage-counts.mjs <dir>`; only the counts are saved. Last taken from the 600 most-starred Hub handlers (before the index had all of them; rerun it to count every one).
+**Lines column usage counts** (`playground/src/usage.json`): how many Hub handlers use each API name, shown in the workbench's Lines column. Regenerate from handlers you already downloaded (`ncdev hub fetch`, one folder per handler) with `node tools/usage-counts.mjs <dir>`; only the counts are saved.
 
-**Nightly** (`.github/workflows/nightly.yml`, also on pushes to the harness, tools or probes): the probes in real Jint, Try it's parity on every probe, and every verified Hub handler run in real Jint (network isolated) and compared with Try it by `tools/compare-hub.mjs`: outcome, player 1's launch arguments, and lint errors. Last local run: 150 handlers, 91 comparable (the rest touch real files the harness can't provide), 91/91 outcomes and launch arguments agree, no lint errors. It also warns when Nucleus master moves past the commit the stubs are pinned to.
+**Nightly** (`.github/workflows/nightly.yml`, also on pushes to the harness, tools or probes): the probes in real Jint, Try it's parity on every probe, and every verified Hub handler run in real Jint (network isolated) and compared with Try it by `tools/compare-hub.mjs`: outcome, player 1's launch arguments, and lint errors. Handlers that touch real files the harness can't provide are skipped; the run's summary has the counts. It also warns when Nucleus master moves past the commit the stubs are pinned to.
 
 ## Safety: only verified Hub handlers are run
 
@@ -105,7 +105,7 @@ Handlers get .NET access through Jint (`System.IO`, `System.Diagnostics`, …), 
 
 - a short guided tour of the workbench on a first visit (skip it, take it again from the menu), and **Learn** (`learn/`): lessons that walk you through a first handler, with Check beside the code;
 - a code editor with the same features as the VS Code extension: live squiggles and quick fixes, suggestions (API members, option values, your own functions and variables, `Context.Options` keys, snippets, the template in an empty file), hovers and parameter hints styled like VS Code's, F12, rename (F2), find and replace, folding, Format Document, and VS Code's shortcuts (all rebindable); its code colours, *Nucleus (follows the look)*, give `Game`/`Context`/`Nucleus`, option groups (`Game.Hook`), fixed choices (`Nucleus.Folder.InstancedGameFolder`) and callbacks (`Game.Play`) colours of their own, or pick VS Code's, Notepad++'s and other editors' colours in Settings;
-- **Lines** (every option Nucleus has, grouped, insertable). The visual editor (**Form** and **Blocks**) is hidden for now while it's reworked, and may not come back in this form;
+- **Lines** (every option Nucleus has, grouped, insertable);
 - a **debugger**: breakpoints, stepping, variables and watches, per player;
 - **Files**: open a whole `.zip`/`.nc` package, edit its text files, with the package checks; and **Your game on this PC**: link the game's install folder to check paths against it;
 - **Docs**: every name with its docs, searchable; `#docs-<name>` links open one (e.g. `#docs-Context.ModifySaveFile`), and the address follows what you browse. Every name also has a page of its own (`docs/Context.ModifySaveFile/`), and every check one under `rules/`;
@@ -130,16 +130,11 @@ Handlers get .NET access through Jint (`System.IO`, `System.Diagnostics`, …), 
 
 You can open handler `.js`, `.zip` or `.nc` files by picking them or dropping them on the page. Linting runs in a Web Worker so typing stays smooth in long handlers, and on phones a Handler / Results switch shows one pane at a time.
 
-In Advanced mode everything is keyboard-driven:
-- **Ctrl/⌘+K** opens one searchable list of starters, Hub handlers, probes and actions;
-- **Ctrl/⌘+Enter** simulates;
-- **Alt+Shift+F** fixes problems;
-- **F8** / **Shift+F8** steps through problems;
-- **?** lists the shortcuts.
+Everything is reachable from the keyboard: **?** lists the shortcuts in the workbench, each can be changed in Settings, and [Tools › Workbench › Shortcuts](https://snailedlt.github.io/nucleus-devtools/docs/tools/workbench/shortcuts/) lists the defaults. The same section is a [guide to the workbench](https://snailedlt.github.io/nucleus-devtools/docs/tools/workbench/): where things are and how each part works.
 
 **Theme and dev bar.** The page uses splitscreen.me's theme (brand blue, system fonts, light and dark). A dev bar sets the colour mode and checks the WCAG contrast of the theme's text colours. Open it with Ctrl+Alt+D (remembered), a `#dev` link (this page load only), or "Show or hide the dev bar" under Examples… (Ctrl K).
 
-**Share links.** **Share › Copy a link** puts the handler, compressed, into the link (`#share-…`), so anyone with the link sees the same code; with text selected it shares just the selection, which keeps links short enough for a Discord message (2,000 characters; whole handlers are usually longer). For those, **Share › Save the file** saves the handler and its files as a `.zip` and copies a short message to post with it.
+**Share links.** **Share › Copy a link** puts the handler, compressed, into the link (`#share-…`), so anyone with the link sees the same code; with text selected it shares just the selection, which keeps links short enough for a Discord message (Discord's message limit; whole handlers are usually longer). For those, **Share › Save the file** saves the handler and its files as a `.zip` and copies a short message to post with it.
 
 Links like `#hub-<id>`, `#probe-17`, `#template-basic` or `#example-mistakes` open that example directly, and `#docs-<name>` opens a name in Docs (over the handler you have open). The page also remembers your draft, the active tab and the simulation settings in your browser.
 
@@ -153,7 +148,7 @@ The simulation runs in the browser's JavaScript engine, not Jint. It emulates th
 
 The simulation lives in the core (`src/core/sim.ts` at the repository root), where it also powers the extension's **Try it** panel and `ncdev simulate`; this page bundles the same file.
 
-`sim-parity.mjs` checks the simulation against the real engine: it runs every probe through it and compares the outcome, and the launch arguments it produces, with `probes/expected.txt`. It currently matches on all 121. `--isolated` does the same through `ncdev simulate`, the sandboxed path the CLI and VS Code use. Run it after changing `src/core/sim.ts`:
+`sim-parity.mjs` checks the simulation against the real engine: it runs every probe through it and compares the outcome, and the launch arguments it produces, with `probes/expected.txt`. Its summary says how many match. `--isolated` does the same through `ncdev simulate`, the sandboxed path the CLI and VS Code use. Run it after changing `src/core/sim.ts`:
 
 ```bash
 cd workbench/playground && node sim-parity.mjs              # and with --isolated (npm run build at the root first)

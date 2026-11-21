@@ -1,0 +1,30 @@
+{
+  "$comment": "The feature comparison, one source for README.md's table (node scripts/readme-blocks.mjs writes it) and the tools page's (the workbench build). A cell: \"yes\", \"no\" or \"\", then an optional note after a colon; `code` in a note stays code.",
+  "columns": [
+    { "id": "vscode", "label": "VS Code", "readme": "#vs-code" },
+    { "id": "notepadpp", "label": "Notepad++", "readme": "#notepad" },
+    { "id": "workbench", "label": "Workbench", "readme": "https://snailedlt.github.io/nucleus-devtools/?ref=readme-md" },
+    { "id": "lsp", "label": "Other editors (LSP)", "readme": "#your-own-editor-for-experienced-developers" }
+  ],
+  "rows": [
+    { "feature": "Problems as you type, with the why", "cells": ["yes", "yes", "yes", "yes"] },
+    { "feature": "Quick fixes and Fix all", "cells": ["yes", "yes", "yes", "yes"] },
+    { "feature": "Suggestions, snippets, New handler", "cells": ["yes", "yes", "yes", "yes"] },
+    { "feature": "Hover docs and parameter hints", "cells": ["yes", "yes", "yes", "yes"] },
+    { "feature": "Docs for every option and function", "cells": ["yes: panel", "yes: API reference", "yes: Docs tab", "yes: links to the docs"] },
+    { "feature": "Explain this line", "cells": ["yes", "yes", "yes", "yes"] },
+    { "feature": "Format (never moves a line)", "cells": ["yes", "yes", "yes", "yes"] },
+    { "feature": "Go to definition, references, rename", "cells": ["yes", "yes", "yes", "yes"] },
+    { "feature": "Outline", "cells": ["yes", "yes: panel", "no", "yes"] },
+    { "feature": "Try it (each player's setup)", "cells": ["yes", "yes", "yes", "yes: command"] },
+    { "feature": "Debugger, per player", "cells": ["yes", "no", "yes", "yes: `ncdev dap`"] },
+    { "feature": "Lines (every name, one click to insert)", "cells": ["no", "no", "yes", "no"] },
+    { "feature": "Checks against the game's folder", "cells": ["yes", "yes", "yes", "yes"] },
+    { "feature": "Browse and open Hub handlers", "cells": ["yes", "yes", "yes", ": `ncdev hub`"] },
+    { "feature": "Package as .nc", "cells": ["yes", "yes", "yes", "yes: command"] },
+    { "feature": "Install into Nucleus Co-op", "cells": ["yes", "yes", "yes: Chrome, Edge", "yes: command"] },
+    { "feature": "Test in Nucleus Co-op (starts it)", "cells": ["yes", "yes", "no: a browser can't", "yes: command"] },
+    { "feature": "AI help", "cells": ["yes: its agents get the tools", "no", "yes: Fix with AI", ": `ncdev mcp` for agents"] },
+    { "feature": "What to install", "cells": [": the extension", ": `ncdev setup notepad++`", ": nothing", ": `ncdev`"] }
+  ]
+}

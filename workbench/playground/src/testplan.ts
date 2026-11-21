@@ -2,7 +2,6 @@
 // command palette while BETA is true.
 // AT THE FULL (NON-BETA) RELEASE: set BETA to false (the guide and its entry points disappear), or rewrite the plan for
 // what still needs testing. AGENTS.md › Releasing says so too.
-import { VISUAL } from './visual';
 import type { IconName } from './icons';
 export const BETA = true;
 
@@ -92,8 +91,6 @@ const ALL_ITEMS: TestItem[] = [
   { id: 'tutorial', areas: ['uiux'], kinds: ['task'], title: 'Learn: making your first handler', steps: 'Menu › Learn: do every lesson without Solve, as if you had never seen a handler, then test the handler in Nucleus Co-op with Sonic Robo Blast 2 (free).', look: 'A lesson you couldn\'t finish, a tick that came too early or never came, a word you didn\'t know, or a step in Nucleus Co-op that didn\'t go as the lesson said.' },
   { id: 'first-handler', areas: ['uiux'], kinds: ['task', 'nucleus'], title: 'Make your first handler', steps: 'New handler… → fill in a game you own → fix what Check finds → Try it → Save (Ctrl+S) → install it in Nucleus Co-op.', look: 'Could you finish without asking anyone? Which step was unclear? Did the game start in Nucleus?' },
   { id: 'messages', areas: ['uiux'], kinds: ['explore'], title: 'Do the messages make sense?', steps: 'Open "Handler with common mistakes" (Ctrl+P). Read each problem in Check and on hover, without opening Technical details.', look: 'Any word or sentence you didn\'t understand, or a fix you were afraid to press.' },
-  { id: 'form', areas: ['uiux'], kinds: ['task'], title: 'Make a handler with the form', steps: 'New handler, then switch to Form and set it up there: change switches, pick values, add options, apply the fixes it shows.', look: 'Anything you could not do in the form, confusing labels, or a change that broke the code.' },
-  { id: 'blocks', areas: ['uiux'], kinds: ['task'], title: 'Write Game.Play with Blocks', steps: 'Open a handler, switch to Blocks, add a few steps (+ Add a step, or pick names in Lines), an If, and fix what it shows. Then look at the code.', look: 'Steps you could not make, wording that confused you, or code that came out different from what you meant.' },
   { id: 'value-picker', areas: ['uiux'], kinds: ['explore', 'keyboard'], title: 'Pick a value instead of typing it', steps: 'Put the cursor on a value such as the false in Game.SymlinkGame = false; then click the ▾ after it (Alt+↓ from the keyboard). Try a true/false, a number and a value in quotes.', look: 'Did you find the ▾? Did the list make clear what you can write there? Anything in the way while you just type?' },
   { id: 'explain-line', areas: ['uiux', 'devx'], kinds: ['explore', 'keyboard'], title: 'Explain this line', steps: 'Put the cursor on a few different lines (a setting, Game.Play, a Context line, a comment) and press Ctrl+Alt+E, or click Explain this line under a hover. Same in VS Code. With AI set up (Settings › AI), try Explain with AI.', look: 'An explanation that is wrong, unclear or says nothing useful, and one that closes before you have read it.' },
   { id: 'hover-check', areas: ['devx', 'uiux'], kinds: ['explore'], title: 'Squiggles, hover and Check', steps: 'Hover underlined code and names, open and close problems in Check, try Settings › Check (Compact, Comfortable, Detailed).', look: 'Too much or too little information, boxes in the way, hard-to-read colours in your theme.' },
@@ -110,5 +107,4 @@ const ALL_ITEMS: TestItem[] = [
   { id: 'reports', areas: ['uiux', 'devx'], kinds: ['explore'], title: 'Report something from where you are', steps: 'Open a problem in Check and use This check is wrong (also the flag in its hover); in Try it, the icon in the result\'s corner; in Docs, search for something that isn\'t there; in the menu, Report a problem and Request a feature; in Learn, the lesson list\'s I\'m stuck. In VS Code: Ctrl+. on a problem, and Nucleus: Report a Problem. Look at what each would send, then cancel (or send a real one).', look: 'Is it clear what gets sent before anything is? Does each open the right form with the right things filled in? Is anything in your way when you don\'t want to report?' },
   { id: 'reader', areas: ['uiux'], kinds: ['reader'], title: 'With a screen reader', steps: 'Open an example, go through Check, fix one problem, and open Settings.', look: 'Anything not announced, announced twice, or in a confusing order.' },
 ];
-// Form and Blocks are hidden for now (visual.ts): their tasks come back with them.
-export const TEST_PLAN: TestItem[] = ALL_ITEMS.filter((t) => VISUAL || (t.id !== 'form' && t.id !== 'blocks'));
+export const TEST_PLAN: TestItem[] = ALL_ITEMS;

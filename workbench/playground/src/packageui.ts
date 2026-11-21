@@ -122,7 +122,7 @@ export function initPackageUI(host: PkgHost) {
     $('#file-editor').hidden = which !== 'text';
     $('#file-card').hidden = which !== 'card';
     if (which === 'main') host.showMain();
-    else { $('#editor').hidden = true; $('#formview').hidden = true; }
+    else $('#editor').hidden = true;
   }
 
   function openFile(name: string, line?: number) {

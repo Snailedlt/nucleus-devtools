@@ -3,7 +3,11 @@
 // Gemini…). Each runs the same task: the prompt, the page's two tools (the real linter and the API lookup) in a loop,
 // and a JSON answer { code, changes }. Keys stay in this browser (localStorage, or this tab only) and go only to the
 // provider; settings export never includes them (settingsio.ts is an allowlist).
-import Anthropic from '@anthropic-ai/sdk';
+// The SDK is only loaded when a request is made with an Anthropic API key (its own file on the site).
+import type Anthropic from '@anthropic-ai/sdk';
+type Sdk = typeof Anthropic;
+let sdk: Promise<Sdk> | undefined;
+const loadSdk = () => (sdk ??= import('@anthropic-ai/sdk').then((m) => m.default, (e) => { sdk = undefined; throw e; }));
 
 export type ProviderId = 'claude-page' | 'anthropic' | 'openai' | 'compatible';
 export interface AiSettings {
@@ -88,10 +92,16 @@ const runTool = (tools: PageTool[] | undefined, name: string, input: Record<stri
 
 /** The Anthropic API through the official SDK, with the page tools in a manual loop. */
 function anthropicRunner(key: string, model: string): AiRunner {
-  const client = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true, maxRetries: 2 });
   return {
     label: `Claude (${model})`,
     async json(prompt, o) {
+      let Anthropic: Sdk;
+      try {
+        Anthropic = await loadSdk();
+      } catch {
+        throw new AiError('network', 'Couldn’t load the Anthropic part of the workbench. Check your connection, or reload the page.');
+      }
+      const client = new Anthropic({ apiKey: key, dangerouslyAllowBrowser: true, maxRetries: 2 });
       const tools: Anthropic.Beta.BetaTool[] = (o.tools ?? []).map((t) => ({ name: t.name, description: t.description, input_schema: t.inputSchema as Anthropic.Beta.BetaTool.InputSchema }));
       const messages: Anthropic.Beta.BetaMessageParam[] = [{ role: 'user', content: prompt + JSON_RULE }];
       for (let turn = 0; turn < MAX_TURNS; turn++) {
@@ -110,7 +120,7 @@ function anthropicRunner(key: string, model: string): AiRunner {
             { signal: o.signal },
           );
         } catch (e) {
-          throw anthropicError(e);
+          throw anthropicError(Anthropic, e);
         }
         o.onText?.();
         if (res.stop_reason === 'refusal') throw new AiError('refused', 'Claude declined to change this handler.');
@@ -131,7 +141,7 @@ function anthropicRunner(key: string, model: string): AiRunner {
     },
   };
 }
-function anthropicError(e: unknown): Error {
+function anthropicError(Anthropic: Sdk, e: unknown): Error {
   if (e instanceof Anthropic.APIUserAbortError) return new AiError('cancelled', 'Stopped.');
   if (e instanceof Anthropic.AuthenticationError) return new AiError('bad_key', 'The Anthropic API key was refused. Check it in Settings › AI.');
   if (e instanceof Anthropic.PermissionDeniedError) return new AiError('bad_key', 'This key may not use that model. Check Settings › AI.');

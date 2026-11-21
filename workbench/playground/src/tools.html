@@ -9,79 +9,40 @@
     <li><a href="#get-notepadpp"><img src="../start/editors/notepadplusplus.svg" alt="" width="36" height="36"><strong>Notepad++</strong><small>A plugin, installed with one command.</small></a></li>
     <li><a href="#in-your-editor"><img src="../start/editors/lsp.svg" alt="" width="36" height="36"><strong>Other editors</strong><small>Neovim, Helix, Sublime Text, Emacs, Kate, JetBrains, Zed: through a language server.</small></a></li>
     <li><a href="#command-line"><span class="tg-ico" aria-hidden="true">&gt;_</span><strong>Command line</strong><small><code>ncdev</code>: check, fix, format and test handlers, one at a time or a whole folder.</small></a></li>
-    <li><a href="#ai-agents"><span class="tg-ico" aria-hidden="true">✦</span><strong>AI agents</strong><small>Claude Code, Copilot, Cursor and others write handlers that load, checked by the same engine.</small></a></li>
+    <li><a href="#ai-agents"><span class="tg-ico" aria-hidden="true">✦</span><strong>AI</strong><small>Claude Code, Codex, Cursor, ChatGPT and others write handlers that load, checked by the same engine.</small></a></li>
   </ul>
   </header>
 
   <section aria-labelledby="workbench">
   <h2 id="workbench" class="has-anchor">The workbench, in your browser</h2>
   <p>Open it and start: nothing to install, nothing leaves your browser. It has everything the editors have, plus Lines (every name a handler can use, grouped, one click to insert) beside the code, and a debugger that steps through each player.</p>
-  <ul class="facts">
-    <li><strong>Test all combinations</strong>: every player count, input setup and monitor size in one click, with what fails and why.</li>
-    <li><strong>Whole packages</strong>: open a .zip or .nc and save it again with its Goldberg files, configs and DLLs.</li>
-    <li><strong>A debugger</strong> that steps through each player, and <strong>Lines</strong>: every name a handler can use, grouped, one click to insert.</li>
-<li><strong>Phones and desktops</strong>: symbol keys above the on-screen keyboard; VS Code's shortcuts, hovers and suggestions on a keyboard.</li>
-    <li><strong>WakaTime</strong>, if you use it: your handler time in your dashboard (off by default; the code is never sent).</li>
-  </ul>
+<!--WORKBENCH_EXTRAS-->
   <div class="ctas"><a class="btn primary" href="../?ref=tools">Open the workbench</a><a class="btn" href="../learn/">Learn: make your first handler</a></div>
   </section>
 
   <section aria-labelledby="in-your-editor">
   <span id="install" class="anchor-alias" aria-hidden="true"></span><span id="try-it-in-5-minutes" class="anchor-alias" aria-hidden="true"></span><span id="any-editor-with-a-language-server-lsp" class="anchor-alias" aria-hidden="true"></span><h2 id="in-your-editor" class="has-anchor">In your editor</h2>
-  <p>Pick yours to see how to set it up. We recommend <strong>VS Code</strong>: it shows the most (hovers with docs, a Docs panel, Try it, a debugger). Notepad++ has every feature too, in a plainer way. The others get them through a <strong>language server</strong> (LSP): <code>ncdev lsp</code>, from <a href="__NCDEV_URL__"><code>ncdev.exe</code></a> on your PATH.</p>
-<ul class="editors dev"><li><a class="ed full" id="get-vscode" data-ed="vscode" href="#get-vscode"><img src="../start/editors/vscode.svg" alt="" width="40" height="40"><span><strong>VS Code</strong><small>Extension · also VSCodium</small></span><span class="ed-tag rec">Recommended</span></a></li><li><a class="ed full" id="get-notepadpp" data-ed="notepadpp" href="#get-notepadpp"><img src="../start/editors/notepadplusplus.svg" alt="" width="40" height="40"><span><strong>Notepad++</strong><small>Plugin, one command</small></span><span class="ed-tag full">Full support</span></a></li><li><a class="ed" data-ed="neovim" href="https://github.com/Snailedlt/nucleus-devtools#neovim" rel="noopener"><img src="../start/editors/neovim.svg" alt="" width="40" height="40" loading="lazy"><span><strong>Neovim</strong><small>5 lines of Lua</small></span><span class="ed-tag ok">Tested</span></a></li><li><a class="ed" data-ed="helix" href="https://github.com/Snailedlt/nucleus-devtools#helix" rel="noopener"><img src="../start/editors/helix.svg" alt="" width="40" height="40" loading="lazy"><span><strong>Helix</strong><small>6 lines of TOML</small></span><span class="ed-tag">Untested</span></a></li><li><a class="ed" data-ed="sublime" href="https://github.com/Snailedlt/nucleus-devtools#your-own-editor-for-experienced-developers" rel="noopener"><img src="../start/editors/sublime.svg" alt="" width="40" height="40" loading="lazy"><span><strong>Sublime Text</strong><small>LSP package + one entry</small></span><span class="ed-tag">Untested</span></a></li><li><a class="ed" data-ed="emacs" href="https://github.com/Snailedlt/nucleus-devtools#your-own-editor-for-experienced-developers" rel="noopener"><img src="../start/editors/emacs.svg" alt="" width="40" height="40" loading="lazy"><span><strong>Emacs</strong><small>One eglot line</small></span><span class="ed-tag">Untested</span></a></li><li><a class="ed" data-ed="kate" href="https://github.com/Snailedlt/nucleus-devtools#your-own-editor-for-experienced-developers" rel="noopener"><img src="../start/editors/kate.svg" alt="" width="40" height="40" loading="lazy"><span><strong>Kate</strong><small>One LSP Client entry</small></span><span class="ed-tag">Untested</span></a></li><li><a class="ed" data-ed="jetbrains" href="https://github.com/Snailedlt/nucleus-devtools#your-own-editor-for-experienced-developers" rel="noopener"><img src="../start/editors/jetbrains.svg" alt="" width="40" height="40" loading="lazy"><span><strong>JetBrains IDEs</strong><small>LSP4IJ plugin</small></span><span class="ed-tag">Untested</span></a></li><li><a class="ed" data-ed="zed" href="https://github.com/Snailedlt/nucleus-devtools#your-own-editor-for-experienced-developers" rel="noopener"><img src="../start/editors/zed.svg" alt="" width="40" height="40" loading="lazy"><span><strong>Zed</strong><small>Needs a small extension</small></span><span class="ed-tag">Untested</span></a></li><li><a class="ed" data-ed="any" href="https://github.com/Snailedlt/nucleus-devtools#your-own-editor-for-experienced-developers" rel="noopener"><img src="../start/editors/lsp.svg" alt="" width="40" height="40" loading="lazy"><span><strong>Anything with LSP</strong><small><code>ncdev lsp</code> over stdio</small></span><span class="ed-tag">Untested</span></a></li></ul>
+  <p>Pick yours to see how to set it up. We recommend <strong>VS Code</strong>: it shows the most (hovers with docs, a Docs panel, Try it, a debugger). Notepad++ has every feature too, in a plainer way. The others get them through a <strong>language server</strong> (LSP): <code>ncdev lsp</code>, with <code>ncdev</code> on your PATH: <a data-asset="ncdev.exe" href="__NCDEV_URL__"><code>ncdev.exe</code></a> (Windows) or <a data-asset="ncdev-linux-x64" href="__NCDEV_LINUX_URL__"><code>ncdev-linux-x64</code></a> (Linux x64; <code class="cmd">chmod +x ncdev-linux-x64 &amp;&amp; mkdir -p ~/.local/bin &amp;&amp; mv ncdev-linux-x64 ~/.local/bin/ncdev</code>, with <code>~/.local/bin</code> on your PATH). Elsewhere, ARM Linux included, <code>node nucleus.js</code> from a <a href="https://github.com/Snailedlt/nucleus-devtools/releases">release</a> works in its place.</p>
+<ul class="editors dev"><li><a class="ed full" id="get-vscode" data-ed="vscode" href="#get-vscode"><img src="../start/editors/vscode.svg" alt="" width="40" height="40"><span><strong>VS Code</strong><small>Extension · also VSCodium</small></span><span class="ed-tag rec">Recommended</span></a></li><li><a class="ed full" id="get-notepadpp" data-ed="notepadpp" href="#get-notepadpp"><img src="../start/editors/notepadplusplus.svg" alt="" width="40" height="40"><span><strong>Notepad++</strong><small>Plugin, one command</small></span><span class="ed-tag full">Full support</span></a></li><!--ED_TILES--><li><a class="ed" data-ed="any" href="https://github.com/Snailedlt/nucleus-devtools#your-own-editor-for-experienced-developers" rel="noopener"><img src="../start/editors/lsp.svg" alt="" width="40" height="40" loading="lazy"><span><strong>Anything with LSP</strong><small><code>ncdev lsp</code> over stdio</small></span><span class="ed-tag">Untested</span></a></li></ul>
 <p class="small poll-line">Using an editor marked Untested, or one that's missing? <a href="__EDITOR_POLL__" target="_blank" rel="noopener">Vote in the editor poll on Discord</a> (<a href="__DISCORD_INVITE__" target="_blank" rel="noopener">join the server</a> first if you're new). It decides which editors get tested next.</p>
 <div class="ed-steps" id="ed-steps"><div class="ed-step" id="setup-vscode" hidden><h3>VS Code</h3><ol>
 <li>Download <a id="vsix" href="__VSIX_URL__"><strong id="vsix-name">__VSIX_NAME__</strong></a> (<span id="vsix-tag">__VSIX_TAG__</span>).</li>
 <li>In VS Code: <kbd>Ctrl+Shift+P</kbd> › <strong>Extensions: Install from VSIX…</strong> › the file.</li>
-<li>Open a handler: problems are underlined, hover for docs, <kbd>Ctrl+.</kbd> for fixes, <strong>▷</strong> for Try it.</li></ol></div><div class="ed-step" id="setup-notepadpp" hidden><h3>Notepad++</h3><ol>
-<li>Download <a id="ncdev" href="__NCDEV_URL__"><code>ncdev.exe</code></a> and close Notepad++.</li>
-<li>In PowerShell <strong>as administrator</strong>, in its folder: <code class="cmd">.\ncdev setup notepad++</code></li>
-<li>Open a handler: everything is under <strong>Plugins › Nucleus Co-op handlers</strong>.</li></ol><p class="small">A portable Notepad++ (no administrator needed): <code class="cmd">.\ncdev setup notepad++ --path "C:\path\to\Notepad++"</code></p></div><div class="ed-step" id="setup-neovim" hidden><h3>Neovim 0.11+</h3><ol><li>Add to your <code>init.lua</code>:
-<pre class="cfg" data-lang="lua"><code>vim.lsp.config('nucleus', {
-  cmd = { 'ncdev', 'lsp' },
-  filetypes = { 'javascript' },
-  root_markers = { 'handlers', '.git' },
-})
-vim.lsp.enable('nucleus')</code></pre></li>
-<li>Open a handler: problems show within a second. Older Neovim: <a href="https://github.com/Snailedlt/nucleus-devtools#neovim">the setup for it</a>.</li></ol></div><div class="ed-step" id="setup-helix" hidden><h3>Helix</h3><ol><li>Add to <code>languages.toml</code>:
-<pre class="cfg" data-lang="toml"><code>[language-server.nucleus]
-command = "ncdev"
-args = ["lsp"]
-
-[[language]]
-name = "javascript"
-language-servers = ["typescript-language-server", "nucleus"]</code></pre></li>
-<li>Open a handler (<code>:lsp-restart</code> if Helix was already open).</li></ol></div><div class="ed-step" id="setup-sublime" hidden><h3>Sublime Text</h3><ol><li>Install the <a href="https://packagecontrol.io/packages/LSP">LSP</a> package (Package Control).</li>
-<li><strong>Preferences › Package Settings › LSP › Settings</strong>, add:
-<pre class="cfg" data-lang="json"><code>{ "clients": { "nucleus": {
-  "enabled": true,
-  "command": ["ncdev", "lsp"],
-  "selector": "source.js"
-} } }</code></pre></li>
-<li>Open a handler.</li></ol></div><div class="ed-step" id="setup-emacs" hidden><h3>Emacs 29+ (eglot)</h3><ol><li>Add to your init file:
-<pre class="cfg" data-lang="commonlisp"><code>(with-eval-after-load 'eglot
-  (add-to-list 'eglot-server-programs
-               '((js-mode js-ts-mode) . ("ncdev" "lsp"))))</code></pre></li>
-<li>Open a handler and run <kbd>M-x eglot</kbd>.</li></ol></div><div class="ed-step" id="setup-kate" hidden><h3>Kate</h3><ol><li><strong>Settings › Configure Kate › LSP Client › User Server Settings</strong>, add:
-<pre class="cfg" data-lang="json"><code>{ "servers": { "nucleus": {
-  "command": ["ncdev", "lsp"],
-  "highlightingModeRegex": "^JavaScript$"
-} } }</code></pre></li>
-<li>Open a handler. (Kate runs one server per language: this one takes over <code>.js</code> files.)</li></ol></div><div class="ed-step" id="setup-jetbrains" hidden><h3>JetBrains IDEs</h3><ol><li>Install the <a href="https://plugins.jetbrains.com/plugin/23257-lsp4ij">LSP4IJ</a> plugin.</li>
-<li><strong>Settings › Languages &amp; Frameworks › Language Servers › +</strong>: name <code>Nucleus</code>, command <code>ncdev lsp</code>, and under Mappings the file pattern <code>*.js</code>.</li>
-<li>Open a handler.</li></ol></div><div class="ed-step" id="setup-zed" hidden><h3>Zed</h3><ol><li>Zed only starts language servers that an extension provides, so it needs a small Zed extension first; <a href="https://github.com/Snailedlt/nucleus-devtools/blob/main/PORTING.md#zed-settingsjson">how, in PORTING.md</a>.</li></ol></div><div class="ed-step" id="setup-any" hidden><h3>Any other editor</h3><ol><li>Point its LSP client at <code>ncdev lsp</code> (stdio) for JavaScript files. It only answers for handler files, so your usual JavaScript server keeps working.</li>
+<li>Open a handler: problems are underlined, hover for docs, <kbd>Ctrl+.</kbd> for fixes, <strong>▷</strong> for Try it.</li></ol><p class="small">If nothing happens, and how to update: <a href="../docs/tools/vscode/setup/">Set up VS Code</a>.</p></div><div class="ed-step" id="setup-notepadpp" hidden><h3>Notepad++</h3><ol>
+<li>Download <a id="ncdev" data-asset="ncdev.exe" href="__NCDEV_URL__"><code>ncdev.exe</code></a> and close Notepad++.</li>
+<li>Double-click it and choose <strong>Set up Notepad++</strong> (or run <code class="cmd">.\ncdev setup notepad++</code> in its folder). When Windows asks for permission, allow it.</li>
+<li>Open a handler: everything is under <strong>Plugins › Nucleus Co-op handlers</strong>.</li></ol><p class="small">A portable Notepad++ (no permission needed): <code class="cmd">.\ncdev setup notepad++ --path "C:\path\to\Notepad++"</code></p><p class="small">A Windows warning, what setup changes, and how to update: <a href="../docs/tools/notepadpp/setup/">Set up Notepad++</a>.</p></div><!--ED_STEPS--><div class="ed-step" id="setup-any" hidden><h3>Any other editor</h3><ol><li>Point its LSP client at <code>ncdev lsp</code> (stdio) for JavaScript files. It only answers for handler files, so your usual JavaScript server keeps working.</li>
 <li>Settings, Fix all, Try it and the debugger (<code>ncdev dap</code>) for each editor: <a href="https://github.com/Snailedlt/nucleus-devtools/blob/main/PORTING.md">PORTING.md</a>.</li></ol></div></div>
-  <p class="small">Something wrong, or an editor that doesn't work? <a href="https://github.com/Snailedlt/nucleus-devtools/issues/new?template=tester-feedback.yml">Tell us</a>. Every editor in detail: <a href="https://github.com/Snailedlt/nucleus-devtools/blob/main/PORTING.md">PORTING.md</a>.</p>
+  <p class="small">Something wrong, or an editor that doesn't work? <a href="https://github.com/Snailedlt/nucleus-devtools/issues/new?template=tester-feedback.yml">Tell us</a>. Every editor in detail: <a href="../docs/tools/lsp/setup/">Set up another editor</a>.</p>
   </section>
 
   <section aria-labelledby="command-line">
   <h2 id="command-line" class="has-anchor">The command line: ncdev</h2>
   <p><code>ncdev</code> (Nucleus Co-op dev tools) is the same engine on the command line: check a handler or a whole <code>handlers</code> folder, fix and format it, Try it, look up an option, search the Hub, and package or install a handler. It also runs the servers for other editors and AI agents.</p>
-  <p><strong>Windows, nothing else to install:</strong> download <a href="__NCDEV_URL__"><code>ncdev.exe</code></a> and run it from a terminal in its folder (in PowerShell, as <code>.\ncdev</code>). <code>ncdev update</code> keeps it current. <strong>With Node.js 18+:</strong> <code>nucleus.js</code> from <a href="https://github.com/Snailedlt/nucleus-devtools/releases">a release</a> does the same (<code>node nucleus.js lint MyGame.js</code>).</p>
+  <p><strong>Windows or Linux, nothing else to install:</strong> download <a data-asset="ncdev.exe" href="__NCDEV_URL__"><code>ncdev.exe</code></a> (run it from a terminal in its folder; in PowerShell, as <code>.\ncdev</code>) or <a data-asset="ncdev-linux-x64" href="__NCDEV_LINUX_URL__"><code>ncdev-linux-x64</code></a> (for x64: <code>chmod +x</code> it, and put it on your PATH as <code>ncdev</code>). <code>ncdev update</code> keeps it current. <strong>Elsewhere (a Mac, ARM Linux), with Node.js 18+:</strong> <code>nucleus.js</code> from <a href="https://github.com/Snailedlt/nucleus-devtools/releases">a release</a> does the same (<code>node nucleus.js lint MyGame.js</code>).</p>
 <pre class="cfg" tabindex="0" aria-label="Examples of ncdev commands" data-lang="shell"><code>ncdev lint MyGame.js            # every problem, with line and why
 ncdev lint handlers --fix       # apply the safe fixes in a whole folder
-ncdev format MyGame.js --write  # indentation and spacing, never what it does
+ncdev format MyGame.js --write  # tidies it up, never changes what it does
 ncdev simulate MyGame.js        # Try it: what each player gets
 ncdev api Game.KillMutex        # an option's type, default and docs
 ncdev hub search "borderlands"  # how other handlers did it</code></pre>
@@ -89,10 +50,12 @@ ncdev hub search "borderlands"  # how other handlers did it</code></pre>
   </section>
 
   <section aria-labelledby="ai-agents">
-  <h2 id="ai-agents" class="has-anchor">AI agents</h2>
+  <h2 id="ai-agents" class="has-anchor">AI agents and chatbots</h2>
   <p>Agents guess option names from memory, and Nucleus quietly ignores the wrong ones. The agent kit gives them the real API and the same checks, so what they write loads and works.</p>
+  <div class="ctas"><a class="btn primary" href="../ai/">Set up your AI</a></div>
+  <p class="small">Prompts to copy for Claude Code, other agents and chatbots: the agent sets the tools up itself. Or by hand:</p>
   <ul class="facts">
-    <li><strong>Claude Code:</strong> <code class="cmd">/plugin marketplace add Snailedlt/nucleus-devtools</code>, then <code class="cmd">/plugin install nucleus-coop@splitscreenme</code>. Its skill loads when you ask about handlers.</li>
+    <li><strong>Claude Code:</strong> <code class="cmd">/plugin marketplace add __CLAUDE_MARKETPLACE__</code>, then <code class="cmd">/plugin install __CLAUDE_PLUGIN__</code>. Its skill loads when you ask about handlers.</li>
     <li><strong>VS Code (Copilot agent mode):</strong> nothing to set up. The extension brings the tools; turn them on under <strong>MCP Servers</strong> in the Extensions view.</li>
     <li><strong>Claude Desktop, Cursor and other MCP clients:</strong> <code>ncdev mcp</code> serves the tools (check, fix, Try it, API lookup, Hub search). <a href="https://github.com/Snailedlt/nucleus-devtools#mcp-server-claude-desktop-cursor-vs-code-copilot-">The setup</a>.</li>
     <li><strong>Any agent in your handler folder:</strong> <a href="https://github.com/Snailedlt/nucleus-devtools#any-agent-in-your-handler-folder">the agent kit</a> (the skill, the API reference and a one-file command-line tool).</li>
@@ -104,26 +67,7 @@ ncdev hub search "borderlands"  # how other handlers did it</code></pre>
 <p class="small">One engine runs underneath all of them: the checks, suggestions and docs are the same. What differs is what each editor can show.</p>
 <div class="compare-wrap" tabindex="0" role="region" aria-label="Features by editor (scrolls sideways)">
 <table class="compare">
-<thead><tr><th scope="col">Feature</th><th scope="col">VS Code</th><th scope="col">Notepad++</th><th scope="col">Workbench</th><th scope="col">Other editors (LSP)</th></tr></thead>
-<tbody>
-<tr><th scope="row">Problems as you type, with the why</th><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-<tr><th scope="row">Quick fixes and Fix all</th><td>✅</td><td>✅<small>Alt+Enter</small></td><td>✅</td><td>✅</td></tr>
-<tr><th scope="row">Suggestions, snippets, New handler</th><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-<tr><th scope="row">Hover docs and parameter hints</th><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-<tr><th scope="row">Docs for every option and function</th><td>✅<small>panel</small></td><td>✅<small>API reference</small></td><td>✅<small>Docs tab</small></td><td>✅<small>links here</small></td></tr>
-<tr><th scope="row">Format (never moves a line)</th><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-<tr><th scope="row">Go to definition, references, rename</th><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-<tr><th scope="row">Outline</th><td>✅</td><td>✅<small>panel</small></td><td class="no">—</td><td>✅</td></tr>
-<tr><th scope="row">Try it (each player's setup)</th><td>✅</td><td>✅</td><td>✅</td><td>✅<small>command</small></td></tr>
-<tr><th scope="row">Debugger, per player</th><td>✅</td><td class="no">—</td><td>✅</td><td>✅<small><code>ncdev dap</code></small></td></tr>
-<tr><th scope="row">Lines (every name, one click to insert)</th><td class="no">—</td><td class="no">—</td><td>✅</td><td class="no">—</td></tr>
-<tr><th scope="row">Checks against the game's folder</th><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-<tr><th scope="row">Browse and open Hub handlers</th><td>✅</td><td>✅</td><td>✅</td><td><small><code>ncdev hub</code></small></td></tr>
-<tr><th scope="row">Package as .nc for the Hub</th><td>✅</td><td>✅</td><td>✅</td><td>✅<small>command</small></td></tr>
-<tr><th scope="row">Install into Nucleus Co-op</th><td>✅</td><td>✅</td><td>✅<small>Chrome, Edge</small></td><td>✅<small>command</small></td></tr>
-<tr><th scope="row">Test in Nucleus Co-op (starts it)</th><td>✅</td><td>✅</td><td class="no">—<small>a browser can't</small></td><td>✅<small>command</small></td></tr>
-<tr><th scope="row">What to install</th><td><small>the extension</small></td><td><small><code>ncdev setup notepad++</code></small></td><td><small>nothing</small></td><td><small><code>ncdev</code></small></td></tr>
-</tbody>
+<!--COMPARE-->
 </table>
 </div>
 </details>
@@ -187,7 +131,8 @@ ncdev hub search "borderlands"  # how other handlers did it</code></pre>
           document.getElementById('vsix').href = a.browser_download_url;
           document.getElementById('vsix-name').textContent = a.name;
           document.getElementById('vsix-tag').textContent = rel.tag_name;
-          for (var k = 0; k < rel.assets.length; k++) if (rel.assets[k].name === 'ncdev.exe') document.getElementById('ncdev').href = rel.assets[k].browser_download_url;
+          // Every download link names its file (data-asset): each gets this release's.
+          for (var k = 0; k < rel.assets.length; k++) document.querySelectorAll('[data-asset="' + rel.assets[k].name + '"]').forEach(function (l) { l.href = rel.assets[k].browser_download_url; });
           return;
         }
       }

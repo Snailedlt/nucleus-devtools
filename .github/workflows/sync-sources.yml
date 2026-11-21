@@ -48,7 +48,7 @@ jobs:
           echo "nucleus=$n" >> "$GITHUB_OUTPUT"; echo "www=$w" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
       - name: The docs' votes and the Hub handlers' usage (the testbench's data branch)
         id: data
         run: |
@@ -71,7 +71,7 @@ jobs:
       - if: steps.check.outputs.changed == 'true' || steps.data.outputs.changed == 'true'
         uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version-file: .nvmrc
           cache: npm
       - name: Regenerate
         if: steps.check.outputs.changed == 'true' || steps.data.outputs.changed == 'true'

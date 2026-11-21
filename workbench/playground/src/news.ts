@@ -4,17 +4,18 @@ import { picture, syncPictures } from './themed';
 import { motion } from './motion';
 import { hlHtml } from './codehl';
 import { kbdify } from './kbd';
-import { aboutVisual, VISUAL } from './visual';
+import { REPO_URL } from '@core/report';
 
-const REPO = 'https://github.com/Snailedlt/nucleus-devtools';
+const REPO = REPO_URL;
 declare const CHANGES: { id: string; n?: number; intro?: string; items: { group: string; summary: string; details: string; images?: { alt: string; file: string; dark?: string; still?: string; stillDark?: string }[] }[] }[];
-// Form and Blocks are hidden for now (visual.ts): What's new and the update note leave out the lines about them, and
-// the parts of an intro that name them. CHANGELOG.md keeps them.
-const SHOWN = VISUAL ? CHANGES : CHANGES.map((c) => ({
+// The Form and Blocks views were removed (a different visual editor is planned): What's new and the update note leave
+// out the old lines about them, and the parts of an intro that name them. CHANGELOG.md keeps them.
+const aboutVisual = (t: string) => /\b(Form|Blocks)\b|visual editor/.test(t);
+const SHOWN = CHANGES.map((c) => ({
   ...c,
   intro: c.intro?.split(/(?<=[.!?]) /).map((sn) => sn.split(', ').filter((part) => !aboutVisual(part)).join(', ')).join(' '),
-  // The note that they're hidden stays.
-  items: c.items.filter((it) => /hidden for now/i.test(it.summary) || !aboutVisual(`${it.summary} ${it.details}`)),
+  // The notes that they were hidden, then removed, stay.
+  items: c.items.filter((it) => /hidden for now|have been removed/i.test(it.summary) || !aboutVisual(`${it.summary} ${it.details}`)),
 }));
 
 const SEEN_KEY = 'nucleus-workbench-news-seen';
