@@ -2126,7 +2126,7 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
         <label class="set-layout"><input type="radio" name="set-layout" value="rail"><span><strong>Side rail</strong><small>Tools in a strip on the left, like VS Code; more room for code</small></span></label>
       </div></div>
     <div class="set-sec"><h3>Panels</h3>
-      <label class="set-check"><input type="checkbox" id="set-results"> <span>Results beside the code<small>Check, Try it and Docs. Turn it off for a wider code editor (<kbd>Ctrl</kbd>+<kbd>J</kbd>); Zen mode (<kbd>Ctrl</kbd>+<kbd>K</kbd> <kbd>Z</kbd>) hides everything but the code.</small></span></label>
+      <label class="set-check"><input type="checkbox" id="set-results"> <span>Results beside the code<small>Check, Try it and Docs. Turn it off for a wider code editor (<span data-key="results">Ctrl+J</span>); Zen mode (<span data-key="zen">Ctrl+K Z</span>) hides everything but the code.</small></span></label>
       <label class="set-row">Files panel <select id="set-files-side"><option value="right">Right of the code</option><option value="left">Left of the code</option></select></label>
       <label class="set-row">Lines list <select id="set-lines-side"><option value="right">Right of the code</option><option value="left">Left of the code</option></select></label>
       <p class="muted small" style="margin:0">On a phone both open as a sheet from the bottom.</p></div>
@@ -2138,7 +2138,7 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
 
     <div class="set-sec">
       <label class="set-line">Text size <select id="set-size"><option value="s">Small</option><option value="m">Medium</option><option value="l">Large</option></select></label>
-      <label class="set-check"><input type="checkbox" id="set-wrap"> <span>Wrap long lines<small>In the code and everywhere code is shown, keeping the indent, instead of scrolling sideways (as VS Code's word wrap; Alt+Z). On by default on phones.</small></span></label>
+      <label class="set-check"><input type="checkbox" id="set-wrap"> <span>Wrap long lines<small>In the code and everywhere code is shown, keeping the indent, instead of scrolling sideways (as VS Code's word wrap; <span data-key="wordWrap">Alt+Z</span>). On by default on phones.</small></span></label>
       <label class="set-check"><input type="checkbox" id="set-keybar"> <span>Symbol keys on touch screens<small>A row with ; = " ( ) { } [ ], Suggest and Undo above the on-screen keyboard</small></span></label></div>
   </div>
  <div class="set-panel" role="tabpanel" id="sp-keys" aria-labelledby="st-keys" data-label="Keyboard shortcuts" hidden></div>
@@ -2149,7 +2149,7 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
   <div class="set-panel" role="tabpanel" id="sp-lines" aria-labelledby="st-lines" data-label="Lines" hidden>
 
     <div class="set-sec">
-      <label class="set-check"><input type="checkbox" id="set-lines"> <span>Show the Lines list<small>Every name a handler can use, click to insert<span class="wide-only"> (Ctrl+B)</span></small></span></label></div>
+      <label class="set-check"><input type="checkbox" id="set-lines"> <span>Show the Lines list<small>Every name a handler can use, click to insert<span class="wide-only"> (<span data-key="lines">Ctrl+B</span>)</span></small></span></label></div>
     <div class="set-sec" id="lines-settings" aria-label="List settings"></div>
   </div>
   <div class="set-panel" role="tabpanel" id="sp-a11y" aria-labelledby="st-a11y" data-label="Accessibility" hidden>
@@ -2232,7 +2232,7 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
 
     <div class="set-sec">
       <label class="set-check"><input type="checkbox" id="set-advanced"> <span>Advanced mode<small>Rule ids, filters, suggestions, recorded calls and engine probes</small></span></label>
-      <label class="set-check dev-only"><input type="checkbox" id="set-devbar"> <span>Developer bar<span class="chip adv-tag">Advanced</span><small>Site theme, colour mode and contrast checks (Ctrl+Alt+D)</small></span></label></div>
+      <label class="set-check dev-only"><input type="checkbox" id="set-devbar"> <span>Developer bar<span class="chip adv-tag">Advanced</span><small>Site theme, colour mode and contrast checks (<kbd class="keys"><kbd>Ctrl</kbd><span class="kplus">+</span><kbd>Alt</kbd><span class="kplus">+</span><kbd>D</kbd></kbd>)</small></span></label></div>
     <div class="set-sec dev-only"><h3>WakaTime<span class="chip adv-tag">Advanced</span></h3>
       <label class="set-check"><input type="checkbox" id="set-waka"> <span>Track my time in WakaTime<small>Like WakaTime's VS Code plugin: sends the handler's name, the game's name, the time, what you're doing (writing, testing, reading docs), line numbers and how many lines you changed. Never the code. Your API key stays in this browser.</small></span></label>
       <div class="set-fields" id="set-waka-fields">

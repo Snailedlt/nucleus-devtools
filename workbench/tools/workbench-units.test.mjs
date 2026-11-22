@@ -1462,3 +1462,20 @@ test('motion list: every mascot scene and every UI animation is in the motion re
   assert.match(src, /MASCOT_CSS\.split\('@media \(prefers-reduced-motion: no-preference\)'\)\.join\('@media all'\)/);
   assert.ok(fs.readFileSync(path.join(root, 'playground/src/mascots.gen.ts'), 'utf8').includes('@media (prefers-reduced-motion: no-preference)'));
 });
+
+test('settings text: a shortcut it names is an action, filled in with the person\'s own keys', () => {
+  const page = fs.readFileSync(path.join(root, 'playground/src/page.html'), 'utf8');
+  const actions = fs.readFileSync(path.join(root, 'playground/src/keyactions.ts'), 'utf8');
+  const named = [...page.matchAll(/<span data-key="([\w-]+)">([^<]*)<\/span>/g)];
+  assert.ok(named.length >= 4, 'the Settings dialog names shortcuts through data-key');
+  for (const [, id, shown] of named) {
+    const def = new RegExp(`\\{ id: '${id}',[^}]*keys: '([^']*)'`).exec(actions)?.[1];
+    assert.ok(def !== undefined, `data-key="${id}" is an action in keyactions.ts`);
+    assert.equal(shown, def, `the text shows ${id}'s default until the page fills in the bound keys`);
+  }
+  // No rebindable shortcut is written out by hand in the Settings dialog.
+  const settings = page.slice(page.indexOf('<dialog id="settings-dialog"'), page.indexOf('<dialog id="code-dialog"'));
+  const plain = settings.replace(/<span data-key="[\w-]+">[^<]*<\/span>/g, '').replace(/<kbd class="keys">.*?<\/kbd>\)/g, '');
+  assert.doesNotMatch(plain, /\b(?:Ctrl|Alt|Shift)\+[A-Z0-9]\b/, 'a shortcut in Settings text goes through data-key');
+  assert.match(fs.readFileSync(path.join(root, 'playground/src/app.ts'), 'utf8'), /onBindingsChange\(\(\) => \(applyKeys\(\), renderHelpKeys\(\), refreshKeyHints\(\), fillKeys\(\)\)\);/);
+});

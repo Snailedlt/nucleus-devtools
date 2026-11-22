@@ -19,6 +19,7 @@ import 'codemirror/addon/edit/closebrackets';
 import { semanticMarks } from './semmarks';
 import { codeHandlers, fixedCodeKeys, foldRange, keysByPosition, lineCommentFold, selectReferences, vscodeMouse } from './keys';
 import { ACTIONS, appActionFor, codeKeyMap, keyLabel, labelOf, noKeyText, binding, onBindingsChange, stepOf, type Group } from './keybindings';
+import { keysHtml } from './kbd';
 import { lint, Diagnostic, RULES, lineOf, pluginGlobals, type TextEdit } from '@core/lint';
 import { api, ownerLabel, Resolved, type Member } from '@core/api';
 import { resolveAt } from '@core/complete';
@@ -360,7 +361,7 @@ const editorHandlers: Record<string, (cm: any) => void> = {
 };
 const applyKeys = () => editor.setOption('extraKeys', codeKeyMap(editorHandlers, fixedCodeKeys));
 applyKeys();
-onBindingsChange(() => (applyKeys(), renderHelpKeys(), refreshKeyHints()));
+onBindingsChange(() => (applyKeys(), renderHelpKeys(), refreshKeyHints(), fillKeys()));
 // Set once the key hints are made (further down).
 let refreshKeyHints = () => {};
 keysByPosition(editor);
@@ -2659,6 +2660,15 @@ document.querySelectorAll<HTMLElement>('[data-skip]').forEach((a) => a.addEventL
   }, true);
 }
 /** The shortcut list (?): from keybindings.ts, so it shows the keys as they're set now. */
+/** Shortcuts named in the page's own text (`<span data-key="<action id>">`, in Settings): the keys the person has
+ *  bound, as keycaps, and "no key set" for an action whose shortcut was cleared. The page's markup carries the
+ *  default as plain text until this runs. */
+function fillKeys() {
+  document.querySelectorAll<HTMLElement>('[data-key]').forEach((el) => {
+    const keys = labelOf(el.dataset.key!);
+    el.innerHTML = keys ? keysHtml(keys) : 'no key set';
+  });
+}
 function renderHelpKeys() {
   const body = document.querySelector('#help-dialog table.keys tbody');
   if (!body) return;
@@ -2672,6 +2682,7 @@ function renderHelpKeys() {
     .join('');
 }
 renderHelpKeys();
+fillKeys();
 initKeySettings($('#sp-keys'));
 $('#help-rebind').addEventListener('click', () => (helpDialog.close(), settings.open('keys')));
 

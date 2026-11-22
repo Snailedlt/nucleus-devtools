@@ -40,7 +40,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 - **A fix's green highlight stays until you're done with it.** After a quick fix or *Fix all*, the changed lines stay marked as long as the "Fixed" note is open: until you close it, undo, or edit the code.
 - **Ctrl+Shift+[ folds again.** Inside the code it switched to another open handler instead of folding the block. Going to the next or previous handler is now Alt+PageDown and Alt+PageUp, closing one is still Alt+W, and all three are in Settings → Keyboard shortcuts, so you can change them. Alt+W in Find only toggles whole word now, it used to close the handler as well.
 - **Format says what it changes.** The tip, the command palette and the shortcut list said Format only fixes indentation and spacing. It also switches to double quotes and adds missing semicolons, and they say so now.
-- **Your own shortcuts, everywhere.** After you change a shortcut in Settings, the tips and the command palette show the new keys too (some still showed the defaults).
+- **Your own shortcuts, everywhere.** After you change a shortcut in Settings, the tips, the command palette and the text in Settings itself show the new keys too (some still showed the defaults).
 - **Nucli's worried and searching faces show again.** In "Oops" and "Nothing matches", the face change never played.
 
 ---
