@@ -73,9 +73,10 @@
     {
       "id": "files",
       "title": "Files",
-      "text": "The files that go with the handler. Link your game's folder under Your game on this PC, and Check compares paths with the real files.",
+      "text": "Your open handlers, a folder each: handler.js and the files that go with it. Click a file to open it in a tab. Link the game's folder under a handler, and Check compares its paths with the real files.",
       "targets": [
-        "#files-toggle"
+        "#files-toggle",
+        ".rail [data-rail=files]"
       ],
       "view": "code",
       "page": "files"

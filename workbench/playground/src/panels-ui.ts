@@ -22,6 +22,8 @@ export function initPanels(opts: { refresh: () => void; toast: (s: string) => vo
   const main = $('#main');
   const lines = $('#lines');
   const files = $('#files-panel');
+  /** Files is left of the code unless someone moved it (as the file list of most code editors); Lines starts on the right. */
+  const filesSide = () => sizes.filesSide ?? 'left';
   function apply() {
     if (sizes.main) {
       main.classList.add('sized');
@@ -35,9 +37,9 @@ export function initPanels(opts: { refresh: () => void; toast: (s: string) => vo
     lines.style.width = sizes.lines ? `${sizes.lines}px` : '';
     files.style.width = sizes.files ? `${sizes.files}px` : '';
     const root = document.documentElement;
-    if (sizes.filesSide === 'left') root.dataset.filesSide = 'left'; else delete root.dataset.filesSide;
+    if (filesSide() === 'left') root.dataset.filesSide = 'left'; else delete root.dataset.filesSide;
     if (sizes.linesSide === 'left') root.dataset.linesSide = 'left'; else delete root.dataset.linesSide;
-    for (const [id, v] of [['set-files-side', sizes.filesSide], ['set-lines-side', sizes.linesSide]] as const) {
+    for (const [id, v] of [['set-files-side', filesSide()], ['set-lines-side', sizes.linesSide]] as const) {
       const s = document.getElementById(id) as HTMLSelectElement | null;
       if (s) s.value = v ?? 'right';
     }
@@ -131,11 +133,12 @@ export function initPanels(opts: { refresh: () => void; toast: (s: string) => vo
     });
   }
   sidePanel(splitLines, lines, 'lines', () => sizes.linesSide, 220);
-  sidePanel($('#split-files'), files, 'files', () => sizes.filesSide, 180);
+  sidePanel($('#split-files'), files, 'files', filesSide, 180);
   for (const [id, key] of [['set-files-side', 'filesSide'], ['set-lines-side', 'linesSide']] as const) {
     document.getElementById(id)?.addEventListener('change', (e) => {
       const v = (e.target as HTMLSelectElement).value;
-      if (v === 'left') sizes[key] = 'left'; else delete sizes[key];
+      if (key === 'filesSide') sizes.filesSide = v === 'right' ? 'right' : 'left'; // kept either way: its default is the left
+      else if (v === 'left') sizes[key] = 'left'; else delete sizes[key];
       save();
       apply();
     });
@@ -168,14 +171,14 @@ export function initPanels(opts: { refresh: () => void; toast: (s: string) => vo
       apply();
     },
     /** Which side Files or Lines is on. */
-    side: (which: 'files' | 'lines') => (which === 'files' ? sizes.filesSide : sizes.linesSide) ?? 'right',
+    side: (which: 'files' | 'lines') => (which === 'files' ? filesSide() : sizes.linesSide ?? 'right'),
     /** Moves Files or Lines to the other side of the code. */
     flip(which: 'files' | 'lines') {
-      const key = which === 'files' ? 'filesSide' : 'linesSide';
-      if (sizes[key] === 'left') delete sizes[key]; else sizes[key] = 'left';
+      if (which === 'files') sizes.filesSide = filesSide() === 'left' ? 'right' : 'left';
+      else if (sizes.linesSide === 'left') delete sizes.linesSide; else sizes.linesSide = 'left';
       save();
       apply();
-      return sizes[key] ?? 'right';
+      return which === 'files' ? filesSide() : sizes.linesSide ?? 'right';
     },
     /** Whether the results pane shows (wide screens; phones switch between the code and the results). */
     resultsShown: () => !sizes.resultsHidden,

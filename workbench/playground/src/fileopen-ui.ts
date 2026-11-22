@@ -1,5 +1,7 @@
 // Open a file from the computer, with the picker (Open a file…) or by dropping it on the page: a handler (.js), or
-// a .zip/.nc package, whose other files are kept and saved with it.
+// a .zip/.nc package, whose other files are kept and saved with it. Open a folder… reads a handler another editor
+// worked on: <Name>.js with its files in <Name>/ (Nucleus Co-op's handlers folder, what "Save as a folder" writes), or
+// an unpacked package (handler.js and its folders).
 import { $ } from './dom';
 import { notice } from './toast';
 import { readPackage, storeFiles, type PackageFile } from './package';
@@ -7,10 +9,34 @@ import { readPackage, storeFiles, type PackageFile } from './package';
 export interface FileOpenDeps {
   loadSource: (src: string, meta: { name: string; kind: 'draft' }) => void;
   setPackageFiles: (files: PackageFile[]) => void;
+  /** A folder with several handlers: the person picks which to open (`open` takes their positions in `names`). */
+  choose: (names: string[], open: (which: number[]) => void) => void;
 }
 
-/** Wires the picker and drag & drop; returns the file input (its click opens the picker). */
-export function initFileOpen(deps: FileOpenDeps): HTMLInputElement {
+/** A handler found in a picked folder: its code's file and its package files, by their names in the package. */
+export interface FolderHandler { name: string; js: File; files: { name: string; file: File }[] }
+/** The most files of one handler a folder is read for (a game's whole install folder isn't a handler). */
+export const FOLDER_MAX_FILES = 2000;
+const skipped = (path: string) => path.split('/').some((p) => p.startsWith('.') || p === 'node_modules');
+/**
+ * The handlers in a picked folder, from its files' paths (relative to the folder). With a handler.js at the top it is
+ * one unpacked package: the folder's name is the handler's, and every other file keeps its path. Otherwise each .js
+ * at the top is a handler, with the files of the folder that has its name (as in Nucleus Co-op's handlers folder).
+ */
+export function handlersInFolder(folder: string, entries: { path: string; file: File }[]): FolderHandler[] {
+  const list = entries.filter((e) => e.path && !skipped(e.path));
+  const top = list.filter((e) => !e.path.includes('/') && /\.js$/i.test(e.path));
+  const pkg = top.find((e) => e.path.toLowerCase() === 'handler.js');
+  if (pkg) return [{ name: `${folder}.js`, js: pkg.file, files: list.filter((e) => e !== pkg).map((e) => ({ name: e.path, file: e.file })) }];
+  return top.map((e) => {
+    const base = e.path.replace(/\.js$/i, '');
+    const prefix = `${base.toLowerCase()}/`;
+    return { name: e.path, js: e.file, files: list.filter((x) => x.path.toLowerCase().startsWith(prefix)).map((x) => ({ name: x.path, file: x.file })) };
+  }).sort((a, b) => a.name.localeCompare(b.name));
+}
+
+/** Wires the pickers and drag & drop; returns the file and folder inputs (a click opens the picker). */
+export function initFileOpen(deps: FileOpenDeps) {
   async function openFile(file: File) {
     try {
       if (/\.(zip|nc)$/i.test(file.name)) {
@@ -19,7 +45,7 @@ export function initFileOpen(deps: FileOpenDeps): HTMLInputElement {
           notice(`${file.name} doesn't contain a handler.js this page can read.`, { kind: 'error' });
           return;
         }
-        deps.loadSource(pkg.handler.replace(/^﻿/, '').replace(/\r\n/g, '\n'), { name: file.name.replace(/\.(zip|nc)$/i, '.js'), kind: 'draft' });
+        deps.loadSource(pkg.handler.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n'), { name: file.name.replace(/\.(zip|nc)$/i, '.js'), kind: 'draft' });
         // The package's other files: kept, and saved with the handler.
         deps.setPackageFiles(pkg.files);
         const kept = storeFiles(pkg.files);
@@ -30,11 +56,48 @@ export function initFileOpen(deps: FileOpenDeps): HTMLInputElement {
         return;
       }
       const text = await file.text();
-      deps.loadSource(text.replace(/^﻿/, '').replace(/\r\n/g, '\n'), { name: file.name, kind: 'draft' });
+      deps.loadSource(text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n'), { name: file.name, kind: 'draft' });
     } catch {
       notice(`Couldn't read ${file.name}.`, { kind: 'error' });
     }
   }
+  const clean = (text: string) => text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n');
+  async function openFolderHandler(h: FolderHandler) {
+    try {
+      if (h.files.length > FOLDER_MAX_FILES) {
+        notice(`${h.name} has ${h.files.length} files beside it, which looks like a game's folder, not a handler's: opened without them.`, { kind: 'warning' });
+        deps.loadSource(clean(await h.js.text()), { name: h.name, kind: 'draft' });
+        return;
+      }
+      const files: PackageFile[] = [];
+      for (const f of h.files) files.push({ name: f.name, data: new Uint8Array(await f.file.arrayBuffer()) });
+      deps.loadSource(clean(await h.js.text()), { name: h.name, kind: 'draft' });
+      if (!files.length) return;
+      deps.setPackageFiles(files);
+      if (!storeFiles(files)) notice(`The ${files.length} other file${files.length === 1 ? '' : 's'} are too big to keep after a reload: save before closing the page.`, { kind: 'warning' });
+    } catch {
+      notice(`Couldn't read ${h.name}.`, { kind: 'error' });
+    }
+  }
+  async function openFolder(picked: File[]) {
+    const rel = (f: File) => ((f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name).replace(/\\/g, '/');
+    const folder = rel(picked[0]).split('/')[0] || 'handler';
+    const found = handlersInFolder(folder, picked.map((file) => ({ path: rel(file).split('/').slice(1).join('/'), file })));
+    if (!found.length) return notice(`${folder} has no handler: a .js file at its top (with its files in a folder of the same name), or a handler.js.`, { kind: 'error' });
+    if (found.length === 1) return void openFolderHandler(found[0]);
+    deps.choose(found.map((h) => h.name), (which) => void (async () => { for (const i of which) await openFolderHandler(found[i]); })());
+  }
+  const folderInput = document.createElement('input');
+  folderInput.type = 'file';
+  folderInput.id = 'folder-input';
+  folderInput.hidden = true;
+  folderInput.setAttribute('webkitdirectory', '');
+  document.body.append(folderInput);
+  folderInput.addEventListener('change', () => {
+    const list = [...(folderInput.files ?? [])];
+    if (list.length) void openFolder(list);
+    folderInput.value = '';
+  });
   const fileInput = $('#file-input') as HTMLInputElement;
   $('#file-open').addEventListener('click', () => fileInput.click());
   fileInput.addEventListener('change', () => {
@@ -96,5 +159,5 @@ export function initFileOpen(deps: FileOpenDeps): HTMLInputElement {
     },
     true,
   );
-  return fileInput;
+  return { fileInput, folderInput, openFolder };
 }
