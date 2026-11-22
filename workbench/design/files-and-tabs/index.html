@@ -71,7 +71,6 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 .row[aria-current="true"] { background: var(--sel); }
 .row .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .row .tw { width: 12px; flex: none; color: var(--muted); font-size: 10px; text-align: center; }
-.row.root { font-weight: 600; color: var(--muted); font-size: 12.5px; }
 .ico { width: 16px; height: 16px; flex: none; border-radius: 4px; display: grid; place-items: center; font: 700 8.5px/1 var(--mono); color: #fff; }
 .ico.js { background: #b8860b; } .ico.ini { background: #6a737d; } .ico.txt { background: #8d6e97; } .ico.dir { background: none; color: var(--muted); font-size: 12px; }
 .badge { flex: none; min-width: 18px; padding: 0 5px; border-radius: 999px; font-size: 11px; font-weight: 600; text-align: center; background: color-mix(in srgb, var(--err) 14%, var(--surface)); color: var(--err); }
@@ -156,7 +155,7 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
       <button type="button" aria-label="New handler" title="New handler"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
       <button type="button" aria-label="Open a file, an example or a Hub handler" title="Open a file, an example or a Hub handler"><svg viewBox="0 0 24 24"><path d="M4 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v1H4zM4 10h18l-2 9H6z"/></svg></button>
     </div>
-    <ul class="tree" id="tree" role="tree" aria-label="Open handlers, as Nucleus Co-op's handlers folder would hold them"></ul>
+    <ul class="tree" id="tree" role="tree" aria-label="Open handlers: a folder per game, as in a Hub package"></ul>
     <div class="game"><b>Your game on this PC</b>Link the game's folder and Check compares the handler's paths with it.<div style="margin-top:8px"><button class="btn" type="button">Link the game's folder…</button></div></div>
   </aside>
   <aside class="side" id="side-lines" aria-label="Lines" hidden>
@@ -186,27 +185,27 @@ svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width:
 <footer class="notes">
   <h2>What is different from today</h2>
   <ul>
-    <li><b>The file list is the outer level.</b> It shows the open handlers the way Nucleus Co-op's <code>handlers</code> folder holds them: <code>Buggy Game.js</code>, and the folder <code>Buggy Game/</code> with its other files. Today the tabs are whole handlers and Files lists what's inside one.</li>
+    <li><b>The file list is the outer level.</b> Each open handler is a folder named after its game, laid out like its Hub package: <code>handler.js</code> first, then the other files. Today the tabs are whole handlers and Files lists what's inside one.</li>
     <li><b>Tabs are open files.</b> Click a file in the list to open it, the × to close its tab. Closing a tab doesn't close the handler: it stays in the list.</li>
     <li><b>The rail switches the side panel</b>, Files or Lines, and the same button hides it. Save and Share move to the right of the tabs.</li>
-    <li><b>Check, Try it and Docs follow the handler of the open file</b>, also when that file is its <code>config.ini</code>.</li>
+    <li><b>Check, Try it and Docs follow the handler of the open file</b>, also when that file is its <code>config.ini</code>. A tab names the game beside the file, since every handler's code is a <code>handler.js</code>.</li>
   </ul>
 </footer>
 
 <script>
-// The open handlers, as files: <Name>.js and the folder <Name>/ beside it (how Nucleus Co-op installs a handler).
+// The open handlers, as the Hub's packages: a folder named after the game, handler.js first, then its other files.
 var HANDLERS = [
   { id: 'buggy', name: 'Buggy Game', open: true, problems: [
       ['e', 6, 'The value has the wrong form:', 'Game.KillMutex'], ['e', 12, 'Code in the wrong place:', 'Context'], ['e', 15, 'Newer JavaScript than Nucleus understands', ''],
       ['w', 5, 'The same setting is set twice:', 'Game.MaxPlayers'], ['w', 7, 'A name Nucleus doesn\'t know:', 'IgnoreWindowBordercheck'], ['i', 3, 'Special characters in the GUID:', 'Game.GUID']],
     files: [
-      { name: 'Buggy Game.js', kind: 'js', marks: { 5: 'w', 6: 'e', 7: 'w', 12: 'e', 15: 'e' }, text: '// A handler with common mistakes. See what Check finds, then fix them.\nGame.GameName = "Buggy Game";\nGame.GUID = "Buggy: Game!";\nGame.ExecutableName = "buggy.exe";\nGame.MaxPlayers = 4;\nGame.KillMutex = "BuggyMutex";\nGame.IgnoreWindowBordercheck = true;\nGame.SymlinkGame = "true";\nGame.DPIHandling = true;\nGame.MaxPlayers = 8;\n\nvar width = Context.Width;\n\nGame.Play = function () {\n  const args = `-windowed -w ${Context.Width}`;\n  Context.StartArguments = args + " -id " + Context.PlayerID;\n  var ini = Context.GetFolder(Nucleus.Folder.InstancedGameFolder) + "\\\\config.ini";\n  Context.ModifySaveFile(ini, ini, Nucleus.SaveType.INI, [\n    new Nucleus.IniSaveInfo("Video", "Width", Context.Width)\n  ]);\n};' },
-      { name: 'config.ini', kind: 'ini', dir: true, text: '[Video]\nWidth=1920\nHeight=1080\nFullscreen=0\n\n[Input]\nController=1' },
-      { name: 'readme.txt', kind: 'txt', dir: true, text: 'Copy config.ini next to buggy.exe before the first start.\nThe handler writes each player\'s window size into it.' }
+      { name: 'handler.js', kind: 'js', marks: { 5: 'w', 6: 'e', 7: 'w', 12: 'e', 15: 'e' }, text: '// A handler with common mistakes. See what Check finds, then fix them.\nGame.GameName = "Buggy Game";\nGame.GUID = "Buggy: Game!";\nGame.ExecutableName = "buggy.exe";\nGame.MaxPlayers = 4;\nGame.KillMutex = "BuggyMutex";\nGame.IgnoreWindowBordercheck = true;\nGame.SymlinkGame = "true";\nGame.DPIHandling = true;\nGame.MaxPlayers = 8;\n\nvar width = Context.Width;\n\nGame.Play = function () {\n  const args = `-windowed -w ${Context.Width}`;\n  Context.StartArguments = args + " -id " + Context.PlayerID;\n  var ini = Context.GetFolder(Nucleus.Folder.InstancedGameFolder) + "\\\\config.ini";\n  Context.ModifySaveFile(ini, ini, Nucleus.SaveType.INI, [\n    new Nucleus.IniSaveInfo("Video", "Width", Context.Width)\n  ]);\n};' },
+      { name: 'config.ini', kind: 'ini', text: '[Video]\nWidth=1920\nHeight=1080\nFullscreen=0\n\n[Input]\nController=1' },
+      { name: 'readme.txt', kind: 'txt', text: 'Copy config.ini next to buggy.exe before the first start.\nThe handler writes each player\'s window size into it.' }
     ] },
   { id: 'mine', name: 'My Game', open: true, problems: [],
     files: [
-      { name: 'My Game.js', kind: 'js', marks: {}, text: 'Game.GameName = "My Game";\nGame.GUID = "My Game";\nGame.ExecutableName = "mygame.exe";\nGame.MaxPlayers = 4;\nGame.SymlinkGame = true;\nGame.SymlinkExe = false;\n\nGame.Play = function () {\n  Context.StartArguments = "-windowed -w " + Context.Width + " -h " + Context.Height;\n};' }
+      { name: 'handler.js', kind: 'js', marks: {}, text: 'Game.GameName = "My Game";\nGame.GUID = "My Game";\nGame.ExecutableName = "mygame.exe";\nGame.MaxPlayers = 4;\nGame.SymlinkGame = true;\nGame.SymlinkExe = false;\n\nGame.Play = function () {\n  Context.StartArguments = "-windowed -w " + Context.Width + " -h " + Context.Height;\n};' }
     ] }
 ];
 var tabs = [['buggy', 0], ['buggy', 1], ['mine', 0]];
@@ -225,24 +224,22 @@ function hl(line) {
 }
 function draw() {
   var cur = tabs[active], h = cur && handler(cur[0]), f = h && h.files[cur[1]];
-  // The file list: the handlers folder, each handler's .js and its folder.
-  var tree = '<li><div class="row root"><span class="tw">▾</span><span class="nm">handlers</span></div><ul>';
+  // The file list: a folder per open handler, named after the game; handler.js, then the package's other files.
+  var tree = '';
   HANDLERS.forEach(function (hd) {
-    var main = hd.files[0], extra = hd.files.slice(1);
     var isCur = function (i) { return cur && cur[0] === hd.id && cur[1] === i; };
-    tree += '<li><button type="button" class="row depth1" data-open="' + hd.id + ':0"' + (isCur(0) ? ' aria-current="true"' : '') + '><span class="tw"></span><span class="ico js">JS</span><span class="nm">' + esc(main.name) + '</span>' + (hd.problems.length ? '<span class="badge" title="Problems">' + hd.problems.length + '</span>' : '<span class="badge ok" title="No problems">✓</span>') + '</button></li>';
-    tree += '<li><button type="button" class="row depth1" data-fold="' + hd.id + '" aria-expanded="' + hd.open + '"><span class="tw">' + (hd.open ? '▾' : '▸') + '</span><span class="ico dir">▣</span><span class="nm">' + esc(hd.name) + '/</span></button>';
+    tree += '<li><button type="button" class="row" data-fold="' + hd.id + '" aria-expanded="' + hd.open + '"><span class="tw">' + (hd.open ? '▾' : '▸') + '</span><span class="nm"><b>' + esc(hd.name) + '</b></span>' + (hd.problems.length ? '<span class="badge" title="Problems in handler.js">' + hd.problems.length + '</span>' : '<span class="badge ok" title="No problems">✓</span>') + '</button>';
     if (hd.open) {
-      tree += '<ul>' + extra.map(function (x, i) { return '<li><button type="button" class="row depth2" data-open="' + hd.id + ':' + (i + 1) + '"' + (isCur(i + 1) ? ' aria-current="true"' : '') + '><span class="tw"></span><span class="ico ' + x.kind + '">' + x.kind.slice(0, 2).toUpperCase() + '</span><span class="nm">' + esc(x.name) + '</span></button></li>'; }).join('')
-        + '<li><button type="button" class="row depth2 add"><span class="tw"></span><span class="nm">+ Add files…</span></button></li></ul>';
+      tree += '<ul>' + hd.files.map(function (x, i) { return '<li><button type="button" class="row depth1" data-open="' + hd.id + ':' + i + '"' + (isCur(i) ? ' aria-current="true"' : '') + '><span class="tw"></span><span class="ico ' + x.kind + '">' + x.kind.slice(0, 2).toUpperCase() + '</span><span class="nm">' + esc(x.name) + '</span></button></li>'; }).join('')
+        + '<li><button type="button" class="row depth1 add"><span class="tw"></span><span class="nm">+ Add files…</span></button></li></ul>';
     }
     tree += '</li>';
   });
-  document.getElementById('tree').innerHTML = tree + '</ul></li>';
-  // Tabs: one per open file. A file's handler is named beside it when the file isn't the handler's own .js.
+  document.getElementById('tree').innerHTML = tree;
+  // Tabs: one per open file, with its game beside the name (every handler's code is a handler.js).
   document.getElementById('tabs').innerHTML = tabs.map(function (t, i) {
     var hd = handler(t[0]), x = hd.files[t[1]];
-    return '<div class="tab" role="tab" tabindex="0" aria-selected="' + (i === active) + '" data-tab="' + i + '">' + (t[1] === 0 ? '<span class="dot' + (hd.problems.length ? '' : ' ok') + '" aria-hidden="true"></span>' : '') + '<span class="ico ' + x.kind + '">' + x.kind.slice(0, 2).toUpperCase() + '</span><span>' + esc(x.name) + (t[1] ? ' <small>' + esc(hd.name) + '</small>' : '') + '</span><button type="button" class="x" data-close="' + i + '" aria-label="Close ' + esc(x.name) + '">×</button></div>';
+    return '<div class="tab" role="tab" tabindex="0" aria-selected="' + (i === active) + '" data-tab="' + i + '">' + (t[1] === 0 ? '<span class="dot' + (hd.problems.length ? '' : ' ok') + '" aria-hidden="true"></span>' : '') + '<span class="ico ' + x.kind + '">' + x.kind.slice(0, 2).toUpperCase() + '</span><span>' + esc(x.name) + ' <small>' + esc(hd.name) + '</small></span><button type="button" class="x" data-close="' + i + '" aria-label="Close ' + esc(x.name) + ' of ' + esc(hd.name) + '">×</button></div>';
   }).join('');
   if (!f) {
     document.getElementById('crumb').innerHTML = 'No file open';
@@ -251,7 +248,7 @@ function draw() {
     document.getElementById('rcount').textContent = '';
     return;
   }
-  document.getElementById('crumb').innerHTML = 'handlers › ' + (cur[1] ? esc(h.name) + ' › ' : '') + '<b>' + esc(f.name) + '</b>';
+  document.getElementById('crumb').innerHTML = esc(h.name) + ' › <b>' + esc(f.name) + '</b>';
   var code = document.getElementById('code');
   code.className = 'code' + (f.kind === 'js' ? '' : ' plain');
   code.innerHTML = f.text.split('\n').map(function (l, i) {
@@ -261,8 +258,8 @@ function draw() {
   // The results are the handler's, whichever of its files is open.
   document.getElementById('rcount').textContent = h.problems.length ? '(' + h.problems.length + ')' : '';
   document.getElementById('check').innerHTML = h.problems.length
-    ? '<div class="verdict"><span class="chip">Nucleus can\'t use this handler yet</span>' + h.problems.length + ' problems in ' + esc(h.files[0].name) + '<button class="btn primary" type="button">Fix 4 problems automatically</button></div>' + h.problems.map(function (p) { return '<div class="prob ' + (p[0] === 'e' ? '' : p[0]) + '"><code>Line ' + p[1] + '</code><b>' + esc(p[2]) + (p[3] ? ' <code>' + esc(p[3]) + '</code>' : '') + '</b><button class="btn" type="button">Fix this</button></div>'; }).join('')
-    : '<div class="verdict"><span class="chip ok">Nothing to fix</span>' + esc(h.files[0].name) + ' loads, and Check found no problems.</div>';
+    ? '<div class="verdict"><span class="chip">Nucleus can\'t use this handler yet</span>' + h.problems.length + ' problems in ' + esc(h.name) + '<button class="btn primary" type="button">Fix 4 problems automatically</button></div>' + h.problems.map(function (p) { return '<div class="prob ' + (p[0] === 'e' ? '' : p[0]) + '"><code>Line ' + p[1] + '</code><b>' + esc(p[2]) + (p[3] ? ' <code>' + esc(p[3]) + '</code>' : '') + '</b><button class="btn" type="button">Fix this</button></div>'; }).join('')
+    : '<div class="verdict"><span class="chip ok">Nothing to fix</span>' + esc(h.name) + ' loads, and Check found no problems.</div>';
 }
 function openFile(id, i) {
   var at = -1;
