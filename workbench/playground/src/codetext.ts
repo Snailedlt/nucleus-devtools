@@ -12,8 +12,11 @@ export function looksLikeCodeText(s: string): boolean {
   if (/^[\w$]+$/.test(t)) return /^(true|false|null|undefined|var|function|new|\d[\d.]*)$/.test(t);
   if (/[\\/]/.test(t) && !/[("=]/.test(t)) return false; // a path or a file name
   // A file name (`languages.toml`, `ncdev.exe`, `*.js`) or a command line (`ncdev setup notepad++`) is not handler
-  // code: the dot isn't a member and the ++ isn't an operator.
-  if (FILE_NAME.test(t) || COMMAND_LINE.test(t)) return false;
+  // code: the dot isn't a member and the ++ isn't an operator. A command's name used as a variable is code all the
+  // same (`code = Game.Play()`).
+  if (FILE_NAME.test(t) || (COMMAND_LINE.test(t) && !/^[\w$]+\s*[=(.]/.test(t))) return false;
+  // A command's option (`--stdio`, `-w`) or a name with hyphens (`nucleus-handler`): the hyphen isn't a minus.
+  if (/^--?[\w-]+$/.test(t) || /^[\w$]+(?:-[\w$]+)+$/.test(t)) return false;
   return /[.()=;"'[\]{}+<>!-]/.test(t);
 }
 

@@ -9,8 +9,9 @@ const path = require('path');
 const SHEET = path.join(__dirname, '..', 'design', 'mascots', 'index.html');
 const OUT = path.join(__dirname, '..', 'playground', 'src', 'mascots.gen.ts');
 // The scenes the workbench shows, by the sheet's ids.
-// Nucli is the workbench's (Duo is for the app; his idle pose is only on the start page, beside Nucli).
-const IDS = ['n-sleep', 'n-ok', 'n-bad', 'n-fix', 'n-ring', 'n-spin', 'n-idle', 'n-scan', 'n-calc', 'idle'];
+// Nucli is the workbench's. Duo is for the app: his idle pose is on the start page beside Nucli, and he pushes the
+// loading bar (load) where the workbench reads something with a real progress (a game's folder).
+const IDS = ['n-sleep', 'n-ok', 'n-bad', 'n-fix', 'n-ring', 'n-spin', 'n-idle', 'n-scan', 'n-calc', 'idle', 'load'];
 
 (async () => {
   const b = await chromium.launch();

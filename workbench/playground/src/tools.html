@@ -42,7 +42,7 @@
   <p><strong>Windows or Linux, nothing else to install:</strong> download <a data-asset="ncdev.exe" href="__NCDEV_URL__"><code>ncdev.exe</code></a> (run it from a terminal in its folder; in PowerShell, as <code>.\ncdev</code>) or <a data-asset="ncdev-linux-x64" href="__NCDEV_LINUX_URL__"><code>ncdev-linux-x64</code></a> (for x64: <code>chmod +x</code> it, and put it on your PATH as <code>ncdev</code>). <code>ncdev update</code> keeps it current. <strong>Elsewhere (a Mac, ARM Linux), with Node.js 18+:</strong> <code>nucleus.js</code> from <a href="https://github.com/Snailedlt/nucleus-devtools/releases">a release</a> does the same (<code>node nucleus.js lint MyGame.js</code>).</p>
 <pre class="cfg" tabindex="0" aria-label="Examples of ncdev commands" data-lang="shell"><code>ncdev lint MyGame.js            # every problem, with line and why
 ncdev lint handlers --fix       # apply the safe fixes in a whole folder
-ncdev format MyGame.js --write  # tidies it up, never changes what it does
+ncdev format MyGame.js --write  # indentation, spacing, quotes and semicolons
 ncdev simulate MyGame.js        # Try it: what each player gets
 ncdev api Game.KillMutex        # an option's type, default and docs
 ncdev hub search "borderlands"  # how other handlers did it</code></pre>

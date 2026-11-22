@@ -216,7 +216,7 @@ test('tool docs: the pages are a setup page and a reference page per tool, the w
   // The workbench's pages. Written text: steps, keys, links to other pages and to the site, bold and code; all escaped.
   const over = bySlug['tools/workbench'].html;
   assert.match(over, /^<p class="lead">What the workbench is\.<\/p>\n<dl class="facts"><div><dt>Install<\/dt><dd>Nothing<\/dd><\/div><\/dl>\n<h2 id="the-screen">The screen<\/h2>/);
-  assert.match(over, /<h2 id="first-minute">First &lt;minute&gt;<\/h2>\n<ol class="steps"><li>Press <kbd>Ctrl\+K Ctrl\+0<\/kbd>\.<\/li><li>Then <kbd>F8<\/kbd>, see <a href="__UP__docs\/tools\/workbench\/check\/">Check<\/a> and <a href="__UP__tools\/">the site<\/a>\.<\/li><\/ol>\n<p>A <strong>bold<\/strong> line with <code class="use">code<\/code>\.<\/p>/);
+  assert.match(over, /<h2 id="first-minute">First &lt;minute&gt;<\/h2>\n<ol class="steps"><li>Press <kbd>Ctrl\+K Ctrl\+0<\/kbd>\.<\/li><li>Then <kbd>F8<\/kbd>, see <a href="__UP__docs\/tools\/workbench\/check\/">Check<\/a> and <a href="__UP__tools\/">the site<\/a>\.<\/li><\/ol>\n<p>A <strong>bold<\/strong> line with <code>code<\/code>\.<\/p>/);
   // The labelled screenshot: a number on each part, the same number's line below, the part's name leading to its page.
   assert.match(over, /<a class="map-pin" href="#part-code" style="left:25%;top:50%" aria-label="1: The code">1<\/a>/);
   assert.match(over, /<li id="part-code"><strong><a href="__UP__docs\/tools\/workbench\/editor\/">The code<\/a>\.<\/strong> Write here\. <kbd>Ctrl\+K Ctrl\+0<\/kbd> zooms\.<\/li>/);
@@ -236,7 +236,7 @@ test('tool docs: the pages are a setup page and a reference page per tool, the w
   assert.match(bySlug['tools/compare'].html, /^<p class="lead">The same checks everywhere\.<\/p>\n<div class="compare-wrap"[^>]*>\n<table class="compare">\n<tbody><tr><th scope="row">Feature<\/th><\/tr><\/tbody>\n<\/table>\n<\/div>\n<p class="small">The last column is the <a href="__UP__docs\/tools\/lsp\/">language server<\/a>\.<\/p>$/);
   assert.match(index, /^<p class="lead">The tools\.<\/p>\n<h2 id="the-tools">The tools<\/h2>\n<table><thead><tr><th>Tool<\/th><th>What it is<\/th><th>Set up<\/th><\/tr><\/thead><tbody><tr><td><a href="__UP__docs\/tools\/workbench\/">Workbench<\/a><\/td><td>In a browser tab\.<\/td><td>Nothing\. <a href="__UP__">Open it<\/a><\/td><\/tr><tr><td><a href="__UP__docs\/tools\/vscode\/">vscode<\/a><\/td><td>The vscode line\.<\/td><td><a href="__UP__docs\/tools\/vscode\/setup\/">Set up vscode<\/a><\/td><\/tr>/);
   assert.equal((index.slice(index.indexOf('class="dg-core"'), index.indexOf('id="dg-core-cap"')).match(/<li><a href="__UP__docs\/tools\/[\w-]+\/"><strong>/g) ?? []).length, 6, 'six tools around the engine');
-  assert.match(index, /<p>They share <code class="use">ncdev<\/code>\.<\/p>/);
+  assert.match(index, /<p>They share <code>ncdev<\/code>\.<\/p>/);
   assert.match(index, /<ol class="dg-flow"><li><span><strong>Write<\/strong>/);
   assert.match(index, /<a href="__UP__docs\/tools\/compare\/">Feature comparison<\/a><\/p>$/);
 });
@@ -248,15 +248,15 @@ test('tool docs: written sections are laid out from data: a diagram, steps, a co
   ncdev.refNote = 'From `ncdev --help`.';
   const page = toolDocs(d).pages.find((p) => p.slug === 'tools/ncdev').html;
   assert.match(page, /<h2 id="getting-it">Getting it<\/h2>\n<figure class="dg" aria-labelledby="dg-getting-it-cap"><ol class="dg-flow pair"><li><span><strong>You<\/strong><small>type<\/small><\/span><\/li><li><span><strong>ncdev<\/strong>/);
-  assert.match(page, /<ol class="steps"><li>Download <code class="use">ncdev\.exe<\/code>\.<\/li><li>Press <kbd>Ctrl\+\.<\/kbd> or type <code class="use">\.<\/code>\.<\/li><\/ol>/);
+  assert.match(page, /<ol class="steps"><li>Download <code>ncdev\.exe<\/code>\.<\/li><li>Press <kbd>Ctrl\+\.<\/kbd> or type <code>\.<\/code>\.<\/li><\/ol>/);
   assert.match(page, /<pre class="cfg" data-lang="json"><code>\{ &quot;a&quot;: &quot;&lt;b&gt;&quot; \}<\/code><\/pre>/);
   assert.match(page, /See <a href="__UP__docs\/tools\/mcp\/#tools">the docs<\/a>\. VS Code 1\.85 or newer\./);
   // The generated reference follows the written part; then where it comes from, then Related.
   assert.ok(page.indexOf('id="getting-it"') < page.indexOf('id="commands"'));
-  assert.match(page, /<p class="small">From <code class="use">ncdev --help<\/code>\.<\/p>\n<h2 id="related">Related<\/h2>/);
+  assert.match(page, /<p class="small">From <code>ncdev --help<\/code>\.<\/p>\n<h2 id="related">Related<\/h2>/);
   // Text helpers on their own.
   const c = { repo: 'https://example.test/r', keyOf: () => 'F8', guideHref: (id) => `__UP__docs/guide/${id}/` };
-  assert.equal(rich('[a]({repo}/x?y=1&z=2) and [b](@guide:check#keys), {key:any}, `F8`, `=`', c), '<a href="https://example.test/r/x?y=1&z=2">a</a> and <a href="__UP__docs/guide/check/#keys">b</a>, <kbd>F8</kbd>, <kbd>F8</kbd>, <code class="use">=</code>');
+  assert.equal(rich('[a]({repo}/x?y=1&z=2) and [b](@guide:check#keys), {key:any}, `F8`, `=`', c), '<a href="https://example.test/r/x?y=1&z=2">a</a> and <a href="__UP__docs/guide/check/#keys">b</a>, <kbd>F8</kbd>, <kbd>F8</kbd>, <code>=</code>');
   assert.equal(blocks('One.\n\n- a\n- b\n\n```\nx < y\n```', c), '<p>One.</p>\n<ul class="dlist"><li>a</li><li>b</li></ul>\n<pre class="cfg"><code>x &lt; y</code></pre>');
   // A fence closes on a line of its own: ``` inside a line of code doesn't end the block.
   assert.equal(blocks('```js\nvar marker = "```";\nvar b = 1;\n```\n\nAfter.', c), '<pre class="cfg" data-lang="js"><code>var marker = &quot;```&quot;;\nvar b = 1;</code></pre>\n<p>After.</p>');

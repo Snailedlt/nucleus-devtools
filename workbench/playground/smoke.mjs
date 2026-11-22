@@ -1045,10 +1045,37 @@ section('game folder progress', async () => {
   await s.p.waitForTimeout(900);
   const bins = await s.p.evaluate(() => ({ n: document.getElementById('gf-prog-n')?.textContent ?? '', check: document.querySelector('#status .st-reading')?.textContent ?? '' }));
   check(/of 3/.test(bins.n) && /Reading your game/.test(bins.check), `game folder: the program files show n of m, and Check says it's reading them (${bins.n} | ${bins.check})`);
-  await s.p.waitForTimeout(2200);
+  // Duo pushes the bar (mascotprogress.ts), standing in for it; the <progress> stays for screen readers.
+  const duo = await s.p.evaluate(() => { const d = document.querySelector('.fp-duo'); const bar = document.getElementById('gf-prog-bar'); return { duo: !!d?.classList.contains('prog'), fill: d?.querySelector('.ld-fill')?.style.strokeDashoffset ?? '', hidden: bar ? bar.getBoundingClientRect().width <= 1 : false }; });
+  check(duo.duo && duo.fill !== '' && duo.hidden, `game folder: Duo pushes the bar while the program files are read (${JSON.stringify(duo)})`);
+  await s.p.waitForTimeout(3200);
   const done = await s.p.evaluate(() => ({ prog: !!document.querySelector('.fp-prog'), check: !!document.querySelector('#status .st-reading') }));
   check(!done.prog && !done.check, `game folder: the progress is gone when done (${JSON.stringify(done)})`);
   check(!s.errors.length, `game folder progress: no page errors ${s.errors.join(' ')}`);
+  await s.ctx.close();
+});
+section('game folder cancel', async () => {
+  // Cancelling while the program files are read: no success to show, so Duo doesn't finish the bar and hop; the
+  // progress just goes.
+  const s = await page('light');
+  await s.ctx.addInitScript(() => {
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+    const file = (name, size) => ({ kind: 'file', name, getFile: async () => ({ name, size, arrayBuffer: async () => (await wait(500), new ArrayBuffer(64)) }) });
+    window.showDirectoryPicker = async () => ({ kind: 'directory', name: 'CancelGame', async *values() { for (let i = 0; i < 8; i++) yield file(`m${i}.dll`, 1e6); } });
+  });
+  await s.p.goto(BASE + '#example-mistakes');
+  await s.p.waitForTimeout(900);
+  await s.p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
+  if (await s.p.$eval('#files-panel', (e) => e.hidden)) await s.p.click('#files-toggle');
+  await s.p.waitForTimeout(300);
+  await s.p.click('#files-panel [data-gf=pick]');
+  await s.p.waitForSelector('.fp-duo', { timeout: 5000 }).catch(() => {});
+  await s.p.waitForTimeout(700);
+  await s.p.click('#files-panel [data-gf=cancel]');
+  await s.p.waitForTimeout(800);
+  const after = await s.p.evaluate(() => ({ prog: !!document.querySelector('.fp-prog'), duo: !!document.querySelector('.fp-duo') }));
+  check(!after.prog && !after.duo, `game folder: Cancel takes the progress away without Duo finishing the bar (${JSON.stringify(after)})`);
+  check(!s.errors.length, `game folder cancel: no page errors ${s.errors.join(' ')}`);
   await s.ctx.close();
 });
 section('game folder two reads', async () => {
@@ -1193,6 +1220,43 @@ section('handler tab keys', async () => {
   check((await now()).tabs === start.tabs - 1, 'tab keys: Alt+W in the code closes the handler');
   check(await s.p.evaluate(() => /Next open handler/.test(document.querySelector('#help-dialog')?.textContent ?? '')), 'tab keys: they are in the shortcut list');
   check(!s.errors.length, `tab keys: no page errors ${s.errors.join(' ')}`);
+  await s.ctx.close();
+});
+section('word wrap note', async () => {
+  // Alt+Z says what happened in the code, with the key as it is bound now (not a fixed "Alt+Z").
+  const s = await page('light');
+  await s.p.goto(BASE + '#example-mistakes');
+  await s.p.waitForSelector('.CodeMirror');
+  await s.p.waitForTimeout(900);
+  await s.p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
+  const inCode = () => s.p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.focus());
+  const note = () => s.p.evaluate(() => ({ text: document.querySelector('.code-note .cn-text')?.textContent ?? '', toasts: document.querySelectorAll('.toast').length, wraps: document.querySelector('.CodeMirror').classList.contains('CodeMirror-wrap') }));
+  const before = (await note()).wraps;
+  await inCode();
+  await s.p.keyboard.press('Alt+Z');
+  await s.p.waitForTimeout(300);
+  const first = await note();
+  check(first.wraps !== before && /^Word wrap (on|off): .*\(Alt\+Z turns it (on|off)\)\.$/.test(first.text) && !first.toasts, `word wrap: Alt+Z says so in the code, with its key and no toast (${JSON.stringify(first)})`);
+  await s.p.keyboard.press('Control+Comma');
+  await s.p.click('#st-keys');
+  await s.p.fill('#sp-keys .kb-q', 'word wrap');
+  await s.p.click('#sp-keys [data-kb-change="wordWrap"]');
+  await s.p.keyboard.press('Control+Shift+Digit9');
+  await s.p.keyboard.press('Enter');
+  await s.p.keyboard.press('Escape');
+  await inCode();
+  await s.p.keyboard.press('Control+Shift+Digit9');
+  await s.p.waitForTimeout(300);
+  const rebound = await note();
+  check(rebound.wraps === before && /9 turns it/.test(rebound.text) && !/Alt\+Z/.test(rebound.text), `word wrap: the note names the shortcut as it is bound now (${JSON.stringify(rebound)})`);
+  await s.p.keyboard.press('Control+Comma');
+  await s.p.click('#st-keys');
+  await s.p.fill('#sp-keys .kb-q', 'word wrap');
+  await s.p.click('#sp-keys [data-kb-change="wordWrap"]');
+  await s.p.click('#sp-keys [data-kb-none="wordWrap"]');
+  await s.p.keyboard.press('Escape');
+  await s.p.evaluate(() => document.querySelector('#set-wrap')?.closest('dialog')?.close());
+  check(!s.errors.length, `word wrap: no page errors ${s.errors.join(' ')}`);
   await s.ctx.close();
 });
 section('closing handlers', async () => {
