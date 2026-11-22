@@ -617,8 +617,8 @@ function gameSection(id: string): string {
   if (prog) queueMicrotask(syncDuo); // after the rows are in the page
   const why = "Link the folder this game is installed in, and Check tells you when ExecutableName, BinariesFolder or a symlink option names a file that isn't there. Only names and sizes are read, and the game's .exe and DLLs for hints about hooks, on this device. Nothing is uploaded.";
   const row = folder
-    ? `<li class="fp-item fp-gf"><button type="button" class="fp-open" data-gf="show" data-h="${id}" style="padding-left:22px" title="${esc(`The game on this PC: ${folder.name}. Check compares the handler's paths and file names with this folder, and the symlink options get a file picker.`)}"><span class="fi-badge fi-dir" aria-hidden="true">▸</span><span class="fp-name">${esc(folder.name)}</span><span class="fp-size">game on this PC</span></button><button type="button" class="fp-del" data-gf="forget" data-h="${id}" aria-label="Unlink the game folder ${esc(folder.name)}" title="Unlink">×</button></li>`
-    : `<li class="fp-item fp-gf"><button type="button" class="fp-open fp-link" data-gf="pick" data-h="${id}" style="padding-left:22px" title="${esc(why)}"><span class="fi-badge fi-dir" aria-hidden="true">+</span><span class="fp-name">Link the game's folder…</span></button></li>`;
+    ? `<li class="fp-item fp-gf"><button type="button" class="fp-open" data-gf="show" data-h="${id}" style="padding-left:22px" title="${esc(`The game on this PC: ${folder.name}. Check compares the handler's paths and file names with this folder, and the symlink options get a file picker.`)}">${icon('link', 13)}<span class="fp-name">${esc(folder.name)}</span><span class="fp-size">game on this PC</span></button><button type="button" class="fp-del" data-gf="forget" data-h="${id}" aria-label="Unlink the game folder ${esc(folder.name)}" title="Unlink">${icon('x', 13)}</button></li>`
+    : `<li class="fp-item fp-gf"><button type="button" class="fp-open fp-link" data-gf="pick" data-h="${id}" style="padding-left:22px" title="${esc(why)}">${icon('link', 13)}<span class="fp-name">Link the game's folder…</span></button></li>`;
   return `${row}${prog ? `<li class="fp-game">${prog}</li>` : ''}`;
 }
 async function onGameAction(act: string) {
@@ -2596,9 +2596,8 @@ function focusShownCode() {
   const shown = (el: Element) => (el as HTMLElement).offsetParent !== null && el.getClientRects().length > 0;
   if (shown(editor.getWrapperElement())) return editor.focus();
   // A package file's editor, then its card, before the head's buttons (Files, Lines…).
-  const row = document.querySelector<HTMLElement>('.main > .pane:not(.side) .code-row');
-  const pick = (sel: string) => [...(row?.querySelectorAll<HTMLElement>(sel) ?? [])].find(shown);
-  (pick('.CodeMirror textarea') ?? pick(FOCUSABLE))?.focus();
+  const pick = (root: string, sel: string) => [...(document.querySelector(root)?.querySelectorAll<HTMLElement>(sel) ?? [])].find(shown);
+  (pick('#file-editor', '.CodeMirror textarea') ?? pick('#file-card', FOCUSABLE))?.focus();
 }
 const zen = initZen({ refresh: () => editor.refresh(), focusCode: focusShownCode, announce, keys: () => labelOf('zen') });
 // Asked for a results tab: out of Zen mode at any width; the hidden pane back on wide screens (phones switch views).
@@ -2877,6 +2876,7 @@ pkgUI = initPackageUI({
   }),
   switchTo: (id) => switchTab(id),
   closeHandler: (id) => closeTab(id),
+  newMenu: (anchor) => openMenu(anchor, 'New or open', addItems()),
   tabsChanged: () => { if (tabsReady) (renderTabs(), saveTabs()); },
   getFiles: () => packageFiles,
   setFiles: (files) => { packageFiles = files; storeFiles(files); if (!doc.filesEdited) { doc.filesEdited = true; saveDocMeta(); } renderDocHead(); if (tabsReady) saveTabs(); },
@@ -2897,6 +2897,13 @@ const DEFAULT_LAYOUT: Layout = 'rail';
 const layout = (): Layout => { try { const v = localStorage.getItem(LAYOUT_KEY); return v === 'rail' || v === 'bar' ? v : DEFAULT_LAYOUT; } catch { return DEFAULT_LAYOUT; } };
 function applyLayout(l: Layout) {
   document.documentElement.dataset.layout = l;
+  // The tabs: above the code in the side rail layout (Files stands beside them, as in a code editor); in the slim
+  // bar's header otherwise.
+  const strip = document.querySelector<HTMLElement>('.htabs-wrap');
+  if (strip) {
+    if (l === 'rail') $('#tabs-slot').append(strip);
+    else document.querySelector('header .brand')?.after(strip);
+  }
   document.querySelectorAll<HTMLInputElement>('input[name="set-layout"]').forEach((r) => (r.checked = r.value === l));
   requestAnimationFrame(() => editor.refresh());
 }
