@@ -968,17 +968,18 @@ section('docs pages', async () => {
     await axe(s.p, `${theme}, docs page`);
     await s.p.goto(BASE + 'docs/');
     await axe(s.p, `${theme}, docs list`);
-    // Tools in the docs (tool-docs.mjs): reference pages with tables made from the tools' own data, setup pages, and
-    // their own section in the list.
-    await s.p.goto(BASE + 'docs/tools/ncdev/');
+    // Tools in the docs (tool-docs.mjs): a group per tool in the list, with an overview, a setup page and reference
+    // pages whose tables are made from the tools' own data.
+    await s.p.goto(BASE + 'docs/tools/ncdev/commands/');
     await s.p.waitForTimeout(300);
-    const td = await s.p.evaluate(() => ({ rows: document.querySelectorAll('main table tbody tr').length, lint: /lint <file\|dir>/.test(document.querySelector('main table')?.textContent ?? ''), sec: [...document.querySelectorAll('#dn-list .dn-sec > details > summary')].map((x) => x.textContent).join(), current: document.querySelector('#dn-list [aria-current]')?.textContent }));
-    check(td.rows > 15 && td.lint && /Tools/.test(td.sec) && td.current === 'ncdev', `docs tools ${theme}: the ncdev page lists the commands, in its own Tools section (${JSON.stringify(td)})`);
+    const td = await s.p.evaluate(() => ({ rows: document.querySelectorAll('main table tbody tr').length, lint: /lint <file\|dir>/.test(document.querySelector('main table')?.textContent ?? ''), sec: [...document.querySelectorAll('#dn-list .dn-sec > details > summary')].map((x) => x.textContent).join(), current: document.querySelector('#dn-list [aria-current]')?.textContent, group: document.querySelector('#dn-list [aria-current]')?.closest('details')?.querySelector('summary')?.firstChild?.textContent, kinds: [...(document.querySelector('#dn-list [aria-current]')?.closest('ul')?.querySelectorAll('a') ?? [])].map((a) => a.textContent).join() }));
+    check(td.rows > 15 && td.lint && /Tools/.test(td.sec) && td.current === 'Commands' && td.group === 'ncdev' && td.kinds === 'Overview,Setup,Commands,Options', `docs tools ${theme}: ncdev's commands page lists the commands, under ncdev in the Tools section (${JSON.stringify(td)})`);
     await axe(s.p, `${theme}, docs tools page`);
-    await s.p.goto(BASE + 'docs/tools/mcp/');
-    check((await s.p.$$('main h3 code')).length >= 10, `docs tools ${theme}: the MCP page lists the server's tools`);
-    // A reference page starts with what the tool is and its facts, and ends with one short Related list. Its
+    await s.p.goto(BASE + 'docs/tools/mcp/tools/');
+    check((await s.p.$$('main h2 code')).length >= 10, `docs tools ${theme}: the MCP page lists the server's tools`);
+    // A tool's overview starts with what the tool is and its facts, and ends with one short Related list. Its
     // setup is a page of its own: what you need, the steps, how to see that it worked.
+    await s.p.goto(BASE + 'docs/tools/mcp/');
     const rp = await s.p.evaluate(() => ({ lead: !!document.querySelector('main > .lead, main .lead'), facts: document.querySelectorAll('main .facts > div').length, setup: !!document.querySelector('main .facts a[href$="mcp/setup/"]'), related: document.querySelectorAll('#related + ul li').length, when: !!document.querySelector('#when') }));
     check(rp.lead && rp.facts >= 3 && rp.setup && rp.related >= 1 && rp.related <= 3 && !rp.when, `docs tools ${theme}: the MCP page starts with what it is and its facts, links its setup page, and ends with a short Related list (${JSON.stringify(rp)})`);
     await s.p.goto(BASE + 'docs/tools/notepadpp/setup/');

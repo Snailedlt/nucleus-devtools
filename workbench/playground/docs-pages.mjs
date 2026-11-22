@@ -245,12 +245,14 @@ ${!v && o.toolPages?.length ? `<p class="small">The tools have their own section
     fs.writeFileSync(path.join(dir, 'index.html'), head(v ? `${title}: Nucleus Co-op handler docs` : 'Docs: every Nucleus Co-op handler option and call', first || 'Nucleus Co-op handler docs.', `${o.base}docs/${v ? `${v}/` : ''}`, up, v || '@api') + body + foot(up));
     written.push(v);
   }
-  // Tools (tool-docs.mjs): docs/tools/ (every tool in one table) and their pages: a reference page per tool and per part of the workbench, a setup page per tool that is installed.
+  // Tools (tool-docs.mjs): docs/tools/ (every tool in one table) and their pages: per tool an overview, a setup page when it is installed, and its reference pages; the workbench's pages, one per part.
   const tools = o.toolPages ?? [];
   if (tools.length) {
     const page = (slug, title, desc, inner, here0) => {
       const up = '../'.repeat(slug.split('/').length + 1);
-      const crumbs = [`<a href="${up}start/">Nucleus handler tools</a>`, `<a href="${up}docs/">Docs</a>`, ...(slug === 'tools' ? ['Tools'] : [`<a href="${up}docs/tools/">Tools</a>`, esc(title)])];
+      // Under a tool's own pages the trail names the tool: Tools › VS Code extension › VS Code: commands.
+      const parent = tools.find((t) => t.slug !== slug && slug.startsWith(`${t.slug}/`) && t.slug.split('/').length === 2);
+      const crumbs = [`<a href="${up}start/">Nucleus handler tools</a>`, `<a href="${up}docs/">Docs</a>`, ...(slug === 'tools' ? ['Tools'] : [`<a href="${up}docs/tools/">Tools</a>`, ...(parent ? [`<a href="${up}docs/${parent.slug}/">${esc(parent.title)}</a>`] : []), esc(title)])];
       const dir = path.join(o.outDir, slug);
       fs.mkdirSync(dir, { recursive: true });
       fs.writeFileSync(path.join(dir, 'index.html'), head(`${title}: Nucleus Co-op handler tools`, desc, `${o.base}docs/${slug}/`, up, here0) + `<p class="crumbs">${crumbs.join(' › ')}</p>\n<h1>${esc(title)}</h1>\n${inner.replaceAll('__UP__', up)}\n` + foot(up));
@@ -266,8 +268,9 @@ ${!v && o.toolPages?.length ? `<p class="small">The tools have their own section
     .concat([{ sec: 'api', key: '', title: 'Nucleus values (enums)', items: (o.enums ?? []).map((n) => ({ p: `Nucleus.${n}`, d: '' })) }])
     // The checks (rules-pages.mjs): their own section, each item linking to rules/<id>/ by its title.
     .concat((o.checks ?? []).map((g) => ({ sec: 'checks', key: g.key, title: g.title, items: g.items })))
-    // Tools (tool-docs.mjs): its groups (Get started, Workbench, Reference); the AI setup page ends the first, with the other setups.
-    .concat([...new Set(tools.map((t) => t.group))].map((g, i, all) => ({ sec: 'tools', key: `tools:${g}`, title: g, items: tools.filter((t) => t.group === g).map((t) => ({ p: t.slug, t: t.nav ?? t.title, d: t.desc, u: `docs/${t.slug}/` })).concat(i === 0 ? [{ p: 'ai', t: 'Set up your AI', d: 'Prompts for Claude Code, other AI agents and chatbots', u: 'ai/' }] : []) })));
+    // Tools (tool-docs.mjs): a group per tool, then the pages about every tool, which the AI setup page ends. `h`: an
+    // item's name in the filter's results, where its group isn't shown ("VS Code: commands", not "Commands").
+    .concat([...new Set(tools.map((t) => t.group))].map((g, i, all) => ({ sec: 'tools', key: `tools:${g}`, title: g, items: tools.filter((t) => t.group === g).map((t) => ({ p: t.slug, t: t.nav ?? t.title, ...(t.hit && t.hit !== (t.nav ?? t.title) ? { h: t.hit } : {}), d: t.desc, u: `docs/${t.slug}/` })).concat(i === all.length - 1 ? [{ p: 'ai', t: 'Set up your AI', d: 'Prompts for Claude Code, other AI agents and chatbots', u: 'ai/' }] : []) })));
   fs.writeFileSync(path.join(o.outDir, 'nav.json'), JSON.stringify(nav));
   fs.writeFileSync(path.join(o.outDir, 'nav.js'), NAV_JS);
   return written;
@@ -313,13 +316,13 @@ const NAV_JS = `(function () {
     var w = q.value.trim().toLowerCase().split(/\\s+/).filter(Boolean);
     if (!w.length) return tree();
     var hits = [];
-    groups.forEach(function (g) { g.items.forEach(function (i) { var t = (i.p + ' ' + (i.t || '') + ' ' + i.d).toLowerCase(); if (w.every(function (x) { return t.indexOf(x) >= 0; })) hits.push(i); }); });
+    groups.forEach(function (g) { g.items.forEach(function (i) { var t = (i.p + ' ' + (i.h || i.t || '') + ' ' + i.d).toLowerCase(); if (w.every(function (x) { return t.indexOf(x) >= 0; })) hits.push(i); }); });
     // Best first: the words run together in the name ("save file" → ModifySaveFile), then every word in the name,
     // then the first word in the name, then the rest (matched in the doc's first line).
     var joined = w.join('');
-    function rank(i) { var n = (i.t || i.p).toLowerCase() + ' ' + i.p.toLowerCase(); return n.indexOf(joined) >= 0 ? 0 : w.every(function (x) { return n.indexOf(x) >= 0; }) ? 1 : n.indexOf(w[0]) >= 0 ? 2 : 3; }
+    function rank(i) { var n = (i.h || i.t || i.p).toLowerCase() + ' ' + i.p.toLowerCase(); return n.indexOf(joined) >= 0 ? 0 : w.every(function (x) { return n.indexOf(x) >= 0; }) ? 1 : n.indexOf(w[0]) >= 0 ? 2 : 3; }
     hits.sort(function (a, b) { return rank(a) - rank(b) || a.p.length - b.p.length || a.p.localeCompare(b.p); });
-    list.innerHTML = hits.length ? hits.slice(0, 150).map(function (i) { return '<li class="hit">' + link(i.p, i.d ? '<small>' + esc(i.d) + '</small>' : '', i.t, i.u) + '</li>'; }).join('') : '<li class="dn-none">Nothing matches.</li>';
+    list.innerHTML = hits.length ? hits.slice(0, 150).map(function (i) { return '<li class="hit">' + link(i.p, i.d ? '<small>' + esc(i.d) + '</small>' : '', i.h || i.t, i.u) + '</li>'; }).join('') : '<li class="dn-none">Nothing matches.</li>';
   }
   q.addEventListener('input', filter);
   q.addEventListener('keydown', function (e) { if (e.key === 'Enter') { var a = list.querySelector('a'); if (a) location.href = a.href; } });

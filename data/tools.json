@@ -1,16 +1,23 @@
 {
-  "$comment": "The words of the docs' Tools pages (docs/tools/…). Everything a person wrote about the tools is here, and workbench/playground/tool-docs.mjs only lays it out next to the reference it generates from the tools themselves. Two kinds of page (AGENTS.md, 'How the Tools docs are organised'): a tool's REFERENCE page describes what the tool is and does, and its SETUP page (`setup`) is the getting-started guide: what you need, the steps, how to see that it worked. A fact has one home: write it on the page it belongs to and link there from `related`, don't repeat it. index: the Tools page (lead; fit: the text under the 'one core' diagram; path: the caption of a handler's path; new: the line for newcomers). groups: the section's groups in the docs list, in order. core, flow: the two diagrams. compare: the feature comparison page (its table is data/tools-compare.json). tools: one entry per tool. line: one line for the Tools page's table. summary: what the tool is, one or two sentences; explain a term a handler author may not know (language server, MCP) where it first comes up. facts: [name, text] pairs shown as a short list under the summary (what it runs on, what it needs, where its setup is). video (a demo in docs/videos) with videoLine; shots: gallery screenshots (docs/images/gallery) by name without -light/-dark, captions from the start page's gallery. sections: what the page says before the generated reference, each with a heading h and one or more of md (text), rows ([name, text] pairs as a table, with cols as its two headings) and pair (a two-box diagram: a and b are [title, line], caption is text). refNote: the small line under the generated reference, saying where it comes from. related: at most three links, shown last. setup: slug, title, desc, lead, needs (a list), steps (numbered), sections (before the check, e.g. one per system), verify (how to see that it worked), after (sections after the check), related. Text: `code`, a key in backticks (`F5`, `Ctrl+.`), **bold**, [links](https://…), (@site:<path>) for a page of the site, (@docs:<slug>#<part>) for a docs page, {repo} for this repository's address, {vscodeVersion} for the oldest VS Code the extension runs in (package.json engines); lines starting \"- \" are a list, \"1. \" numbered steps, and a ``` fence with a language is a code block. Reference text states what a thing is and does, in plain sentences; steps tell the reader what to do. Both read as if a person wrote them (AGENTS.md, Conventions).",
+  "$comment": "The words of the docs' Tools pages (docs/tools/…). Everything a person wrote about the tools is here, and workbench/playground/tool-docs.mjs only lays it out next to the reference it generates from the tools themselves. In the docs list every tool is a group under Tools (`name`), and its pages are the same kinds in the same order (`kinds`; AGENTS.md, 'How the Tools docs are organised'): OVERVIEW (what the tool is and does), SETUP (`setup`: what you need, the steps, how to see that it worked), then a generated REFERENCE page per kind the tool has (`pages`: features, commands, tools, shortcuts, settings, options, handler files). A fact has one home: write it on the page it belongs to and link there from `related`, don't repeat it. kinds: every kind of page, in the order of the docs list, with `nav` (its name in the list) and, for features, the table's words. across: the docs list's last group, for the pages about every tool. index: the Tools page (lead; fit: the text under the 'one core' diagram; path: the caption of a handler's path; new: the line for newcomers). core, flow: the two diagrams. compare: the feature comparison page (its table is data/tools-compare.json). tools: one entry per tool. name: the tool's group in the docs list. line: one line for the Tools page's table. summary: what the tool is, one or two sentences; explain a term a handler author may not know (language server, MCP) where it first comes up. facts: [name, text] pairs shown as a short list under the summary (what it runs on, what it needs, where its setup is). video (a demo in docs/videos) with videoLine; shots: gallery screenshots (docs/images/gallery) by name without -light/-dark, captions from the start page's gallery. pages: the tool's generated reference pages by kind; each has title, desc (for search engines and the docs list's filter), lead (one or two sentences on what the page lists) and optionally note (where the list comes from). What is on such a page comes from the tool itself, never from here. sections: what the overview page says, each with a heading h and one or more of md (text), rows ([name, text] pairs as a table, with cols as its two headings) and pair (a two-box diagram: a and b are [title, line], caption is text). refNote: the small line under the generated reference, saying where it comes from. related: at most three links, shown last. setup: slug, title, desc, lead, needs (a list), steps (numbered), sections (before the check, e.g. one per system), verify (how to see that it worked), after (sections after the check), related. Text: `code`, a key in backticks (`F5`, `Ctrl+.`), **bold**, [links](https://…), (@site:<path>) for a page of the site, (@docs:<slug>#<part>) for a docs page, {repo} for this repository's address, {vscodeVersion} for the oldest VS Code the extension runs in (package.json engines); lines starting \"- \" are a list, \"1. \" numbered steps, and a ``` fence with a language is a code block. Reference text states what a thing is and does, in plain sentences; steps tell the reader what to do. Both read as if a person wrote them (AGENTS.md, Conventions).",
   "index": {
     "lead": "Tools for writing Nucleus Co-op handlers. Each one checks a handler for what Nucleus would reject or quietly ignore, shows what every player would get before a game is started, and has the docs for every option.",
     "fit": "They all run the same core, so a handler gets the same problems and the same Try it result in every tool. `ncdev` is that core as a program: the Notepad++ plugin, the language server and the MCP server are `ncdev` running in the background. The workbench and the VS Code extension carry the core themselves and don't need it.",
     "path": "Every tool covers writing, checking and Try it. Saving, testing in Nucleus Co-op and the debugger differ from tool to tool.",
     "new": "New to handlers? [Learn](@site:learn/) builds a first one with you, in the workbench."
   },
-  "groups": [
-    { "id": "start", "title": "Get started" },
-    { "id": "workbench", "title": "Workbench" },
-    { "id": "reference", "title": "Reference" }
+  "kinds": [
+    { "id": "overview", "nav": "Overview" },
+    { "id": "setup", "nav": "Setup" },
+    { "id": "features", "nav": "Features", "cols": ["Feature", "Has it", "Details"], "yes": "Yes", "no": "No" },
+    { "id": "commands", "nav": "Commands" },
+    { "id": "tools", "nav": "Tools" },
+    { "id": "shortcuts", "nav": "Shortcuts" },
+    { "id": "settings", "nav": "Settings" },
+    { "id": "options", "nav": "Options" },
+    { "id": "detection", "nav": "Handler files" }
   ],
+  "across": "Every tool",
   "core": {
     "title": "One core",
     "parts": ["Checks", "Try it", "Debugger", "API docs"],
@@ -32,7 +39,8 @@
   },
   "tools": [
     {
-      "id": "workbench", "short": "Browser", "slug": "tools/workbench", "title": "Workbench",
+      "id": "workbench", "name": "Workbench", "short": "Browser", "slug": "tools/workbench", "title": "Workbench",
+      "pages": { "features": { "title": "Workbench: features", "desc": "What the workbench can and can't do, feature by feature.", "lead": "What the workbench does, row by row, from the [feature comparison](@docs:tools/compare), which has the other tools next to it." } },
       "line": "A handler editor in a browser tab.",
       "setupLine": "Nothing to install. [Open it](@site:)",
       "summary": "The workbench is a handler editor that runs in a browser tab. It checks the handler while you type, shows what Nucleus Co-op would set up for each player, steps through the code line by line, and has the API docs beside the code.",
@@ -44,9 +52,15 @@
       ]
     },
     {
-      "id": "vscode", "short": "Extension", "slug": "tools/vscode", "group": "reference", "title": "VS Code extension", "nav": "VS Code extension",
+      "id": "vscode", "name": "VS Code", "short": "Extension", "slug": "tools/vscode", "title": "VS Code extension",
+      "pages": {
+        "features": { "title": "VS Code: features", "desc": "What the VS Code extension can and can't do, feature by feature.", "lead": "What the VS Code extension does, row by row, from the [feature comparison](@docs:tools/compare), which has the other tools next to it." },
+        "commands": { "title": "VS Code: commands", "desc": "Every command the extension adds to VS Code.", "lead": "Every command the extension adds. They're in the Command Palette (`Ctrl+Shift+P`) under *Nucleus*.", "note": "Generated from the extension's `package.json`." },
+        "shortcuts": { "title": "VS Code: shortcuts", "desc": "The keys the extension binds in VS Code.", "lead": "The keys the extension binds. VS Code's Keyboard Shortcuts editor changes any of them.", "note": "Generated from the extension's `package.json`." },
+        "settings": { "title": "VS Code: settings", "desc": "Every setting of the extension, with its default.", "lead": "The extension's settings, all under `splitscreenme.` in VS Code's Settings.", "note": "Generated from the extension's `package.json`." }
+      },
       "line": "Handler support in VS Code and VSCodium, with a Docs panel, Try it and a debugger.",
-      "desc": "What the VS Code extension adds, with its commands, keys and settings.",
+      "desc": "What the VS Code extension is and what it adds to the editor.",
       "summary": "The extension adds Nucleus Co-op handler support to VS Code and VSCodium. Problems are underlined while you type and come with fixes. It also has suggestions, docs, Try it, a debugger, and commands that package a handler, install it and start Nucleus Co-op with it.",
       "facts": [
         ["Runs in", "VS Code {vscodeVersion} or newer, and VSCodium"],
@@ -71,7 +85,6 @@
           ["AI-written docs", "Some options have no official docs, so an AI wrote theirs from the Nucleus source. Those parts start with ✨ in hovers and sit in a tinted frame in the Docs panel."]
         ] }
       ],
-      "refNote": "Commands, keys and settings are generated from the extension's `package.json`.",
       "related": ["[Set up VS Code](@docs:tools/vscode/setup)", "[Feature comparison](@docs:tools/compare)"],
       "setup": {
         "slug": "tools/vscode/setup", "title": "Set up VS Code",
@@ -92,9 +105,13 @@
       }
     },
     {
-      "id": "notepadpp", "short": "Plugin", "slug": "tools/notepadpp", "group": "reference", "title": "Notepad++ plugin", "nav": "Notepad++ plugin",
+      "id": "notepadpp", "name": "Notepad++", "short": "Plugin", "slug": "tools/notepadpp", "title": "Notepad++ plugin",
+      "pages": {
+        "features": { "title": "Notepad++: features", "desc": "What the Notepad++ plugin can and can't do, feature by feature.", "lead": "What the Notepad++ plugin does, row by row, from the [feature comparison](@docs:tools/compare), which has the other tools next to it." },
+        "commands": { "title": "Notepad++: commands", "desc": "Every entry of the plugin's menu, with its shortcut.", "lead": "Every entry of **Plugins › Nucleus Co-op handlers**, in the menu's order, with its shortcut.", "note": "Read from the plugin's own source." }
+      },
       "line": "A Notepad++ plugin with the same checks, fixes and docs. No debugger.",
-      "desc": "What the Notepad++ plugin adds, and every entry of its menu.",
+      "desc": "What the Notepad++ plugin is and what it adds to the editor.",
       "summary": "A plugin for Notepad++. It underlines problems while you type, fixes them with `Alt+Enter`, suggests names and shows docs when you hover. Try it, the Hub, packaging and Test in Nucleus Co-op are in its menu.",
       "facts": [
         ["Runs in", "Notepad++ on Windows, 64-bit or 32-bit"],
@@ -116,7 +133,6 @@
         ] },
         { "h": "Files on disk", "md": "The plugin is `NcDev.dll` in Notepad++'s `plugins\\NcDev` folder. `NcDev.ini`, next to it, says where ncdev is. A copy of ncdev is kept in `%LOCALAPPDATA%\\ncdev`. Setup also adds one entry to Notepad++'s Run menu (in its `shortcuts.xml`). Where there's no plugin for your Notepad++ (ARM64), the names go into `autoCompletion\\javascript.xml` instead, and the original is kept beside it as `javascript.xml.nucleus-backup`." }
       ],
-      "refNote": "The menu is read from the plugin's own source.",
       "related": ["[Set up Notepad++](@docs:tools/notepadpp/setup)", "[Feature comparison](@docs:tools/compare)"],
       "setup": {
         "slug": "tools/notepadpp/setup", "title": "Set up Notepad++",
@@ -139,7 +155,13 @@
       }
     },
     {
-      "id": "lsp", "short": "ncdev lsp", "slug": "tools/lsp", "group": "reference", "title": "Language server (ncdev lsp)", "nav": "Language server",
+      "id": "lsp", "name": "Other editors", "short": "ncdev lsp", "slug": "tools/lsp", "title": "Language server (ncdev lsp)",
+      "pages": {
+        "features": { "title": "Language server: features", "desc": "What an editor running the language server can and can't do, feature by feature.", "lead": "What an editor running the language server does, row by row, from the [feature comparison](@docs:tools/compare), which has the other tools next to it." },
+        "commands": { "title": "Language server: commands", "desc": "What VS Code shows in panels, as commands for any editor.", "lead": "VS Code has panels for Try it, the Hub and packaging. In other editors the same things are commands of the language server, or of `ncdev` in a terminal.", "note": "From [PORTING.md]({repo}/blob/main/PORTING.md), which also explains how to port the tools to a new editor." },
+        "settings": { "title": "Language server: settings", "desc": "The settings an editor can send to ncdev lsp.", "lead": "The settings `ncdev lsp` takes from the editor.", "note": "From [PORTING.md]({repo}/blob/main/PORTING.md), which also explains how to port the tools to a new editor." },
+        "detection": { "title": "Language server: handler files", "desc": "How ncdev lsp tells a handler from other JavaScript files.", "lead": "The language server only acts on handlers. This is how it tells one from any other JavaScript file.", "note": "From [PORTING.md]({repo}/blob/main/PORTING.md), which also explains how to port the tools to a new editor." }
+      },
       "line": "The checks, fixes and docs for any editor with a language-server client: Neovim, Helix, Emacs and others.",
       "summary": "`ncdev lsp` is a language server for handlers. That's a program an editor runs in the background and asks for problems, fixes, suggestions and docs. `ncdev dap` is the debug adapter that goes with it, for editors with a debug client.",
       "facts": [
@@ -152,7 +174,6 @@
       "sections": [
         { "h": "How an editor uses it", "pair": { "a": ["Your editor", "shows problems, docs and suggestions"], "b": ["ncdev lsp", "checks the handler"], "caption": "The editor starts `ncdev lsp` and talks to it while you type. The server works out what's wrong with the handler, and the editor displays it." } }
       ],
-      "refNote": "Settings, handler detection and the list of commands come from [PORTING.md]({repo}/blob/main/PORTING.md), which also explains how to port the tools to a new editor.",
       "related": ["[Set up another editor](@docs:tools/lsp/setup)", "[Feature comparison](@docs:tools/compare)"],
       "setup": {
         "slug": "tools/lsp/setup", "title": "Set up another editor",
@@ -167,9 +188,13 @@
       }
     },
     {
-      "id": "ncdev", "short": "Command line", "slug": "tools/ncdev", "group": "reference", "title": "ncdev (command line)", "nav": "ncdev",
+      "id": "ncdev", "name": "ncdev", "short": "Command line", "slug": "tools/ncdev", "title": "ncdev (command line)",
+      "pages": {
+        "commands": { "title": "ncdev: commands", "desc": "Every ncdev command and what it does.", "lead": "Every command of `ncdev`, as `ncdev --help` lists them.", "note": "Generated from `ncdev --help`." },
+        "options": { "title": "ncdev: options", "desc": "The options every ncdev command takes, the options of ncdev lint, and the exit codes.", "lead": "The options every command takes, the ones only `ncdev lint` has, and what the exit code says.", "note": "Generated from `ncdev --help`." }
+      },
       "line": "The tools as one command-line program.",
-      "desc": "What ncdev is, with every command and option.",
+      "desc": "What ncdev is: the tools as one command-line program.",
       "summary": "`ncdev` is the handler tools as one command-line program. It checks and formats handlers, looks names up in the API, runs Try it and the debugger in a terminal, packages and installs handlers, starts Nucleus Co-op for a test, and searches the Hub.",
       "facts": [
         ["Runs on", "Windows (`ncdev.exe`), Linux x64 (`ncdev-linux-x64`), and anything with Node.js 18 or newer (`nucleus.js`)"],
@@ -179,7 +204,6 @@
       "sections": [
         { "h": "Examples", "md": "```shell\nncdev lint handlers/                   # every problem in a folder of handlers\nncdev simulate MyGame.js --players 3   # Try it: each player's window, arguments and file changes\nncdev api Game.KillMutex               # an option's type, default and docs\nncdev lint --help                      # only that command's part of the help\n```\n\n`ncdev lint` exits with an error code when a handler has errors, which is what a script needs to stop on a broken one." }
       ],
-      "refNote": "Commands and options are generated from `ncdev --help`.",
       "related": ["[Install ncdev](@docs:tools/ncdev/setup)", "[Language server](@docs:tools/lsp)", "[MCP server](@docs:tools/mcp)"],
       "setup": {
         "slug": "tools/ncdev/setup", "title": "Install ncdev",
@@ -199,9 +223,12 @@
       }
     },
     {
-      "id": "mcp", "short": "ncdev mcp", "slug": "tools/mcp", "group": "reference", "title": "MCP server (ncdev mcp)", "nav": "MCP server",
+      "id": "mcp", "name": "MCP server", "short": "ncdev mcp", "slug": "tools/mcp", "title": "MCP server (ncdev mcp)",
+      "pages": {
+        "tools": { "title": "MCP server: tools", "desc": "Every tool the MCP server gives an AI agent, with its parameters.", "lead": "Every tool `ncdev mcp` serves. The descriptions are the ones the agent reads, so they're written for it.", "note": "The list is what `ncdev mcp` serves." }
+      },
       "line": "Gives an AI agent the handler tools: API lookup, Check and Try it.",
-      "desc": "What the MCP server gives AI agents, tool by tool.",
+      "desc": "What the MCP server is and how an AI agent uses it.",
       "summary": "`ncdev mcp` serves the handler tools to AI agents. It speaks MCP (the Model Context Protocol), which is how agents such as Claude Code, Codex and Copilot use outside tools. An agent can look a name up in the API, check the handler it wrote, run Try it on it and ask what a line does, so it doesn't have to guess at option names.",
       "facts": [
         ["Command", "`ncdev mcp`"],
@@ -210,10 +237,8 @@
         ["Install", "[Connect an AI agent](@docs:tools/mcp/setup)"]
       ],
       "sections": [
-        { "h": "How an agent uses it", "pair": { "a": ["Your AI agent", "writes the handler"], "b": ["ncdev mcp", "looks things up, checks, runs Try it"], "caption": "The agent starts `ncdev mcp` and calls the tools below as it works." } }
+        { "h": "How an agent uses it", "pair": { "a": ["Your AI agent", "writes the handler"], "b": ["ncdev mcp", "looks things up, checks, runs Try it"], "caption": "The agent starts `ncdev mcp` and calls [its tools](@docs:tools/mcp/tools) as it works." } }
       ],
-      "refIntro": "The descriptions are the ones the agent reads, so they're written for it.",
-      "refNote": "The list is what `ncdev mcp` serves.",
       "related": ["[Connect an AI agent](@docs:tools/mcp/setup)", "[Set up your AI](@site:ai/): prompts for agents and chatbots"],
       "setup": {
         "slug": "tools/mcp/setup", "title": "Connect an AI agent",
