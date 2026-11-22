@@ -1,0 +1,29 @@
+{
+  "about": "Everything that moves in the workbench, for the motion review (#motion-review, src/motionreview.ts). A test checks that every mascot scene and every @keyframes rule of page.html is listed here, so a new animation can't ship without an entry.",
+  "scenes": [
+    { "id": "n-sleep", "name": "Dozing", "who": "Nucli", "where": "Check, with no code in the editor", "says": "Nothing to check yet.", "size": 72, "zoom": 1.2 },
+    { "id": "n-ok", "name": "All good", "who": "Nucli", "where": "Check with nothing to fix, a Try it run that works, Test all when every combination works, a note beside the code", "says": "It worked.", "size": 44 },
+    { "id": "n-bad", "name": "Oops", "who": "Nucli", "where": "Try it when the handler can't load or the session ends, Test all with failures, error messages", "says": "Something is wrong.", "size": 44 },
+    { "id": "n-fix", "name": "Fixed", "who": "Nucli", "where": "Not used in the workbench at the moment", "says": "A fix went in.", "size": 44 },
+    { "id": "n-idle", "name": "Looking around", "who": "Nucli", "where": "The first-run choice, the test guide, an info note beside the code, a stopped Test all, Nucli editing the code during a fix", "says": "Hello, or nothing in particular.", "size": 64, "zoom": 1.15 },
+    { "id": "n-scan", "name": "Searching", "who": "Nucli", "where": "The Hub list with no match, Fix with AI while it waits for the answer", "says": "Looking for something.", "size": 64 },
+    { "id": "n-calc", "name": "Working it out", "who": "Nucli", "where": "Docs with no match", "says": "Nothing found here.", "size": 64, "zoom": 1.2 },
+    { "id": "n-spin", "name": "Waiting", "who": "Nucli", "where": "A Hub handler that takes over 300 ms to arrive, sending a report", "says": "Something without a known length is under way.", "size": 40, "busy": true },
+    { "id": "n-ring", "name": "Progress ring", "who": "Nucli", "where": "Test all, once a run has taken 300 ms", "says": "How far a run is.", "size": 44, "busy": true, "progress": "ring" },
+    { "id": "load", "name": "Pushing the bar", "who": "Duo", "where": "Files, while a linked game folder is read", "says": "How far the read is. He stands ready while the files are listed, strains when it stalls and hops at the end.", "size": 280, "progress": "bar" }
+  ],
+  "ui": [
+    { "name": "Dialogs and Settings", "moves": "Fade in and rise 6 px; the backdrop fades in.", "ms": 180, "when": "A dialog opens.", "keyframes": ["dialog-in", "backdrop-in"], "show": "dialog" },
+    { "name": "Dialogs, the lively look", "moves": "The same, with a spring and a longer rise.", "ms": 340, "when": "A dialog opens in a look with spring motion.", "keyframes": ["dialog-spring"] },
+    { "name": "Sheets on phones", "moves": "Dialogs slide up from the bottom edge.", "ms": 180, "when": "A dialog opens on a narrow screen.", "keyframes": ["sheet-in"] },
+    { "name": "Open", "moves": "The palette drops in 8 px; its rows come in one after another.", "ms": 160, "when": "Open is shown; the rows only the first time.", "keyframes": ["palette-in", "row-in"] },
+    { "name": "Messages", "moves": "A toast or the notice drops in 10 px with a spring.", "ms": 350, "when": "Something is reported.", "keyframes": ["notice-in"], "show": "toast" },
+    { "name": "Notes beside the code", "moves": "The note pops in next to the line it's about.", "ms": 220, "when": "A fix, an insert or a setting reports where it acted.", "keyframes": ["cn-in"], "show": "note" },
+    { "name": "Fixed lines", "moves": "A changed line glows green and fades.", "ms": 1500, "when": "A quick fix, Fix all or an AI fix changes code.", "keyframes": ["fx-glow"] },
+    { "name": "Tips", "moves": "A tip that fits what you're doing slides into the tip bar; what it points at pulses three times.", "ms": 250, "when": "A contextual tip shows.", "keyframes": ["tip-in", "tip-target"] },
+    { "name": "Test guide", "moves": "The step you're sent to flashes once.", "ms": 1200, "when": "A link jumps to a step of the beta test guide.", "keyframes": ["tg-flash"] },
+    { "name": "Logo", "moves": "The logo beats.", "ms": 550, "when": "Test all is running.", "keyframes": ["logo-beat"] },
+    { "name": "Spinner", "moves": "A small ring turns.", "ms": 800, "when": "Something waits and Duo and Nucli are turned off.", "keyframes": ["spin"] },
+    { "name": "AI buttons", "moves": "A colour ribbon runs round the button.", "ms": 0, "when": "Hover or focus on a button that asks an AI.", "keyframes": ["glow-ribbon"] }
+  ]
+}

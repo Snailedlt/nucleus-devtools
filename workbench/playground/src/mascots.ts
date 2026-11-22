@@ -74,7 +74,10 @@ function setup() {
   const s = document.createElement('style');
   s.id = 'mascot-css';
   // The scenes' code windows and tracks take the workbench's own colours, so they suit every look, light or dark.
-  s.textContent = LOCAL + '\n' + MASCOT_CSS + '\n.masc { --panel: var(--surface); --panel-line: var(--line); --code: color-mix(in srgb, var(--fg) 28%, transparent); --track: var(--line); }';
+  // The sheet keeps its motion behind the device's reduced-motion preference. Here Settings → Motion decides, and it
+  // is capped at Still when the device asks for less (motion.ts), so the scenes' rules always apply: with them, Still
+  // can show a reaction's ending (the fixed code, the badge up) instead of the first frame of a scene that never plays.
+  s.textContent = LOCAL + '\n' + MASCOT_CSS.split('@media (prefers-reduced-motion: no-preference)').join('@media all') + '\n.masc { --panel: var(--surface); --panel-line: var(--line); --code: color-mix(in srgb, var(--fg) 28%, transparent); --track: var(--line); }';
   document.head.append(s);
   io = typeof IntersectionObserver === 'function'
     ? new IntersectionObserver((es) => es.forEach((e) => {

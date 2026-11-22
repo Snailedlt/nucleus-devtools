@@ -5,6 +5,8 @@
 //   ring, v2"), run live.
 // - Duo's bar (load, reading a game's folder): he pushes the end of the bar. While it moves he walks; when it stalls he
 //   leans in and strains (a sweat drop); at 100 % he lets go, the bar turns green, a check pops and he hops.
+//   With the class `wide` the bar is as long as the element is wide and Duo stays small (about 30 px): a low strip
+//   instead of a square scene.
 // Call ringProgress / barProgress with 0..1 as often as the progress changes; a mascot redrawn by keepMascots() keeps
 // its state (it lives on the element). "Still" (and reduced motion) shows the pose for that progress, nothing moving.
 import { motion } from './motion';
@@ -104,32 +106,66 @@ export function ringProgress(root: ParentNode, p: number): void {
 }
 
 // ---- The bar ----
-const X0 = 18.5, L = 83, XMAX = 84, SC = 0.46;
-type Bar = Sim & { p: number; shown: number; ph: number; still: number; t: number; done: number; onDone?: () => void };
+const X0 = 18.5, SC = 0.46;
+/** The wide strip: screen pixels per drawing unit (Duo is about 38 units tall), and the part of the drawing it shows. */
+const WIDE_PX = 0.8, WIDE_X = 4, WIDE_Y = 56, WIDE_H = 51;
+type Bar = Sim & { p: number; shown: number; ph: number; still: number; t: number; done: number; len: number; w: number; wait: boolean; onDone?: () => void };
 
-/** Duo's bar (load) under `root` shows `p` (0..1). `onDone` runs once he has finished at 100 % (at once on Still). */
-export function barProgress(root: ParentNode, p: number, onDone?: () => void): void {
+/** The wide strip's bar is as long as the element is wide: the lines, the gradient and the check move with it. */
+function fitWide(m: El, s: Bar): boolean {
+  const w = m.clientWidth;
+  if (!w || w === s.w) return false;
+  s.w = w;
+  const units = w / WIDE_PX;
+  // Room at the end for the check that pops there.
+  const len = Math.max(40, units - (X0 - WIDE_X) - 14);
+  s.len = len;
+  const end = (X0 + len).toFixed(1);
+  m.querySelector('svg')?.setAttribute('viewBox', `${WIDE_X} ${WIDE_Y} ${units.toFixed(1)} ${WIDE_H}`);
+  m.querySelectorAll('.ld-track, .ld-fill, .ld-done').forEach((e) => e.setAttribute('x2', end));
+  m.querySelector('.ld-fill')?.setAttribute('stroke-dasharray', `${len.toFixed(1)} ${(len + 200).toFixed(0)}`);
+  m.querySelector('linearGradient[id*="ldg"]')?.setAttribute('x2', (X0 + len + 4.5).toFixed(1));
+  m.querySelector('.ld-chk circle')?.setAttribute('cx', (X0 + len + 4.5).toFixed(1));
+  m.querySelector('.ld-chk path')?.setAttribute('d', `M${(X0 + len + 0.7).toFixed(1)} 100.7 l2.7 2.7 l4.9 -5.2`);
+  return true;
+}
+
+/**
+ * Duo's bar (load) under `root` shows `p` (0..1). `onDone` runs once he has finished at 100 % (at once on Still).
+ * `waiting`: there's no progress to show yet (the step before has no total), so he stands ready instead of straining.
+ */
+export function barProgress(root: ParentNode, p: number, onDone?: () => void, waiting = false): void {
   const m = loader(root, 'masc-load');
   if (!m) return;
   p = Math.max(0, Math.min(1, p));
   m.classList.add('prog');
-  const s = (m._prog ??= { raf: 0, last: 0, p, shown: p, ph: 0, still: 0, t: 0, done: 0 }) as Bar;
+  const s = (m._prog ??= { raf: 0, last: 0, p, shown: p, ph: 0, still: 0, t: 0, done: 0, len: 83, w: 0, wait: waiting }) as Bar;
   if (p !== s.p) s.still = 0; // it moved: no longer stalled
   s.p = p;
+  s.wait = waiting;
   if (onDone) s.onDone = onDone;
+  const wide = m.classList.contains('wide');
+  if (wide) fitWide(m, s);
   const finish = () => { const f = s.onDone; s.onDone = undefined; f?.(); };
   // Every match: Duo's face is drawn in two halves, each with its own expressions.
   const set = (sel: string, prop: string, v: string) => m.querySelectorAll<SVGElement>(sel).forEach((e) => e.style.setProperty(prop, v));
   const draw = () => {
-    const x = Math.min(X0 + L * s.shown + 4.5 - 10, XMAX);
+    const L = s.len;
+    // In the wide strip he stays inside it at the start (the square scene has room to his left).
+    const x = Math.max(wide ? WIDE_X + 15 : 0, Math.min(X0 + L * s.shown + 4.5 - 10, L + 1));
     const moving = !s.done && s.still < 0.6;
-    const stall = !s.done && !moving;
+    const ready = !s.done && !moving && s.wait;
+    const stall = !s.done && !moving && !s.wait;
     let rot = 0, y = 0, sy = 1, lf = 0, rf = 0;
     if (s.done) {
-      // He lets go and hops once.
+      // He lets go and hops once (a low hop in the wide strip: there's text right above it).
       const h = (s.done - 0.15) / 0.42;
-      if (h > 0 && h < 1) { y = -16 * Math.sin(h * Math.PI); sy = 1 + 0.1 * Math.sin(h * Math.PI); }
+      if (h > 0 && h < 1) { y = -(wide ? 9 : 16) * Math.sin(h * Math.PI); sy = 1 + 0.1 * Math.sin(h * Math.PI); }
       rot = 6 * Math.max(0, 1 - s.done / 0.15);
+    } else if (ready) {
+      // Nothing to push yet: hands on the bar, breathing.
+      rot = 5;
+      sy = 1 + 0.025 * Math.sin(s.t * 3.2);
     } else if (stall) {
       rot = 13 + 1.6 * Math.sin(s.t * 42);
       sy = 1 - 0.05 * Math.abs(Math.sin(s.t * 17));
@@ -155,13 +191,18 @@ export function barProgress(root: ParentNode, p: number, onDone?: () => void): v
     set('.look', 'transform', s.done ? 'none' : 'translate(2.6px, .4px)');
   };
   s.rest = () => { s.shown = s.p; s.done = s.p >= 1 ? 1 : 0; s.still = 0; draw(); if (s.done) finish(); };
+  // The wide strip follows its element's width (the Files panel is resizable).
+  if (wide && !s.sized && typeof ResizeObserver === 'function') {
+    s.sized = true;
+    new ResizeObserver(() => { if (fitWide(m, s)) draw(); }).observe(m);
+  }
   if (still()) return s.rest();
   run(m, (dt) => {
     s.t += dt;
     const before = s.shown;
     s.shown += (s.p - s.shown) * (1 - Math.exp(-dt / 0.12));
     if (Math.abs(s.p - s.shown) < 1e-4) s.shown = s.p;
-    const dx = Math.abs(s.shown - before) * L;
+    const dx = Math.abs(s.shown - before) * s.len;
     s.ph += dx * 0.6;
     if (dx < 0.02) s.still += dt;
     if (s.shown >= 1) s.done += dt;

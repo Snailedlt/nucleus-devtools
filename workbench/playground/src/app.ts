@@ -563,9 +563,10 @@ function folderProgText(p: FolderProgress): string {
 function folderProgHtml(): string {
   const p = folderProg;
   if (!p || p.phase === 'done') return '';
-  // Reading the program files has a real progress: Duo pushes the bar (the <progress> stays for screen readers).
-  const duo = p.phase === 'binaries' && mascotsOn() ? mascot('load', { size: 168, view: [10, 40, 102, 72], className: 'fp-duo' }) : '';
-  const bar = p.phase === 'binaries' ? `${duo}<progress id="gf-prog-bar" max="${Math.max(1, p.totalBytes)}" value="${p.bytes}" aria-label="Reading the game's program files"></progress>` : '<progress id="gf-prog-bar" aria-label="Listing the game\'s files"></progress>';
+  // Duo pushes the bar, a low strip as wide as the panel (the <progress> stays for screen readers). Listing has no
+  // total, so there he stands ready; reading the program files has a real progress.
+  const duo = mascotsOn() ? mascot('load', { size: 240, view: [4, 56, 300, 51], className: 'fp-duo wide' }) : '';
+  const bar = p.phase === 'binaries' ? `${duo}<progress id="gf-prog-bar" max="${Math.max(1, p.totalBytes)}" value="${p.bytes}" aria-label="Reading the game's program files"></progress>` : `${duo}<progress id="gf-prog-bar" aria-label="Listing the game's files"></progress>`;
   // The status text is read out when the step changes (aria-live), not at every file.
   return `<div class="fp-prog"><div class="fp-prog-row"><span id="gf-prog-text" role="status" aria-live="polite">${esc(p.phase === 'listing' ? `Reading ${p.name}…` : `Reading ${p.name}'s program files…`)}</span><button class="link" type="button" data-gf="cancel">Cancel</button></div>${bar}<div class="fp-prog-n muted" id="gf-prog-n">${esc(folderProgText(p))}</div></div>`;
 }
@@ -593,6 +594,7 @@ onFolderProgress((p) => {
   }
   if (changed || !bar) { pkgUI?.render(); if (p.phase === 'done') (editor as any).performLint(); return; }
   if (p.phase === 'binaries') { bar.max = Math.max(1, p.totalBytes); bar.value = p.bytes; if (duo) barProgress(duo, folderShare(p)); }
+  else if (duo) barProgress(duo, 0, undefined, true);
   const n = document.getElementById('gf-prog-n');
   if (n) n.textContent = folderProgText(p);
 });
@@ -601,10 +603,12 @@ const folderShare = (p: FolderProgress) => (p.phase === 'binaries' ? p.bytes / M
 // the new Duo is put at the current progress: without it he'd play his demo loop until the next update.
 function syncDuo() {
   const d = document.querySelector<HTMLElement>('.fp-duo');
-  if (d && folderProg?.phase === 'binaries') barProgress(d, folderShare(folderProg));
+  if (!d || !folderProg || folderProg.phase === 'done') return;
+  if (folderProg.phase === 'binaries') barProgress(d, folderShare(folderProg));
+  else barProgress(d, 0, undefined, true);
 }
 function gameSection(): string {
-  if (folderProg?.phase === 'binaries') queueMicrotask(syncDuo); // after the section is in the page
+  if (folderProg && folderProg.phase !== 'done') queueMicrotask(syncDuo); // after the section is in the page
   return `<section class="fp-game" aria-label="Your game on this PC"><div class="fp-head">Your game on this PC</div>${folderProgHtml()}${gameFolder
     ? `<div class="fp-gname"><span class="fi-badge fi-dir" aria-hidden="true">▸</span>${esc(gameFolder.name)}</div><p>Check compares the handler's paths and file names with this folder, and the symlink options get a file picker. Nothing is uploaded.</p><div class="fp-gacts"><button class="btn" type="button" data-gf="show">What's in it</button><button class="btn" type="button" data-gf="pick">Pick another</button><button class="btn" type="button" data-gf="forget">Unlink</button></div>`
     : `<p>Link the folder your game is installed in, and Check tells you when <code>ExecutableName</code>, <code>BinariesFolder</code> or a symlink option names a file that isn't there. Only names and sizes are read, and the game's .exe and DLLs for hints about hooks, on this device.</p><div class="fp-gacts"><button class="btn" type="button" data-gf="pick">Link the game's folder…</button></div>`}</section>`;
@@ -3063,6 +3067,13 @@ function openFromHash(): boolean {
       // #dev shows the dev bar for this page load (like ?env=dev in lonnsinnplassering) and opens nothing.
       devBar.show();
       dropHash();
+      return false;
+    case 'motion-review':
+      // #motion-review: everything that moves, on one sheet (for reviewing the motion; nothing in the UI links to it).
+      dropHash();
+      import('./motionreview')
+        .then((m) => m.openMotionReview({ toast: (text) => showToast(text), note: (text) => codeNote(editor, editor.getCursor().line, text, { mood: 'info' }) }))
+        .catch(() => notice("The motion review didn't load. Check the connection and open the link again.", { kind: 'error' }));
       return false;
     case 'hub':
       return void openHub(t.index), true;

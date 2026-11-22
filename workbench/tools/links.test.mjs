@@ -68,6 +68,7 @@ test('every kind of #link opens what it names', () => {
   assert.deepEqual(t('share-0aZ'), { kind: 'share', hash: 'share-0aZ' });
   assert.deepEqual(t('whats-new'), { kind: 'whats-new' });
   assert.deepEqual(t('dev'), { kind: 'dev' });
+  assert.deepEqual(t('motion-review'), { kind: 'motion-review' });
   assert.deepEqual(t('tour'), { kind: 'tour' });
   // #home and #start open the workbench as usual (#welcome, #getting-started: MOVED_LINKS, to the tour).
   for (const h of ['welcome', 'getting-started', 'home', 'start']) assert.deepEqual(t(h), { kind: 'home' });

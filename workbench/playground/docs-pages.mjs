@@ -133,7 +133,7 @@ export function docsDrawer(up, here, fallback = '') {
   return `<nav id="docs-drawer" aria-label="All docs and checks" data-root="${up}" data-base="${up}docs/" data-here="${esc(here)}">
 <button type="button" class="dn-toggle" aria-expanded="false" aria-controls="dn-body">☰ All docs and checks</button>
 <div class="dn-body" id="dn-body">
-<input class="dn-filter" type="search" placeholder="Filter: a name, a check or a word" aria-label="Filter the docs and checks">
+<input class="dn-filter" type="search" placeholder="Filter docs" aria-label="Filter the docs and checks">
 <ul id="dn-list">${fallback}</ul>
 </div>
 </nav>`;

@@ -1418,3 +1418,47 @@ for (const platform of ['Linux', 'MacIntel']) {
     assert.equal(tip.hidden, true);
   });
 }
+
+test('progress: the wide strip fits its bar to the element, and Duo stands ready while there is no total', async () => {
+  const b = await loaderBrowser('still'), bar = b.make('masc-load wide');
+  const svg = bar.part('svg'), circle = bar.part('.ld-chk circle');
+  bar.parts.set('.ld-track, .ld-fill, .ld-done', [bar.querySelector('.ld-fill')]);
+  bar.clientWidth = 240;
+  b.api.barProgress(bar, 0.5);
+  // 240 px at 0.8 px a unit: 300 units shown, the bar 271.5 long (room for the check at its end).
+  assert.equal(svg.attrs.viewBox, '4 56 300.0 51');
+  assert.equal(bar.querySelector('.ld-fill').attrs.x2, '290.0');
+  assert.equal(circle.attrs.cx, '294.5');
+  assert.equal(b.style(bar, '.ld-fill', 'stroke-dashoffset'), '135.75');
+  // A wider panel: the bar grows, Duo keeps his size.
+  bar.clientWidth = 400;
+  b.api.barProgress(bar, 0.5);
+  assert.equal(svg.attrs.viewBox, '4 56 500.0 51');
+  assert.equal(b.style(bar, '.ld-fill', 'stroke-dashoffset'), '235.75');
+  // At the start he stays inside the strip.
+  b.api.barProgress(bar, 0);
+  assert.match(b.style(bar, '.ld-w', 'transform'), /^translate\(19\.00px/);
+
+  const live = await loaderBrowser('loop'), duo = live.make('masc-load');
+  live.api.barProgress(duo, 0, undefined, true);
+  for (let i = 0; i < 80; i++) live.frame(16);
+  assert.equal(live.style(duo, '.ld-sw', 'opacity'), '0', 'waiting for a total is not a stall: no sweat');
+  live.api.barProgress(duo, 0);
+  for (let i = 0; i < 80; i++) live.frame(16);
+  assert.equal(live.style(duo, '.ld-sw', 'opacity'), '1', 'a real stall shows');
+});
+
+test('motion list: every mascot scene and every UI animation is in the motion review', async () => {
+  const list = JSON.parse(fs.readFileSync(path.join(root, 'playground/src/motionlist.json'), 'utf8'));
+  const ids = [...fs.readFileSync(path.join(root, 'playground/src/mascots.ts'), 'utf8').match(/export type MascotId = ([^;]+);/)[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
+  assert.deepEqual(list.scenes.map((s) => s.id).sort(), [...ids].sort(), 'motionlist.json scenes = MascotId');
+  const page = fs.readFileSync(path.join(root, 'playground/src/page.html'), 'utf8');
+  const frames = [...new Set([...page.matchAll(/@keyframes ([\w-]+)/g)].map((m) => m[1]))].sort();
+  const listed = [...new Set(list.ui.flatMap((u) => u.keyframes))].sort();
+  assert.deepEqual(listed, frames, 'every @keyframes of page.html is named by an entry of motionlist.json (and none is stale)');
+  for (const u of list.ui) assert.ok(u.name && u.moves && u.when && Number.isFinite(u.ms), JSON.stringify(u));
+  // Reduced motion: the workbench's own setting decides, so the scenes' rules must not sit behind the media query.
+  const src = fs.readFileSync(path.join(root, 'playground/src/mascots.ts'), 'utf8');
+  assert.match(src, /MASCOT_CSS\.split\('@media \(prefers-reduced-motion: no-preference\)'\)\.join\('@media all'\)/);
+  assert.ok(fs.readFileSync(path.join(root, 'playground/src/mascots.gen.ts'), 'utf8').includes('@media (prefers-reduced-motion: no-preference)'));
+});

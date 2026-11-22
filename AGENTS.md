@@ -192,6 +192,13 @@ The workbench keeps its own changelog, `workbench/CHANGELOG.md`, and its own rel
 - **Icons come from one set**: `workbench/playground/src/icons.ts` (Lucide, ISC, only the icons used, inline SVG in the text colour; `icon(name)`, `<span data-icon="name">` in page.html), and the core's `reporticons.ts` for reports. No emoji as icons in menus and toolbars.
 - **Every code block is syntax highlighted** (above): in the workbench that's docs, hovers, hints, suggestion docs, Check, Try it, the debugger, What's new, the Files panel and the start page, through `codehl.ts` (`hlHtml` for rendered docs, `hlCode(src, mode)` for raw code, `modeFor(name)` for a file by type); plain text (a .txt) stays plain.
 - Screenshots come in light and dark (`<name>-light.…`, `<name>-dark.…`); pages show the viewer's theme. One set per view, used everywhere: the start page's gallery and the READMEs show `docs/images/gallery/<tool>-<view>-{light,dark}.webp`: the workbench's in `workbench/docs/images/gallery` (`workbench/tools/screenshots.cjs`), VS Code's and Notepad++'s in the root's `docs/images/gallery` (`build.mjs` copies them, like the videos). Don't add separate copies.
+- **Motion says something, or it isn't there.** The rules, for anything that moves in the workbench:
+  - Motion reports progress, a result, or where something went. Nothing moves for decoration where people work (the code, Check, Try it).
+  - Interface motion is short: 160 to 350 ms, easing out, and it never delays the thing it announces. Only a result that stays on screen may run longer (a fixed line's glow, a mascot's reaction).
+  - A loader comes out only when the wait is noticeable (300 ms), shows real progress when there is one, and says so when there's none yet (Duo stands ready, he doesn't strain). It gets a fixed place: the layout doesn't jump when it appears or goes.
+  - Every scene has a designed still pose: a reaction its ending, a loader the pose for its progress. *Still*, *None* and the device's reduced-motion setting show that pose, never a frozen frame or the first frame of something that didn't play.
+  - Nothing moves off screen, and what moves follows Settings → Motion (`src/motion.ts`); no animation of its own behind `prefers-reduced-motion` only.
+  - Everything that moves is in `src/motionlist.json` (a test checks the mascot scenes and every `@keyframes` of `page.html` against it). The workbench shows that list live at `#motion-review` (`src/motionreview.ts`), for judging the motion in every look and at every Motion level; nothing in the UI links to it.
 - Keep the Hub's load low: the Hub list comes from our daily index (`data` branch), packages once per version.
 
 ## Release notes
