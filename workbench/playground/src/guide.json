@@ -16,7 +16,7 @@
         { "h": "Messages", "md": "A message shows where the action was: in the code, or under the button that was pressed. Where that place is gone (a menu that closed), it appears as a note at the bottom right. Swipe a note off to the right to dismiss it. Hovering the stack shows them all." },
         { "h": "What's stored and what's sent", "md": "Handlers are kept in the browser, a tab each, and are still there on the next visit. Clearing the browser's site data deletes them.\n\nNothing you write is uploaded unless you start it yourself: a Share link carries the handler inside the link, and Fix with AI sends the code to the AI provider you set up. The 👍 and 👎 buttons send an anonymous count. So do the usage counts, which can be turned off under Settings › Feedback and privacy." }
       ],
-      "related": ["[Learn](@site:learn/): build a first handler, step by step", "[Feature comparison](@docs:tools/compare)"],
+      "related": ["[Learn](@site:learn/): build a first handler, step by step", "[What each tool can do](@docs:tools#what-each-tool-can-do)"],
       "covers": ["f-swipe"]
     },
     {

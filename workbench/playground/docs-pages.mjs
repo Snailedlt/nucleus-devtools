@@ -268,9 +268,11 @@ ${!v && o.toolPages?.length ? `<p class="small">The tools have their own section
     .concat([{ sec: 'api', key: '', title: 'Nucleus values (enums)', items: (o.enums ?? []).map((n) => ({ p: `Nucleus.${n}`, d: '' })) }])
     // The checks (rules-pages.mjs): their own section, each item linking to rules/<id>/ by its title.
     .concat((o.checks ?? []).map((g) => ({ sec: 'checks', key: g.key, title: g.title, items: g.items })))
-    // Tools (tool-docs.mjs): a group per tool, then the pages about every tool, which the AI setup page ends. `h`: an
-    // item's name in the filter's results, where its group isn't shown ("VS Code: commands", not "Commands").
-    .concat([...new Set(tools.map((t) => t.group))].map((g, i, all) => ({ sec: 'tools', key: `tools:${g}`, title: g, items: tools.filter((t) => t.group === g).map((t) => ({ p: t.slug, t: t.nav ?? t.title, ...(t.hit && t.hit !== (t.nav ?? t.title) ? { h: t.hit } : {}), d: t.desc, u: `docs/${t.slug}/` })).concat(i === all.length - 1 ? [{ p: 'ai', t: 'Set up your AI', d: 'Prompts for Claude Code, other AI agents and chatbots', u: 'ai/' }] : []) })));
+    // Tools (tool-docs.mjs): a group per tool, then the AI setup page as a plain link (`flat`: a group shown without a
+    // fold, its items straight under the section). `h`: an item's name in the filter's results, where its group
+    // isn't shown ("VS Code: commands", not "Commands").
+    .concat([...new Set(tools.map((t) => t.group))].map((g, i, all) => ({ sec: 'tools', key: `tools:${g}`, title: g, items: tools.filter((t) => t.group === g).map((t) => ({ p: t.slug, t: t.nav ?? t.title, ...(t.hit && t.hit !== (t.nav ?? t.title) ? { h: t.hit } : {}), d: t.desc, u: `docs/${t.slug}/` })) })))
+    .concat(tools.length ? [{ sec: 'tools', key: 'tools:', title: '', flat: true, items: [{ p: 'ai', t: 'Set up your AI', d: 'Prompts for Claude Code, other AI agents and chatbots', u: 'ai/' }] }] : []);
   fs.writeFileSync(path.join(o.outDir, 'nav.json'), JSON.stringify(nav));
   fs.writeFileSync(path.join(o.outDir, 'nav.js'), NAV_JS);
   return written;
@@ -297,6 +299,7 @@ const NAV_JS = `(function () {
       var gs = groups.filter(function (g) { return (g.sec || 'api') === s; });
       var mine = here === '@' + s || gs.some(function (g) { return g.key === here || g.items.some(function (i) { return i.p === here; }); });
       var inner = '<li class="dn-all"><a href="' + root + SECS[s][1] + '"' + (here === '@' + s ? ' aria-current="page"' : '') + '>' + (s === 'checks' ? 'Every check' : s === 'tools' ? 'All the tools' : 'All the docs') + '</a></li>' + gs.map(function (g) {
+        if (g.flat) return g.items.map(function (i) { return '<li class="dn-all">' + link(i.p, '', i.t, i.u) + '</li>'; }).join('');
         var open = g.key === here || g.items.some(function (i) { return i.p === here; });
         return '<li><details' + (open ? ' open' : '') + '><summary>' + esc(g.title) + '<span class="n">' + g.items.length + '</span></summary><ul>' + g.items.map(function (i) { return '<li>' + link(i.p, '', i.t || (g.key && i.p.indexOf(g.key + '.') === 0 ? i.p.slice(g.key.length + 1) : i.p), i.u) + '</li>'; }).join('') + '</ul></details></li>';
       }).join('');

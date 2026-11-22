@@ -2,8 +2,9 @@
 // same kinds in the same order (AGENTS.md, "How the Tools docs are organised"):
 // - overview: what the tool, or a part of the workbench, is and does. Each fact on one page.
 // - setup: the getting-started guide of a tool that has to be installed: what you need, the steps, the check.
-// - a reference page per kind the tool has (features, commands, tools, shortcuts, settings, options, handler files),
+// - a reference page per kind the tool has (commands, tools, shortcuts, settings, options, handler files),
 //   generated from the tool itself by one function per kind and source (REFERENCE below).
+// What each tool can do, compared, is one table on the Tools page.
 // The pages are put together here from two kinds of source, and nothing is written in this file:
 // - the words a person wrote: data/tools.json (every tool's reference and setup page, the index, the feature
 //   comparison) and src/guide.json (the workbench's pages), with src/tourparts.json (the labelled screenshot's
@@ -43,7 +44,7 @@ function context(d) {
   const guidePage = by(d.guide.pages);
   const tools = d.tools.tools;
   // Every address under docs/tools/, so a link in the text to one that doesn't exist stops the build.
-  const slugs = new Set(['tools', d.tools.compare.slug, ...d.guide.pages.map((p) => p.slug), ...tools.flatMap((t) => [t.slug, t.setup?.slug, ...Object.keys(t.pages ?? {}).map((k) => `${t.slug}/${k}`)])].filter(Boolean));
+  const slugs = new Set(['tools', ...d.guide.pages.map((p) => p.slug), ...tools.flatMap((t) => [t.slug, t.setup?.slug, ...Object.keys(t.pages ?? {}).map((k) => `${t.slug}/${k}`)])].filter(Boolean));
   return {
     d, action, guidePage, used: new Set(), repo: d.repoUrl,
     vscodeVersion: String(d.pkg.engines?.vscode ?? '').replace(/^[^\d]*/, '').replace(/\.0$/, ''),
@@ -137,10 +138,19 @@ function vscodeManifest(c) {
   const commands = contributes.commands ?? [];
   return { contributes, commands, title: Object.fromEntries(commands.map((x) => [x.command, `${x.category ? `${x.category}: ` : ''}${x.title}`])) };
 }
-/** VS Code: every command, as the Command Palette names it. */
-function vscodeCommands(c) {
+/** What each command does, where its name doesn't say it: the page's `what` (data/tools.json), by the command's id or
+ *  the menu entry's label. A line for a command that no longer exists stops the build. */
+function whatOf(c, text, names, where) {
+  const what = text.what ?? {};
+  const gone = Object.keys(what).filter((k) => !names.includes(k));
+  if (gone.length) throw new Error(`tool docs: "what" describes ${where} that no longer exist: ${gone.join(', ')}.`);
+  return (name) => (what[name] ? rich(what[name], c) : '');
+}
+/** VS Code: every command, as the Command Palette names it, and what it does. */
+function vscodeCommands(c, text) {
   const { commands, title } = vscodeManifest(c);
-  return { html: table(['Command'], commands.map((x) => [esc(title[x.command])])) };
+  const what = whatOf(c, text, commands.map((x) => x.command), 'commands');
+  return { html: table(['Command', 'What it does'], commands.map((x) => [esc(title[x.command]), what(x.command)])) };
 }
 /** VS Code: the keys the extension binds. */
 function vscodeShortcuts(c) {
@@ -156,10 +166,14 @@ function vscodeSettings(c) {
   return { html: table(['Setting', 'Default', 'What it does'], settings.map(([k, v]) => [`<code>${esc(k)}</code>`, value(v), toolText(v.markdownDescription ?? v.description ?? '')])) };
 }
 
-/** Notepad++: the plugin's menu, in its order, a new list where the menu has a separator. */
-function notepadppCommands(c) {
-  const item = (m) => (m.label ? `<li>${esc(m.label)}${m.keys ? ` (${keys(m.keys)})` : ''}</li>` : '</ul><ul class="dlist">');
-  return { html: `<ul class="dlist">${parseNppMenu(c.d.nppCpp).map(item).join('')}</ul>` };
+/** Notepad++: the plugin's menu, in its order, with each entry's keys and what it does; a new table where the menu
+ *  has a separator. */
+function notepadppCommands(c, text) {
+  const menu = parseNppMenu(c.d.nppCpp);
+  const what = whatOf(c, text, menu.map((m) => m.label).filter(Boolean), 'menu entries');
+  const groups = [[]];
+  for (const m of menu) if (m.label) groups[groups.length - 1].push(m); else groups.push([]);
+  return { html: groups.filter((g) => g.length).map((g) => table(['Menu entry', 'Keys', 'What it does'], g.map((m) => [esc(m.label), m.keys ? keys(m.keys) : '', what(m.label)]))).join('\n') };
 }
 
 /** A section of PORTING.md, from its heading (as written there) to the next heading of the same level or above. */
@@ -210,16 +224,6 @@ function mcpTools(c) {
   return { html: c.d.mcpTools.map((t) => `<h2 id="${esc(t.name)}"><code>${esc(t.name)}</code>${t.title ? `: ${esc(t.title)}` : ''}</h2>\n<p>${toolText(t.description)}</p>${params(t)}`).join('\n') };
 }
 
-/** Features: the tool's column of the comparison (data/tools-compare.json), row by row. */
-function features(c, id) {
-  const { columns, rows } = c.d.compare;
-  const col = columns.findIndex((x) => x.id === id);
-  if (col < 0) throw new Error(`tool docs: "${id}" has a features page but no column in data/tools-compare.json.`);
-  const k = c.kind.features;
-  const cell = (text) => { const [mark, ...rest] = text.split(':'); return [mark.trim(), rest.join(':').trim()]; };
-  return { html: table(k.cols, rows.map((r) => { const [mark, note] = cell(r.cells[col]); return [esc(r.feature), mark === 'yes' ? k.yes : mark === 'no' ? k.no : '', toolText(note.replace(/^[a-z]/, (x) => x.toUpperCase()))]; })) };
-}
-
 const REFERENCE = {
   vscode: { commands: vscodeCommands, shortcuts: vscodeShortcuts, settings: vscodeSettings },
   notepadpp: { commands: notepadppCommands },
@@ -235,11 +239,11 @@ function referencePages(c, id) {
   const unknown = Object.keys(t.pages ?? {}).filter((k) => !c.kind[k]);
   if (unknown.length) throw new Error(`tool docs: ${id} has pages of a kind that isn't in "kinds": ${unknown.join(', ')}.`);
   return c.d.tools.kinds.filter((k) => t.pages?.[k.id]).map((k) => {
-    const make = k.id === 'features' ? (cx) => features(cx, id) : REFERENCE[id]?.[k.id];
+    const make = REFERENCE[id]?.[k.id];
     if (!make) throw new Error(`tool docs: nothing generates ${id}'s "${k.id}" page; add it to REFERENCE in tool-docs.mjs.`);
     const text = t.pages[k.id];
     const slug = `${t.slug}/${k.id}`;
-    const ref = make(c);
+    const ref = make(c, text);
     const top = lead(c, text.lead);
     const end = join([text.note && small(c, text.note), related(c, text.related ?? [`[${t.title}](@docs:${t.slug})`], slug)]);
     const page = { slug, group: t.name, title: text.title, nav: k.nav, hit: text.title, desc: text.desc };
@@ -295,24 +299,8 @@ function setupPage(c, id) {
 }
 
 // ---------------------------------------------------------------------------
-// The feature comparison (data/tools.json compare, data/tools-compare.json).
-
-function comparePage(c) {
-  const text = c.d.tools.compare;
-  return {
-    slug: text.slug, group: c.d.tools.across, title: text.title, nav: text.nav, desc: text.desc,
-    html: `${lead(c, text.lead)}
-<div class="compare-wrap" tabindex="0" role="region" aria-label="Features by tool (scrolls sideways)">
-<table class="compare">
-${c.d.compareHtml}
-</table>
-</div>
-${small(c, text.note)}`,
-  };
-}
-
-// ---------------------------------------------------------------------------
-// docs/tools/: every tool in one table, how they fit together, a handler's path.
+// docs/tools/: every tool in one table, what each can do (the comparison: data/tools.json compare,
+// data/tools-compare.json; the only place the tools are compared), how they fit together, a handler's path.
 
 function indexPage(c) {
   const { index, tools, compare } = c.d.tools;
@@ -325,17 +313,24 @@ function indexPage(c) {
 <h2 id="the-tools">The tools</h2>
 ${table(['Tool', 'What it is', 'Set up'], tools.map(row))}
 ${small(c, index.new)}
+<h2 id="${slug(compare.h)}">${esc(compare.h)}</h2>
+<p>${rich(compare.lead, c)}</p>
+<div class="compare-wrap" tabindex="0" role="region" aria-label="Features by tool (scrolls sideways)">
+<table class="compare">
+${c.d.compareHtml}
+</table>
+</div>
+${small(c, compare.note)}
 <h2 id="how-they-fit">How they fit together</h2>
 ${coreDiagram(c)}
 <p>${rich(index.fit, c)}</p>
 <h2 id="path">A handler's path</h2>
-${flowDiagram(c, index.path)}
-<p><a href="${c.docHref(compare.slug)}">${esc(compare.title)}</a></p>`;
+${flowDiagram(c, index.path)}`;
 }
 
 /**
  * The Tools pages, in the order of the docs list: a group per tool (the workbench's pages; for the others the overview,
- * the setup, then a reference page per kind), then the pages about every tool.
+ * the setup, then a reference page per kind). The Tools page itself (`index`) compares them.
  * @returns {{ pages: { slug: string, group: string, title: string, nav: string, hit?: string, desc: string, html?: string, intro?: string, md?: string, mdHref?: (u: string) => string, outro?: string }[],
  *   index: string, media: string[], css: string, js: string }} `js`: for the pages with screenshots (their slider). `nav`: the page's name under its group in the docs list; `hit`: its
  *   name where the group isn't shown (the filter's results). `media`: the screenshots the pages show, for the build to copy.
@@ -345,6 +340,5 @@ export function toolDocs(d) {
   const pages = d.tools.tools.flatMap((t) => (t.id === 'workbench'
     ? [...d.guide.pages.map((page, i) => guidePage(c, page, i)), ...referencePages(c, t.id)]
     : [toolPage(c, t.id), ...(t.setup ? [setupPage(c, t.id)] : []), ...referencePages(c, t.id)]));
-  pages.push(comparePage(c));
   return { pages, index: indexPage(c), media: [...c.used], css: CSS, js: SHOT_SCRIPT };
 }

@@ -1015,10 +1015,10 @@ section('docs pages', async () => {
     const gp =await s.p.evaluate(() => ({ lead: !!document.querySelector('main .lead'), shots: document.querySelectorAll('main .shot .ba-frame').length, slider: (() => { const r = document.querySelector('main .ba-range'); if (!r) return ''; r.value = '20'; r.dispatchEvent(new Event('input', { bubbles: true })); return r.parentNode.style.getPropertyValue('--pos'); })(), keys: document.querySelectorAll('main kbd').length, levels: document.querySelectorAll('#severity + table tbody tr').length, related: document.querySelectorAll('#related + ul li').length, repeats: document.querySelectorAll('#keys, #tips, .guide-nav').length, current: document.querySelector('#dn-list [aria-current]')?.textContent }));
     check(gp.lead && gp.shots === 2 && gp.slider === '20%' && gp.keys >= 4 && gp.levels === 3 && gp.related >= 1 && gp.related <= 3 && gp.repeats === 0 && gp.current === 'Check', `docs tools ${theme}: a workbench page says what the part is, with its screenshots (light and dark, a slider between them) and its keys where they're used, and has no key table or tips list of its own (${JSON.stringify(gp)})`);
     await axe(s.p, `${theme}, workbench guide page`);
-    await s.p.goto(BASE + 'docs/tools/compare/');
+    await s.p.goto(BASE + 'docs/tools/#what-each-tool-can-do');
     const ed = await s.p.evaluate(() => ({ cols: document.querySelectorAll('table.compare thead th').length, rows: document.querySelectorAll('table.compare tbody tr').length }));
-    check(ed.cols === 5 && ed.rows >= 15, `docs tools ${theme}: the comparison page has every feature by tool (${JSON.stringify(ed)})`);
-    await axe(s.p, `${theme}, comparison page`);
+    check(ed.cols === 5 && ed.rows >= 15, `docs tools ${theme}: the Tools page compares every feature by tool (${JSON.stringify(ed)})`);
+    await axe(s.p, `${theme}, Tools page with the comparison`);
     await s.p.goto(BASE + 'docs/tools/lsp/setup/');
     const ls = await s.p.evaluate(() => ({ tested: document.querySelectorAll('#how-far-each-editor-is-tested + table tbody tr').length, editors: [...document.querySelectorAll('main h2')].filter((h) => /Neovim|Helix|Emacs/.test(h.textContent)).length, code: document.querySelectorAll('main pre[data-lang]').length }));
     check(ls.tested >= 5 && ls.editors >= 3 && ls.code >= 4, `docs tools ${theme}: the other editors' setup page has a section per editor and how far each is tested (${JSON.stringify(ls)})`);
@@ -1030,7 +1030,7 @@ section('docs pages', async () => {
     await s.ctx.close();
   }
   const ph = await page('light', { viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
-  for (const u of ['docs/Context.ModifySaveFile/', 'rules/', 'rules/syntax-error/', 'start/', 'tools/', 'ai/', 'docs/tools/ncdev/', 'docs/tools/vscode/', 'docs/tools/', 'docs/tools/workbench/', 'docs/tools/workbench/settings/', 'docs/tools/workbench/shortcuts/', 'docs/tools/compare/', 'docs/tools/lsp/', 'docs/tools/lsp/setup/', 'docs/tools/notepadpp/setup/', 'docs/tools/mcp/']) {
+  for (const u of ['docs/Context.ModifySaveFile/', 'rules/', 'rules/syntax-error/', 'start/', 'tools/', 'ai/', 'docs/tools/ncdev/', 'docs/tools/vscode/', 'docs/tools/', 'docs/tools/workbench/', 'docs/tools/workbench/settings/', 'docs/tools/workbench/shortcuts/', 'docs/tools/vscode/commands/', 'docs/tools/lsp/', 'docs/tools/lsp/setup/', 'docs/tools/notepadpp/setup/', 'docs/tools/mcp/']) {
     await ph.p.goto(BASE + u);
     const wide = await ph.p.evaluate(() => document.documentElement.scrollWidth - innerWidth);
     check(wide <= 1, `phone ${u}: no sideways scrolling, header included (${wide}px)`);

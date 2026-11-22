@@ -120,21 +120,21 @@ static FuncItem funcs[] = {
 /** The least the pages need, for tests of how they are laid out. */
 const guideFixture = () => {
   const setup = (id) => ({ slug: `tools/${id}/setup`, title: `Set up ${id}`, desc: `Install ${id}.`, lead: `Installs ${id}.`, needs: ['A computer.'], steps: ['Download it.', 'Press `F8`.'], verify: 'It says hello.', after: [{ h: 'Updating', md: 'Do it again.' }], related: [`[${id}](@docs:tools/${id})`] });
-  const ref = (id, ...kinds) => Object.fromEntries(kinds.map((k) => [k, { title: `${id}: ${k}`, desc: `The ${k} of ${id}.`, lead: `Every ${k} of \`${id}\`.`, ...(k === 'commands' ? { note: `From ${id} & its source.` } : {}) }]));
-  const PAGES = { vscode: ['features', 'commands', 'shortcuts', 'settings'], notepadpp: ['commands'], lsp: ['commands', 'settings', 'detection'], ncdev: ['commands', 'options'], mcp: ['tools'] };
+  const WHAT = { vscode: { 'sample.run': 'Runs it & **checks** `x`.' }, notepadpp: { 'Check & fix': 'Fixes the <line>.' } };
+  const ref = (id, ...kinds) => Object.fromEntries(kinds.map((k) => [k, { title: `${id}: ${k}`, desc: `The ${k} of ${id}.`, lead: `Every ${k} of \`${id}\`.`, ...(k === 'commands' ? { note: `From ${id} & its source.`, ...(WHAT[id] ? { what: WHAT[id] } : {}) } : {}) }]));
+  const PAGES = { vscode: ['commands', 'shortcuts', 'settings'], notepadpp: ['commands'], lsp: ['commands', 'settings', 'detection'], ncdev: ['commands', 'options'], mcp: ['tools'] };
   const tool = (id) => ({ id, name: `${id} group`, slug: `tools/${id}`, title: id, short: id, line: `The ${id} line.`, summary: `What ${id} is.`, facts: [['Runs on', `Anything & [setup](@docs:tools/${id}/setup)`]], related: [`[Set up](@docs:tools/${id}/setup)`], setup: setup(id), pages: ref(id, ...PAGES[id]) });
   const pg = (id, extra = {}) => ({ id, slug: `tools/workbench/${id}`, nav: id, title: id, desc: `About ${id}.`, intro: `Intro of ${id}.`, ...extra });
   const lsp = tool('lsp');
   lsp.setup = { ...lsp.setup, steps: undefined, sections: [{ h: 'What the snippets turn on', md: 'A setting.' }], tested: { h: 'How far each editor is tested', intro: 'Empty means nobody.', after: 'See [PORTING.md]({repo}/blob/main/PORTING.md).' } };
   return {
     tools: {
-      kinds: [{ id: 'overview', nav: 'Overview' }, { id: 'setup', nav: 'Setup' }, { id: 'features', nav: 'Features', cols: ['Feature', 'Has it', 'Details'], yes: 'Yes', no: 'No' }, { id: 'commands', nav: 'Commands' }, { id: 'tools', nav: 'Tools' }, { id: 'shortcuts', nav: 'Shortcuts' }, { id: 'settings', nav: 'Settings' }, { id: 'options', nav: 'Options' }, { id: 'detection', nav: 'Handler files' }],
-      across: 'Every tool',
+      kinds: [{ id: 'overview', nav: 'Overview' }, { id: 'setup', nav: 'Setup' }, { id: 'commands', nav: 'Commands' }, { id: 'tools', nav: 'Tools' }, { id: 'shortcuts', nav: 'Shortcuts' }, { id: 'settings', nav: 'Settings' }, { id: 'options', nav: 'Options' }, { id: 'detection', nav: 'Handler files' }],
       index: { lead: 'The tools.', fit: 'They share `ncdev`.', path: 'A handler\'s path.', new: 'New? [Learn](@site:learn/).' },
-      compare: { slug: 'tools/compare', title: 'Feature comparison', nav: 'Feature comparison', desc: 'Side by side.', lead: 'The same checks everywhere.', note: 'The last column is the [language server](@docs:tools/lsp).' },
+      compare: { h: 'What each <tool> can do', lead: 'The same checks everywhere.', note: 'The last column is the [language server](@docs:tools/lsp).' },
       core: { title: 'One core', parts: ['Checks'], line: 'All share it.' },
       flow: [{ id: 'write', label: 'Write', line: 'Type' }, { id: 'test', label: 'Test', line: 'In Nucleus' }],
-      tools: [{ id: 'workbench', name: 'Workbench', slug: 'tools/workbench', title: 'Workbench', short: 'Browser', pages: { features: { title: 'Workbench: features', desc: 'What it can do.', lead: 'Row by row.' } }, line: 'In a browser tab.', setupLine: 'Nothing. [Open it](@site:)', summary: 'What the workbench is.', facts: [['Install', 'Nothing']] }, tool('vscode'), tool('notepadpp'), lsp, tool('ncdev'), tool('mcp')],
+      tools: [{ id: 'workbench', name: 'Workbench', slug: 'tools/workbench', title: 'Workbench', short: 'Browser', line: 'In a browser tab.', setupLine: 'Nothing. [Open it](@site:)', summary: 'What the workbench is.', facts: [['Install', 'Nothing']] }, tool('vscode'), tool('notepadpp'), lsp, tool('ncdev'), tool('mcp')],
     },
     guide: { skipTips: [], pages: [
       { id: 'overview', slug: 'tools/workbench', nav: 'Overview', title: 'Workbench', desc: 'The workbench.', map: { h: 'The screen', alt: 'The workbench', caption: 'The numbers.', note: 'See [settings](@guide:settings).' }, sections: [{ h: 'First <minute>', md: '1. Press {key:zoom}.\n2. Then `F8`, see [Check](@guide:check) and [the site](@site:tools/).\n\nA **bold** line with `code`.' }], related: ['[Learn](@site:learn/): a first handler'] },
@@ -144,7 +144,6 @@ const guideFixture = () => {
     tourParts: { parts: [{ id: 'code', title: 'The code', text: 'Write here. {key:zoom} zooms.', targets: ['#editor'], page: 'editor' }] },
     gallery: {}, videos: {}, sizes: {}, map: { width: 200, height: 100, parts: { code: { x: 25, y: 50 } } },
     compareHtml: '<tbody><tr><th scope="row">Feature</th></tr></tbody>',
-    compare: { columns: [{ id: 'vscode', label: 'VS Code' }, { id: 'workbench', label: 'Workbench' }], rows: [{ feature: 'Checks <all>', cells: ['yes', 'yes: in a tab'] }, { feature: 'Debugger', cells: ['no: not yet', 'yes'] }, { feature: 'Install', cells: [': the `.vsix`', ': nothing'] }] },
     editors: { editors: [{ id: 'sample', name: 'Sample 2+', people: null, ai: 'Sample 2.1 <beta>', tile: { name: 'Sample', line: 'One line' } }] }, settingsTabs: ['Theme', 'Keys & more'],
   };
 };
@@ -170,16 +169,16 @@ test('tool docs: every tool is a group with the same kinds of page: the workbenc
   const { pages, index, media } = toolDocs({ ...guideFixture(), ...fixtureSources() });
   const bySlug = Object.fromEntries(pages.map((page) => [page.slug, page]));
   assert.deepEqual(Object.keys(bySlug), [
-    'tools/workbench', 'tools/workbench/editor', 'tools/workbench/check', 'tools/workbench/try-it', 'tools/workbench/files', 'tools/workbench/settings', 'tools/workbench/shortcuts', 'tools/workbench/features',
-    'tools/vscode', 'tools/vscode/setup', 'tools/vscode/features', 'tools/vscode/commands', 'tools/vscode/shortcuts', 'tools/vscode/settings',
+    'tools/workbench', 'tools/workbench/editor', 'tools/workbench/check', 'tools/workbench/try-it', 'tools/workbench/files', 'tools/workbench/settings', 'tools/workbench/shortcuts',
+    'tools/vscode', 'tools/vscode/setup', 'tools/vscode/commands', 'tools/vscode/shortcuts', 'tools/vscode/settings',
     'tools/notepadpp', 'tools/notepadpp/setup', 'tools/notepadpp/commands',
     'tools/lsp', 'tools/lsp/setup', 'tools/lsp/commands', 'tools/lsp/settings', 'tools/lsp/detection',
     'tools/ncdev', 'tools/ncdev/setup', 'tools/ncdev/commands', 'tools/ncdev/options',
-    'tools/mcp', 'tools/mcp/setup', 'tools/mcp/tools', 'tools/compare']);
-  // The docs list: a group per tool (its `name`), then the pages about every tool.
-  assert.deepEqual(pages.map((page) => page.group).filter((g, i, all) => all.indexOf(g) === i), ['Workbench', 'vscode group', 'notepadpp group', 'lsp group', 'ncdev group', 'mcp group', 'Every tool']);
+    'tools/mcp', 'tools/mcp/setup', 'tools/mcp/tools']);
+  // The docs list: a group per tool (its `name`).
+  assert.deepEqual(pages.map((page) => page.group).filter((g, i, all) => all.indexOf(g) === i), ['Workbench', 'vscode group', 'notepadpp group', 'lsp group', 'ncdev group', 'mcp group']);
   // Under its group a page goes by its kind; where the group isn't shown (the filter), by its own title.
-  assert.deepEqual(pages.filter((p) => p.group === 'vscode group').map((p) => [p.nav, p.hit]), [['Overview', 'vscode'], ['Setup', 'Set up vscode'], ['Features', 'vscode: features'], ['Commands', 'vscode: commands'], ['Shortcuts', 'vscode: shortcuts'], ['Settings', 'vscode: settings']]);
+  assert.deepEqual(pages.filter((p) => p.group === 'vscode group').map((p) => [p.nav, p.hit]), [['Overview', 'vscode'], ['Setup', 'Set up vscode'], ['Commands', 'vscode: commands'], ['Shortcuts', 'vscode: shortcuts'], ['Settings', 'vscode: settings']]);
 
   // An overview page: what the tool is, its facts, its written sections, then one Related list. No reference on it.
   const vscode = bySlug['tools/vscode'].html;
@@ -191,18 +190,15 @@ test('tool docs: every tool is a group with the same kinds of page: the workbenc
   const commands = bySlug['tools/vscode/commands'];
   assert.equal(commands.title, 'vscode: commands');
   assert.equal(commands.desc, 'The commands of vscode.');
-  assert.match(commands.html, /^<p class="lead">Every commands of <code>vscode<\/code>\.<\/p>\n<table><thead><tr><th>Command<\/th><\/tr><\/thead><tbody><tr><td>Sample: Run &amp; check<\/td><\/tr><\/tbody><\/table>\n<p class="small">From vscode &amp; its source\.<\/p>\n<h2 id="related">Related<\/h2>\n<ul class="dlist related"><li><a href="__UP__docs\/tools\/vscode\/">vscode<\/a><\/li><\/ul>$/);
+  assert.match(commands.html, /^<p class="lead">Every commands of <code>vscode<\/code>\.<\/p>\n<table><thead><tr><th>Command<\/th><th>What it does<\/th><\/tr><\/thead><tbody><tr><td>Sample: Run &amp; check<\/td><td>Runs it &amp; <strong>checks<\/strong> <code>x<\/code>\.<\/td><\/tr><\/tbody><\/table>\n<p class="small">From vscode &amp; its source\.<\/p>\n<h2 id="related">Related<\/h2>\n<ul class="dlist related"><li><a href="__UP__docs\/tools\/vscode\/">vscode<\/a><\/li><\/ul>$/);
   const keys = bySlug['tools/vscode/shortcuts'].html;
   assert.match(keys, /Sample: Run &amp; check<\/td><td><kbd>Ctrl\+R<\/kbd> .*<kbd>⌘\+R<\/kbd>/);
   assert.match(keys, /sample\.other<\/td><td><kbd>F5<\/kbd><\/td>/);
   const settings = bySlug['tools/vscode/settings'].html;
   assert.match(settings, /<code>enabled<\/code><\/td><td><code>false<\/code><\/td><td>Show &lt;details&gt;/);
   assert.match(settings, /<code>paths<\/code><\/td><td><\/td>/);
-  // Features: the tool's column of the comparison, row by row: yes, no, or only a note.
-  assert.match(bySlug['tools/vscode/features'].html, /<th>Feature<\/th><th>Has it<\/th><th>Details<\/th>.*<tr><td>Checks &lt;all&gt;<\/td><td>Yes<\/td><td><\/td><\/tr><tr><td>Debugger<\/td><td>No<\/td><td>Not yet<\/td><\/tr><tr><td>Install<\/td><td><\/td><td>The <code>\.vsix<\/code><\/td><\/tr>/);
-  assert.match(bySlug['tools/workbench/features'].html, /<tr><td>Checks &lt;all&gt;<\/td><td>Yes<\/td><td>In a tab<\/td><\/tr>/);
-  assert.equal(bySlug['tools/workbench/features'].group, 'Workbench');
-  assert.match(bySlug['tools/notepadpp/commands'].html, /^<p class="lead">.*<\/p>\n<ul class="dlist"><li>Check &amp; fix \(<kbd>Alt\+Enter<\/kbd>\)/);
+  // The Notepad++ menu: each entry with its keys and what it does.
+  assert.match(bySlug['tools/notepadpp/commands'].html, /^<p class="lead">.*<\/p>\n<table><thead><tr><th>Menu entry<\/th><th>Keys<\/th><th>What it does<\/th><\/tr><\/thead><tbody><tr><td>Check &amp; fix<\/td><td><kbd>Alt\+Enter<\/kbd><\/td><td>Fixes the &lt;line&gt;\.<\/td><\/tr>/);
   assert.match(bySlug['tools/ncdev/commands'].html, /<code class="use">run &lt;file&gt;<\/code><\/td><td>Read <code>&lt;file&gt;<\/code> &amp; <strong>check<\/strong>/);
   assert.match(bySlug['tools/ncdev/options'].html, /<h2 id="every-command">For every command<\/h2>[\s\S]*<h2 id="exit-codes">Exit codes<\/h2>\n<p>1 on errors; 2 on bad usage\.<\/p>/);
   const mcp = bySlug['tools/mcp/tools'].html;
@@ -226,7 +222,9 @@ test('tool docs: every tool is a group with the same kinds of page: the workbenc
   const odd = (change) => () => { const d = { ...guideFixture(), ...fixtureSources() }; change(d.tools.tools); toolDocs(d); };
   assert.throws(odd((tools) => { tools[4].pages.shortcuts = { title: 'x', desc: 'x', lead: 'x' }; }), /nothing generates ncdev's "shortcuts" page/);
   assert.throws(odd((tools) => { tools[4].pages.recipes = { title: 'x', desc: 'x', lead: 'x' }; }), /a kind that isn't in "kinds": recipes/);
-  assert.throws(odd((tools) => { tools[5].pages.features = { title: 'x', desc: 'x', lead: 'x' }; }), /"mcp" has a features page but no column/);
+  // A line about a command that no longer exists stops the build too.
+  assert.throws(odd((tools) => { tools[1].pages.commands.what = { 'sample.gone': 'x' }; }), /"what" describes commands that no longer exist: sample\.gone/);
+  assert.throws(odd((tools) => { tools[2].pages.commands.what = { 'Gone…': 'x' }; }), /"what" describes menu entries that no longer exist: Gone…/);
 
   // A setup page: what you need, the steps, how to see that it worked, what comes after, Related.
   const setup = bySlug['tools/vscode/setup'];
@@ -263,13 +261,13 @@ test('tool docs: every tool is a group with the same kinds of page: the workbenc
   assert.match(bySlug['tools/workbench/shortcuts'].html, /<h2 id="view">View<\/h2>\n<table>.*Zoom &lt;in&gt;<\/td><td><kbd>Ctrl\+K Ctrl\+0<\/kbd> .*<kbd>Cmd\+K Cmd\+0<\/kbd>.*>fixed<\/span>/);
   assert.match(bySlug['tools/workbench/settings'].html, /<h2 id="sections">Sections<\/h2>\n<table><thead><tr><th>Section<\/th><th>What it has<\/th><\/tr><\/thead><tbody><tr><td>Theme<\/td><td>Colours, <kbd>Ctrl\+K Ctrl\+0<\/kbd>\.<\/td><\/tr><tr><td>Keys &amp; more<\/td><td>Shortcuts\.<\/td><\/tr>/);
 
-  // The comparison, and the index: every tool in one table with its setup, the tools around the engine, the path.
-  assert.match(bySlug['tools/compare'].html, /^<p class="lead">The same checks everywhere\.<\/p>\n<div class="compare-wrap"[^>]*>\n<table class="compare">\n<tbody><tr><th scope="row">Feature<\/th><\/tr><\/tbody>\n<\/table>\n<\/div>\n<p class="small">The last column is the <a href="__UP__docs\/tools\/lsp\/">language server<\/a>\.<\/p>$/);
+  // The index: every tool in one table with its setup, what each can do (the comparison), the tools around the engine, the path.
+  assert.match(index, /<h2 id="what-each-tool-can-do">What each &lt;tool&gt; can do<\/h2>\n<p>The same checks everywhere\.<\/p>\n<div class="compare-wrap"[^>]*>\n<table class="compare">\n<tbody><tr><th scope="row">Feature<\/th><\/tr><\/tbody>\n<\/table>\n<\/div>\n<p class="small">The last column is the <a href="__UP__docs\/tools\/lsp\/">language server<\/a>\.<\/p>\n<h2 id="how-they-fit">/);
   assert.match(index, /^<p class="lead">The tools\.<\/p>\n<h2 id="the-tools">The tools<\/h2>\n<table><thead><tr><th>Tool<\/th><th>What it is<\/th><th>Set up<\/th><\/tr><\/thead><tbody><tr><td><a href="__UP__docs\/tools\/workbench\/">Workbench<\/a><\/td><td>In a browser tab\.<\/td><td>Nothing\. <a href="__UP__">Open it<\/a><\/td><\/tr><tr><td><a href="__UP__docs\/tools\/vscode\/">vscode<\/a><\/td><td>The vscode line\.<\/td><td><a href="__UP__docs\/tools\/vscode\/setup\/">Set up vscode<\/a><\/td><\/tr>/);
   assert.equal((index.slice(index.indexOf('class="dg-core"'), index.indexOf('id="dg-core-cap"')).match(/<li><a href="__UP__docs\/tools\/[\w-]+\/"><strong>/g) ?? []).length, 6, 'six tools around the engine');
   assert.match(index, /<p>They share <code>ncdev<\/code>\.<\/p>/);
   assert.match(index, /<ol class="dg-flow"><li><span><strong>Write<\/strong>/);
-  assert.match(index, /<a href="__UP__docs\/tools\/compare\/">Feature comparison<\/a><\/p>$/);
+  assert.match(index, /<\/figure>$|<\/ol><\/figure>$|<figcaption[^>]*>[^<]*<\/figcaption><\/figure>$/);
 });
 
 test('tool docs: written sections are laid out from data: a diagram, steps, a code block, links, {names}', () => {
@@ -333,8 +331,8 @@ test('tool docs: every tool has an overview that says what it is, a setup page w
       assert.ok(at(`${t.slug}/${kind}`), `${t.id}: a ${kind} page`);
       assert.ok(text.title.length < 40 && text.desc.length > 25 && text.lead.length > 25, `${t.id}: the ${kind} page has a short title, a description and a lead`);
     }
-    assert.ok(Object.keys(t.pages ?? {}).length, `${t.id}: at least one reference page`);
     if (t.id === 'workbench') { assert.ok(t.setupLine && !t.setup, 'the workbench needs no setup, and says so'); continue; }
+    assert.ok(Object.keys(t.pages ?? {}).length, `${t.id}: at least one reference page`);
     // Getting started is a page of its own, and the overview links to it once in its facts.
     const s = t.setup;
     assert.deepEqual(mine.slice(0, 2).map((p) => [p.slug, p.nav]), [[t.slug, 'Overview'], [s.slug, 'Setup']], `${t.id}: the overview, then the setup`);
@@ -436,7 +434,7 @@ test('tool docs: writer registers nested pages, resolves their links and omits T
   const toolPages = [
     { slug: 'tools/editor', title: 'Editor & keys', nav: 'Editor', hit: 'Editor & keys', desc: 'Shortcuts', group: 'Editor', html: '<a href="__UP__start/">Start</a>' },
     { slug: 'tools/editor/keys', title: 'Editor: keys', nav: 'Keys', hit: 'Editor: keys', desc: 'Every key', group: 'Editor', html: '<p>Keys.</p>' },
-    { slug: 'tools/cli', title: 'CLI', desc: 'Commands', group: 'Every tool', md: '## Usage\n\n[Manual](manual.md)\n\n```lua\nlocal a = "<b>" -- note\n```\n\n```elisp\n(setq a 1)\n```\n\n```js\nGame.Play = 1;\n```\n\n```\nGame.GUID = 2;\n```\n\n```ini\nkey=value\n```\n\nAfter.', mdHref: (url) => `https://example.test/${url}` },
+    { slug: 'tools/cli', title: 'CLI', desc: 'Commands', group: 'CLI', md: '## Usage\n\n[Manual](manual.md)\n\n```lua\nlocal a = "<b>" -- note\n```\n\n```elisp\n(setq a 1)\n```\n\n```js\nGame.Play = 1;\n```\n\n```\nGame.GUID = 2;\n```\n\n```ini\nkey=value\n```\n\nAfter.', mdHref: (url) => `https://example.test/${url}` },
   ];
   const page = (slug) => fs.readFileSync(path.join(outDir, slug, 'index.html'), 'utf8');
   const nav = () => JSON.parse(fs.readFileSync(path.join(outDir, 'nav.json'), 'utf8')).filter(({ sec }) => sec === 'tools');
@@ -456,11 +454,12 @@ test('tool docs: writer registers nested pages, resolves their links and omits T
   assert.match(page('tools/cli'), /<pre class="cfg hl"><code>\[Game\.Play = 1;\]<\/code><\/pre>/);
   assert.match(page('tools/cli'), /<pre class="cfg hl"><code>\[Game\.GUID = 2;\]<\/code><\/pre>/);
   assert.match(page('tools/cli'), /<pre class="cfg"><code>key=value<\/code><\/pre>\n<p>After\.<\/p>/);
-  // The docs list: a group per tool, the pages about every tool last (the AI setup page ends them). `h` is what a
-  // page is called in the filter's results, where it differs from its name under the group.
-  assert.deepEqual(nav().map(({ title, items }) => [title, items.map(({ u, t: name, h }) => [u, name, h])]), [
-    ['Editor', [['docs/tools/editor/', 'Editor', 'Editor & keys'], ['docs/tools/editor/keys/', 'Keys', 'Editor: keys']]],
-    ['Every tool', [['docs/tools/cli/', 'CLI', undefined], ['ai/', 'Set up your AI', undefined]]],
+  // The docs list: a group per tool, then the AI setup page as a plain link (a flat group). `h` is what a page is
+  // called in the filter's results, where it differs from its name under the group.
+  assert.deepEqual(nav().map(({ title, flat, items }) => [title, !!flat, items.map(({ u, t: name, h }) => [u, name, h])]), [
+    ['Editor', false, [['docs/tools/editor/', 'Editor', 'Editor & keys'], ['docs/tools/editor/keys/', 'Keys', 'Editor: keys']]],
+    ['CLI', false, [['docs/tools/cli/', 'CLI', undefined]]],
+    ['', true, [['ai/', 'Set up your AI', undefined]]],
   ]);
   // A tool's own page names the tool in its trail.
   assert.match(page('tools/editor/keys'), /<a href="\.\.\/\.\.\/\.\.\/\.\.\/docs\/tools\/editor\/">Editor &amp; keys<\/a> › Editor: keys<\/p>/);
