@@ -160,7 +160,7 @@
       "intro": "Every shortcut of the workbench, with its default keys. `?` shows the same list in the workbench. Any of them can be changed under Settings › Keyboard shortcuts, apart from the ones marked *fixed*. Most match VS Code. On a Mac, Ctrl means ⌘ unless a row gives a Mac key.",
       "allKeys": true,
       "sections": [
-        { "h": "Not in the list", "md": "- `F1` opens the command palette, like {key:palette}.\n- Outside the code, `Ctrl+K` or pressing `Shift` twice opens the Open list, like {key:open}.\n- `Alt+Enter` shows the fixes for a line, like {key:quickFix}. On a value, `Alt+↓` opens the list of values it can take." }
+        { "h": "Not in the list", "md": "- `F1` opens the command palette, like {key:palette}.\n- Outside the code, `Ctrl+K` or pressing `Shift` twice opens the Open list, like {key:open}.\n- On a value, `Alt+↓` opens the list of values it can take." }
       ]
     }
   ]
