@@ -479,6 +479,21 @@ for (const theme of ['light', 'dark']) section(`workbench, ${theme}`, async () =
         const opened = !(await p.$eval('#file-editor', (e) => e.hidden));
         check(opened, `${theme}: ${txt.name} opens in the file editor`);
         if (opened) {
+          // Hiding the results pane from inside it puts the focus in the file that shows, not the hidden handler.js.
+          await p.focus('[role=tab][data-tab=problems]');
+          await p.keyboard.press('Control+J');
+          await p.waitForTimeout(200);
+          check(await p.evaluate(() => !!document.activeElement?.closest('#file-editor')), `${theme}: Ctrl+J from the results puts the focus in the open package file`);
+          // …and typing goes into that file (then undone, so the rest of the check sees the file as it was).
+          const fileText = () => p.evaluate(() => document.querySelector('#file-editor .CodeMirror').CodeMirror.getValue());
+          const beforeTyping = await fileText();
+          await p.keyboard.type('zq7');
+          const typed = await fileText();
+          await p.keyboard.press('Control+Z');
+          await p.waitForTimeout(100);
+          check(typed.includes('zq7') && !beforeTyping.includes('zq7') && (await fileText()) === beforeTyping, `${theme}: after Ctrl+J, typing edits the open package file`);
+          await p.keyboard.press('Control+J');
+          await p.waitForTimeout(200);
           await p.evaluate(() => { document.querySelector('#file-editor .CodeMirror').CodeMirror.replaceRange('; edited\n', { line: 0, ch: 0 }); document.querySelector('#share-open').click(); });
           await p.waitForTimeout(500);
           const lead = await p.evaluate(() => document.querySelector('#code-dialog .code-hero')?.dataset.code);
@@ -1020,6 +1035,51 @@ section('docs pages', async () => {
     check(wide <= 1, `phone ${u}: no sideways scrolling, header included (${wide}px)`);
   }
   await ph.ctx.close();
+});
+section('results pane and Zen mode', async () => {
+  // A wide code editor: Ctrl+J hides the results pane and brings it back (kept after a reload); Zen mode (Ctrl+K Z) hides
+  // everything but the code, and Esc twice leaves it, but not an Esc that closes the suggestion list.
+  const s = await page('dark');
+  await s.p.goto(BASE + '#example-mistakes');
+  await s.p.waitForSelector('.CodeMirror');
+  await s.p.waitForTimeout(900);
+  await s.p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
+  const vis = (sel) => s.p.evaluate((q) => { const e = document.querySelector(q); return !!e && e.getClientRects().length > 0; }, sel);
+  await s.p.click('.CodeMirror');
+  await s.p.keyboard.press('Control+J');
+  await s.p.waitForTimeout(200);
+  check(!(await vis('.main > .pane.side')) && (await vis('#results-show')), 'layout: Ctrl+J hides the results pane and shows the Results button');
+  await s.p.reload();
+  await s.p.waitForSelector('.CodeMirror');
+  await s.p.waitForTimeout(900);
+  await s.p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
+  check(!(await vis('.main > .pane.side')), 'layout: the results pane stays hidden after a reload');
+  await axe(s.p, 'dark, results pane hidden');
+  await s.p.click('#results-show');
+  await s.p.waitForTimeout(200);
+  check(await vis('.main > .pane.side'), 'layout: the Results button brings the results pane back');
+  await s.p.click('.CodeMirror');
+  const code = await s.p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue());
+  await s.p.keyboard.press('Control+K');
+  await s.p.keyboard.press('z');
+  await s.p.waitForTimeout(300);
+  const zen = await s.p.evaluate(() => ({ on: document.documentElement.hasAttribute('data-zen'), header: !!document.querySelector('header')?.getClientRects().length, side: !!document.querySelector('.main > .pane.side')?.getClientRects().length }));
+  const same = (await s.p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue())) === code;
+  check(zen.on && !zen.header && !zen.side && same, `layout: Ctrl+K Z in the code turns on Zen mode, typing nothing (${JSON.stringify(zen)}, code unchanged: ${same})`);
+  await axe(s.p, 'dark, Zen mode');
+  await s.p.keyboard.press('Control+Space');
+  await s.p.waitForTimeout(250);
+  await s.p.keyboard.press('Escape');
+  await s.p.keyboard.press('Escape');
+  await s.p.waitForTimeout(150);
+  check(await s.p.evaluate(() => document.documentElement.hasAttribute('data-zen')), 'layout: an Esc that closes the suggestions doesn\'t count towards leaving Zen mode');
+  await s.p.waitForTimeout(700);
+  await s.p.keyboard.press('Escape');
+  await s.p.keyboard.press('Escape');
+  await s.p.waitForTimeout(200);
+  check(!(await s.p.evaluate(() => document.documentElement.hasAttribute('data-zen'))) && (await vis('header')), 'layout: Esc twice leaves Zen mode');
+  check(!s.errors.length, `layout: no page errors ${s.errors.join(' ')}`);
+  await s.ctx.close();
 });
 section('game folder progress', async () => {
   // Linking the game's folder shows progress: listing, then the program files (n of m), and "Reading your game's

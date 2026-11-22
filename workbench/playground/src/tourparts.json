@@ -17,7 +17,7 @@
     {
       "id": "code",
       "title": "The code",
-      "text": "Write the handler here. Squiggles mark problems, and hovering a name shows its docs. {key:suggest} suggests names and `Alt+Enter` fixes things.",
+      "text": "Write the handler here. Squiggles mark problems, and hovering a name shows its docs. {key:suggest} suggests names and {key:quickFix} fixes things.",
       "targets": [
         "#editor"
       ],

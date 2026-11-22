@@ -1,6 +1,7 @@
 // Text to HTML for the docs' Tools pages (tool-docs.mjs). Two kinds of text:
 // - what a tool says about itself (a command's help, a setting's description): `toolText`;
 // - what a person wrote for these pages (data/tools.json, src/guide.json): `rich` for a line, `blocks` for more.
+import { FENCE_LANGS } from './docs-pages.mjs';
 
 export const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
@@ -74,7 +75,11 @@ export function blocks(text, c) {
   // text, a fence's language, its code, text, …
   return text.split(/^```(\w*)\n([\s\S]*?)^```[ \t]*$/gm).flatMap((part, i, all) => {
     if (i % 3 === 1) return [];
-    if (i % 3 === 2) return [`<pre class="cfg"${all[i - 1] ? ` data-lang="${all[i - 1]}"` : ''}><code>${esc(part.replace(/\n$/, ''))}</code></pre>`];
+    if (i % 3 === 2) {
+      // The language by the name the site's colouring knows (docs-pages.mjs FENCE_LANGS: `bash` is shell, `elisp` is commonlisp).
+      const lang = FENCE_LANGS[all[i - 1].toLowerCase()] ?? all[i - 1];
+      return [`<pre class="cfg"${lang ? ` data-lang="${lang}"` : ''}><code>${esc(part.replace(/\n$/, ''))}</code></pre>`];
+    }
     return paragraphs(part);
   }).join('\n');
 }

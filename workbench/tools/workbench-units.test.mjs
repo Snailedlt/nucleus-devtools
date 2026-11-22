@@ -1148,3 +1148,273 @@ test('mascot: the exported loading scene supports a wide crop, proportional heig
   assert.match(square, /width:80px;height:80px/);
   assert.match(square, /aria-hidden="true"/);
 });
+// Isolated browser surfaces keep clocks, storage, platform and event listeners local to each test.
+async function layoutFixture(file, platform = 'Linux') {
+  const { createRequire } = await import('node:module');
+  const { runInNewContext } = await import('node:vm');
+  const { transformSync } = createRequire(import.meta.url)('esbuild');
+  const element = () => {
+    const attrs = new Map(), classes = new Set(), styles = new Map(), listeners = new Map();
+    return {
+      hidden: true, checked: false, dataset: {}, style: {
+        setProperty: (k, v) => styles.set(k, v), removeProperty: (k) => styles.delete(k),
+        getPropertyValue: (k) => styles.get(k) ?? '',
+      },
+      classList: {
+        add: (...ns) => ns.forEach((n) => classes.add(n)), remove: (...ns) => ns.forEach((n) => classes.delete(n)),
+        contains: (n) => classes.has(n),
+        toggle(n, force = !classes.has(n)) { force ? classes.add(n) : classes.delete(n); return force; },
+      },
+      setAttribute: (k, v) => attrs.set(k, String(v)), getAttribute: (k) => attrs.get(k) ?? null,
+      hasAttribute: (k) => attrs.has(k), removeAttribute: (k) => attrs.delete(k),
+      toggleAttribute(k, on) { on ? attrs.set(k, '') : attrs.delete(k); },
+      addEventListener(k, fn) { listeners.set(k, [...(listeners.get(k) ?? []), fn]); },
+      emit(k, e = {}) { for (const fn of listeners.get(k) ?? []) fn(e); },
+      append() {}, getClientRects: () => [{}],
+      getBoundingClientRect: () => ({ left: 100, right: 200, top: 100, bottom: 130, width: 100, height: 30 }),
+      clientWidth: 1000, offsetWidth: 100, offsetHeight: 20, offsetParent: {}, isConnected: true,
+      closest: () => null, matches: () => true, textContent: '', innerHTML: '',
+    };
+  };
+  const ids = new Map(['main', 'lines', 'files-panel', 'split-main', 'split-lines', 'split-files', 'split-sheet', 'results-show', 'set-results', 'zen-exit'].map((id) => [id, element()]));
+  const created = [], timers = new Map(), frames = [];
+  const document = Object.assign(element(), {
+    documentElement: element(), body: element(), getElementById: (id) => ids.get(id) ?? null,
+    querySelector: (sel) => ids.get(sel.slice(1)) ?? null, querySelectorAll: () => [],
+    createElement: () => { const el = element(); created.push(el); return el; },
+  });
+  let now = 10_000, nextTimer = 0;
+  const storage = memoryStorage();
+  const context = {
+    module: { exports: {} }, document, localStorage: storage, navigator: { platform },
+    Date: { now: () => now }, innerWidth: 1000, innerHeight: 800,
+    setTimeout: (fn) => { timers.set(++nextTimer, fn); return nextTimer; }, clearTimeout: (id) => timers.delete(id),
+    addEventListener: document.addEventListener.bind(document), requestAnimationFrame: (fn) => frames.push(fn),
+    // keybindings.ts reads the shortcut list from keyactions.ts (plain data); CodeMirror is stood in for.
+    require: (name) => {
+      if (name === './keyactions') {
+        const m = { exports: {} };
+        runInNewContext(transformSync(fs.readFileSync(path.join(root, 'playground/src/keyactions.ts'), 'utf8'), { loader: 'ts', format: 'cjs' }).code, { module: m, exports: m.exports });
+        return m.exports;
+      }
+      assert.equal(name, 'codemirror');
+      return { normalizeKeyMap: (m) => m };
+    },
+  };
+  context.window = context;
+  runInNewContext(transformSync(fs.readFileSync(path.join(root, 'playground/src', file), 'utf8'), { loader: 'ts', format: 'cjs' }).code, context);
+  return {
+    api: context.module.exports, document, ids, storage, element, created, advance: (ms) => { now += ms; },
+    frame: () => { for (const fn of frames.splice(0)) fn(); },
+    tick: () => { const pending = [...timers.values()]; timers.clear(); pending.forEach((fn) => fn()); },
+  };
+}
+
+test('PR77 results: toggles synchronize controls and storage; explicit requests are idempotent', async () => {
+  const f = await layoutFixture('panels-ui.ts');
+  let refreshes = 0;
+  const p = f.api.initPanels({ refresh: () => refreshes++, toast() {} });
+  const check = (shown) => {
+    assert.equal(p.resultsShown(), shown);
+    assert.equal(f.ids.get('main').classList.contains('results-hidden'), !shown);
+    assert.equal(f.ids.get('results-show').hidden, shown);
+    assert.equal(f.ids.get('set-results').checked, shown);
+  };
+  check(true);
+  p.results(true);
+  assert.equal(refreshes, 1);
+  assert.equal(f.storage.length, 0);
+  assert.equal(p.results(false), false);
+  check(false);
+  assert.equal(JSON.parse(f.storage.getItem('nucleus-workbench-panels')).resultsHidden, true);
+  p.results(false);
+  assert.equal(refreshes, 2);
+  assert.equal(p.results(), true);
+  check(true);
+  assert.ok(!('resultsHidden' in JSON.parse(f.storage.getItem('nucleus-workbench-panels'))));
+  assert.equal(p.results(), false);
+  check(false);
+});
+
+test('PR77 results: reload and size resets preserve visibility and panel sides', async () => {
+  const f = await layoutFixture('panels-ui.ts');
+  f.storage.setItem('nucleus-workbench-panels', JSON.stringify({ main: 0.7, lines: 400, files: 300, sheet: 40, filesSide: 'left', linesSide: 'left', resultsHidden: true }));
+  const p = f.api.initPanels({ refresh() {}, toast() {} });
+  assert.equal(p.resultsShown(), false);
+  assert.equal(f.ids.get('results-show').hidden, false);
+  assert.equal(f.ids.get('set-results').checked, false);
+  assert.equal(f.ids.get('main').style.getPropertyValue('--split-l'), '0.7fr');
+  p.resetOne('main');
+  assert.equal(p.resultsShown(), false);
+  assert.equal(JSON.parse(f.storage.getItem('nucleus-workbench-panels')).lines, 400);
+  p.reset();
+  assert.deepEqual(JSON.parse(f.storage.getItem('nucleus-workbench-panels')), { filesSide: 'left', linesSide: 'left', resultsHidden: true });
+  assert.equal(f.ids.get('main').style.getPropertyValue('--split-l'), '');
+  assert.equal(p.side('files'), 'left');
+  assert.equal(p.side('lines'), 'left');
+  assert.equal(p.results(true), true);
+});
+
+test('PR77 results: malformed, unavailable and legacy storage work without optional controls', async () => {
+  for (const mode of ['malformed', 'unavailable', 'legacy']) {
+    const f = await layoutFixture('panels-ui.ts');
+    f.ids.delete('results-show'); f.ids.delete('set-results');
+    if (mode === 'malformed') f.storage.setItem('nucleus-workbench-panels', '{');
+    if (mode === 'legacy') f.storage.setItem('nucleus-workbench-panels', '{"main":0.6}');
+    if (mode === 'unavailable') {
+      f.storage.getItem = () => { throw new Error('denied'); };
+      f.storage.setItem = () => { throw new Error('quota'); };
+    }
+    const p = f.api.initPanels({ refresh() {}, toast() {} });
+    assert.equal(p.resultsShown(), true, mode);
+    assert.equal(p.results(false), false, mode);
+    assert.equal(p.results(), true, mode);
+  }
+});
+
+async function zenFixture() {
+  const f = await layoutFixture('zen.ts');
+  const calls = { refresh: 0, focus: 0, announcements: [] };
+  let keys = 'Ctrl+K Z';
+  const zen = f.api.initZen({ refresh: () => calls.refresh++, focusCode: () => calls.focus++, announce: (s) => calls.announcements.push(s), keys: () => keys });
+  return { ...f, zen, calls, setKeys: (s) => { keys = s; }, esc: (repeat = false) => f.document.emit('keydown', { key: 'Escape', repeat }) };
+}
+
+test('PR77 zen: transitions refresh and focus after layout, announce current keys and never persist', async () => {
+  const f = await zenFixture();
+  assert.equal(f.zen.isOn(), false);
+  f.zen.set(false);
+  assert.equal(f.calls.announcements.length, 0);
+  f.zen.toggle();
+  assert.equal(f.zen.isOn(), true);
+  assert.equal(f.ids.get('zen-exit').hidden, false);
+  assert.equal(f.calls.refresh, 0);
+  f.frame();
+  assert.equal(f.calls.refresh, 1);
+  assert.equal(f.calls.focus, 1);
+  assert.match(f.calls.announcements[0], /Ctrl\+K Z/);
+  f.zen.set(true); f.frame();
+  assert.equal(f.calls.refresh, 1);
+  f.ids.get('zen-exit').emit('click'); f.frame();
+  assert.equal(f.zen.isOn(), false);
+  assert.equal(f.ids.get('zen-exit').hidden, true);
+  assert.equal(f.calls.refresh, 2);
+  assert.equal(f.calls.focus, 1, 'leaving does not steal focus');
+  assert.equal(f.calls.announcements.at(-1), 'Left Zen mode.');
+  f.setKeys('Alt+Z'); f.zen.toggle();
+  assert.match(f.calls.announcements.at(-1), /Alt\+Z/);
+  f.zen.set(false); f.setKeys(''); f.zen.toggle();
+  assert.equal(f.calls.announcements.at(-1), 'Zen mode: only the code. Escape twice leaves it.');
+  assert.equal(f.storage.length, 0);
+});
+
+test('PR77 zen: the way out shows on the way in, then steps aside', async () => {
+  const f = await zenFixture(), exit = f.ids.get('zen-exit');
+  f.zen.set(true);
+  assert.equal(exit.classList.contains('hint'), true, 'shown on entering');
+  f.tick();
+  assert.equal(exit.classList.contains('hint'), false, 'gone after its time');
+  f.zen.set(false); f.zen.set(true);
+  assert.equal(exit.classList.contains('hint'), true);
+  f.zen.set(false);
+  assert.equal(exit.classList.contains('hint'), false, 'leaving clears it');
+  f.tick();
+  assert.equal(exit.classList.contains('hint'), false);
+});
+
+test('PR77 zen: double Escape requires an interval below 600ms', async () => {
+  const f = await zenFixture();
+  f.zen.set(true);
+  f.document.emit('keydown', { key: 'Enter' });
+  f.esc();
+  assert.equal(f.zen.isOn(), true);
+  f.advance(600); f.esc();
+  assert.equal(f.zen.isOn(), true, '600ms is too late');
+  f.advance(599); f.esc();
+  assert.equal(f.zen.isOn(), false);
+  f.esc();
+  assert.equal(f.zen.isOn(), false);
+});
+
+test('PR77 zen: every visible overlay and key repeat reset the Escape sequence', async () => {
+  const f = await zenFixture();
+  for (const overlay of ['.CodeMirror-hints', '.find-widget.open', '.app-menu', 'dialog[open]', '#line-pop:not([hidden])', '.CodeMirror-dialog', '#tip:not([hidden])', '#sig:not([hidden])', 'repeat']) {
+    f.zen.set(true); f.advance(1000); f.esc(); f.advance(100);
+    f.document.querySelectorAll = overlay === 'repeat' ? () => [] : (selector) => {
+      assert.ok(selector.split(', ').includes(overlay));
+      return [f.element()];
+    };
+    f.esc(overlay === 'repeat');
+    f.document.querySelectorAll = () => [];
+    f.advance(100); f.esc();
+    assert.equal(f.zen.isOn(), true, `${overlay}: consumed Escape must not count`);
+    f.advance(100); f.esc();
+    assert.equal(f.zen.isOn(), false, overlay);
+  }
+});
+
+test('PR77 zen: hidden overlays allow Escape; exit proximity has a 56px boundary', async () => {
+  const f = await zenFixture(), exit = f.ids.get('zen-exit');
+  f.zen.set(true);
+  f.document.emit('pointermove', { clientY: 55 });
+  assert.equal(exit.classList.contains('near'), true);
+  f.document.emit('pointermove', { clientY: 56 });
+  assert.equal(exit.classList.contains('near'), false);
+  const hidden = f.element(); hidden.getClientRects = () => [];
+  f.document.querySelectorAll = () => [hidden];
+  f.esc(); f.advance(100); f.esc();
+  assert.equal(f.zen.isOn(), false);
+});
+
+for (const platform of ['Linux', 'MacIntel']) {
+  test(`PR77 shortcuts: defaults, chord timeout, rebinding and disabling (${platform})`, async () => {
+    const f = await layoutFixture('keybindings.ts', platform), k = f.api;
+    const mod = platform === 'MacIntel' ? 'Cmd' : 'Ctrl';
+    const event = (key, modified = false) => ({ key, code: `Key${key.toUpperCase()}`, ctrlKey: modified && mod === 'Ctrl', metaKey: modified && mod === 'Cmd', altKey: false, shiftKey: false });
+    assert.equal(k.binding('results'), `${mod}+J`);
+    assert.equal(k.binding('zen'), `${mod}+K Z`);
+    assert.equal(k.appActionFor(event('j', true)), 'results');
+    assert.equal(k.appActionFor(event('z')), undefined);
+    assert.equal(k.appActionFor(event('k', true)), 'pending');
+    assert.equal(k.appActionFor(event('z')), 'zen');
+    assert.equal(k.appActionFor(event('k', true)), 'pending');
+    f.advance(2000);
+    assert.equal(k.appActionFor(event('z')), undefined);
+    k.setBinding('results', `${mod}+Alt+R`);
+    assert.equal(k.appActionFor(event('j', true)), undefined);
+    assert.equal(k.appActionFor({ ...event('r', true), altKey: true }), 'results');
+    k.setBinding('zen', '');
+    assert.equal(k.appActionFor(event('k', true)), undefined);
+    k.resetBinding('zen');
+    assert.equal(k.binding('zen'), `${mod}+K Z`);
+  });
+
+  test(`PR77 key hints: live bindings, accessible modifiers and escaped imported text (${platform})`, async () => {
+    const f = await layoutFixture('keyhints.ts', platform), fixed = f.element(), dynamic = f.element();
+    let binding = 'Ctrl  Alt J';
+    const hints = f.api.initKeyHints([{ el: null, keys: '' }, { el: fixed, what: 'Fixed', keys: 'Ctrl Alt J' }, { el: dynamic, what: '<Results & docs>', keys: () => binding }]);
+    const tip = f.created[0];
+    assert.equal(fixed.getAttribute('aria-keyshortcuts'), platform === 'MacIntel' ? 'Meta+Alt+J' : 'Control+Alt+J');
+    assert.equal(dynamic.getAttribute('aria-keyshortcuts'), 'Control+Alt+J');
+    dynamic.emit('mouseenter'); f.tick();
+    assert.equal(tip.hidden, false);
+    assert.match(tip.innerHTML, /&lt;Results &amp; docs&gt;/);
+    assert.ok(tip.innerHTML.includes(`<kbd>${platform === 'MacIntel' ? '⌃' : 'Ctrl'}</kbd>`));
+    binding = 'Cmd <img>&"'; hints.refresh();
+    assert.equal(dynamic.getAttribute('aria-keyshortcuts'), 'Meta+<img>&"');
+    dynamic.emit('focus'); f.tick();
+    assert.match(tip.innerHTML, /<kbd>⌘<\/kbd><kbd>&lt;img&gt;&amp;&quot;<\/kbd>/);
+    assert.ok(!tip.innerHTML.includes('<img>'));
+    // Two strokes: "then" between them, and no aria-keyshortcuts (it can't say a chord).
+    binding = 'Ctrl ; then J'; hints.refresh();
+    assert.equal(dynamic.getAttribute('aria-keyshortcuts'), null);
+    dynamic.emit('focus'); f.tick();
+    assert.match(tip.innerHTML, /<kbd>;<\/kbd><span class="kh-then">then<\/span><kbd>J<\/kbd>/);
+    binding = ''; hints.refresh();
+    assert.equal(dynamic.getAttribute('aria-keyshortcuts'), null);
+    dynamic.emit('mouseenter'); f.tick();
+    assert.ok(!tip.innerHTML.includes('kh-keys'));
+    f.document.emit('keydown', { key: 'Escape' });
+    assert.equal(tip.hidden, true);
+  });
+}

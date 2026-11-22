@@ -114,7 +114,7 @@
           ["Test in Nucleus Co-op", "Installs the handler and starts Nucleus Co-op with the game selected. A Nucleus that's already open is closed first, after asking."],
           ["AI-written docs", "Docs an AI wrote from the Nucleus source are marked [AI]."]
         ] },
-        { "h": "Files on disk", "md": "The plugin is `NcDev.dll` in Notepad++'s `plugins\\NcDev` folder. `NcDev.ini`, next to it, says where ncdev is. A copy of ncdev is kept in `%LOCALAPPDATA%\\ncdev`. Nothing else is changed." }
+        { "h": "Files on disk", "md": "The plugin is `NcDev.dll` in Notepad++'s `plugins\\NcDev` folder. `NcDev.ini`, next to it, says where ncdev is. A copy of ncdev is kept in `%LOCALAPPDATA%\\ncdev`. Setup also adds one entry to Notepad++'s Run menu (in its `shortcuts.xml`). Where there's no plugin for your Notepad++ (ARM64), the names go into `autoCompletion\\javascript.xml` instead, and the original is kept beside it as `javascript.xml.nucleus-backup`." }
       ],
       "refNote": "The menu is read from the plugin's own source.",
       "related": ["[Set up Notepad++](@docs:tools/notepadpp/setup)", "[Feature comparison](@docs:tools/compare)"],
@@ -187,7 +187,7 @@
         "lead": "`ncdev` is a single file, and nothing else gets installed with it. The workbench and the VS Code extension don't need it.",
         "sections": [
           { "h": "Windows", "md": "1. Download `ncdev.exe` from [Get the tools](@site:tools/#command-line).\n2. Put it in a folder that's on your PATH. Or run it from its own folder, which in PowerShell is `.\\ncdev`." },
-          { "h": "Linux (x64)", "md": "1. Download `ncdev-linux-x64` from [Get the tools](@site:tools/#command-line).\n2. Make it runnable and put it on your PATH as `ncdev`:\n\n```shell\nchmod +x ncdev-linux-x64 && mkdir -p ~/.local/bin && mv ncdev-linux-x64 ~/.local/bin/ncdev\n```" },
+          { "h": "Linux (x64)", "md": "1. Download `ncdev-linux-x64` from [Get the tools](@site:tools/#command-line).\n2. Make it runnable and put it on your PATH as `ncdev`:\n\n```shell\nchmod +x ncdev-linux-x64 && mkdir -p ~/.local/bin && mv ncdev-linux-x64 ~/.local/bin/ncdev\n```\n\nIf `ncdev --version` isn't found after that, `~/.local/bin` isn't on your PATH yet. Add this line to your shell's startup file (`~/.bashrc` or `~/.zshrc`) and open a new terminal:\n\n```shell\nexport PATH=\"$HOME/.local/bin:$PATH\"\n```" },
           { "h": "macOS and other systems", "md": "Download `nucleus.js` from the same page and run it with Node.js 18 or newer. Write `node nucleus.js` wherever these pages say `ncdev`." }
         ],
         "verify": "`ncdev --version` prints the version.",

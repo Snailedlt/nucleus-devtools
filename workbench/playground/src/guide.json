@@ -48,7 +48,7 @@
           ["Hint", "A suggestion."]
         ] },
         { "h": "Where a problem shows", "md": "In three places: a squiggle under the code, a marker beside the line number, and a card in the **Check** tab. The card says what's wrong, why Nucleus cares and how to fix it. Clicking a marker shows that line's problems and fixes.\n\n{key:nextProblem} and {key:prevProblem} go to the next and the previous problem. How much a card shows is a setting: Compact, Comfortable or Detailed, under Settings › Check." },
-        { "h": "Fixes", "md": "- {key:quickFix} lists the fixes for the line. `Alt+Enter` does too.\n- **Fix all** applies every automatic fix at once. It shows a before and after to accept first, and **Apply without review** skips that.\n- A problem that needs a decision stays in the list, with the options.\n- With an AI set up, **Fix with AI** tries what's left." },
+        { "h": "Fixes", "md": "- {key:quickFix} lists the fixes for the line.\n- **Fix all** applies every automatic fix at once. It shows a before and after to accept first, and **Apply without review** skips that.\n- A problem that needs a decision stays in the list, with the options.\n- With an AI set up, **Fix with AI** tries what's left." },
         { "h": "Package files and the game folder", "md": "Check also looks at the files that ship with the handler. With the game's install folder linked in [Files](@guide:files#your-game-on-this-pc), it compares the handler with the files that are really there, and finds a misspelled file name or an executable that doesn't exist." },
         { "h": "Reporting a wrong check", "md": "The flag on a problem, **This check is wrong**, opens a report with the check and the line filled in." }
       ],
@@ -130,7 +130,7 @@
       "settingsTabs": {
         "Theme and colours": "Light, dark or the device's setting. Four looks, among them the original alpha 8 one and a Mac style. Code colours from GitHub, VS Code, Xcode, One, Monokai or Dracula. A look can be downloaded as a theme file, edited and loaded back, and then shows next to the built-in ones.",
         "Motion": "One choice, Animations (All, Balanced, Some or None), and a switch per kind of motion under it. The mascots, Duo and Nucli, follow it.",
-        "Layout": "The tools in a bar on top or in a rail on the side, and Files and Lines on either side of the code. Panel sizes are reset here.",
+        "Layout": "The tools in a bar on top or in a rail on the side, Files and Lines on either side of the code, and whether the results sit beside the code. Panel sizes are reset here.",
         "Editor": "Text size, wrapping long lines ({key:wordWrap}), and a row of symbol keys above the keyboard on touch screens.",
         "Keyboard shortcuts": "Changes nearly every shortcut. Double `Shift` for the Open list is turned off here.",
         "Check": "How much each problem shows: Compact, Comfortable or Detailed.",
@@ -145,13 +145,14 @@
       "sections": [
         { "h": "Guided and Advanced mode", "md": "**Guided** shows tips and plainer wording. **Advanced mode**, switched on in the menu at the top right, is more compact and adds rule ids, filters, the recorded calls in Try it and the engine probes." },
         { "h": "Panels", "md": "Dragging the edge between two panels resizes them. Right-clicking the edge opens its menu: reset the size, move Files or Lines to the other side, or hide the panel. With the edge focused, the keyboard's menu key does the same. In the side rail, the › at the bottom shows the names of the tools." },
+        { "h": "A wider code editor", "md": "{key:results} hides the results pane (Check, Try it and Docs), and the code takes the full width. A **Results** button with the problem count stands in for it next to Files and Lines. The same keys, that button, or asking for one of its tabs ({key:tryIt}, {key:goToCheck}, a docs link) bring it back. It stays hidden after a reload. This is for wide screens: a phone already switches between the code and the results.\n\n**Zen mode** ({key:zen}) shows only the code, centred. The header, Files, Lines, the results, tips and the footer are hidden; problem markers and notes stay in the code. `Esc` twice leaves it, as do the same keys and the **Leave Zen mode** button, which shows for a few seconds on the way in and whenever the pointer nears the top. It isn't kept after a reload. Outside the code, the first key of {key:zen} opens the Open list, so the shortcut works in the code, and the menu and the command palette work from anywhere." },
         { "h": "The command palette", "md": "{key:palette} lists every command with its shortcut: format, fix, Try it, theme and the rest. `F1` opens it too." },
         { "h": "Moving to another computer", "md": "**Export settings…**, under Updates and backup, writes the settings to a file. **Import settings…** reads it in the other browser. Handlers aren't part of it." },
         { "h": "Reporting a problem", "md": "**Report a problem**, in the menu and in the command palette, opens the right GitHub form, filled in with the browser, the settings and where the handler came from. The code is never included. Without a GitHub account, the report can be copied for the testers' Discord thread." },
         { "h": "WakaTime", "md": "With a WakaTime API key set under Settings › Advanced, time spent writing, testing in Try it and reading docs is tracked as separate categories. The code is never sent." }
       ],
       "related": ["[Keyboard shortcuts](@guide:shortcuts)"],
-      "covers": ["c-advanced", "f-a11y", "f-settings-io", "f-looks-past", "f-code-colours", "c-theme", "f-custom-theme", "c-editor", "f-rail", "f-edge-menu", "f-mascot-modes", "c-tips", "c-wakatime", "f-feedback", "s-palette"]
+      "covers": ["f-zen", "c-advanced", "f-a11y", "f-settings-io", "f-looks-past", "f-code-colours", "c-theme", "f-custom-theme", "c-editor", "f-rail", "f-edge-menu", "f-mascot-modes", "c-tips", "c-wakatime", "f-feedback", "s-palette"]
     },
     {
       "id": "shortcuts", "slug": "tools/workbench/shortcuts", "nav": "Keyboard shortcuts", "title": "Keyboard shortcuts",
@@ -159,7 +160,7 @@
       "intro": "Every shortcut of the workbench, with its default keys. `?` shows the same list in the workbench. Any of them can be changed under Settings › Keyboard shortcuts, apart from the ones marked *fixed*. Most match VS Code. On a Mac, Ctrl means ⌘ unless a row gives a Mac key.",
       "allKeys": true,
       "sections": [
-        { "h": "Not in the list", "md": "- `F1` opens the command palette, like {key:palette}.\n- Outside the code, `Ctrl+K` or pressing `Shift` twice opens the Open list, like {key:open}.\n- `Alt+Enter` shows the fixes for a line, like {key:quickFix}. On a value, `Alt+↓` opens the list of values it can take." }
+        { "h": "Not in the list", "md": "- `F1` opens the command palette, like {key:palette}.\n- Outside the code, `Ctrl+K` or pressing `Shift` twice opens the Open list, like {key:open}.\n- On a value, `Alt+↓` opens the list of values it can take." }
       ]
     }
   ]
