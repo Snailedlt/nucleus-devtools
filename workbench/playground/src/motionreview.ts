@@ -5,7 +5,7 @@ import list from './motionlist.json';
 import { esc } from './dom';
 import { mascot, type MascotId } from './mascots';
 import { barProgress, ringProgress } from './mascotprogress';
-import { PRESETS, motion, onMotion, presetOf, savedMotion, setMotion, type Preset } from './motion';
+import { PRESETS, PRESET_TEXT, motion, onMotion, presetOf, savedMotion, setMotion, type Preset } from './motion';
 
 export interface MotionReviewDeps {
   toast: (text: string) => void;
@@ -19,6 +19,7 @@ const CSS = `#motion-dialog { width: min(980px, calc(100vw - 32px)); max-height:
 #motion-dialog h2 { margin: 0 0 4px; } #motion-dialog h3 { font: 600 14px var(--font-display); margin: 22px 0 8px; }
 .mr-bar-top { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; margin: 10px 0 0; font-size: 13px; }
 .mr-bar-top label { display: inline-flex; gap: 6px; align-items: center; }
+.mr-what { margin: 8px 0 0; font-size: 13px; }
 .mr-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 10px; list-style: none; margin: 0; padding: 0; }
 .mr-card { border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; font-size: 12.5px; min-width: 0; }
 .mr-card.wide { grid-column: 1 / -1; }
@@ -58,7 +59,7 @@ function sceneHtml(s: Scene): string {
     ? mascot('load', { size: 280, view: [4, 56, 300, 51], className: 'wide' })
     : mascot(s.id as MascotId, { size: s.size * (s.progress ? (big ? 2 : 1) : scale), zoom: s.zoom ?? 1, busy: s.busy });
   const ctl = s.progress
-    ? `<label class="sr-only" for="mr-p-${s.id}">${esc(s.name)}: progress</label><input type="range" id="mr-p-${s.id}" data-p="${s.id}" min="0" max="100" value="35"><button class="btn" type="button" data-jump="${s.id}">Jump +30</button><button class="btn" type="button" data-full="${s.id}">Finish</button>${s.progress === 'bar' ? `<label><input type="checkbox" data-wait="${s.id}"> No total yet</label>` : ''}`
+    ? `<label class="sr-only" for="mr-p-${s.id}">${esc(s.name)}: progress</label><input type="range" id="mr-p-${s.id}" data-p="${s.id}" min="0" max="100" value="35"><button class="btn" type="button" data-jump="${s.id}">Jump +30</button><button class="btn" type="button" data-full="${s.id}">Finish</button>${s.progress === 'bar' ? `<label><input type="checkbox" data-wait="${s.id}"> No total yet</label>` : `<label><input type="checkbox" data-bad="${s.id}"> It went wrong</label>`}`
     : `<button class="btn" type="button" data-replay="${s.id}">Replay</button>`;
   return `<li class="mr-card${s.progress === 'bar' ? ' wide' : ''}" data-scene="${s.id}"><div class="mr-stage">${art}</div><b>${esc(s.name)} <span class="muted">· ${esc(s.who)}</span></b><span>${esc(s.says)}</span><span class="muted">${esc(s.where)}.</span><div class="mr-ctl">${ctl}</div></li>`;
 }
@@ -73,7 +74,8 @@ function draw(deps: MotionReviewDeps) {
   const level = (Object.keys(PRESETS) as Preset[]).map((k) => `<option value="${k}"${k === preset ? ' selected' : ''}>${k[0].toUpperCase()}${k.slice(1)}</option>`).join('') + (preset === 'custom' ? '<option value="custom" selected>Custom</option>' : '');
   d.innerHTML = `<h2 id="mr-h">Motion review</h2>
 <p class="muted small" style="margin:0">Everything that moves in the workbench, drawn by the code that ships. Change the look and light or dark in Settings; the Motion level is here.</p>
-<div class="mr-bar-top"><label>Motion <select id="mr-level">${level}</select></label><label><input type="checkbox" id="mr-big"${big ? ' checked' : ''}> Twice the size</label><button class="btn" type="button" id="mr-all">Replay all</button>${capped ? '<span class="muted">This device asks for less motion, so nothing above Still applies.</span>' : ''}</div>
+<div class="mr-bar-top"><label>Motion <select id="mr-level">${level}</select></label><label><input type="checkbox" id="mr-big"${big ? ' checked' : ''}> Twice the size</label><button class="btn" type="button" id="mr-all">Replay all</button></div>
+<p class="mr-what" id="mr-what"><b>${preset[0].toUpperCase()}${preset.slice(1)}:</b> ${esc(PRESET_TEXT[preset])}${capped ? ' <span class="muted">This device asks for less motion, so nothing above Still applies.</span>' : ''}</p>
 <h3>Duo and Nucli</h3><ul class="mr-grid">${scenes.map(sceneHtml).join('')}</ul>
 <h3>The interface</h3><div class="mr-wrap"><table class="mr-ui"><thead><tr><th>What</th><th>How it moves</th><th>Length</th><th>When</th><th><span class="sr-only">Show</span></th></tr></thead><tbody>${ui.map((u, i) => `<tr><td><b>${esc(u.name)}</b></td><td>${esc(u.moves)}</td><td>${u.ms ? `${u.ms} ms` : 'loops'}</td><td>${esc(u.when)}</td><td>${u.show ? `<button class="btn" type="button" data-show="${i}">Show</button>` : ''}</td></tr>`).join('')}</tbody></table></div>
 <div class="actions"><button class="btn primary" type="button" id="mr-close">Close</button></div>`;
@@ -83,7 +85,7 @@ function draw(deps: MotionReviewDeps) {
   const show = (id: string) => {
     const s = scenes.find((x) => x.id === id)!;
     const p = Number(range(id).value) / 100;
-    if (s.progress === 'ring') ringProgress(card(id), p);
+    if (s.progress === 'ring') ringProgress(card(id), p, undefined, !!d.querySelector<HTMLInputElement>(`[data-bad="${id}"]`)?.checked);
     else barProgress(card(id), p, undefined, !!d.querySelector<HTMLInputElement>(`[data-wait="${id}"]`)?.checked && p === 0);
   };
   for (const s of scenes) if (s.progress) show(s.id);
@@ -102,6 +104,7 @@ function draw(deps: MotionReviewDeps) {
   d.querySelectorAll<HTMLInputElement>('[data-p]').forEach((r) => r.addEventListener('input', () => show(r.dataset.p!)));
   d.querySelectorAll<HTMLElement>('[data-jump]').forEach((b) => b.addEventListener('click', () => { const r = range(b.dataset.jump!); r.value = String(Math.min(100, Number(r.value) + 30)); show(b.dataset.jump!); }));
   d.querySelectorAll<HTMLElement>('[data-full]').forEach((b) => b.addEventListener('click', () => { range(b.dataset.full!).value = '100'; show(b.dataset.full!); }));
+  d.querySelectorAll<HTMLInputElement>('[data-bad]').forEach((c) => c.addEventListener('change', () => show(c.dataset.bad!)));
   d.querySelectorAll<HTMLInputElement>('[data-wait]').forEach((c) => c.addEventListener('change', () => { if (c.checked) range(c.dataset.wait!).value = '0'; show(c.dataset.wait!); }));
   d.querySelectorAll<HTMLElement>('[data-show]').forEach((b) => b.addEventListener('click', () => {
     const u = ui[Number(b.dataset.show)];

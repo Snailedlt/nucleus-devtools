@@ -1046,9 +1046,17 @@ section('results pane and Zen mode', async () => {
   await s.p.waitForTimeout(900);
   await s.p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
   const vis = (sel) => s.p.evaluate((q) => { const e = document.querySelector(q); return !!e && e.getClientRects().length > 0; }, sel);
+  // The pane's button is a shelf in one corner: where it hides the pane, the same corner brings it back. The tab row
+  // under it never grows a scrollbar of its own on the side.
+  const corner = (sel) => s.p.$eval(sel, (e) => { const r = e.getBoundingClientRect(); return [Math.round(r.right), Math.round(r.top), Math.round(r.height)]; });
+  const hideAt = await corner('#results-hide');
+  const headY = await s.p.$eval('.pane.side > .pane-head', (e) => getComputedStyle(e).overflowY);
+  check(headY === 'hidden', `layout: the results tabs have no scrollbar on the side (${headY})`);
   await s.p.click('.CodeMirror');
   await s.p.keyboard.press('Control+J');
   await s.p.waitForTimeout(200);
+  const showAt = await corner('#results-show');
+  check(String(hideAt) === String(showAt), `layout: the Results button stays in the same corner, pane in or out (${hideAt} | ${showAt})`);
   check(!(await vis('.main > .pane.side')) && (await vis('#results-show')), 'layout: Ctrl+J hides the results pane and shows the Results button');
   await s.p.reload();
   await s.p.waitForSelector('.CodeMirror');

@@ -2,7 +2,8 @@
 // - Nucli's ring (n-ring, Test all): the arc grows to the progress, and the four electrons ride just behind its tip on
 //   springs. When the progress jumps they chase it: the first slams into the tip and bounces back, the others bump
 //   into each other (squash, rebound), then they settle. The physics are the concept sheet's (design/mascots, "Progress
-//   ring, v2"), run live.
+//   ring, v2"), run live. At 100 % it says so: the ring closes and turns green, the electrons go, a check pops at the
+//   top and Nucli smiles (red and a "!" when what it counted went wrong).
 // - Duo's bar (load, reading a game's folder): he pushes the end of the bar. While it moves he walks; when it stalls he
 //   leans in and strains (a sweat drop); at 100 % he lets go, the bar turns green, a check pops and he hops.
 //   With the class `wide` the bar is as long as the element is wide and Duo stays small (about 30 px): a low strip
@@ -13,7 +14,8 @@ import { motion } from './motion';
 
 type Sim = { raf: number; last: number; rest?: () => void; [k: string]: unknown };
 type El = HTMLElement & { _prog?: Sim };
-const still = () => motion().mascots !== 'loop';
+/** Loaders move when Duo and Nucli are lively and at "Loaders only"; otherwise they show the pose for the progress. */
+const still = () => { const m = motion().mascots; return m !== 'loop' && m !== 'work'; };
 const loader = (root: ParentNode, cls: string): El | null =>
   root instanceof HTMLElement && root.classList.contains(cls) ? (root as El) : root.querySelector<El>('.' + cls);
 
@@ -47,30 +49,66 @@ function start(m: El) {
 
 // ---- The ring ----
 const CAP = 0.034, GAP = 0.046, K0 = 1400, K1 = 700, D0 = 2 * Math.sqrt(K0) * 0.3, D1 = 2 * Math.sqrt(K1) * 0.3, E = 0.45, ARC = 276.5;
-type Ring = Sim & { p: number; head: number; x: number[]; v: number[]; sq: number[] };
+type Ring = Sim & { p: number; head: number; x: number[]; v: number[]; sq: number[]; done: number; bad: boolean; onDone?: () => void };
+const RING_OK = '#55d137', RING_BAD = '#e5484d', RING_DONE = 0.75;
 
-/** Nucli's ring (n-ring) under `root` shows `p` (0..1). */
-export function ringProgress(root: ParentNode, p: number): void {
+/**
+ * Nucli's ring (n-ring) under `root` shows `p` (0..1). At 1 it plays its last step (the ring closes and turns green,
+ * a check pops, Nucli smiles), then `onDone` runs (at once on Still). `bad`: what it counted went wrong, so the last
+ * step is red with a "!" and no smile.
+ */
+export function ringProgress(root: ParentNode, p: number, onDone?: () => void, bad = false): void {
   const m = loader(root, 'masc-n-ring');
   if (!m) return;
   p = Math.max(0, Math.min(1, p));
   m.classList.add('prog');
-  const s = (m._prog ??= { raf: 0, last: 0, p, head: 0, x: [0, 1, 2, 3].map((k) => -CAP - k * GAP), v: [0, 0, 0, 0], sq: [0, 0, 0, 0] }) as Ring;
+  const s = (m._prog ??= { raf: 0, last: 0, p, head: 0, x: [0, 1, 2, 3].map((k) => -CAP - k * GAP), v: [0, 0, 0, 0], sq: [0, 0, 0, 0], done: 0, bad }) as Ring;
+  if (p < 1) s.done = 0; // back from the end (the review's slider): the last step is taken back
   s.p = p;
+  s.bad = bad;
+  if (onDone) s.onDone = onDone;
+  const finish = () => { const f = s.onDone; s.onDone = undefined; f?.(); };
   const q = (sel: string) => m.querySelector<SVGElement>(sel);
+  const all = (sel: string, prop: string, v: string) => m.querySelectorAll<SVGElement>(sel).forEach((e) => e.style.setProperty(prop, v));
   const draw = () => {
-    q('.rqarc')?.style.setProperty('stroke-dashoffset', (ARC * (1 - s.head)).toFixed(1));
+    const d = s.done;
+    const arc = q('.rqarc');
+    arc?.style.setProperty('stroke-dashoffset', (ARC * (1 - s.head)).toFixed(1));
+    // The last step: the ring takes the result's colour, the electrons shrink away into its end.
+    arc?.style.setProperty('stroke', d ? (s.bad ? RING_BAD : RING_OK) : ''); // '' gives the gradient back
+    const gone = Math.min(1, d / 0.14);
     for (let k = 0; k < 4; k++) {
       q('.rq' + k)?.style.setProperty('transform', `rotate(${(s.x[k] * 360).toFixed(2)}deg)`);
       const sq = s.sq[k];
-      q('.rqb' + k)?.style.setProperty('transform', sq > 0.002 ? `scale(${(1 - sq).toFixed(3)}, ${(1 + sq * 0.7).toFixed(3)})` : 'none');
+      q('.rqb' + k)?.style.setProperty('transform', d ? `scale(${(1 - gone).toFixed(3)})` : sq > 0.002 ? `scale(${(1 - sq).toFixed(3)}, ${(1 + sq * 0.7).toFixed(3)})` : 'none');
+      q('.rqb' + k)?.style.setProperty('opacity', d ? (1 - gone).toFixed(2) : '1');
     }
-    q('.n-core')?.style.setProperty('transform', Math.max(...s.sq) > 0.12 ? 'scale(1.025, .975)' : 'none');
+    // The badge pops at the top, where the ring closed: a check, or a "!" when it went wrong.
+    const pop = !d ? 0 : d < 0.08 ? 0 : d < 0.2 ? 1.3 * ((d - 0.08) / 0.12) : d < 0.32 ? 1.3 - (0.3 * (d - 0.2)) / 0.12 : 1;
+    all('.rq-chk', 'transform', `scale(${pop.toFixed(3)})`);
+    all('.rq-chk', 'opacity', pop ? '1' : '0');
+    all('.rq-chk circle', 'fill', s.bad ? RING_BAD : RING_OK);
+    q('.rq-chk path')?.setAttribute('d', s.bad ? 'M60 11.6 v5.6 M60 20.6 v.2' : 'M55.8 16.2 l2.9 2.9 l5.4 -5.7');
+    // Nucli: a small bounce, and a smile when it went well. The sparkles come out with it.
+    const hop = d > 0.1 && d < 0.5 ? Math.sin(((d - 0.1) / 0.4) * Math.PI) : 0;
+    q('.n-core')?.style.setProperty('transform', d ? `scale(${(1 + 0.07 * hop).toFixed(3)})` : Math.max(...s.sq) > 0.12 ? 'scale(1.025, .975)' : 'none');
+    const smile = !!d && !s.bad;
+    all('.fa', 'opacity', smile ? '0' : '1');
+    all('.fb', 'opacity', smile ? '1' : '0');
+    all('.sp', 'opacity', smile && d > 0.12 ? Math.max(0, Math.min(1, (0.75 - d) / 0.2)).toFixed(2) : '0');
   };
-  // The pose for this progress: the arc to it, the electrons lined up behind its tip.
-  s.rest = () => { s.head = s.p; s.x = s.x.map((_, k) => s.p - CAP - k * GAP); s.v = [0, 0, 0, 0]; s.sq = [0, 0, 0, 0]; draw(); };
+  // The pose for this progress: the arc to it, the electrons lined up behind its tip; at 100 %, the last step's end.
+  s.rest = () => { s.head = s.p; s.x = s.x.map((_, k) => s.p - CAP - k * GAP); s.v = [0, 0, 0, 0]; s.sq = [0, 0, 0, 0]; s.done = s.p >= 1 ? RING_DONE : 0; draw(); if (s.done) finish(); };
   if (still()) return s.rest();
   run(m, (dt) => {
+    // The last step runs once the ring has closed.
+    if (s.p >= 1 && 1 - s.head < 0.004) {
+      s.head = 1;
+      s.done = Math.min(RING_DONE, (s.done || 0.0001) + dt);
+      draw();
+      if (s.done >= RING_DONE) { finish(); return false; }
+      return true;
+    }
     // Small steps, so the springs and the bumps stay stable at any frame rate.
     for (let t = 0; t < dt; t += 1 / 600) {
       const h = Math.min(1 / 600, dt - t);

@@ -100,11 +100,17 @@ a.btn { text-decoration: none; color: var(--fg); display: inline-block; }
 .splitter { position: relative; cursor: col-resize; touch-action: none; }
 
 /* The results pane hidden (panels-ui.ts, Ctrl+J): the code takes the whole width. Wide screens only; phones switch views. */
-.results-hide { position: absolute; top: 5px; right: 6px; z-index: 2; color: var(--muted); }
-.results-hide:hover { color: var(--fg); }
-.pane.side > .pane-head { padding-right: 44px; }
-.results-show { align-self: stretch; padding: 2px 10px; font-size: 12.5px; }
+/* Its button is a shelf in one spot, the top right corner of the work area, whether the pane is in or out: in, it's the
+   pane's corner button; out, the same corner of the code pane holds "Results" with the problem count. */
+.results-hide, .results-show { position: absolute; top: 8px; right: 8px; z-index: 2; height: 34px; box-sizing: border-box; color: var(--muted); }
+.results-hide:hover, .results-show:hover { color: var(--fg); }
+.results-hide { width: 34px; }
+.results-show { display: inline-flex; align-items: center; gap: 6px; padding: 0 8px 0 12px; font-size: 12.5px; }
+.results-show[hidden] { display: none; }
 .results-show .count:empty { display: none; }
+/* The tabs leave the corner free, and never get a scrollbar of their own on the side (they scroll sideways when they
+   don't fit: an overflow in one direction makes the other one scroll too unless it's told not to). */
+.pane.side > .pane-head { padding-right: 48px; overflow-y: hidden; }
 @media (min-width: 861px) {
   .main.results-hidden, .main.results-hidden.sized { grid-template-columns: minmax(0, 1fr); }
   .main.results-hidden > .pane.side, .main.results-hidden > #split-main { display: none; }
@@ -1947,7 +1953,7 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
   <main class="main" id="main" data-view="results">
     <section class="pane" aria-label="Handler source">
       <div class="pane-head doc-head">
-        <div class="doc-title"><button type="button" id="doc-switch" class="phone-name" aria-haspopup="menu" aria-label="Open handlers: switch, new or open"><span id="doc-name">Untitled handler</span><svg class="chev" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span id="doc-edited" class="muted" hidden>· edited</span><button class="btn files-toggle" id="files-toggle" type="button" aria-pressed="false" aria-controls="files-panel"><span class="fi-badge fi-dir" aria-hidden="true">▤</span>Files<span class="files-n" id="files-n"></span><span class="files-game" id="files-game" hidden title="Your game's folder is linked">+ game</span></button><button class="btn lines-toggle" id="lines-toggle" type="button" aria-pressed="false" aria-controls="lines" title="List every name a handler can use; click one to insert it (Ctrl+B)">Lines</button><button class="btn results-show" id="results-show" type="button" hidden aria-label="Show the results: Check, Try it and Docs" title="Show the results: Check, Try it and Docs (Ctrl+J)">Results <span class="count" id="count-results"></span></button><button class="btn icon phone-only" id="code-menu-phone" type="button" aria-label="Save or copy the handler" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+        <div class="doc-title"><button type="button" id="doc-switch" class="phone-name" aria-haspopup="menu" aria-label="Open handlers: switch, new or open"><span id="doc-name">Untitled handler</span><svg class="chev" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span id="doc-edited" class="muted" hidden>· edited</span><button class="btn files-toggle" id="files-toggle" type="button" aria-pressed="false" aria-controls="files-panel"><span class="fi-badge fi-dir" aria-hidden="true">▤</span>Files<span class="files-n" id="files-n"></span><span class="files-game" id="files-game" hidden title="Your game's folder is linked">+ game</span></button><button class="btn lines-toggle" id="lines-toggle" type="button" aria-pressed="false" aria-controls="lines" title="List every name a handler can use; click one to insert it (Ctrl+B)">Lines</button><button class="btn results-show" id="results-show" type="button" hidden aria-label="Show the results: Check, Try it and Docs" title="Show the results: Check, Try it and Docs (Ctrl+J)">Results <span class="count" id="count-results"></span><span data-icon="panel-right-open" data-icon-size="16"></span></button><button class="btn icon phone-only" id="code-menu-phone" type="button" aria-label="Save or copy the handler" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
         <div id="doc-meta"></div>
       </div>
       <div id="notice" hidden><svg class="notice-icon" viewBox="0 0 24 24" aria-hidden="true"></svg><div class="notice-text"></div><button class="btn notice-action" type="button" hidden></button><button class="notice-close" type="button" aria-label="Dismiss" title="Dismiss"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
@@ -2113,8 +2119,9 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
   <div class="set-panel" role="tabpanel" id="sp-motion" aria-labelledby="st-motion" data-label="Motion" hidden>
     <div class="set-sec motion-sec"><h3>Motion</h3>
       <label class="set-line">Animations <select id="set-motion"><option value="all">All</option><option value="balanced">Balanced</option><option value="some">Some</option><option value="none">None</option><option value="custom" disabled>Custom</option></select></label>
+      <p class="muted small" id="set-motion-what" style="margin:-4px 0 4px"></p>
       <label class="set-check"><input type="checkbox" id="set-motion-ui"> <span>Moving interface<small>Dialogs, tabs and notes slide and spring into place</small></span></label>
-      <label class="set-line">Duo and Nucli <select id="set-motion-masc"><option value="loop">Lively</option><option value="still">Still</option><option value="off">Hidden</option></select></label>
+      <label class="set-line">Duo and Nucli <select id="set-motion-masc"><option value="loop">Lively</option><option value="work">Loaders only</option><option value="still">Still</option><option value="off">Hidden</option></select></label>
       <label class="set-check"><input type="checkbox" id="set-motion-edit"> <span>Nucli edits the code during fixes<small>He zaps the old text and the new text glows. It briefly covers the code.</small></span></label>
       <label class="set-check"><input type="checkbox" id="set-motion-news"> <span>What's new plays animations by itself<small>Otherwise they wait for Play</small></span></label>
       <p class="muted small" id="set-motion-note" style="margin:0"></p></div>

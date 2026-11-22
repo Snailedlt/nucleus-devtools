@@ -1479,3 +1479,69 @@ test('settings text: a shortcut it names is an action, filled in with the person
   assert.doesNotMatch(plain, /\b(?:Ctrl|Alt|Shift)\+[A-Z0-9]\b/, 'a shortcut in Settings text goes through data-key');
   assert.match(fs.readFileSync(path.join(root, 'playground/src/app.ts'), 'utf8'), /onBindingsChange\(\(\) => \(applyKeys\(\), renderHelpKeys\(\), refreshKeyHints\(\), fillKeys\(\)\)\);/);
 });
+
+test('motion: Some keeps the loaders moving and holds the rest; every level says what it does', async () => {
+  const b = await progressBrowser('motion.ts'), m = b.api;
+  assert.equal(m.PRESETS.some.mascots, 'work', 'Some: only the scenes that show work under way move');
+  assert.equal(m.PRESETS.none.mascots, 'still');
+  assert.deepEqual([m.PRESETS.all.mascots, m.PRESETS.balanced.mascots], ['loop', 'loop']);
+  assert.notDeepEqual(m.PRESETS.all, m.PRESETS.balanced, 'All and Balanced differ (Nucli editing the code)');
+  for (const k of ['all', 'balanced', 'some', 'none', 'custom']) assert.ok(m.PRESET_TEXT[k].length > 20, `${k} has a sentence`);
+  m.setMotion(m.PRESETS.some);
+  assert.equal(b.document.documentElement.dataset.mascots, 'work');
+  // The device asking for less motion caps it at Still.
+  b.media.matches = true; b.media.change();
+  assert.equal(m.motion().mascots, 'still');
+  assert.equal(m.presetOf(m.savedMotion()), 'some');
+
+  // A loader moves at "Loaders only" as it does when lively.
+  const live = await loaderBrowser('work'), ring = live.make('masc-n-ring');
+  live.api.ringProgress(ring, 0.5);
+  assert.equal(live.frames.size, 1, 'the ring runs its frame loop');
+
+  // A held scene shows the moment that says what it is for: every scene has one, and the rules that hold it are there.
+  const src = fs.readFileSync(path.join(root, 'playground/src/mascots.ts'), 'utf8');
+  const ids = [...src.match(/export type MascotId = ([^;]+);/)[1].matchAll(/'([^']+)'/g)].map((x) => x[1]);
+  const pose = Object.fromEntries([...src.match(/export const POSE: Record<MascotId, number> = \{([^}]+)\}/)[1].matchAll(/'?([\w-]+)'?: ([\d.]+)/g)].map((x) => [x[1], Number(x[2])]));
+  assert.deepEqual(Object.keys(pose).sort(), [...ids].sort(), 'POSE names every scene');
+  for (const id of ['n-sleep', 'n-ok', 'n-bad', 'n-fix', 'n-scan']) assert.ok(pose[id] > 0.5, `${id} isn't held at its first frame`);
+  assert.match(src, /const HELD = ':root\[data-mascots="still"\] \.masc, :root\[data-mascots="work"\] \.masc:not\(\.busy\):not\(\.prog\)';/);
+  assert.match(src, /for \(const a of m\.getAnimations\(\{ subtree: true \}\)\) a\.currentTime = at;/);
+});
+
+test('ring: at 100 % it plays a last step (closed, green, a check, a smile), red with a "!" when it went wrong', async () => {
+  const b = await loaderBrowser(), ring = b.make('masc-n-ring');
+  const path2 = ring.part('.rq-chk path'), circle = ring.part('.rq-chk circle');
+  ring.part('.rq-chk'); ring.part('.sp');
+  let done = 0;
+  b.api.ringProgress(ring, 0.4, () => done++);
+  for (let i = 0; i < 40; i++) b.frame();
+  assert.equal(b.style(ring, '.rq-chk', 'opacity'), '0', 'no badge on the way');
+  assert.equal(b.style(ring, '.rqarc', 'stroke'), '');
+  b.api.ringProgress(ring, 1);
+  for (let i = 0; i < 1000 && b.frames.size; i++) b.frame();
+  assert.equal(done, 1, 'onDone runs once, after the last step');
+  assert.equal(b.style(ring, '.rqarc', 'stroke'), '#55d137');
+  assert.equal(b.style(ring, '.rq-chk', 'opacity'), '1');
+  assert.equal(b.style(ring, '.rq-chk', 'transform'), 'scale(1.000)');
+  assert.equal(circle.style.fill, '#55d137');
+  assert.equal(path2.attrs.d, 'M55.8 16.2 l2.9 2.9 l5.4 -5.7');
+  assert.ok(ring.querySelectorAll('.fb').every((e) => e.style.opacity === '1'), 'he smiles');
+  assert.equal(b.style(ring, '.rqb0', 'opacity'), '0.00', 'the electrons are gone');
+  // Back from the end (the review's slider): the last step is taken back.
+  b.api.ringProgress(ring, 0.3);
+  b.frame();
+  assert.equal(b.style(ring, '.rq-chk', 'opacity'), '0');
+  assert.equal(b.style(ring, '.rqarc', 'stroke'), '');
+
+  // It went wrong: red, a "!", no smile. On Still the end is drawn at once.
+  const s = await loaderBrowser('still'), bad = s.make('masc-n-ring');
+  const badPath = bad.part('.rq-chk path'); bad.part('.rq-chk circle'); bad.part('.rq-chk');
+  let ended = 0;
+  s.api.ringProgress(bad, 1, () => ended++, true);
+  assert.equal(ended, 1);
+  assert.equal(s.frames.size, 0);
+  assert.equal(s.style(bad, '.rqarc', 'stroke'), '#e5484d');
+  assert.equal(badPath.attrs.d, 'M60 11.6 v5.6 M60 20.6 v.2');
+  assert.ok(bad.querySelectorAll('.fa').every((e) => e.style.opacity === '1'), 'no smile');
+});

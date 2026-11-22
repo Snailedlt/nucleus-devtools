@@ -4,8 +4,9 @@
 //
 // Every scene loops while it's on screen when Duo and Nucli are lively: loaders (a frozen spinner reads as stuck),
 // reactions ("Nothing to fix", "Oops", "Fixed": they stand for a message that stays up) and the ambient ones (dozing,
-// looking around, searching). "Still" shows each scene's designed pose (a reaction its ending, the badge up), never a
-// frozen frame.
+// looking around, searching). A scene that is held shows its pose (POSE): the moment of its cycle that says what it
+// is for, never just its first or last frame. "Still" holds every scene; "Loaders only" (the Some level) holds all
+// but the ones that show work under way (a loader marked busy, a progress).
 //
 // Speed: a mascot moves only while it's on screen. Off-screen ones, and ones in hidden panels, are paused (CSS and
 // Nucli's SMIL electrons), and a mascot starts when it's first seen, not when it's put in the page. keepMascots()
@@ -15,23 +16,29 @@ import { motion, onMotion } from './motion';
 
 export type MascotId = 'n-sleep' | 'n-ok' | 'n-bad' | 'n-fix' | 'n-ring' | 'n-spin' | 'n-idle' | 'n-scan' | 'n-calc' | 'load';
 
-/** Scenes whose designed pose is their ending: "Still" shows that (the badge up), not their first frame. */
-const ENDS: MascotId[] = ['n-ok', 'n-bad', 'n-fix'];
-/** Where in their cycle that ending is (the share of it; the rest leads back to the start for the loop). */
-const HOLD = 0.88;
+/** A held scene's pose: the moment that says what the scene is for, in seconds from the start of its cycle. Dozing
+ *  with the Zs up, "All good" with its check out, "Oops" with its warning, "Fixed" with the line green, the scan bar
+ *  on the code. Picked by eye from a sheet of each scene's frames; a scene's first frame is often the state before
+ *  anything happened, and its last one the way back to the start. The loaders that follow a progress (n-ring, load)
+ *  are drawn by mascotprogress.ts instead, at the pose for that progress. */
+export const POSE: Record<MascotId, number> = {
+  'n-sleep': 2.6, 'n-ok': 2.05, 'n-bad': 2.05, 'n-fix': 2.4, 'n-idle': 1.5, 'n-scan': 1.4, 'n-calc': 0.7, 'n-spin': 0.7, 'n-ring': 0, load: 0,
+};
 
 /** On unless they're turned off (a toast then keeps its plain icon). */
 export const mascotsOn = () => motion().mascots !== 'off';
 
-const endSel = ENDS.map((id) => `.masc-${id}`).join(', ');
+/** Held: Still, or Loaders only for a scene that shows no work under way. */
+const HELD = ':root[data-mascots="still"] .masc, :root[data-mascots="work"] .masc:not(.busy):not(.prog)';
+const held = (sel: string) => HELD.split(', ').map((h) => `${h} ${sel}`).join(', ');
 const LOCAL = `.masc { display: inline-block; flex: none; line-height: 0; vertical-align: middle; }
 .masc > svg { display: block; width: 100%; height: 100%; overflow: visible; }
 :root[data-site="alpha8"] .masc, :root[data-mascots="off"] .masc { display: none !important; }
 /* Not on screen (or not seen yet): nothing moves. */
 .masc.masc-wait *, .masc.masc-off * { animation-play-state: paused !important; }
-/* Still: the designed pose. A reaction jumps straight to its ending; the rest take no animation at all. */
-:root[data-mascots="still"] .masc:not(${endSel}) *, :root[data-mascots="still"] :is(${endSel}) .eye { animation: none !important; }
-:root[data-mascots="still"] :is(${endSel}) svg :not(.eye) { animation-duration: 1ms !important; animation-delay: 0s !important; animation-iteration-count: ${HOLD} !important; animation-fill-mode: forwards !important; }
+/* Held: nothing moves, and pose() below puts the scene at the moment that says what it's for. No blink mid-pose. */
+${held('*')} { animation-play-state: paused !important; }
+${held('.eye')} { animation: none !important; }
 /* A loader that follows real progress (mascotprogress.ts) moves by script, not by its demo keyframes; it still blinks. */
 .masc.prog svg :not(.eye) { animation: none !important; }`;
 
@@ -44,12 +51,25 @@ let io: IntersectionObserver | null = null;
 function smil(m: HTMLElement) {
   const svg = m.firstElementChild as SVGSVGElement | null;
   if (!svg || typeof svg.pauseAnimations !== 'function') return;
-  const mode = motion().mascots;
   const seen = !m.classList.contains('masc-wait') && !m.classList.contains('masc-off');
   try {
-    if (mode !== 'loop') { svg.pauseAnimations(); svg.setCurrentTime(0); return; }
+    if (isHeld(m) || motion().mascots === 'off') { svg.pauseAnimations(); svg.setCurrentTime(POSE[idOf(m)] ?? 0); return; }
     if (seen) svg.unpauseAnimations(); else svg.pauseAnimations();
   } catch { /* not ready */ }
+}
+
+const idOf = (m: HTMLElement) => (m.dataset.m ?? '').split('|')[0] as MascotId;
+/** Whether this mascot holds its pose now: Still, or Loaders only when it isn't one (not busy, no progress). */
+function isHeld(m: HTMLElement): boolean {
+  const mode = motion().mascots;
+  return mode === 'still' || (mode === 'work' && !m.classList.contains('busy') && !m.classList.contains('prog'));
+}
+/** A held mascot at its pose: every animation of the scene at the same moment (CSS keeps them paused there), so
+ *  parts that start one after another are where the scene has them at that time. */
+function pose(m: HTMLElement) {
+  if (!isHeld(m) || typeof m.getAnimations !== 'function') return;
+  const at = (POSE[idOf(m)] ?? 0) * 1000;
+  for (const a of m.getAnimations({ subtree: true })) a.currentTime = at;
 }
 
 function watch(m: HTMLElement) {
@@ -59,6 +79,7 @@ function watch(m: HTMLElement) {
   m.classList.add('masc-wait');
   io?.observe(m);
   smil(m);
+  pose(m);
 }
 
 function unwatch(m: HTMLElement) {
@@ -87,6 +108,7 @@ function setup() {
         m.classList.remove('masc-wait', 'masc-off');
         // A loader that follows real progress stopped while it wasn't seen: it carries on (mascotprogress.ts).
         if (was) m.dispatchEvent(new Event('masc-seen'));
+        pose(m); // a scene in a panel that was hidden gets its animations only now
       } else if (!m.classList.contains('masc-wait')) m.classList.add('masc-off');
       smil(m);
     }), { rootMargin: '64px' })
@@ -105,7 +127,7 @@ function setup() {
     }
   }).observe(document.body, { childList: true, subtree: true });
   document.querySelectorAll<HTMLElement>('.masc').forEach(watch);
-  onMotion(() => document.querySelectorAll<HTMLElement>('.masc').forEach(smil));
+  onMotion(() => document.querySelectorAll<HTMLElement>('.masc').forEach((m) => { smil(m); pose(m); }));
 }
 
 /** A mascot scene as HTML. With a label it's an image for screen readers; without one it's decoration. */

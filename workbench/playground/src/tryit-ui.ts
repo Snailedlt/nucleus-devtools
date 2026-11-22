@@ -198,8 +198,18 @@ export function initTryIt(deps: TryItDeps): { run: () => void; options: () => Si
         else c.ok++;
         cells.set(key, c);
       }
-      draw(done >= jobs.length);
-      if (done < jobs.length) setTimeout(step, 0);
+      if (done < jobs.length) { draw(false); setTimeout(step, 0); return; }
+      // Done. A run long enough to have shown the ring ends with the ring's last step (it closes, turns green or red,
+      // a check or a "!" pops), then the result; a short one goes straight there. If the ring never gets to its end
+      // (out of sight), the result still comes.
+      const ring = box.querySelector<HTMLElement>('.masc-n-ring');
+      if (!ring) return draw(true);
+      draw(false);
+      let shown = false;
+      const result = () => { if (shown || run !== mxRun) return; shown = true; draw(true); };
+      const failed = [...cells.values()].some((c) => c.fail.length);
+      ringProgress(box, 1, result, failed);
+      setTimeout(result, 1500);
     };
     draw(false);
     setTimeout(step, 0);

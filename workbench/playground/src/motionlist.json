@@ -9,7 +9,7 @@
     { "id": "n-scan", "name": "Searching", "who": "Nucli", "where": "The Hub list with no match, Fix with AI while it waits for the answer", "says": "Looking for something.", "size": 64 },
     { "id": "n-calc", "name": "Working it out", "who": "Nucli", "where": "Docs with no match", "says": "Nothing found here.", "size": 64, "zoom": 1.2 },
     { "id": "n-spin", "name": "Waiting", "who": "Nucli", "where": "A Hub handler that takes over 300 ms to arrive, sending a report", "says": "Something without a known length is under way.", "size": 40, "busy": true },
-    { "id": "n-ring", "name": "Progress ring", "who": "Nucli", "where": "Test all, once a run has taken 300 ms", "says": "How far a run is.", "size": 44, "busy": true, "progress": "ring" },
+    { "id": "n-ring", "name": "Progress ring", "who": "Nucli", "where": "Test all, once a run has taken 300 ms", "says": "How far a run is. At the end the ring closes and turns green, a check pops and he smiles; red and a \"!\" when the run found failures.", "size": 44, "busy": true, "progress": "ring" },
     { "id": "load", "name": "Pushing the bar", "who": "Duo", "where": "Files, while a linked game folder is read", "says": "How far the read is. He stands ready while the files are listed, strains when it stalls and hops at the end.", "size": 280, "progress": "bar" }
   ],
   "ui": [

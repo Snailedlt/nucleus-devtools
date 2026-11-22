@@ -1,4 +1,4 @@
-import { PRESETS, presetOf, savedMotion, setMotion, type MascotMotion, type Preset } from './motion';
+import { PRESETS, PRESET_TEXT, presetOf, savedMotion, setMotion, type MascotMotion, type Preset } from './motion';
 import { setWrap, wrapEditor } from './wrap';
 import { confirmOn } from './toast';
 import { codeNote, stickyNoteOpen } from './codenote';
@@ -235,6 +235,7 @@ export function initSettings(d: Deps) {
   const showMotion = () => {
     const m = savedMotion();
     mv.preset.value = presetOf(m);
+    $('#set-motion-what').textContent = PRESET_TEXT[presetOf(m)];
     mv.ui.checked = m.ui; mv.masc.value = m.mascots; mv.edit.checked = m.editFx; mv.news.checked = m.newsAuto;
     $('#set-motion-note').textContent = matchMedia('(prefers-reduced-motion: reduce)').matches ? 'Your device asks for less motion, so nothing here moves more than Still.' : '';
   };
