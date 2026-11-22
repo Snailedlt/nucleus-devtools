@@ -888,7 +888,8 @@ li.CodeMirror-hint-active .hint-type { color: var(--muted); opacity: 1; }
 @media (pointer: coarse) { .no-touch { display: none !important; } }
 /* Problem cards: the text starts at the same place whatever the line number. */
 .problem .loc { min-width: 7ch; }
-.keyhint .kh-keys { display: flex; gap: 3px; }
+.keyhint .kh-keys { display: flex; align-items: center; gap: 3px; }
+.keyhint .kh-then { font-size: 11px; color: var(--muted); }
 .keyhint kbd { font: 11px var(--font-mono); background: var(--surface-2); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; }
 .doc-code, #tip pre { background: var(--surface-2); border-radius: 5px; padding: 6px 8px; font: 12px/1.45 var(--font-mono); margin: 0 0 6px; white-space: pre-wrap; overflow-wrap: anywhere; }
 code { font: 12px var(--font-mono); background: var(--surface-2); padding: 0 4px; border-radius: 4px; }

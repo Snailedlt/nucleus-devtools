@@ -2803,7 +2803,8 @@ document.querySelectorAll<HTMLElement>('.rail [data-rail]').forEach((b) => b.add
 
 // The common shortcuts, on hover or keyboard focus of the buttons they belong to (both modes). The results pane's keys
 // can be changed (Settings › Keyboard shortcuts): read when shown, and its aria-keyshortcuts follow a change.
-const resultsHintKeys = () => binding('results').replace(/\+/g, ' ');
+// A binding with two strokes (`Ctrl+K Z`) keeps them apart: "then" between them (keyhints.ts).
+const resultsHintKeys = () => binding('results').split(' ').filter(Boolean).map((stroke) => stroke.replace(/\+(?=.)/g, ' ')).join(' then ');
 const keyHints = initKeyHints([
   { el: document.getElementById('tab-add'), what: 'New, open a file or an example', keys: 'Ctrl K' },
   { el: document.getElementById('app-menu-open'), what: 'Settings, Advanced mode and help', keys: 'Ctrl ,' },

@@ -985,6 +985,11 @@ for (const platform of ['Linux', 'MacIntel']) {
     dynamic.emit('focus'); f.tick();
     assert.match(tip.innerHTML, /<kbd>⌘<\/kbd><kbd>&lt;img&gt;&amp;&quot;<\/kbd>/);
     assert.ok(!tip.innerHTML.includes('<img>'));
+    // Two strokes: "then" between them, and no aria-keyshortcuts (it can't say a chord).
+    binding = 'Ctrl ; then J'; hints.refresh();
+    assert.equal(dynamic.getAttribute('aria-keyshortcuts'), null);
+    dynamic.emit('focus'); f.tick();
+    assert.match(tip.innerHTML, /<kbd>;<\/kbd><span class="kh-then">then<\/span><kbd>J<\/kbd>/);
     binding = ''; hints.refresh();
     assert.equal(dynamic.getAttribute('aria-keyshortcuts'), null);
     dynamic.emit('mouseenter'); f.tick();

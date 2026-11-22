@@ -48,7 +48,7 @@
           ["Hint", "A suggestion."]
         ] },
         { "h": "Where a problem shows", "md": "In three places: a squiggle under the code, a marker beside the line number, and a card in the **Check** tab. The card says what's wrong, why Nucleus cares and how to fix it. Clicking a marker shows that line's problems and fixes.\n\n{key:nextProblem} and {key:prevProblem} go to the next and the previous problem. How much a card shows is a setting: Compact, Comfortable or Detailed, under Settings › Check." },
-        { "h": "Fixes", "md": "- {key:quickFix} lists the fixes for the line. `Alt+Enter` does too.\n- **Fix all** applies every automatic fix at once. It shows a before and after to accept first, and **Apply without review** skips that.\n- A problem that needs a decision stays in the list, with the options.\n- With an AI set up, **Fix with AI** tries what's left." },
+        { "h": "Fixes", "md": "- {key:quickFix} lists the fixes for the line.\n- **Fix all** applies every automatic fix at once. It shows a before and after to accept first, and **Apply without review** skips that.\n- A problem that needs a decision stays in the list, with the options.\n- With an AI set up, **Fix with AI** tries what's left." },
         { "h": "Package files and the game folder", "md": "Check also looks at the files that ship with the handler. With the game's install folder linked in [Files](@guide:files#your-game-on-this-pc), it compares the handler with the files that are really there, and finds a misspelled file name or an executable that doesn't exist." },
         { "h": "Reporting a wrong check", "md": "The flag on a problem, **This check is wrong**, opens a report with the check and the line filled in." }
       ],

@@ -8,9 +8,11 @@ const esc = (t: string) => t.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&l
 const shown = (k: string, canon: boolean) => k === 'Cmd' ? '⌘' : k === 'Ctrl' ? (MAC ? (canon ? '⌃' : '⌘') : 'Ctrl') : k === 'Alt' && MAC ? '⌥' : k;
 const ariaName = (k: string, canon: boolean) => k === 'Cmd' ? 'Meta' : k === 'Ctrl' ? (MAC && !canon ? 'Meta' : 'Control') : k;
 // Keys can come from an imported settings file: text only, never markup.
-const show = (keys: string, canon: boolean) => keys.split(' ').filter(Boolean).map((k) => `<kbd>${esc(shown(k, canon))}</kbd>`).join('');
+// "then" between two strokes of one shortcut (`Ctrl K then Z`): a word, not a key.
+const THEN = 'then';
+const show = (keys: string, canon: boolean) => keys.split(' ').filter(Boolean).map((k) => (k === THEN ? '<span class="kh-then">then</span>' : `<kbd>${esc(shown(k, canon))}</kbd>`)).join('');
 
-/** `keys` is "Ctrl B" (space between keys), or a function for a rebindable action, read when the hint shows; call the
+/** `keys` is "Ctrl B" (space between keys; "Ctrl K then Z" for two strokes), or a function for a rebindable action, read when the hint shows; call the
  *  returned `refresh` when bindings change so aria-keyshortcuts follows. */
 export function initKeyHints(list: { el: HTMLElement | null; what?: string; keys: string | (() => string) }[]) {
   const tip = document.createElement('div');
@@ -21,7 +23,9 @@ export function initKeyHints(list: { el: HTMLElement | null; what?: string; keys
   let timer = 0;
   const hide = () => { clearTimeout(timer); tip.hidden = true; };
   const aria = (el: HTMLElement, k: string, canon: boolean) => {
-    if (k) el.setAttribute('aria-keyshortcuts', k.split(' ').filter(Boolean).map((t) => ariaName(t, canon)).join('+'));
+    // aria-keyshortcuts takes one combination (modifiers and a key): a shortcut of two strokes isn't given as one.
+    const ks = k.split(' ').filter(Boolean);
+    if (ks.length && !ks.includes(THEN)) el.setAttribute('aria-keyshortcuts', ks.map((t) => ariaName(t, canon)).join('+'));
     else el.removeAttribute('aria-keyshortcuts');
   };
   const now = (keys: string | (() => string)) => (typeof keys === 'function' ? keys() : keys);
