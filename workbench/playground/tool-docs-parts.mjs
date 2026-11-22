@@ -6,12 +6,16 @@ import { esc, keys, table, rich, blocks, slug } from './tool-docs-text.mjs';
 /** The most links a page's Related list may have: more than that and it is a second table of contents. */
 export const RELATED_MAX = 3;
 
-/** A screenshot in the page's theme: the light and the dark one, the right one shown by CSS (.th-light / .th-dark).
- *  Both carry the description: the one that isn't shown is display:none, so only the visible one is read out. */
+/** A screenshot, light and dark at once: a line down the picture, light to its left and dark to its right, dragged
+ *  (or moved with the arrow keys) to compare, as in the start page's gallery (the maintainer asked for the slider
+ *  instead of a picture that follows the page's theme). The light picture carries the description; the dark one is
+ *  the same view, so it has none. SHOT_SCRIPT moves the line. */
 function shot(name, caption, alt, [w, h] = [1920, 1200]) {
-  const img = (t) => `<img class="th-${t}" src="__UP__start/gallery/${name}-${t}.webp" alt="${esc(alt)}" width="${w}" height="${h}" loading="lazy" decoding="async">`;
-  return `<figure class="shot${h > w ? ' tall' : ''}">${img('light')}${img('dark')}<figcaption>${esc(caption)}</figcaption></figure>`;
+  const img = (t, text) => `<img class="ba-${t}" src="__UP__start/gallery/${name}-${t}.webp" alt="${esc(text)}" width="${w}" height="${h}" loading="lazy" decoding="async">`;
+  return `<figure class="shot${h > w ? ' tall' : ''}"><div class="ba-frame">${img('light', alt)}${img('dark', '')}<div class="ba-line" aria-hidden="true"><span>☀</span><span>☾</span></div><input class="ba-range" type="range" min="0" max="100" value="50" aria-label="${esc(alt)}, light or dark: drag, or use the arrow keys, to compare"></div><figcaption>${esc(caption)}</figcaption></figure>`;
 }
+/** For the pages that show screenshots: the slider moves the line (one listener for every picture on the page). */
+export const SHOT_SCRIPT = "document.addEventListener('input', function (e) { var t = e.target; if (t && t.classList && t.classList.contains('ba-range')) t.parentNode.style.setProperty('--pos', t.value + '%'); });";
 
 /** A page's screenshots, by name; each one's caption is the start page gallery's, or its own (["name", "caption"]). */
 export function shots(c, list) {
@@ -94,6 +98,7 @@ export function sections(c, list) {
     s.pair && pairDiagram(c, s.pair, slug(s.h)),
     s.rows && table((s.cols ?? ['Part', 'What it does']).map(esc), s.rows.map((row) => row.map((cell) => rich(cell, c)))),
     s.md && blocks(s.md, c),
+    s.shots && shots(c, s.shots),
   ].filter(Boolean).join('\n'));
 }
 

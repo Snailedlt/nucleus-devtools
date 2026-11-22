@@ -411,8 +411,14 @@ test('tool docs: the real pages build, link only to pages that exist, and their 
       if (to.startsWith('docs/tools/') && to !== 'docs/tools/') assert.ok(slugs.has(to.slice(5, -1)), `${p.slug}: links to ${to}, which is not a page`);
       else if (!to.startsWith('start/')) assert.ok(site.has(to), `${p.slug}: links to ${to}, which is not a page of the site`);
     }
-    // Both themes' pictures carry the description: only the shown one is read out, and in dark mode that's the dark one.
+    // The labelled screenshot follows the theme: both pictures carry the description, and only the shown one is read out.
     for (const m of html.matchAll(/<img class="th-(?:light|dark)"[^>]*>/g)) assert.ok(/ alt="[^"]{9,}"/.test(m[0]) && !/aria-hidden/.test(m[0]), `${p.slug}: a picture without a description (${m[0].slice(0, 80)})`);
+    // A screenshot shows light and dark at once: the light one is described, the dark one is the same view, and
+    // the slider between them says what it is.
+    for (const m of html.matchAll(/<div class="ba-frame">(.*?)<\/div><figcaption>/g)) {
+      assert.match(m[1], /^<img class="ba-light"[^>]* alt="[^"]{9,}"[^>]*><img class="ba-dark"[^>]* alt=""[^>]*>/, `${p.slug}: a screenshot's two pictures`);
+      assert.match(m[1], /<input class="ba-range" type="range" min="0" max="100" value="50" aria-label="[^"]{9,}, light or dark: drag, or use the arrow keys, to compare">$/, `${p.slug}: its slider`);
+    }
   }
   for (const p of GUIDE.guide.pages.slice(1)) assert.ok(p.intro?.length > 40, `workbench page ${p.id}: what the part is`);
   for (const n of media) for (const t of ['light', 'dark']) assert.ok(GUIDE.galleryDirs.some((dir) => fs.existsSync(path.join(dir, `${n}-${t}.webp`))), `${n}-${t}.webp is in a gallery folder`);

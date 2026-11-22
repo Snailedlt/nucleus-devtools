@@ -17,7 +17,7 @@
 // building blocks (lead, facts, screenshots, diagrams, tables, the Related list), and tool-docs.css is the styles.
 import fs from 'node:fs';
 import { esc, toolText, keys, use, table, rich, slug } from './tool-docs-text.mjs';
-import { lead, facts, video, shots, sections, related, coreDiagram, flowDiagram, keyTable } from './tool-docs-parts.mjs';
+import { lead, facts, video, shots, sections, related, coreDiagram, flowDiagram, keyTable, SHOT_SCRIPT } from './tool-docs-parts.mjs';
 import { parseHelp, parseNppMenu } from './tool-docs-read.mjs';
 
 export { parseHelp, parseNppMenu, readToolSources, readGuideSources } from './tool-docs-read.mjs';
@@ -337,7 +337,7 @@ ${flowDiagram(c, index.path)}
  * The Tools pages, in the order of the docs list: a group per tool (the workbench's pages; for the others the overview,
  * the setup, then a reference page per kind), then the pages about every tool.
  * @returns {{ pages: { slug: string, group: string, title: string, nav: string, hit?: string, desc: string, html?: string, intro?: string, md?: string, mdHref?: (u: string) => string, outro?: string }[],
- *   index: string, media: string[], css: string }} `nav`: the page's name under its group in the docs list; `hit`: its
+ *   index: string, media: string[], css: string, js: string }} `js`: for the pages with screenshots (their slider). `nav`: the page's name under its group in the docs list; `hit`: its
  *   name where the group isn't shown (the filter's results). `media`: the screenshots the pages show, for the build to copy.
  */
 export function toolDocs(d) {
@@ -346,5 +346,5 @@ export function toolDocs(d) {
     ? [...d.guide.pages.map((page, i) => guidePage(c, page, i)), ...referencePages(c, t.id)]
     : [toolPage(c, t.id), ...(t.setup ? [setupPage(c, t.id)] : []), ...referencePages(c, t.id)]));
   pages.push(comparePage(c));
-  return { pages, index: indexPage(c), media: [...c.used], css: CSS };
+  return { pages, index: indexPage(c), media: [...c.used], css: CSS, js: SHOT_SCRIPT };
 }

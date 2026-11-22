@@ -845,7 +845,7 @@ let docValues = [];
       fs.copyFileSync(from, to);
     }
   }
-  docValues = writeDocPages({ hl: hlSem, checks: checksNav, toolPages: toolDocs?.pages ?? [], toolsIndex: toolDocs?.index, toolCss: toolDocs?.css, outDir: path.join(here, 'dist', 'pages', 'docs'), startHtml: fs.readFileSync(path.join(here, 'src', 'start.html'), 'utf8'), docsPage: D.docsPage, docsView: D.docsView, docsValue: D.docsValue, allEntries: D.allEntries, groups: D.DOCS_GROUPS, enums: Object.keys(D.api.enums), docReviewUrl: D.docReviewUrl, partVotes: D.partVotes, placeAiFrames: D.placeAiFrames, aiFrameCss: D.aiFrameCss, aiTipScript: D.AI_TIP_SCRIPT, feedbackSite, countsSite, base: PAGES_BASE, preview: PREVIEW, noindex: NOINDEX });
+  docValues = writeDocPages({ hl: hlSem, checks: checksNav, toolPages: toolDocs?.pages ?? [], toolsIndex: toolDocs?.index, toolCss: toolDocs?.css, toolJs: toolDocs?.js, outDir: path.join(here, 'dist', 'pages', 'docs'), startHtml: fs.readFileSync(path.join(here, 'src', 'start.html'), 'utf8'), docsPage: D.docsPage, docsView: D.docsView, docsValue: D.docsValue, allEntries: D.allEntries, groups: D.DOCS_GROUPS, enums: Object.keys(D.api.enums), docReviewUrl: D.docReviewUrl, partVotes: D.partVotes, placeAiFrames: D.placeAiFrames, aiFrameCss: D.aiFrameCss, aiTipScript: D.AI_TIP_SCRIPT, feedbackSite, countsSite, base: PAGES_BASE, preview: PREVIEW, noindex: NOINDEX });
   // Each docs page in the sitemap too (written with the rule pages above).
   const sm = path.join(here, 'dist', 'pages', 'sitemap.xml');
   if (!PREVIEW && fs.existsSync(sm)) fs.writeFileSync(sm, fs.readFileSync(sm, 'utf8').replace('</urlset>', docValues.filter(Boolean).map((v) => `  <url><loc>${PAGES_BASE}docs/${v}/</loc></url>\n`).join('') + '</urlset>'));
