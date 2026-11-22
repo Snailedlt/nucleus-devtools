@@ -14,6 +14,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 ## Unreleased
 ### ⚠️ Changed
+- **The side rail is the default layout.** New visitors get the tools in a strip on the left, as in most code editors, with more room for the code. If you've used the workbench before, your layout stays as it was. Settings › Layout switches between the rail and the slim bar on top.
 - **Setting a tool up is in the docs now.** *Get the tools* is a short page with a tile per tool. Each tile leads to that tool's Setup page in the docs, which has the download, the steps and how to check that it worked. Old links to a tool's steps on *Get the tools* lead on to its Setup page.
 - **The Form and Blocks views have been removed.** They were hidden since the last release; a different visual editor is planned instead. If your saved view was one of them, the workbench opens your handler as code and says so once.
 - **A new address: https://snailedlt.github.io/nucleus-devtools/.** The workbench moved into the tools' repository, [nucleus-devtools](https://github.com/Snailedlt/nucleus-devtools), so it's built from the same commit as the checks it runs. Update your bookmarks; your drafts and settings come along (same site, new folder). Reports go to the same forms as the other tools'.
@@ -38,6 +39,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 - **The workbench and Learn open faster.** The site now loads their code as files your browser keeps, shared between the two pages, instead of everything inside each page: about a third less to download the first time, and almost nothing when you go from one to the other. The Claude API part and the visual editor only load when they're used. The one-file workbench for offline use is the same as before.
 - **Mascots move only where you can see them.** Ones that are scrolled away or in a hidden panel are paused, and each starts when it first comes into view. Check, Try it, Test all and Docs keep the mascot they show while they update, so typing no longer restarts it and Test all's ring runs smoothly through the run.
 ### 🐛 Fixed
+- **The side rail layout has a page heading.** Screen readers found no heading for the page there, because the rail hides the header that carries it.
 - **A word in a text isn't taken for a name.** Hovering "Game" inside a text such as `"Game mode"`, or in a comment, showed the docs of `Game`.
 - **Format keeps the lines a Hub install reads.** A `Game.GameName` or `Game.ExecutableName` line with a second string on it, or a name put together with `+`, was read differently by the Hub install after formatting. Format now leaves such a line as written.
 - **A fix's green highlight stays until you're done with it.** After a quick fix or *Fix all*, the changed lines stay marked as long as the "Fixed" note is open: until you close it, undo, or edit the code.

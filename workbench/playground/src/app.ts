@@ -2767,14 +2767,21 @@ pkgUI = initPackageUI({
 
 const LAYOUT_KEY = 'nucleus-workbench-layout';
 type Layout = 'bar' | 'rail';
-const layout = (): Layout => { try { return localStorage.getItem(LAYOUT_KEY) === 'rail' ? 'rail' : 'bar'; } catch { return 'bar'; } };
-function setLayout(l: Layout) {
-  try { localStorage.setItem(LAYOUT_KEY, l); } catch { /* ignore */ }
+/** The side rail is the default (the maintainer, 2026-11-22): the tools in a strip on the left, as in most code
+ *  editors. Whoever picked the slim bar keeps it. */
+const DEFAULT_LAYOUT: Layout = 'rail';
+const layout = (): Layout => { try { const v = localStorage.getItem(LAYOUT_KEY); return v === 'rail' || v === 'bar' ? v : DEFAULT_LAYOUT; } catch { return DEFAULT_LAYOUT; } };
+function applyLayout(l: Layout) {
   document.documentElement.dataset.layout = l;
   document.querySelectorAll<HTMLInputElement>('input[name="set-layout"]').forEach((r) => (r.checked = r.value === l));
   requestAnimationFrame(() => editor.refresh());
 }
-setLayout(layout());
+/** A choice: kept. (Opening the page doesn't save the default, so a later default reaches whoever never chose.) */
+function setLayout(l: Layout) {
+  try { localStorage.setItem(LAYOUT_KEY, l); } catch { /* ignore */ }
+  applyLayout(l);
+}
+applyLayout(layout());
 document.querySelectorAll<HTMLInputElement>('input[name="set-layout"]').forEach((r) => r.addEventListener('change', () => r.checked && setLayout(r.value as Layout)));
 const homeHref = () => (document.querySelector<HTMLAnchorElement>('a.home-link')?.href ?? 'start/');
 const addItems = (): MenuItem[] => [

@@ -1719,6 +1719,9 @@ kbd.keys .kplus { color: var(--muted); padding: 0 1px; }
 :root[data-layout="rail"] .rail { display: flex; flex-direction: column; align-items: center; gap: 6px; position: fixed; left: 0; top: 0; bottom: 0; width: 52px; padding: 12px 0; background: var(--surface); border-right: 1px solid var(--line); z-index: 20; }
 :root[data-layout="rail"] .app { padding-left: calc(52px + 12px); }
 :root[data-layout="rail"] header .brand, :root[data-layout="rail"] header .toolbar { display: none; }
+/* The page's heading: the brand's in the slim bar; in the rail, which hides the brand, this one (for screen readers). */
+.rail-h1 { display: none; }
+:root[data-layout="rail"] .rail-h1 { display: block; position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: -1px; }
 .rail-btn { width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 9px; background: none; color: var(--muted); cursor: pointer; font-size: 16px; text-decoration: none; }
 .rail-btn:hover, .rail-btn[aria-pressed="true"], .rail-btn[aria-expanded="true"] { background: var(--surface-2); color: var(--fg); }
 .rail-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -1738,6 +1741,7 @@ kbd.keys .kplus { color: var(--muted); padding: 0 1px; }
   :root[data-layout="rail"] .rail { display: none; }
   :root[data-layout="rail"] .app { padding-left: max(16px, env(safe-area-inset-left, 0px)); }
   :root[data-layout="rail"] header .brand, :root[data-layout="rail"] header .toolbar { display: flex; }
+  :root[data-layout="rail"] .rail-h1 { display: none; }
   .htabs-wrap { display: none; }
   .phone-name { display: inline-flex !important; }
   /* Too narrow for the name and the view buttons in one row: the name gets its own, the buttons wrap under it. */
@@ -1936,6 +1940,7 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
         <label class="adv"><input type="checkbox" id="advanced" role="switch">Advanced mode</label>
       </div>
     </div>
+    <h1 class="rail-h1">Nucleus Handler Workbench</h1>
     <nav class="rail" aria-label="Tools">
       <a class="rail-btn rail-logo start-link" href="https://snailedlt.github.io/nucleus-devtools/start/" aria-label="Home" data-rail="Home"><svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path d="M2.5 7.2 8 2.8l5.5 4.4M4 6.3V13h3V9.5h2V13h3V6.3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="rail-label" aria-hidden="true">Home</span></a>
       <button class="rail-btn" type="button" data-rail="add" aria-label="New, open a file or an example" aria-haspopup="menu"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="rail-label" aria-hidden="true">New or open</span></button>
@@ -2051,11 +2056,13 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
       </div>
       <div role="tabpanel" id="panel-probes" hidden><div id="probes"></div></div>
     </section>
+    <!-- The hover card (docs, problems, which parameter a value is): inside main, so it belongs to a landmark
+         while it shows. It is placed by its own fixed position, not by the grid. -->
+    <div id="tip" hidden></div>
   </main>
   <footer><span id="build-info" class="dev-only"></span><span>Your draft is kept in this browser only.</span><button class="link foot-dup" id="tour-open" type="button"><span data-icon="compass"></span> Take the tour</button><button class="link tg-open" id="test-open" type="button"><span data-icon="flask-conical"></span> Help test this beta</button><button class="link foot-dup" id="help-open-2" type="button">Keyboard shortcuts</button><button class="link foot-dup" type="button" data-tips-toggle aria-pressed="true">Tips: on</button><button class="link foot-dup" type="button" id="news-open-2">What's new</button><a class="link start-link foot-dup" href="https://snailedlt.github.io/nucleus-devtools/start/" title="What the workbench and the VS Code extension do, and how to install them">About these tools</a><span class="comm-foot">Questions? <a class="link" href="__DISCORD_INVITE__" target="_blank" rel="noopener">Discord</a> · <a class="link" href="__REDDIT__" target="_blank" rel="noopener">r/nucleuscoop</a></span><span class="made-by">Made by <a class="link" href="https://github.com/Snailedlt" rel="author" target="_blank">Snailedlt</a> (Jørgen KH)</span></footer>
 </div>
 
-<div id="tip" hidden></div>
 
 <dialog id="open-dialog" aria-label="Open">
   <div class="open-head">

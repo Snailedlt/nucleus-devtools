@@ -178,6 +178,9 @@ if (process.argv.includes('--ai-guide')) {
 for (const theme of ['light', 'dark']) section(`workbench, ${theme}`, async () => {
   // Check, Fix all, then editing: the fix box closes and Check counts the new problem.
   const { ctx, p, errors } = await page(theme);
+  // This section is the slim bar's: its header buttons, menus and their geometry (the side rail, the default, gets
+  // its turn below, and every other section runs in it).
+  await ctx.addInitScript(() => { try { if (!localStorage.getItem('nucleus-workbench-layout')) localStorage.setItem('nucleus-workbench-layout', 'bar'); } catch {} });
   await p.goto(BASE + '#example-mistakes');
   await p.waitForSelector('.CodeMirror');
   await p.waitForTimeout(1200);
@@ -566,7 +569,8 @@ for (const theme of ['light', 'dark']) section(`workbench, ${theme}`, async () =
     check(await q.isHidden('#drop-hint'), `${theme}: the drop hint goes away when the drag leaves the window`);
     // The tour (tour.ts): from the menu, keyboard-driven, Esc skips and remembers the step, Take the tour offers to continue.
     const takeTour = async () => {
-      await q.click('#app-menu-open');
+      // A new visitor gets the side rail (the default): its menu button; the slim bar's otherwise.
+      await q.click((await q.isVisible('#app-menu-open')) ? '#app-menu-open' : '.rail [data-rail=menu]');
       await q.click('[role=menuitem]:has-text("Take the tour")');
       await q.waitForTimeout(400);
     };
@@ -590,7 +594,7 @@ for (const theme of ['light', 'dark']) section(`workbench, ${theme}`, async () =
     await q.keyboard.press('Escape');
     await q.waitForTimeout(300);
     const saved = await q.evaluate(() => JSON.parse(localStorage.getItem('nucleus-workbench-tour')));
-    check(!(await q.$eval('#tour', (d) => d.open)) && saved?.state === 'skipped' && saved.step === 3 && await q.evaluate(() => document.activeElement?.id === 'app-menu-open'), `${theme}: Esc skips, remembers the step and gives the focus back (${JSON.stringify(saved)})`);
+    check(!(await q.$eval('#tour', (d) => d.open)) && saved?.state === 'skipped' && saved.step === 3 && await q.evaluate(() => document.activeElement?.id === 'app-menu-open' || document.activeElement?.dataset.rail === 'menu'), `${theme}: Esc skips, remembers the step and gives the focus back to the menu button it was opened from (${JSON.stringify(saved)}, focus on ${await q.evaluate(() => document.activeElement?.id || document.activeElement?.dataset.rail || document.activeElement?.tagName)})`);
     check(await q.$eval('.pane-head [data-tab=problems]', (b) => b.getAttribute('aria-selected') === 'true'), `${theme}: the tour puts back the tab that was open`);
     await takeTour();
     check(/Continue where you left off/.test(await q.textContent('[data-tour=next]')) && /Start over/.test(await q.textContent('[data-tour=back]')), `${theme}: Take the tour after a skip offers to continue or start over`);
@@ -665,6 +669,10 @@ for (const theme of ['light', 'dark']) section(`workbench, ${theme}`, async () =
   await p.waitForTimeout(200);
   check(/For Nucleus Co-op \(\.zip\)/.test(await p.innerText('body')), `${theme}: right-click on the rail's Save offers Save as`);
   await p.keyboard.press('Escape');
+  // The rail hides the header's brand, so the page's heading is its own there (one h1 either way).
+  const h1 = await p.evaluate(() => [...document.querySelectorAll('h1')].filter((h) => h.getClientRects().length).map((h) => h.textContent.trim()));
+  check(h1.length === 1 && /Workbench/.test(h1[0]), `${theme}: the side rail layout has the page's heading (${h1.join(' | ')})`);
+  await axe(p, `${theme}, side rail`);
   await p.evaluate(() => localStorage.setItem('nucleus-workbench-layout', 'bar'));
   await p.reload();
   await p.waitForTimeout(800);
