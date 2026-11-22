@@ -8,7 +8,9 @@ import { announce } from './toast';
 import { keysText } from './kbd';
 
 type CM = any; // CodeMirror 5
-let open: { clear: () => void } | null = null;
+let open: { clear: () => void; sticky: boolean } | null = null;
+/** Whether a note that waits for the person is open (a fix's Undo note): a passing remark shouldn't replace it. */
+export const stickyNoteOpen = () => !!open?.sticky;
 
 export function codeNote(editor: CM, line: number, text: string, opts: { action?: { label: string; run: () => void }; mood?: 'ok' | 'info'; sticky?: boolean; onClear?: () => void } = {}) {
   open?.clear();
@@ -36,7 +38,7 @@ export function codeNote(editor: CM, line: number, text: string, opts: { action?
   el.addEventListener('focusin', () => clearTimeout(timer));
   el.addEventListener('focusout', arm);
   arm();
-  open = { clear };
+  open = { clear, sticky: !!opts.sticky };
   editor.scrollIntoView({ line: ln, ch: 0 }, 60);
   announce(text.replace(/`/g, '') + (opts.action ? ` ${opts.action.label} is next to it.` : ''));
 }

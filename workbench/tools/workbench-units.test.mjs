@@ -660,8 +660,8 @@ test('shortcuts as keys: plain sentences and backticked keys', async () => {
   assert.equal(T.looksLikeCodeText('Ctrl+.'), false, 'a shortcut in backticks is keys, not coloured code');
   assert.equal(T.looksLikeCodeText('Game.Play'), true);
   // File names and command lines aren't handler code, so they stay plain: no member colours on ".toml", no operator on "++".
-  for (const plain of ['languages.toml', 'settings.json', 'ncdev.exe', '*.js', '.js', 'SHA256SUMS.txt', 'init.lua', 'ncdev setup notepad++', 'node /path/to/nucleus.js lsp', 'npm run build']) assert.equal(T.looksLikeCodeText(plain), false, plain);
-  for (const code of ['Context.GetFolder(Nucleus.Folder.InstancedGameFolder)', 'Game.SymlinkGame = true;', '"-windowed"', 'System.IO.File.Copy', 'x.length']) assert.equal(T.looksLikeCodeText(code), true, code);
+  for (const plain of ['languages.toml', 'settings.json', 'ncdev.exe', '*.js', '.js', 'SHA256SUMS.txt', 'init.lua', 'ncdev setup notepad++', 'node /path/to/nucleus.js lsp', 'npm run build', '--stdio', '-w', 'nucleus-handler', 'ncdev-linux-x64']) assert.equal(T.looksLikeCodeText(plain), false, plain);
+  for (const code of ['Context.GetFolder(Nucleus.Folder.InstancedGameFolder)', 'Game.SymlinkGame = true;', '"-windowed"', 'System.IO.File.Copy', 'x.length', 'code = Game.Play()', 'node.value', 'a - b', 'i--']) assert.equal(T.looksLikeCodeText(code), true, code);
 });
 
 test('doc votes: live counts keep the snapshot on a counter error, and keep the vote they were read with', async () => {
@@ -883,6 +883,25 @@ for (const hidden of ['detached', 'offscreen']) {
     assert.equal(b.frames.size, 1);
   });
 }
+
+test('progress: not seen yet stops the loop at the current pose, and being seen carries on', async () => {
+  const b = await loaderBrowser(), bar = b.make('masc-load');
+  bar.classList.add('masc-wait');
+  b.api.barProgress(bar, 0.5);
+  b.frame();
+  assert.equal(b.frames.size, 0, 'no frames while nobody sees it');
+  assert.equal(b.style(bar, '.ld-fill', 'stroke-dashoffset'), '41.50', 'drawn where it is');
+  b.api.barProgress(bar, 0.9);
+  b.frame();
+  assert.equal(b.frames.size, 0);
+  bar.classList.remove('masc-wait');
+  bar.fire('masc-seen');
+  assert.equal(b.frames.size, 1, 'seen: the loop starts again');
+  for (let i = 0; i < 10; i++) b.frame();
+  assert.ok(Number(b.style(bar, '.ld-fill', 'stroke-dashoffset')) < 20, 'and catches up with the latest progress');
+  bar.fire('masc-seen');
+  assert.equal(b.frames.size, 1, 'one loop, however often it is seen');
+});
 
 test('progress: a long frame is capped and switching to still draws the final pose', async () => {
   const a = await loaderBrowser(), b = await loaderBrowser();

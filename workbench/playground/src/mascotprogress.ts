@@ -15,15 +15,26 @@ const still = () => motion().mascots !== 'loop';
 const loader = (root: ParentNode, cls: string): El | null =>
   root instanceof HTMLElement && root.classList.contains(cls) ? (root as El) : root.querySelector<El>('.' + cls);
 
+/** Not on screen: taken out of the page, scrolled or tucked away, or not seen yet (mascots.ts marks both). */
+const hidden = (m: El) => !m.isConnected || m.classList.contains('masc-off') || m.classList.contains('masc-wait');
+
 function run(m: El, step: (dt: number) => boolean) {
   const s = m._prog!;
-  if (s.raf) return;
+  s.step = step;
+  // When he comes on screen (mascots.ts says so), he carries on from the latest progress.
+  if (!s.watched) { s.watched = true; m.addEventListener('masc-seen', () => start(m)); }
+  start(m);
+}
+function start(m: El) {
+  const s = m._prog!;
+  const step = s.step as ((dt: number) => boolean) | undefined;
+  if (s.raf || !step) return;
   const tick = (now: number) => {
     // A frame at most 1/20 s: back from a hidden tab, it carries on instead of jumping.
     const dt = Math.min(0.05, (now - s.last) / 1000);
     s.last = now;
-    // Off screen or taken out of the page: stop until the next update.
-    if (!m.isConnected || m.classList.contains('masc-off')) { s.raf = 0; return; }
+    // Not on screen: draw where it is and stop, until he's seen (masc-seen) or the next update.
+    if (hidden(m)) { s.raf = 0; step(0); return; }
     // Motion turned down meanwhile (Still, or the device asks for less): the pose for this progress, and stop.
     if (still()) { s.raf = 0; s.rest?.(); return; }
     s.raf = step(dt) ? requestAnimationFrame(tick) : 0;

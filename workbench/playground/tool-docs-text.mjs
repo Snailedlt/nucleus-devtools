@@ -41,7 +41,9 @@ export function rich(t, c) {
   return esc(t)
     .replace(/\{(repo|vscodeVersion)\}/g, (_, name) => c[name] ?? '')
     .replace(/\{key:(\w+)\}/g, (_, id) => keys(c.keyOf(id)))
-    .replace(/`([^`]+)`/g, (_, x) => (KEYISH.test(x) ? `<kbd>${x}</kbd>` : `<code class="use">${x}</code>`))
+    // Plain <code>: the site's page pass colours what is clearly code (`Game.Play`) and leaves the rest (a file name,
+    // a command) as it is. Command usage keeps its own class (use(), above), which that pass skips.
+    .replace(/`([^`]+)`/g, (_, x) => (KEYISH.test(x) ? `<kbd>${x}</kbd>` : `<code>${x}</code>`))
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/(^|[\s(])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>')
     .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, text, u) => `<a href="${link(u.replace(/&amp;/g, '&'))}">${text}</a>`);

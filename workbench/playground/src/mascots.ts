@@ -79,8 +79,12 @@ function setup() {
   io = typeof IntersectionObserver === 'function'
     ? new IntersectionObserver((es) => es.forEach((e) => {
       const m = e.target as HTMLElement;
-      if (e.isIntersecting) m.classList.remove('masc-wait', 'masc-off');
-      else if (!m.classList.contains('masc-wait')) m.classList.add('masc-off');
+      if (e.isIntersecting) {
+        const was = m.classList.contains('masc-wait') || m.classList.contains('masc-off');
+        m.classList.remove('masc-wait', 'masc-off');
+        // A loader that follows real progress stopped while it wasn't seen: it carries on (mascotprogress.ts).
+        if (was) m.dispatchEvent(new Event('masc-seen'));
+      } else if (!m.classList.contains('masc-wait')) m.classList.add('masc-off');
       smil(m);
     }), { rootMargin: '64px' })
     : null;
