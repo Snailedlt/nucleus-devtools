@@ -10,6 +10,7 @@ import { API_GROUPS, API_GROUP_KEYS, groupOf, unchecked } from './docsgroups';
 import { docsHashOf, docsView } from './links';
 import { memberCard, memberSummary } from './doccard';
 import { keepMascots, mascot } from './mascots';
+import { noteNear } from './toast';
 
 // API names in hovers, parameter hints and suggestion docs are links: a click (or Enter) opens that name in the
 // Reference tab, as VS Code's hovers link to the docs.
@@ -61,7 +62,7 @@ export interface DocsDeps {
   exampleAction?: (path: string, m: Member) => string | undefined;
   /** Puts a member's example into the open handler (app.ts, lines.ts placeExample). When the handler sets the option
    *  already, `replace` false only shows that line; true replaces its value with the example's. */
-  insertExample?: (path: string, m: Member, replace?: boolean) => void;
+  insertExample?: (path: string, m: Member, replace?: boolean) => string | undefined;
 }
 
 export interface DocsUI {
@@ -153,7 +154,8 @@ export function initDocs(deps: DocsDeps): DocsUI {
     if (!b) return;
     const p = b.dataset.insert ?? b.dataset.replace!;
     const m = memberOf(p);
-    if (m) deps.insertExample?.(p, m, 'replace' in b.dataset);
+    const why = m ? deps.insertExample?.(p, m, 'replace' in b.dataset) : undefined;
+    if (why) noteNear(b, why, 'warning');
     labelInserts($('#api-results'));
   });
   // The handler may change while Docs is open: the labels catch up when you come back to them.

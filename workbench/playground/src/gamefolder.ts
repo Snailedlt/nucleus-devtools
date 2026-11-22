@@ -21,7 +21,7 @@ const peDone = new WeakMap<GameFolder, PeFile[]>();
 export type FolderProgress =
   | { phase: 'listing'; name: string; files: number }
   | { phase: 'binaries'; name: string; done: number; total: number; bytes: number; totalBytes: number }
-  | { phase: 'done' };
+  | { phase: 'done'; cancelled?: boolean }; // cancelled: stopped part way (no success to show)
 let progress: ((p: FolderProgress) => void) | undefined;
 export function onFolderProgress(f: (p: FolderProgress) => void) { progress = f; }
 // Cancel (the progress's link): checked between files, so it's cheap and stops within one file. Each read has its
@@ -32,7 +32,7 @@ const newRead = (): ReadToken => { const t = { cancelled: false }; reading.push(
 // Progress shows only the newest read, the one Cancel stops; an older read (another tab's) reads on quietly.
 const say = (t: ReadToken, p: FolderProgress) => { if (reading[reading.length - 1] === t) progress?.(p); };
 /** Ends a read; with `done`, hides the progress if this read was the one shown. */
-const endRead = (t: ReadToken, done: boolean) => { const top = reading[reading.length - 1] === t; const i = reading.indexOf(t); if (i >= 0) reading.splice(i, 1); if (top && done) progress?.({ phase: 'done' }); };
+const endRead = (t: ReadToken, done: boolean) => { const top = reading[reading.length - 1] === t; const i = reading.indexOf(t); if (i >= 0) reading.splice(i, 1); if (top && done) progress?.({ phase: 'done', cancelled: t.cancelled }); };
 export function cancelFolderRead() { const t = reading[reading.length - 1]; if (t) t.cancelled = true; }
 /** True while the folder's program files are still being read (Check's "Reading your game's files…"). */
 export const gameBinariesPending = (folder: GameFolder) => !!peHandles.get(folder)?.length && !peDone.has(folder);

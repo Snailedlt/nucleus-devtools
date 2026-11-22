@@ -40,9 +40,10 @@ import { initNews } from './news';
 import { initPanels, type PanelEdge } from './panels-ui';
 import { initZen } from './zen';
 import { initTouchTitles } from './touch-titles';
-import { keepMascots, mascot } from './mascots';
+import { keepMascots, mascot, mascotsOn } from './mascots';
+import { barProgress } from './mascotprogress';
 import { fixWithNucli, applyEditsToText } from './fixfx';
-import { placeExample } from './lines';
+import { placeExample, scanHandler } from './lines';
 import { prettyCode } from '@core/pretty';
 import { codeNote } from './codenote';
 import { initMessageHints } from './wmhints';
@@ -553,15 +554,18 @@ function afterFolderChange() {
 // While a folder is read: "Reading <folder>…" with a bar (no total while listing, then the program files n of m).
 let folderProg: FolderProgress | null = null;
 const mb = (n: number) => `${(n / 1e6).toFixed(n < 1e7 ? 1 : 0)} MB`;
+// The numbers under the bar. The line above it says what is being read, so this doesn't say it again.
 function folderProgText(p: FolderProgress): string {
-  if (p.phase === 'listing') return `Reading ${p.name}… ${p.files} file${p.files === 1 ? '' : 's'} listed`;
-  if (p.phase === 'binaries') return `Reading ${p.name}'s program files for hook hints… ${p.done} of ${p.total} (${mb(p.bytes)} of ${mb(p.totalBytes)})`;
+  if (p.phase === 'listing') return `${p.files} file${p.files === 1 ? '' : 's'} listed`;
+  if (p.phase === 'binaries') return `${p.done} of ${p.total} read (${mb(p.bytes)} of ${mb(p.totalBytes)}), for the hints about hooks`;
   return '';
 }
 function folderProgHtml(): string {
   const p = folderProg;
   if (!p || p.phase === 'done') return '';
-  const bar = p.phase === 'binaries' ? `<progress id="gf-prog-bar" max="${Math.max(1, p.totalBytes)}" value="${p.bytes}" aria-label="Reading the game's program files"></progress>` : '<progress id="gf-prog-bar" aria-label="Listing the game\'s files"></progress>';
+  // Reading the program files has a real progress: Duo pushes the bar (the <progress> stays for screen readers).
+  const duo = p.phase === 'binaries' && mascotsOn() ? mascot('load', { size: 168, view: [10, 40, 102, 72], className: 'fp-duo' }) : '';
+  const bar = p.phase === 'binaries' ? `${duo}<progress id="gf-prog-bar" max="${Math.max(1, p.totalBytes)}" value="${p.bytes}" aria-label="Reading the game's program files"></progress>` : '<progress id="gf-prog-bar" aria-label="Listing the game\'s files"></progress>';
   // The status text is read out when the step changes (aria-live), not at every file.
   return `<div class="fp-prog"><div class="fp-prog-row"><span id="gf-prog-text" role="status" aria-live="polite">${esc(p.phase === 'listing' ? `Reading ${p.name}…` : `Reading ${p.name}'s program files…`)}</span><button class="link" type="button" data-gf="cancel">Cancel</button></div>${bar}<div class="fp-prog-n muted" id="gf-prog-n">${esc(folderProgText(p))}</div></div>`;
 }
@@ -571,12 +575,36 @@ onFolderProgress((p) => {
   const changed = (prev?.phase ?? 'done') !== p.phase || (p.phase !== 'done' && prev?.phase !== 'done' && prev?.name !== p.name);
   folderProg = p;
   const bar = document.getElementById('gf-prog-bar') as HTMLProgressElement | null;
+  const duo = document.querySelector<HTMLElement>('.fp-duo');
+  if (p.phase === 'done' && !p.cancelled && prev?.phase === 'binaries' && duo) {
+    // The bar and its numbers say it's all read (screen readers follow them, not Duo), before he finishes.
+    if (bar) bar.value = bar.max;
+    const n = document.getElementById('gf-prog-n');
+    if (n) n.textContent = folderProgText({ ...prev, done: prev.total, bytes: prev.totalBytes });
+    // Done: Duo lets go, the bar turns green and he hops; then the section is drawn again. When he's finished (at once
+    // on Still), or after 3 s if he's off screen and never gets there.
+    // Only for this read: if another one has started meanwhile, its own Duo is left alone.
+    let once = false;
+    const mine = p;
+    const after = () => { if (once) return; once = true; if (folderProg === mine) { pkgUI?.render(); (editor as any).performLint(); } };
+    barProgress(duo, 1, after);
+    setTimeout(after, 3000);
+    return;
+  }
   if (changed || !bar) { pkgUI?.render(); if (p.phase === 'done') (editor as any).performLint(); return; }
-  if (p.phase === 'binaries') { bar.max = Math.max(1, p.totalBytes); bar.value = p.bytes; }
+  if (p.phase === 'binaries') { bar.max = Math.max(1, p.totalBytes); bar.value = p.bytes; if (duo) barProgress(duo, folderShare(p)); }
   const n = document.getElementById('gf-prog-n');
   if (n) n.textContent = folderProgText(p);
 });
+const folderShare = (p: FolderProgress) => (p.phase === 'binaries' ? p.bytes / Math.max(1, p.totalBytes) : 0);
+// Whenever the Files panel is drawn while the program files are read (a new step, a file opened, the package changed),
+// the new Duo is put at the current progress: without it he'd play his demo loop until the next update.
+function syncDuo() {
+  const d = document.querySelector<HTMLElement>('.fp-duo');
+  if (d && folderProg?.phase === 'binaries') barProgress(d, folderShare(folderProg));
+}
 function gameSection(): string {
+  if (folderProg?.phase === 'binaries') queueMicrotask(syncDuo); // after the section is in the page
   return `<section class="fp-game" aria-label="Your game on this PC"><div class="fp-head">Your game on this PC</div>${folderProgHtml()}${gameFolder
     ? `<div class="fp-gname"><span class="fi-badge fi-dir" aria-hidden="true">▸</span>${esc(gameFolder.name)}</div><p>Check compares the handler's paths and file names with this folder, and the symlink options get a file picker. Nothing is uploaded.</p><div class="fp-gacts"><button class="btn" type="button" data-gf="show">What's in it</button><button class="btn" type="button" data-gf="pick">Pick another</button><button class="btn" type="button" data-gf="forget">Unlink</button></div>`
     : `<p>Link the folder your game is installed in, and Check tells you when <code>ExecutableName</code>, <code>BinariesFolder</code> or a symlink option names a file that isn't there. Only names and sizes are read, and the game's .exe and DLLs for hints about hooks, on this device.</p><div class="fp-gacts"><button class="btn" type="button" data-gf="pick">Link the game's folder…</button></div>`}</section>`;
@@ -649,12 +677,13 @@ function showHoverCard(text: string, at: number, list: Diagnostic[], doc: string
     const [di, fi] = b.dataset.hcFix!.split(':').map(Number);
     const fix = list[di].fixes![fi];
     tip.hidden = true;
-    fixWithNucli(editor, applyEditsToText(editor.getValue(), fix.edits), () =>
+    const unmark = fixWithNucli(editor, applyEditsToText(editor.getValue(), fix.edits), () =>
       editor.operation(() => {
         for (const e of [...fix.edits].sort((a, z) => z.start - a.start)) editor.replaceRange(e.text, editor.posFromIndex(e.start), editor.posFromIndex(e.end));
       }),
+      { keep: true },
     );
-    codeNote(editor, editor.posFromIndex(Math.min(...fix.edits.map((e) => e.start))).line, `Fixed: ${fix.title.replace(/`/g, '')}.`, { action: undoAction });
+    codeNote(editor, editor.posFromIndex(Math.min(...fix.edits.map((e) => e.start))).line, `Fixed: ${fix.title.replace(/`/g, '')}.`, { action: undoAction, sticky: true, onClear: unmark });
   }));
   placeTip(editor.charCoords(editor.posFromIndex(anchorFrom), 'window'));
 }
@@ -925,8 +954,8 @@ function renderExtraProblems(text: string) {
     const f = list[Number(b.dataset.xfix)];
     const fx = f.fix!;
     const edits = [{ start: fx.start, end: fx.end, text: fx.text }];
-    fixWithNucli(editor, applyEditsToText(editor.getValue(), edits), () => editor.replaceRange(fx.text, editor.posFromIndex(fx.start), editor.posFromIndex(fx.end)));
-    codeNote(editor, editor.posFromIndex(fx.start).line, `Fixed: ${fx.title.replace(/`/g, '')}.`, { action: undoAction });
+    const unmark = fixWithNucli(editor, applyEditsToText(editor.getValue(), edits), () => editor.replaceRange(fx.text, editor.posFromIndex(fx.start), editor.posFromIndex(fx.end)), { keep: true });
+    codeNote(editor, editor.posFromIndex(fx.start).line, `Fixed: ${fx.title.replace(/`/g, '')}.`, { action: undoAction, sticky: true, onClear: unmark });
     keepFocus(pk.length + Number(b.dataset.xfix));
   }));
 }
@@ -1052,12 +1081,13 @@ function renderProblems(text: string) {
         edits.push(...es);
         fixed++;
       }
-      fixWithNucli(editor, applyEditsToText(editor.getValue(), edits), () =>
+      const unmark = fixWithNucli(editor, applyEditsToText(editor.getValue(), edits), () =>
         editor.operation(() => {
           for (const e of [...edits].sort((a, z) => z.start - a.start)) editor.replaceRange(e.text, editor.posFromIndex(e.start), editor.posFromIndex(e.end));
         }),
+        { keep: true },
       );
-      codeNote(editor, editor.posFromIndex(Math.min(...edits.map((e) => e.start))).line, `Fixed${fixed > 1 ? ` ${fixed}×` : ''}${fixed < g.length ? ` (${g.length - fixed} more once Check has run again)` : ''}: ${fix.title.replace(/`/g, '')}.`, { action: undoAction });
+      codeNote(editor, editor.posFromIndex(Math.min(...edits.map((e) => e.start))).line, `Fixed${fixed > 1 ? ` ${fixed}×` : ''}${fixed < g.length ? ` (${g.length - fixed} more once Check has run again)` : ''}: ${fix.title.replace(/`/g, '')}.`, { action: undoAction, sticky: true, onClear: unmark });
       // Keep the keyboard in the list: focus the problem that is now where this one was (the list re-renders).
       const at = Number(b.dataset.d);
       setTimeout(() => {
@@ -1170,13 +1200,14 @@ function showLineProblems(line: number, at?: number) {
     b.addEventListener('click', () => {
       const [di, fi] = b.dataset.lpFix!.split(':').map(Number);
       const fix = list[di].fixes![fi];
-      fixWithNucli(editor, applyEditsToText(editor.getValue(), fix.edits), () =>
+      const unmark = fixWithNucli(editor, applyEditsToText(editor.getValue(), fix.edits), () =>
         editor.operation(() => {
           for (const e of [...fix.edits].sort((a, z) => z.start - a.start)) editor.replaceRange(e.text, editor.posFromIndex(e.start), editor.posFromIndex(e.end));
         }),
+        { keep: true },
       );
       hideLinePop();
-      codeNote(editor, editor.posFromIndex(Math.min(...fix.edits.map((e) => e.start))).line, `Fixed: ${fix.title.replace(/`/g, '')}.`, { action: undoAction });
+      codeNote(editor, editor.posFromIndex(Math.min(...fix.edits.map((e) => e.start))).line, `Fixed: ${fix.title.replace(/`/g, '')}.`, { action: undoAction, sticky: true, onClear: unmark });
     }),
   );
   linePop.querySelectorAll<HTMLButtonElement>('[data-lp-wrong]').forEach((b) => b.addEventListener('click', () => (hideLinePop(), reportWrongCheck([list[Number(b.dataset.lpWrong)]]))));
@@ -1386,9 +1417,13 @@ const docs = initDocs({ selectTab, handlerHash: () => doc.hash, used: use, pageU
 function placeDocExample(path: string, m: Member) {
   return m.example ? placeExample(editor.getValue(), path, prettyCode(m.example), m.exampleIn ?? 'top') : undefined;
 }
-function insertExample(path: string, m: Member, replace = false) {
+/** Puts the example in; when it can't, says why (Docs shows it under the button). */
+function insertExample(path: string, m: Member, replace = false): string | undefined {
   const r = placeDocExample(path, m);
-  if (!r) return toast("There's no telling where the example goes: the handler doesn't parse (Check lists what's wrong), or its callback is set to a function made elsewhere. Add it by hand.");
+  // Two reasons, told apart so the note says the one that applies.
+  if (!r) return scanHandler(editor.getValue())
+    ? "This example goes inside a callback, and the handler sets that callback to a function made elsewhere, so there's no telling where it belongs. Add it by hand."
+    : "The handler has a syntax error (Check lists it), so there's no telling where the example goes. Fix that first, or add it by hand.";
   // Set already: "Show in handler" goes to that line and keeps the value; only "Replace with the example's value" changes it.
   if (r.action === 'same' || (r.action === 'update' && !replace)) {
     jumpTo(editor.indexFromPos({ line: r.line, ch: 0 }));

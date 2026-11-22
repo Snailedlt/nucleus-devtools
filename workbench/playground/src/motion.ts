@@ -1,19 +1,20 @@
-// Settings → Theme → Motion: how much moves. A preset to pick quickly, and the switches it sets:
-// the interface's own motion, the mascots (lively, play once, still, off), Nucli editing the code during fixes,
-// and What's new playing animations by itself. Kept in this browser. When the device asks for less motion,
+// Settings → Theme → Motion: how much moves. Animations, a level to pick quickly (All, Balanced, Some, None), and the
+// switches it sets: the interface's own motion, Duo and Nucli (lively, still, off), Nucli editing the code during
+// fixes, and What's new playing animations by itself. Kept in this browser. When the device asks for less motion,
 // nothing above "Still" applies, whatever is set.
-export type MascotMotion = 'loop' | 'once' | 'still' | 'off';
+export type MascotMotion = 'loop' | 'still' | 'off';
 export interface Motion { ui: boolean; mascots: MascotMotion; editFx: boolean; newsAuto: boolean }
-export type Preset = 'all' | 'default' | 'calm' | 'still' | 'off';
+export type Preset = 'all' | 'balanced' | 'some' | 'none';
 
 export const PRESETS: Record<Preset, Motion> = {
   all: { ui: true, mascots: 'loop', editFx: true, newsAuto: true },
-  // Nothing that slows you down or covers the code: Nucli's edit animation is opt-in.
-  default: { ui: true, mascots: 'once', editFx: false, newsAuto: true },
-  calm: { ui: true, mascots: 'still', editFx: false, newsAuto: false },
-  still: { ui: false, mascots: 'still', editFx: false, newsAuto: false },
-  off: { ui: false, mascots: 'off', editFx: false, newsAuto: false },
+  // The default: everything moves except what slows you down or covers the code (Nucli's edit animation is opt-in).
+  balanced: { ui: true, mascots: 'loop', editFx: false, newsAuto: true },
+  // The interface still eases into place; Duo and Nucli hold a pose and What's new waits for Play.
+  some: { ui: true, mascots: 'still', editFx: false, newsAuto: false },
+  none: { ui: false, mascots: 'still', editFx: false, newsAuto: false },
 };
+export const DEFAULT_PRESET: Preset = 'balanced';
 const KEY = 'nucleus-workbench-motion';
 const reduce = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
@@ -21,13 +22,14 @@ const reduce = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 export function savedMotion(): Motion {
   try {
     const v = JSON.parse(localStorage.getItem(KEY) ?? 'null');
-    if (v && typeof v === 'object') return { ...PRESETS.default, ...v };
+    // "Play once, then rest" is gone: those mascots are lively now.
+    if (v && typeof v === 'object') return { ...PRESETS[DEFAULT_PRESET], ...v, ...(v.mascots === 'once' ? { mascots: 'loop' } : {}) };
     // The earlier "Mascots" setting (animated, still, off), carried over.
     const old = localStorage.getItem('nucleus-workbench-mascots');
-    if (old === 'still') return { ...PRESETS.default, mascots: 'still' };
-    if (old === 'off') return { ...PRESETS.default, mascots: 'off' };
+    if (old === 'still') return { ...PRESETS[DEFAULT_PRESET], mascots: 'still' };
+    if (old === 'off') return { ...PRESETS[DEFAULT_PRESET], mascots: 'off' };
   } catch { /* private mode */ }
-  return { ...PRESETS.default };
+  return { ...PRESETS[DEFAULT_PRESET] };
 }
 /** What applies: the setting, capped at "Still" when the device asks for less motion. */
 export function motion(): Motion {
