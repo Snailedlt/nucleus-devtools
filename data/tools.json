@@ -51,7 +51,7 @@
     {
       "id": "vscode", "name": "VS Code", "short": "Extension", "slug": "tools/vscode", "title": "VS Code extension",
       "pages": {
-        "commands": { "title": "VS Code: commands", "desc": "Every command the extension adds to VS Code.", "lead": "Every command the extension adds. They're in the Command Palette (`Ctrl+Shift+P`) under *Nucleus*.", "note": "Generated from the extension's `package.json`.",
+        "commands": { "title": "VS Code: commands", "desc": "Every command the extension adds to VS Code, with its keys and what it does.", "lead": "Every command the extension adds. They're in the Command Palette (`Ctrl+Shift+P`) under *Nucleus*. Two of them come with a key, and VS Code's Keyboard Shortcuts editor binds any of the others.", "note": "Generated from the extension's `package.json`.",
           "what": {
             "splitscreenme.whatsNew": "Shows what changed in the version that's installed.",
             "splitscreenme.newHandler": "Asks for the game's name, its `.exe` and what the game needs, and writes a handler from a template.",
@@ -83,7 +83,6 @@
             "splitscreenme.reportCheck": "Reports a check that flags code that's fine, with the rule and the line.",
             "splitscreenme.reportTryIt": "Reports a run where Nucleus Co-op did something else than Try it showed."
           } },
-        "shortcuts": { "title": "VS Code: shortcuts", "desc": "The keys the extension binds in VS Code.", "lead": "The keys the extension binds. VS Code's Keyboard Shortcuts editor changes any of them.", "note": "Generated from the extension's `package.json`." },
         "settings": { "title": "VS Code: settings", "desc": "Every setting of the extension, with its default.", "lead": "The extension's settings, all under `splitscreenme.` in VS Code's Settings.", "note": "Generated from the extension's `package.json`." }
       },
       "line": "Handler support in VS Code and VSCodium, with a Docs panel, Try it and a debugger.",
@@ -119,7 +118,7 @@
         "lead": "The extension is installed from a `.vsix` file. It isn't in the Marketplace yet.",
         "needs": ["VS Code {vscodeVersion} or newer, or VSCodium."],
         "steps": [
-          "Download the `.vsix` from [Get the tools](@site:tools/#get-vscode).",
+          "Download {download:vsix}.",
           "In VS Code, press `Ctrl+Shift+P`, run **Extensions: Install from VSIX…** and pick the file.",
           "Open a handler's `.js` file."
         ],
@@ -195,7 +194,7 @@
         "lead": "One program, `ncdev.exe`, installs the plugin.",
         "needs": ["Windows, with Notepad++ installed.", "Notepad++ closed while setup runs."],
         "steps": [
-          "Download `ncdev.exe` from [Get the tools](@site:tools/#get-notepadpp).",
+          "Download {download:ncdev.exe}.",
           "Double-click it and choose **Set up Notepad++**. In a terminal the same thing is `ncdev setup notepad++`.",
           "Allow it when Windows asks for permission. Notepad++'s folder isn't writable without it.",
           "Open a handler in Notepad++."
@@ -264,9 +263,9 @@
         "desc": "Download ncdev for Windows or Linux, or run it with Node.js.",
         "lead": "`ncdev` is a single file, and nothing else gets installed with it. The workbench and the VS Code extension don't need it.",
         "sections": [
-          { "h": "Windows", "md": "1. Download `ncdev.exe` from [Get the tools](@site:tools/#command-line).\n2. Put it in a folder that's on your PATH. Or run it from its own folder, which in PowerShell is `.\\ncdev`." },
-          { "h": "Linux (x64)", "md": "1. Download `ncdev-linux-x64` from [Get the tools](@site:tools/#command-line).\n2. Make it runnable and put it on your PATH as `ncdev`:\n\n```shell\nchmod +x ncdev-linux-x64 && mkdir -p ~/.local/bin && mv ncdev-linux-x64 ~/.local/bin/ncdev\n```\n\nIf `ncdev --version` isn't found after that, `~/.local/bin` isn't on your PATH yet. Add this line to your shell's startup file (`~/.bashrc` or `~/.zshrc`) and open a new terminal:\n\n```shell\nexport PATH=\"$HOME/.local/bin:$PATH\"\n```" },
-          { "h": "macOS and other systems", "md": "Download `nucleus.js` from the same page and run it with Node.js 18 or newer. Write `node nucleus.js` wherever these pages say `ncdev`." }
+          { "h": "Windows", "md": "1. Download {download:ncdev.exe}.\n2. Put it in a folder that's on your PATH. Or run it from its own folder, which in PowerShell is `.\\ncdev`." },
+          { "h": "Linux (x64)", "md": "1. Download {download:ncdev-linux-x64}.\n2. Make it runnable and put it on your PATH as `ncdev`:\n\n```shell\nchmod +x ncdev-linux-x64 && mkdir -p ~/.local/bin && mv ncdev-linux-x64 ~/.local/bin/ncdev\n```\n\nIf `ncdev --version` isn't found after that, `~/.local/bin` isn't on your PATH yet. Add this line to your shell's startup file (`~/.bashrc` or `~/.zshrc`) and open a new terminal:\n\n```shell\nexport PATH=\"$HOME/.local/bin:$PATH\"\n```" },
+          { "h": "macOS and other systems", "md": "Download `nucleus.js` from [the newest release]({repo}/releases) and run it with Node.js 18 or newer. Write `node nucleus.js` wherever these pages say `ncdev`." }
         ],
         "verify": "`ncdev --version` prints the version.",
         "after": [

@@ -846,17 +846,26 @@ for (const theme of ['light', 'dark']) section(`workbench, ${theme}`, async () =
   check((await s.p.getAttribute('.ctas a.btn.primary', 'href')) .replace(/\?ref=[\w.-]+(#[\w-]+)?$/, '').replace(/index\.html$/, '') === '../', `${theme}: the start page links to its own workbench (by its file in a preview: some hosts don't serve ../)`);
   await axe(s.p, `${theme}, start page`);
   check(!s.errors.length, `${theme}: start page has no page errors`);
-  // The tools page: the downloads, a language-server editor's setup on a click, and old start-page links forwarded.
+  // The tools page: a tile per tool that leads to its setup page in the docs, where the downloads and the steps are;
+  // old links to a tool's steps on this page lead on to that page.
   await s.p.goto(BASE + 'tools/');
   await s.p.waitForTimeout(600);
-  const dl = await s.p.$$eval('#vsix, #ncdev', (a) => a.map((x) => x.getAttribute('href')));
-  check(dl.length === 2 && dl.every((h) => /^https:\/\/github\.com\//.test(h)), `${theme}: tools page links the .vsix and ncdev.exe (${dl.join(', ')})`);
-  await s.p.click('a.ed[data-ed="neovim"]');
-  check(await s.p.isVisible('#setup-neovim'), `${theme}: tools page: a language-server editor shows its setup`);
+  const tiles = await s.p.$$eval('.tool-grid a', (a) => a.map((x) => x.getAttribute('href')));
+  check(tiles.length === 6 && ['vscode', 'notepadpp', 'lsp', 'ncdev'].every((t) => tiles.includes(`../docs/tools/${t}/setup/`)), `${theme}: tools page: a tile per tool, each to its setup page (${tiles.join(', ')})`);
   await axe(s.p, `${theme}, tools page`);
-  await s.p.goto(BASE + 'start/#get-notepadpp');
-  await s.p.waitForTimeout(500);
-  check(/\/tools\/#get-notepadpp$/.test(s.p.url()), `${theme}: an old start-page link to the downloads goes to the tools page (${s.p.url()})`);
+  // The setup pages hand out the files: the .vsix and ncdev, from GitHub.
+  const dls = [];
+  for (const [page, asset] of [['vscode', 'vsix'], ['notepadpp', 'ncdev.exe'], ['ncdev', 'ncdev-linux-x64']]) {
+    await s.p.goto(BASE + `docs/tools/${page}/setup/`);
+    dls.push(await s.p.$eval(`a[data-asset="${asset}"]`, (x) => x.getAttribute('href')).catch(() => `no ${asset} link on ${page}`));
+  }
+  check(dls.every((h) => /^https:\/\/github\.com\//.test(h)), `${theme}: the setup pages link the .vsix and ncdev (${dls.join(', ')})`);
+  check(!(await s.p.content()).includes('__NCDEV'), `${theme}: a setup page has no placeholder left in it`);
+  for (const [old, to] of [['start/#get-notepadpp', 'docs/tools/notepadpp/setup/'], ['tools/#get-vscode', 'docs/tools/vscode/setup/'], ['tools/#setup-helix', 'docs/tools/lsp/setup/'], ['tools/#command-line', 'docs/tools/ncdev/setup/']]) {
+    await s.p.goto(BASE + old);
+    await s.p.waitForURL((u) => u.pathname.endsWith('/' + to), { timeout: 4000 }).catch(() => {});
+    check(new URL(s.p.url()).pathname.endsWith('/' + to), `${theme}: the old link ${old} leads to ${to} (${s.p.url()})`);
+  }
   await checkAiGuide(s, theme);
   // Every page has the way home (the brand) and to the workbench in its header.
   for (const u of ['start/', 'tools/', 'ai/', 'docs/', 'docs/Game.Play/', 'rules/', 'rules/syntax-error/', 'learn/']) {

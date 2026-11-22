@@ -14,6 +14,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 ## Unreleased
 ### ⚠️ Changed
+- **Setting a tool up is in the docs now.** *Get the tools* is a short page with a tile per tool. Each tile leads to that tool's Setup page in the docs, which has the download, the steps and how to check that it worked. Old links to a tool's steps on *Get the tools* lead on to its Setup page.
 - **The Form and Blocks views have been removed.** They were hidden since the last release; a different visual editor is planned instead. If your saved view was one of them, the workbench opens your handler as code and says so once.
 - **A new address: https://snailedlt.github.io/nucleus-devtools/.** The workbench moved into the tools' repository, [nucleus-devtools](https://github.com/Snailedlt/nucleus-devtools), so it's built from the same commit as the checks it runs. Update your bookmarks; your drafts and settings come along (same site, new folder). Reports go to the same forms as the other tools'.
 ### ✨ New

@@ -3,141 +3,42 @@
   <p class="kicker">Get the tools</p>
   <h1>One engine, wherever you write handlers</h1>
   <p class="lede">The same checks, docs, suggestions and Try it in each of them, so pick where you already work. You can use more than one: a handler checked in one is checked the same in the others.</p>
+  <span id="install" class="anchor-alias" aria-hidden="true"></span><span id="try-it-in-5-minutes" class="anchor-alias" aria-hidden="true"></span>
   <ul class="tool-grid">
-    <li><a href="#workbench"><img src="../icon.png" alt="" width="36" height="36"><strong>Workbench</strong><small>In your browser. Nothing to install; also the debugger.</small></a></li>
-    <li><a href="#get-vscode"><img src="../start/editors/vscode.svg" alt="" width="36" height="36"><strong>VS Code</strong><small>Recommended. An extension, also for VSCodium, with the most to show.</small></a></li>
-    <li><a href="#get-notepadpp"><img src="../start/editors/notepadplusplus.svg" alt="" width="36" height="36"><strong>Notepad++</strong><small>A plugin, installed with one command.</small></a></li>
-    <li><a href="#in-your-editor"><img src="../start/editors/lsp.svg" alt="" width="36" height="36"><strong>Other editors</strong><small>Neovim, Helix, Sublime Text, Emacs, Kate, JetBrains, Zed: through a language server.</small></a></li>
-    <li><a href="#command-line"><span class="tg-ico" aria-hidden="true">&gt;_</span><strong>Command line</strong><small><code>ncdev</code>: check, fix, format and test handlers, one at a time or a whole folder.</small></a></li>
-    <li><a href="#ai-agents"><span class="tg-ico" aria-hidden="true">✦</span><strong>AI</strong><small>Claude Code, Codex, Cursor, ChatGPT and others write handlers that load, checked by the same engine.</small></a></li>
+    <li><a id="workbench" href="../?ref=tools"><img src="../icon.png" alt="" width="36" height="36"><strong>Workbench</strong><small>In your browser. Nothing to install; also the debugger.</small><span class="tg-go">Open it</span></a></li>
+    <li><a id="get-vscode" href="../docs/tools/vscode/setup/"><img src="../start/editors/vscode.svg" alt="" width="36" height="36"><strong>VS Code</strong><small>Recommended. An extension, also for VSCodium, with the most to show.</small><span class="tg-go">Download and set up</span></a></li>
+    <li><a id="get-notepadpp" href="../docs/tools/notepadpp/setup/"><img src="../start/editors/notepadplusplus.svg" alt="" width="36" height="36"><strong>Notepad++</strong><small>A plugin, installed by one small program.</small><span class="tg-go">Download and set up</span></a></li>
+    <li><a id="in-your-editor" href="../docs/tools/lsp/setup/"><img src="../start/editors/lsp.svg" alt="" width="36" height="36"><strong>Other editors</strong><small>Neovim, Helix, Sublime Text, Emacs, Kate, JetBrains, Zed: through a language server.</small><span class="tg-go">Set up your editor</span></a></li>
+    <li><a id="command-line" href="../docs/tools/ncdev/setup/"><span class="tg-ico" aria-hidden="true">&gt;_</span><strong>Command line</strong><small><code>ncdev</code>: check, fix, format and test handlers, one at a time or a whole folder.</small><span class="tg-go">Download and install</span></a></li>
+    <li><a id="ai-agents" href="../ai/"><span class="tg-ico" aria-hidden="true">✦</span><strong>AI</strong><small>Claude Code, Codex, Cursor, ChatGPT and others write handlers that load, checked by the same engine.</small><span class="tg-go">Set up your AI</span></a></li>
   </ul>
   </header>
 
-  <section aria-labelledby="workbench">
-  <h2 id="workbench" class="has-anchor">The workbench, in your browser</h2>
-  <p>Open it and start: nothing to install, nothing leaves your browser. It has everything the editors have, plus Lines (every name a handler can use, grouped, one click to insert) beside the code, and a debugger that steps through each player.</p>
-<!--WORKBENCH_EXTRAS-->
-  <div class="ctas"><a class="btn primary" href="../?ref=tools">Open the workbench</a><a class="btn" href="../learn/">Learn: make your first handler</a></div>
+  <section aria-labelledby="which-one">
+  <h2 id="which-one" class="has-anchor">Which one?</h2>
+  <p>If you just want to try it, open the <a href="../?ref=tools">workbench</a>: there's nothing to install. For an editor, we recommend <strong>VS Code</strong>, which shows the most (hovers with docs, a Docs panel, Try it, a debugger). Notepad++ has every feature too, in a plainer way, and other editors get them through a language server.</p>
+  <p><span id="compare-the-editors" class="anchor-alias" aria-hidden="true"></span><a href="../docs/tools/#what-each-tool-can-do">What each tool can do</a>, feature by feature, is in the docs, along with <a href="../docs/tools/">what each tool is</a>. New to handlers? <a href="../learn/">Learn</a> builds a first one with you.</p>
+  <p class="small poll-line">Using an editor nobody has tested yet, or one that's missing? <a href="__EDITOR_POLL__" target="_blank" rel="noopener">Vote in the editor poll on Discord</a> (<a href="__DISCORD_INVITE__" target="_blank" rel="noopener">join the server</a> first if you're new). It decides which editors get tested next.</p>
   </section>
-
-  <section aria-labelledby="in-your-editor">
-  <span id="install" class="anchor-alias" aria-hidden="true"></span><span id="try-it-in-5-minutes" class="anchor-alias" aria-hidden="true"></span><span id="any-editor-with-a-language-server-lsp" class="anchor-alias" aria-hidden="true"></span><h2 id="in-your-editor" class="has-anchor">In your editor</h2>
-  <p>Pick yours to see how to set it up. We recommend <strong>VS Code</strong>: it shows the most (hovers with docs, a Docs panel, Try it, a debugger). Notepad++ has every feature too, in a plainer way. The others get them through a <strong>language server</strong> (LSP): <code>ncdev lsp</code>, with <code>ncdev</code> on your PATH: <a data-asset="ncdev.exe" href="__NCDEV_URL__"><code>ncdev.exe</code></a> (Windows) or <a data-asset="ncdev-linux-x64" href="__NCDEV_LINUX_URL__"><code>ncdev-linux-x64</code></a> (Linux x64; <code class="cmd">chmod +x ncdev-linux-x64 &amp;&amp; mkdir -p ~/.local/bin &amp;&amp; mv ncdev-linux-x64 ~/.local/bin/ncdev</code>, with <code>~/.local/bin</code> on your PATH). Elsewhere, ARM Linux included, <code>node nucleus.js</code> from a <a href="https://github.com/Snailedlt/nucleus-devtools/releases">release</a> works in its place.</p>
-<ul class="editors dev"><li><a class="ed full" id="get-vscode" data-ed="vscode" href="#get-vscode"><img src="../start/editors/vscode.svg" alt="" width="40" height="40"><span><strong>VS Code</strong><small>Extension · also VSCodium</small></span><span class="ed-tag rec">Recommended</span></a></li><li><a class="ed full" id="get-notepadpp" data-ed="notepadpp" href="#get-notepadpp"><img src="../start/editors/notepadplusplus.svg" alt="" width="40" height="40"><span><strong>Notepad++</strong><small>Plugin, one command</small></span><span class="ed-tag full">Full support</span></a></li><!--ED_TILES--><li><a class="ed" data-ed="any" href="https://github.com/Snailedlt/nucleus-devtools#your-own-editor-for-experienced-developers" rel="noopener"><img src="../start/editors/lsp.svg" alt="" width="40" height="40" loading="lazy"><span><strong>Anything with LSP</strong><small><code>ncdev lsp</code> over stdio</small></span><span class="ed-tag">Untested</span></a></li></ul>
-<p class="small poll-line">Using an editor marked Untested, or one that's missing? <a href="__EDITOR_POLL__" target="_blank" rel="noopener">Vote in the editor poll on Discord</a> (<a href="__DISCORD_INVITE__" target="_blank" rel="noopener">join the server</a> first if you're new). It decides which editors get tested next.</p>
-<div class="ed-steps" id="ed-steps"><div class="ed-step" id="setup-vscode" hidden><h3>VS Code</h3><ol>
-<li>Download <a id="vsix" href="__VSIX_URL__"><strong id="vsix-name">__VSIX_NAME__</strong></a> (<span id="vsix-tag">__VSIX_TAG__</span>).</li>
-<li>In VS Code: <kbd>Ctrl+Shift+P</kbd> › <strong>Extensions: Install from VSIX…</strong> › the file.</li>
-<li>Open a handler: problems are underlined, hover for docs, <kbd>Ctrl+.</kbd> for fixes, <strong>▷</strong> for Try it.</li></ol><p class="small">If nothing happens, and how to update: <a href="../docs/tools/vscode/setup/">Set up VS Code</a>.</p></div><div class="ed-step" id="setup-notepadpp" hidden><h3>Notepad++</h3><ol>
-<li>Download <a id="ncdev" data-asset="ncdev.exe" href="__NCDEV_URL__"><code>ncdev.exe</code></a> and close Notepad++.</li>
-<li>Double-click it and choose <strong>Set up Notepad++</strong> (or run <code class="cmd">.\ncdev setup notepad++</code> in its folder). When Windows asks for permission, allow it.</li>
-<li>Open a handler: everything is under <strong>Plugins › Nucleus Co-op handlers</strong>.</li></ol><p class="small">A portable Notepad++ (no permission needed): <code class="cmd">.\ncdev setup notepad++ --path "C:\path\to\Notepad++"</code></p><p class="small">A Windows warning, what setup changes, and how to update: <a href="../docs/tools/notepadpp/setup/">Set up Notepad++</a>.</p></div><!--ED_STEPS--><div class="ed-step" id="setup-any" hidden><h3>Any other editor</h3><ol><li>Point its LSP client at <code>ncdev lsp</code> (stdio) for JavaScript files. It only answers for handler files, so your usual JavaScript server keeps working.</li>
-<li>Settings, Fix all, Try it and the debugger (<code>ncdev dap</code>) for each editor: <a href="https://github.com/Snailedlt/nucleus-devtools/blob/main/PORTING.md">PORTING.md</a>.</li></ol></div></div>
-  <p class="small">Something wrong, or an editor that doesn't work? <a href="https://github.com/Snailedlt/nucleus-devtools/issues/new?template=tester-feedback.yml">Tell us</a>. Every editor in detail: <a href="../docs/tools/lsp/setup/">Set up another editor</a>.</p>
-  </section>
-
-  <section aria-labelledby="command-line">
-  <h2 id="command-line" class="has-anchor">The command line: ncdev</h2>
-  <p><code>ncdev</code> (Nucleus Co-op dev tools) is the same engine on the command line: check a handler or a whole <code>handlers</code> folder, fix and format it, Try it, look up an option, search the Hub, and package or install a handler. It also runs the servers for other editors and AI agents.</p>
-  <p><strong>Windows or Linux, nothing else to install:</strong> download <a data-asset="ncdev.exe" href="__NCDEV_URL__"><code>ncdev.exe</code></a> (run it from a terminal in its folder; in PowerShell, as <code>.\ncdev</code>) or <a data-asset="ncdev-linux-x64" href="__NCDEV_LINUX_URL__"><code>ncdev-linux-x64</code></a> (for x64: <code>chmod +x</code> it, and put it on your PATH as <code>ncdev</code>). <code>ncdev update</code> keeps it current. <strong>Elsewhere (a Mac, ARM Linux), with Node.js 18+:</strong> <code>nucleus.js</code> from <a href="https://github.com/Snailedlt/nucleus-devtools/releases">a release</a> does the same (<code>node nucleus.js lint MyGame.js</code>).</p>
-<pre class="cfg" tabindex="0" aria-label="Examples of ncdev commands" data-lang="shell"><code>ncdev lint MyGame.js            # every problem, with line and why
-ncdev lint handlers --fix       # apply the safe fixes in a whole folder
-ncdev format MyGame.js --write  # indentation, spacing, quotes and semicolons
-ncdev simulate MyGame.js        # Try it: what each player gets
-ncdev api Game.KillMutex        # an option's type, default and docs
-ncdev hub search "borderlands"  # how other handlers did it</code></pre>
-  <p class="small"><code>ncdev --help</code> lists everything; <a href="https://github.com/Snailedlt/nucleus-devtools#the-command-line-tool-ncdev">more in the README</a>. It isn't code-signed yet, so Windows SmartScreen may ask once (<strong>More info › Run anyway</strong>).</p>
-  </section>
-
-  <section aria-labelledby="ai-agents">
-  <h2 id="ai-agents" class="has-anchor">AI agents and chatbots</h2>
-  <p>Agents guess option names from memory, and Nucleus quietly ignores the wrong ones. The agent kit gives them the real API and the same checks, so what they write loads and works.</p>
-  <div class="ctas"><a class="btn primary" href="../ai/">Set up your AI</a></div>
-  <p class="small">Prompts to copy for Claude Code, other agents and chatbots: the agent sets the tools up itself. Or by hand:</p>
-  <ul class="facts">
-    <li><strong>Claude Code:</strong> <code class="cmd">/plugin marketplace add __CLAUDE_MARKETPLACE__</code>, then <code class="cmd">/plugin install __CLAUDE_PLUGIN__</code>. Its skill loads when you ask about handlers.</li>
-    <li><strong>VS Code (Copilot agent mode):</strong> nothing to set up. The extension brings the tools; turn them on under <strong>MCP Servers</strong> in the Extensions view.</li>
-    <li><strong>Claude Desktop, Cursor and other MCP clients:</strong> <code>ncdev mcp</code> serves the tools (check, fix, Try it, API lookup, Hub search). <a href="https://github.com/Snailedlt/nucleus-devtools#mcp-server-claude-desktop-cursor-vs-code-copilot-">The setup</a>.</li>
-    <li><strong>Any agent in your handler folder:</strong> <a href="https://github.com/Snailedlt/nucleus-devtools#any-agent-in-your-handler-folder">the agent kit</a> (the skill, the API reference and a one-file command-line tool).</li>
-  </ul>
-  </section>
-
-  <section aria-labelledby="compare-the-editors">
-  <details class="more" open><summary><h3 id="compare-the-editors">Compare the tools</h3></summary>
-<p class="small">One engine runs underneath all of them: the checks, suggestions and docs are the same. What differs is what each editor can show.</p>
-<div class="compare-wrap" tabindex="0" role="region" aria-label="Features by editor (scrolls sideways)">
-<table class="compare">
-<!--COMPARE-->
-</table>
-</div>
-</details>
-</section>
 </main>
 <footer class="small">Beta. It checks the handler script, not the game: windows, focus and input still need a real test in Nucleus. Nothing on your computer changes until you press Install or Test in Nucleus.<p style="margin:8px 0 0"><!--COMMUNITY_FOOTER--></p><p style="margin:8px 0 0">Made by <a href="https://github.com/Snailedlt" rel="author">Snailedlt</a> (Jørgen KH).</p></footer>
 <script>
-// The language-server editors: a click shows that editor's setup below the row.
+// The setup steps and downloads that used to be on this page are in the docs now, a page per tool. A link to one of
+// them (#get-vscode, #setup-helix, #command-line…) leads on to that page.
 (function () {
-  var box = document.getElementById('ed-steps');
-  if (!box) return;
-  var links = document.querySelectorAll('a.ed[data-ed]');
-  links.forEach(function (a) {
-    a.setAttribute('role', 'button');
-    a.setAttribute('aria-expanded', 'false');
-    a.setAttribute('aria-controls', 'setup-' + a.dataset.ed);
-    a.addEventListener('click', function (e) {
-      e.preventDefault();
-      var open = a.getAttribute('aria-expanded') !== 'true';
-      links.forEach(function (b) { b.setAttribute('aria-expanded', 'false'); });
-      box.querySelectorAll('.ed-step').forEach(function (d) { d.hidden = true; });
-      if (open) { a.setAttribute('aria-expanded', 'true'); document.getElementById('setup-' + a.dataset.ed).hidden = false; }
-    });
-    a.addEventListener('keydown', function (e) { if (e.key === ' ') { e.preventDefault(); a.click(); } });
-  });
-  // A link to an editor (#get-vscode, #setup-helix) opens its steps.
-  function fromHash() {
-    var h = decodeURIComponent(location.hash.slice(1)), t = h && document.getElementById(h);
-    var tile = t && t.matches('a.ed[data-ed]') ? t : /^setup-/.test(h) ? document.querySelector('a.ed[data-ed="' + h.slice(6) + '"]') : null;
-    if (tile && tile.getAttribute('aria-expanded') !== 'true') { tile.click(); tile.scrollIntoView({ block: 'start' }); }
+  var MOVED = {
+    'get-vscode': 'docs/tools/vscode/setup/', 'setup-vscode': 'docs/tools/vscode/setup/',
+    'get-notepadpp': 'docs/tools/notepadpp/setup/', 'setup-notepadpp': 'docs/tools/notepadpp/setup/',
+    'in-your-editor': 'docs/tools/lsp/setup/', 'any-editor-with-a-language-server-lsp': 'docs/tools/lsp/setup/', 'setup-any': 'docs/tools/lsp/setup/',
+    'command-line': 'docs/tools/ncdev/setup/', 'ai-agents': 'ai/', 'compare-the-editors': 'docs/tools/#what-each-tool-can-do'
+  };
+  function go() {
+    var h = decodeURIComponent(location.hash.slice(1));
+    var to = MOVED[h] || (/^setup-[a-z0-9-]+$/.test(h) ? 'docs/tools/lsp/setup/' : '');
+    if (to) location.replace('../' + to);
   }
-  addEventListener('hashchange', fromHash);
-  fromHash();
-})();
-// A link to a heading inside a folded part (#compare-the-editors…) opens that part first.
-(function () {
-  function reveal() {
-    var t = location.hash && document.getElementById(decodeURIComponent(location.hash.slice(1)));
-    for (var d = t && t.closest('details'); d; d = d.parentElement && d.parentElement.closest('details')) d.open = true;
-    if (t && t.closest('details')) t.scrollIntoView();
-  }
-  addEventListener('hashchange', reveal);
-  reveal();
-})();
-// The link above is the newest release when the site was built; this swaps in the newest one now
-// (pre-releases included; only the extension's v… tags, not the workbench's updates or the test build), so a new
-// release shows up without a rebuild. Keeps the built link on any error.
-// A local test site (build.mjs --test-build) keeps its test build.
-(function () {
-  if (!window.fetch || document.getElementById('vsix').dataset.pinned) return;
-  fetch('https://api.github.com/repos/Snailedlt/nucleus-devtools/releases?per_page=30', { headers: { accept: 'application/vnd.github+json' } })
-    .then(function (r) { return r.ok ? r.json() : null; })
-    .then(function (list) {
-      if (!Array.isArray(list)) return;
-      for (var i = 0; i < list.length; i++) {
-        var rel = list[i];
-        if (rel.draft || !/^v\d/.test(rel.tag_name)) continue;
-        for (var j = 0; j < rel.assets.length; j++) {
-          var a = rel.assets[j];
-          if (!/\.vsix$/.test(a.name) || !/^https:\/\/github\.com\//.test(a.browser_download_url)) continue;
-          document.getElementById('vsix').href = a.browser_download_url;
-          document.getElementById('vsix-name').textContent = a.name;
-          document.getElementById('vsix-tag').textContent = rel.tag_name;
-          // Every download link names its file (data-asset): each gets this release's.
-          for (var k = 0; k < rel.assets.length; k++) document.querySelectorAll('[data-asset="' + rel.assets[k].name + '"]').forEach(function (l) { l.href = rel.assets[k].browser_download_url; });
-          return;
-        }
-      }
-    })
-    .catch(function () {});
+  addEventListener('hashchange', go);
+  go();
 })();
 </script>
 </body>

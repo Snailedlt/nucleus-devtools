@@ -17,7 +17,7 @@
 // tool-docs-read.mjs reads those sources, tool-docs-text.mjs turns text into HTML, tool-docs-parts.mjs has the
 // building blocks (lead, facts, screenshots, diagrams, tables, the Related list), and tool-docs.css is the styles.
 import fs from 'node:fs';
-import { esc, toolText, keys, use, table, rich, slug } from './tool-docs-text.mjs';
+import { esc, toolText, keys, use, table, rich, slug, RELEASE_SCRIPT } from './tool-docs-text.mjs';
 import { lead, facts, video, shots, sections, related, coreDiagram, flowDiagram, keyTable, SHOT_SCRIPT } from './tool-docs-parts.mjs';
 import { parseHelp, parseNppMenu } from './tool-docs-read.mjs';
 
@@ -146,18 +146,18 @@ function whatOf(c, text, names, where) {
   if (gone.length) throw new Error(`tool docs: "what" describes ${where} that no longer exist: ${gone.join(', ')}.`);
   return (name) => (what[name] ? rich(what[name], c) : '');
 }
-/** VS Code: every command, as the Command Palette names it, and what it does. */
+/** VS Code: every command, as the Command Palette names it, the keys the extension binds to it (a few have some)
+ *  and what it does. */
 function vscodeCommands(c, text) {
-  const { commands, title } = vscodeManifest(c);
+  const { contributes, commands, title } = vscodeManifest(c);
   const what = whatOf(c, text, commands.map((x) => x.command), 'commands');
-  return { html: table(['Command', 'What it does'], commands.map((x) => [esc(title[x.command]), what(x.command)])) };
-}
-/** VS Code: the keys the extension binds. */
-function vscodeShortcuts(c) {
-  const { contributes, title } = vscodeManifest(c);
   const cap = (k) => k.replace(/\b\w/g, (x) => x.toUpperCase());
   const keyCell = (k) => keys(cap(k.key)) + (k.mac && k.mac !== k.key ? ` <span class="small">(Mac: ${keys(cap(k.mac).replace(/\bCmd\b/g, '⌘'))})</span>` : '');
-  return { html: table(['Command', 'Keys'], (contributes.keybindings ?? []).map((k) => [esc(title[k.command] ?? k.command), keyCell(k)])) };
+  const bound = contributes.keybindings ?? [];
+  const stray = bound.filter((k) => !title[k.command]).map((k) => k.command);
+  if (stray.length) throw new Error(`tool docs: the extension binds keys to commands it doesn't list: ${stray.join(', ')}.`);
+  const keysOf = (id) => bound.filter((k) => k.command === id).map(keyCell).join('<br>');
+  return { html: table(['Command', 'Keys', 'What it does'], commands.map((x) => [esc(title[x.command]), keysOf(x.command), what(x.command)])) };
 }
 /** VS Code: every setting, with its default. */
 function vscodeSettings(c) {
@@ -225,7 +225,7 @@ function mcpTools(c) {
 }
 
 const REFERENCE = {
-  vscode: { commands: vscodeCommands, shortcuts: vscodeShortcuts, settings: vscodeSettings },
+  vscode: { commands: vscodeCommands, settings: vscodeSettings },
   notepadpp: { commands: notepadppCommands },
   lsp: { commands: porting("## What's VS Code only today, and how to get it elsewhere"), settings: porting('### Settings'), detection: porting('## How handler files are detected') },
   ncdev: { commands: ncdevCommands, options: ncdevOptions },
@@ -332,7 +332,7 @@ ${flowDiagram(c, index.path)}`;
  * The Tools pages, in the order of the docs list: a group per tool (the workbench's pages; for the others the overview,
  * the setup, then a reference page per kind). The Tools page itself (`index`) compares them.
  * @returns {{ pages: { slug: string, group: string, title: string, nav: string, hit?: string, desc: string, html?: string, intro?: string, md?: string, mdHref?: (u: string) => string, outro?: string }[],
- *   index: string, media: string[], css: string, js: string }} `js`: for the pages with screenshots (their slider). `nav`: the page's name under its group in the docs list; `hit`: its
+ *   index: string, media: string[], css: string, js: string }} `js`: for the pages with screenshots (their slider); `releaseJs`: for the ones with download links. `nav`: the page's name under its group in the docs list; `hit`: its
  *   name where the group isn't shown (the filter's results). `media`: the screenshots the pages show, for the build to copy.
  */
 export function toolDocs(d) {
@@ -340,5 +340,5 @@ export function toolDocs(d) {
   const pages = d.tools.tools.flatMap((t) => (t.id === 'workbench'
     ? [...d.guide.pages.map((page, i) => guidePage(c, page, i)), ...referencePages(c, t.id)]
     : [toolPage(c, t.id), ...(t.setup ? [setupPage(c, t.id)] : []), ...referencePages(c, t.id)]));
-  return { pages, index: indexPage(c), media: [...c.used], css: CSS, js: SHOT_SCRIPT };
+  return { pages, index: indexPage(c), media: [...c.used], css: CSS, js: SHOT_SCRIPT, releaseJs: RELEASE_SCRIPT };
 }

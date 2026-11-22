@@ -122,7 +122,7 @@ const guideFixture = () => {
   const setup = (id) => ({ slug: `tools/${id}/setup`, title: `Set up ${id}`, desc: `Install ${id}.`, lead: `Installs ${id}.`, needs: ['A computer.'], steps: ['Download it.', 'Press `F8`.'], verify: 'It says hello.', after: [{ h: 'Updating', md: 'Do it again.' }], related: [`[${id}](@docs:tools/${id})`] });
   const WHAT = { vscode: { 'sample.run': 'Runs it & **checks** `x`.' }, notepadpp: { 'Check & fix': 'Fixes the <line>.' } };
   const ref = (id, ...kinds) => Object.fromEntries(kinds.map((k) => [k, { title: `${id}: ${k}`, desc: `The ${k} of ${id}.`, lead: `Every ${k} of \`${id}\`.`, ...(k === 'commands' ? { note: `From ${id} & its source.`, ...(WHAT[id] ? { what: WHAT[id] } : {}) } : {}) }]));
-  const PAGES = { vscode: ['commands', 'shortcuts', 'settings'], notepadpp: ['commands'], lsp: ['commands', 'settings', 'detection'], ncdev: ['commands', 'options'], mcp: ['tools'] };
+  const PAGES = { vscode: ['commands', 'settings'], notepadpp: ['commands'], lsp: ['commands', 'settings', 'detection'], ncdev: ['commands', 'options'], mcp: ['tools'] };
   const tool = (id) => ({ id, name: `${id} group`, slug: `tools/${id}`, title: id, short: id, line: `The ${id} line.`, summary: `What ${id} is.`, facts: [['Runs on', `Anything & [setup](@docs:tools/${id}/setup)`]], related: [`[Set up](@docs:tools/${id}/setup)`], setup: setup(id), pages: ref(id, ...PAGES[id]) });
   const pg = (id, extra = {}) => ({ id, slug: `tools/workbench/${id}`, nav: id, title: id, desc: `About ${id}.`, intro: `Intro of ${id}.`, ...extra });
   const lsp = tool('lsp');
@@ -152,8 +152,8 @@ const fixtureSources = () => ({
   help: 'Commands:\n  run <file>'.padEnd('Commands:\n'.length + 30) + 'Read `<file>` & **check** it\n\nExit code: 1 on errors;\n2 on bad usage.\n',
   pkg: { engines: { vscode: '^1.85.0' }, contributes: {
     configuration: [{ properties: { enabled: { default: false, description: 'Show <details>' } } }, { properties: { paths: { default: {} } } }],
-    commands: [{ command: 'sample.run', category: 'Sample', title: 'Run & check' }],
-    keybindings: [{ command: 'sample.run', key: 'ctrl+r', mac: 'cmd+r' }, { command: 'sample.other', key: 'f5', mac: 'f5' }],
+    commands: [{ command: 'sample.run', category: 'Sample', title: 'Run & check' }, { command: 'sample.other', title: 'Other' }],
+    keybindings: [{ command: 'sample.run', key: 'ctrl+r', mac: 'cmd+r' }, { command: 'sample.run', key: 'f5', mac: 'f5' }],
   } },
   nppCpp: 'static FuncItem funcs[] = {{L"Check & fix", run, 0, false, &altEnter}};',
   actions: [{ id: 'zoom', label: 'Zoom <in>', group: 'View', keys: 'Ctrl+K Ctrl+0', mac: 'Cmd+K Cmd+0', where: 'fixed' }],
@@ -170,7 +170,7 @@ test('tool docs: every tool is a group with the same kinds of page: the workbenc
   const bySlug = Object.fromEntries(pages.map((page) => [page.slug, page]));
   assert.deepEqual(Object.keys(bySlug), [
     'tools/workbench', 'tools/workbench/editor', 'tools/workbench/check', 'tools/workbench/try-it', 'tools/workbench/files', 'tools/workbench/settings', 'tools/workbench/shortcuts',
-    'tools/vscode', 'tools/vscode/setup', 'tools/vscode/commands', 'tools/vscode/shortcuts', 'tools/vscode/settings',
+    'tools/vscode', 'tools/vscode/setup', 'tools/vscode/commands', 'tools/vscode/settings',
     'tools/notepadpp', 'tools/notepadpp/setup', 'tools/notepadpp/commands',
     'tools/lsp', 'tools/lsp/setup', 'tools/lsp/commands', 'tools/lsp/settings', 'tools/lsp/detection',
     'tools/ncdev', 'tools/ncdev/setup', 'tools/ncdev/commands', 'tools/ncdev/options',
@@ -178,7 +178,7 @@ test('tool docs: every tool is a group with the same kinds of page: the workbenc
   // The docs list: a group per tool (its `name`).
   assert.deepEqual(pages.map((page) => page.group).filter((g, i, all) => all.indexOf(g) === i), ['Workbench', 'vscode group', 'notepadpp group', 'lsp group', 'ncdev group', 'mcp group']);
   // Under its group a page goes by its kind; where the group isn't shown (the filter), by its own title.
-  assert.deepEqual(pages.filter((p) => p.group === 'vscode group').map((p) => [p.nav, p.hit]), [['Overview', 'vscode'], ['Setup', 'Set up vscode'], ['Commands', 'vscode: commands'], ['Shortcuts', 'vscode: shortcuts'], ['Settings', 'vscode: settings']]);
+  assert.deepEqual(pages.filter((p) => p.group === 'vscode group').map((p) => [p.nav, p.hit]), [['Overview', 'vscode'], ['Setup', 'Set up vscode'], ['Commands', 'vscode: commands'], ['Settings', 'vscode: settings']]);
 
   // An overview page: what the tool is, its facts, its written sections, then one Related list. No reference on it.
   const vscode = bySlug['tools/vscode'].html;
@@ -190,10 +190,8 @@ test('tool docs: every tool is a group with the same kinds of page: the workbenc
   const commands = bySlug['tools/vscode/commands'];
   assert.equal(commands.title, 'vscode: commands');
   assert.equal(commands.desc, 'The commands of vscode.');
-  assert.match(commands.html, /^<p class="lead">Every commands of <code>vscode<\/code>\.<\/p>\n<table><thead><tr><th>Command<\/th><th>What it does<\/th><\/tr><\/thead><tbody><tr><td>Sample: Run &amp; check<\/td><td>Runs it &amp; <strong>checks<\/strong> <code>x<\/code>\.<\/td><\/tr><\/tbody><\/table>\n<p class="small">From vscode &amp; its source\.<\/p>\n<h2 id="related">Related<\/h2>\n<ul class="dlist related"><li><a href="__UP__docs\/tools\/vscode\/">vscode<\/a><\/li><\/ul>$/);
-  const keys = bySlug['tools/vscode/shortcuts'].html;
-  assert.match(keys, /Sample: Run &amp; check<\/td><td><kbd>Ctrl\+R<\/kbd> .*<kbd>⌘\+R<\/kbd>/);
-  assert.match(keys, /sample\.other<\/td><td><kbd>F5<\/kbd><\/td>/);
+  assert.match(commands.html, /^<p class="lead">Every commands of <code>vscode<\/code>\.<\/p>\n<table><thead><tr><th>Command<\/th><th>Keys<\/th><th>What it does<\/th><\/tr><\/thead><tbody><tr><td>Sample: Run &amp; check<\/td><td><kbd>Ctrl\+R<\/kbd> <span class="small">\(Mac: <kbd>⌘\+R<\/kbd>\)<\/span><br><kbd>F5<\/kbd><\/td><td>Runs it &amp; <strong>checks<\/strong> <code>x<\/code>\.<\/td><\/tr><tr><td>Other<\/td><td><\/td><td><\/td><\/tr><\/tbody><\/table>\n<p class="small">From vscode &amp; its source\.<\/p>\n<h2 id="related">Related<\/h2>\n<ul class="dlist related"><li><a href="__UP__docs\/tools\/vscode\/">vscode<\/a><\/li><\/ul>$/);
+  // A key bound to a command the extension doesn't list would vanish from the page: the build stops instead.
   const settings = bySlug['tools/vscode/settings'].html;
   assert.match(settings, /<code>enabled<\/code><\/td><td><code>false<\/code><\/td><td>Show &lt;details&gt;/);
   assert.match(settings, /<code>paths<\/code><\/td><td><\/td>/);
@@ -221,6 +219,7 @@ test('tool docs: every tool is a group with the same kinds of page: the workbenc
   // A kind nothing generates, or one that isn't a kind, stops the build.
   const odd = (change) => () => { const d = { ...guideFixture(), ...fixtureSources() }; change(d.tools.tools); toolDocs(d); };
   assert.throws(odd((tools) => { tools[4].pages.shortcuts = { title: 'x', desc: 'x', lead: 'x' }; }), /nothing generates ncdev's "shortcuts" page/);
+  assert.throws(() => toolDocs({ ...guideFixture(), ...fixtureSources(), pkg: { contributes: { commands: [{ command: 'sample.run', title: 'Run' }], keybindings: [{ command: 'sample.gone', key: 'f6' }] } } }), /binds keys to commands it doesn't list: sample\.gone/);
   assert.throws(odd((tools) => { tools[4].pages.recipes = { title: 'x', desc: 'x', lead: 'x' }; }), /a kind that isn't in "kinds": recipes/);
   // A line about a command that no longer exists stops the build too.
   assert.throws(odd((tools) => { tools[1].pages.commands.what = { 'sample.gone': 'x' }; }), /"what" describes commands that no longer exist: sample\.gone/);
@@ -282,6 +281,9 @@ test('tool docs: written sections are laid out from data: a diagram, steps, a co
   // The written part ends with Related; the reference is on the tool's other pages.
   assert.ok(page.indexOf('id="getting-it"') < page.indexOf('id="related"'));
   // Text helpers on their own.
+  assert.equal(rich('Download {download:ncdev.exe}.', {}), 'Download <a class="dl" data-asset="ncdev.exe" href="__NCDEV_URL__"><code>ncdev.exe</code></a>.');
+  assert.match(rich('Get {download:vsix}', {}), /^Get <a class="dl" data-asset="vsix" href="__VSIX_URL__"><strong>__VSIX_NAME__<\/strong><\/a> \(<span data-asset-tag>__VSIX_TAG__<\/span>\)$/);
+  assert.throws(() => rich('{download:setup.msi}', {}), /\{download:setup\.msi\} is not a file a release hands out/);
   const c = { repo: 'https://example.test/r', keyOf: () => 'F8', guideHref: (id) => `__UP__docs/guide/${id}/` };
   assert.equal(rich('[a]({repo}/x?y=1&z=2) and [b](@guide:check#keys), {key:any}, `F8`, `=`', c), '<a href="https://example.test/r/x?y=1&z=2">a</a> and <a href="__UP__docs/guide/check/#keys">b</a>, <kbd>F8</kbd>, <kbd>F8</kbd>, <code>=</code>');
   assert.equal(blocks('One.\n\n- a\n- b\n\n```\nx < y\n```', c), '<p>One.</p>\n<ul class="dlist"><li>a</li><li>b</li></ul>\n<pre class="cfg"><code>x &lt; y</code></pre>');

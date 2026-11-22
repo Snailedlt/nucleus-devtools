@@ -27,10 +27,46 @@ const KEYISH = new RegExp(`^(?:(?:${MOD})+[.,[\\]]|(?:${MOD})*(?:F\\d{1,2}|Esc|T
 
 /**
  * One line of written text: `code` and `keys`, **bold**, *emphasis*, {key:<action id>} for a shortcut, {repo} for
- * this repository, {vscodeVersion} for the oldest VS Code the extension runs in, and links: https://…,
+ * this repository, {vscodeVersion} for the oldest VS Code the extension runs in, {download:<file>} for a link to that
+ * file of the newest release (DOWNLOADS), and links: https://…,
  * @guide:<page id>, @site:<path>, @docs:<slug>, each with an optional #part.
  * `c`: { keyOf(id), guideHref(id), docHref(slug), repo, vscodeVersion }. Something it names that doesn't exist stops the build.
  */
+/** The files a setup page hands out: a link to the newest release's, by the file's name there (`vsix`: the
+ *  extension, whose file name has the version in it). The build puts in the address it knows (the placeholders), and
+ *  RELEASE_SCRIPT swaps in a newer release's when the page is opened. */
+export const DOWNLOADS = {
+  vsix: '<a class="dl" data-asset="vsix" href="__VSIX_URL__"><strong>__VSIX_NAME__</strong></a> (<span data-asset-tag>__VSIX_TAG__</span>)',
+  'ncdev.exe': '<a class="dl" data-asset="ncdev.exe" href="__NCDEV_URL__"><code>ncdev.exe</code></a>',
+  'ncdev-linux-x64': '<a class="dl" data-asset="ncdev-linux-x64" href="__NCDEV_LINUX_URL__"><code>ncdev-linux-x64</code></a>',
+};
+/** For the pages with download links: the newest release now (the extension's v… tags, pre-releases included; not
+ *  the workbench's updates or the test build), so a new release shows up without a rebuild. Any error keeps the
+ *  built links. A test site built with a test build keeps it (data-pinned). */
+export const RELEASE_SCRIPT = `(function () {
+  var links = document.querySelectorAll('a[data-asset]');
+  if (!window.fetch || !links.length || document.querySelector('a[data-asset][data-pinned]')) return;
+  fetch('https://api.github.com/repos/Snailedlt/nucleus-devtools/releases?per_page=30', { headers: { accept: 'application/vnd.github+json' } })
+    .then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (list) {
+      if (!Array.isArray(list)) return;
+      for (var i = 0; i < list.length; i++) {
+        var rel = list[i];
+        if (rel.draft || !/^v\\d/.test(rel.tag_name)) continue;
+        var vsix = rel.assets.filter(function (a) { return /\\.vsix$/.test(a.name) && /^https:\\/\\/github\\.com\\//.test(a.browser_download_url); })[0];
+        if (!vsix) continue;
+        links.forEach(function (l) {
+          if (l.dataset.asset === 'vsix') { l.href = vsix.browser_download_url; (l.querySelector('strong') || l).textContent = vsix.name; return; }
+          var a = rel.assets.filter(function (x) { return x.name === l.dataset.asset; })[0];
+          if (a && /^https:\\/\\/github\\.com\\//.test(a.browser_download_url)) l.href = a.browser_download_url;
+        });
+        document.querySelectorAll('[data-asset-tag]').forEach(function (t) { t.textContent = rel.tag_name; });
+        return;
+      }
+    })
+    .catch(function () {});
+})();`;
+
 export function rich(t, c) {
   const link = (u) => {
     if (/^https?:/.test(u)) return u;
@@ -42,12 +78,15 @@ export function rich(t, c) {
   return esc(t)
     .replace(/\{(repo|vscodeVersion)\}/g, (_, name) => c[name] ?? '')
     .replace(/\{key:(\w+)\}/g, (_, id) => keys(c.keyOf(id)))
+    .replace(/\{download:([\w.-]+)\}/g, (_, file) => { if (!DOWNLOADS[file]) throw new Error(`tool docs: {download:${file}} is not a file a release hands out (DOWNLOADS in tool-docs-text.mjs).`); return `\u0001dl:${file}\u0001`; })
     // Plain <code>: the site's page pass colours what is clearly code (`Game.Play`) and leaves the rest (a file name,
     // a command) as it is. Command usage keeps its own class (use(), above), which that pass skips.
     .replace(/`([^`]+)`/g, (_, x) => (KEYISH.test(x) ? `<kbd>${x}</kbd>` : `<code>${x}</code>`))
     .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
     .replace(/(^|[\s(])\*([^*\s][^*]*)\*/g, '$1<em>$2</em>')
-    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, text, u) => `<a href="${link(u.replace(/&amp;/g, '&'))}">${text}</a>`);
+    .replace(/\[([^\]]+)\]\(([^)\s]+)\)/g, (_, text, u) => `<a href="${link(u.replace(/&amp;/g, '&'))}">${text}</a>`)
+    // Last, so the link's own markup isn't read as text above.
+    .replace(/\u0001dl:([\w.-]+)\u0001/g, (_, file) => DOWNLOADS[file]);
 }
 
 /** Written text of more than a line: paragraphs, "- " lists, "1. " steps, and ``` fences (a code block, coloured by

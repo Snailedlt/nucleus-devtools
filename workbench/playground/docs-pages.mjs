@@ -255,7 +255,7 @@ ${!v && o.toolPages?.length ? `<p class="small">The tools have their own section
       const crumbs = [`<a href="${up}start/">Nucleus handler tools</a>`, `<a href="${up}docs/">Docs</a>`, ...(slug === 'tools' ? ['Tools'] : [`<a href="${up}docs/tools/">Tools</a>`, ...(parent ? [`<a href="${up}docs/${parent.slug}/">${esc(parent.title)}</a>`] : []), esc(title)])];
       const dir = path.join(o.outDir, slug);
       fs.mkdirSync(dir, { recursive: true });
-      fs.writeFileSync(path.join(dir, 'index.html'), head(`${title}: Nucleus Co-op handler tools`, desc, `${o.base}docs/${slug}/`, up, here0) + `<p class="crumbs">${crumbs.join(' › ')}</p>\n<h1>${esc(title)}</h1>\n${inner.replaceAll('__UP__', up)}\n${o.toolJs && inner.includes('class="ba-range"') ? `<script>${o.toolJs}</script>\n` : ''}` + foot(up));
+      fs.writeFileSync(path.join(dir, 'index.html'), head(`${title}: Nucleus Co-op handler tools`, desc, `${o.base}docs/${slug}/`, up, here0) + `<p class="crumbs">${crumbs.join(' › ')}</p>\n<h1>${esc(title)}</h1>\n${inner.replaceAll('__UP__', up)}\n${o.toolJs && inner.includes('class="ba-range"') ? `<script>${o.toolJs}</script>\n` : ''}${o.toolReleaseJs && inner.includes(' data-asset="') ? `<script>${o.toolReleaseJs}</script>\n` : ''}` + foot(up));
       written.push(slug);
     };
     page('tools', 'Tools', 'The tools for writing Nucleus Co-op handlers: what each one is, how to set it up, and its reference.', o.toolsIndex ?? '', '@tools');
