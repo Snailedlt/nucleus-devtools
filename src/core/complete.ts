@@ -190,7 +190,23 @@ export function memberContextAt(text: string, offset: number): MemberContext | u
 }
 
 /** For hover: resolve the identifier at `offset` (with its chain). */
+/** Whether `offset` is inside a string or a `//` comment of its line (handlers have no strings over several lines). */
+export function inTextAt(text: string, offset: number): boolean {
+  let quote = '';
+  for (let i = text.lastIndexOf('\n', offset - 1) + 1; i < offset; i++) {
+    const c = text[i];
+    if (quote) {
+      if (c === '\\') i++;
+      else if (c === quote) quote = '';
+    } else if (c === '"' || c === "'") quote = c;
+    else if (c === '/' && text[i + 1] === '/') return true;
+  }
+  return !!quote;
+}
+
 export function resolveAt(text: string, offset: number, aliases?: Map<string, Chain | null>): { resolved: Resolved; start: number; end: number } | undefined {
+  // A word in a string or a comment is text, not a name: "Game mode" isn't `Game`.
+  if (inTextAt(text, offset)) return undefined;
   let s = offset;
   let e = offset;
   while (s > 0 && /[\w$]/.test(text[s - 1])) s--;

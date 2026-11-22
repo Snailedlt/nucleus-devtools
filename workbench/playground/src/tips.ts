@@ -174,7 +174,7 @@ const SETTINGS = T('Setting', [
 
 const FEATURES_ = T('Feature', [
   { id: 'f-lines', text: 'Lines lists every name a handler can use. Names already in the handler show their value; click one to insert it.', action: { label: 'Show Lines', run: 'lines' } },
-  { id: 'f-hover', text: 'Hover any name in the code for its docs. In Lines, the (i) next to a name also says how many Hub handlers use it.' },
+  { id: 'f-hover', text: 'Hover any name in the code for its docs. Hover a value you pass to a call, like a text in Game.AddOption(…), and it says which parameter that is. In Lines, the (i) next to a name also says how many Hub handlers use it.' },
   { id: 'f-tryit', text: 'Try it shows what each player gets: window, launch arguments and every file change, without Nucleus or the game.', action: { label: 'Try it', run: 'tryit' } },
   { id: 'f-debug', text: 'Step through your handler: click beside a line number for a breakpoint, then Try it › Step through ({key:debugGo}). Next line (`F10`), Back to undo a step, and drag the timeline through every player’s Game.Play.', action: { label: 'Try it', run: 'tryit' } },
   { id: 'f-testall', text: 'Test all combinations runs every player count, input setup and monitor size, and lists what fails and why.', action: { label: 'Try it', run: 'tryit' } },

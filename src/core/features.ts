@@ -116,7 +116,16 @@ export function hoverAt(text: string, offset: number, opts: FeatureOptions = {})
   const links = self ? [`[Full docs](${opts.docsLink(self)})`, ...(opts.webDocsLink ? [`[On the web](${opts.webDocsLink(self)})`] : [])].join(' · ') : '';
   return { ...h, markdown: linkApiNames(h.markdown, opts.docsLink) + (links ? `\n\n${links}` : '') };
 }
+/** The hover of what is at `offset`, and which parameter it is when it's an argument of a call: a name (the API's
+ *  or the handler's own) keeps its hover with one line about the parameter under it; a plain value (a string, a
+ *  number, an array) has no hover of its own, so the parameter is the hover. */
 function hoverAtRaw(text: string, offset: number, opts: FeatureOptions = {}): HoverInfo | undefined {
+  const h = hoverOfName(text, offset, opts);
+  const arg = argumentAt(text, offset, opts);
+  if (!arg) return h;
+  return h ? { ...h, markdown: `${h.markdown}\n\n${arg.brief}` } : { markdown: arg.markdown, range: arg.range };
+}
+function hoverOfName(text: string, offset: number, opts: FeatureOptions = {}): HoverInfo | undefined {
   // A number in Game.ProtoInput.BlockedMessages: the window message's name and what it does.
   const msg = blockedItemAt(text, offset);
   if (msg) return { markdown: messageMarkdown(msg.id), range: { start: msg.start, end: msg.end } };
@@ -468,6 +477,85 @@ function ownerOf(base: Resolved): string {
   if (base.kind === 'member' && base.member.ref) return base.member.ref;
   if (base.kind === 'member' && isStringMember(base.member)) return 'String';
   return '';
+}
+
+// ---------------------------------------------------------------------------
+// Hovering an argument: which parameter it is
+
+/** The arguments of the call whose `(` is at `open`: where each one starts and ends (spaces trimmed), up to the `)`
+ *  that closes it. Undefined while the call isn't closed. Strings, comments and nested brackets are skipped. */
+function callArguments(text: string, open: number): Span[] | undefined {
+  const out: Span[] = [];
+  let depth = 0;
+  let from = open + 1;
+  const push = (end: number) => {
+    let a = from;
+    let b = end;
+    while (a < b && /\s/.test(text[a])) a++;
+    while (b > a && /\s/.test(text[b - 1])) b--;
+    if (b > a || out.length) out.push({ start: a, end: b });
+  };
+  const limit = Math.min(text.length, open + 4000);
+  for (let i = open + 1; i < limit; i++) {
+    const c = text[i];
+    if (c === '"' || c === "'") {
+      let j = i + 1;
+      while (j < limit && text[j] !== c && text[j] !== '\n') j += text[j] === '\\' ? 2 : 1;
+      i = j;
+    } else if (c === '/' && text[i + 1] === '/') {
+      const nl = text.indexOf('\n', i);
+      if (nl < 0) return undefined;
+      i = nl;
+    } else if (c === '/' && text[i + 1] === '*') {
+      const e = text.indexOf('*/', i + 2);
+      if (e < 0) return undefined;
+      i = e + 1;
+    } else if (c === '(' || c === '[' || c === '{') depth++;
+    else if (c === ')' || c === ']' || c === '}') {
+      if (depth === 0) {
+        if (c !== ')') return undefined;
+        push(i);
+        return out;
+      }
+      depth--;
+    } else if (c === ',' && depth === 0) {
+      push(i);
+      from = i + 1;
+    }
+  }
+  return undefined;
+}
+
+/**
+ * The argument at `offset`, when it is one of a call to an API method (`Game.AddOption("Mode", …)`), a Nucleus class
+ * (`new Nucleus.IniSaveInfo(…)`) or one of the handler's own functions: which parameter it is. `markdown` is the
+ * hover for a plain value (the parameter's name and type, what to pass, then the call it belongs to); `brief` is one
+ * line to put under another hover (the handler's own variable passed as an argument).
+ */
+function argumentAt(text: string, offset: number, opts: FeatureOptions): { markdown: string; brief: string; range: Span } | undefined {
+  // The call the offset is in: the scan stops at the offset, so a value the offset is inside of doesn't hide it.
+  const frame = innerCallFrame(text, offset);
+  if (!frame) return undefined;
+  const args = callArguments(text, frame.pos);
+  const index = args?.findIndex((a) => offset >= a.start && offset <= a.end) ?? -1;
+  if (!args || index < 0) return undefined;
+  const help = signatureHelpAtRaw(text, args[index].start, opts);
+  if (!help) return undefined;
+  // Jint only matches an overload with exactly as many parameters as there are arguments.
+  const exact = help.signatures.findIndex((s) => s.parameters.length === args.length);
+  const sig = help.signatures[exact >= 0 ? exact : help.activeSignature];
+  const rest = sig.parameters.length && sig.parameters[sig.parameters.length - 1].startsWith('...');
+  const at = index < sig.parameters.length ? index : rest ? sig.parameters.length - 1 : -1;
+  if (at < 0) return undefined;
+  const label = sig.parameters[at];
+  const name = label.replace(/^\.\.\./, '').split(':')[0].trim();
+  const doc = sig.parameterDocs?.[at];
+  const where = `Argument ${index + 1} of \`${sig.label.replace(/\):.*$/, ')').replace(/: [^,)]+/g, '')}\``;
+  return {
+    markdown: `\`\`\`ts\n(parameter) ${label}\n\`\`\`${doc ? `\n\n${doc}` : ''}\n\n${where}`,
+    brief: `${where}: \`${name}\`${doc ? `. ${doc}` : ''}`,
+    range: args[index],
+  };
 }
 
 // ---------------------------------------------------------------------------
