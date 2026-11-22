@@ -31,6 +31,7 @@ How to write it (people and AI agents read this; the release workflow publishes 
 
 ### 🐛 Fixed
 
+- **Format can't change the name a Hub install reads.** With single quotes chosen (`splitscreenme.format.quotes`, `--quotes single`), Format also changed the quotes on the `Game.GameName` and `Game.ExecutableName` lines, and a handler formatted that way failed to install from the Hub. Those two lines now keep what the install reads from them: their double quotes stay, and a line with a second string on it, or a name put together with `+`, is left as written.
 - **Format says what it changes.** The MCP server and the skill described Format as changing indentation and spacing only. By default it also switches to double quotes and adds missing semicolons, and they say so now. It still never moves a line.
 
 ---

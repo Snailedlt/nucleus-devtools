@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { formatHandler, detectIndent } from '../core/format';
 import { lint } from '../core/lint';
+import { hubLineKeeps, hubScan } from '../core/hubscan';
 import { FEATURES, renderHandler } from '../core/templates';
 
 const fmt = (s: string, indent = '  ') => {
@@ -39,6 +40,67 @@ test('format: top-level lines stay unindented for the Hub install, and lint resu
   const key = (t: string) => lint(t).map((d) => `${d.rule}:${d.severity}`).sort().join(',');
   assert.notEqual(key(src), key(out)); // the indented GameName line was a Hub install problem...
   assert.equal(lint(out).filter((d) => d.rule === 'hub-install-parse').length, 0); // ...and is gone
+});
+
+test('format: a line the Hub install reads keeps what it reads', () => {
+  const reads = (t: string) => {
+    const s = hubScan(t);
+    return [s.ExecutableName?.value, s.GameName?.value];
+  };
+  // A second string on the line: in double quotes, the install would read from the first quote to its last one.
+  const two = "Game.GameName = \"Demo\"; Game.Description = 'Hello'\nGame.ExecutableName = \"demo.exe\"\nvar s = 'x'\n";
+  const r = formatHandler(two);
+  assert.ok(r.ok);
+  if (r.ok) {
+    assert.equal(r.code, "Game.GameName = \"Demo\"; Game.Description = 'Hello'\nGame.ExecutableName = \"demo.exe\";\nvar s = \"x\";\n", 'that line is left out, the others are formatted');
+    assert.deepEqual(reads(r.code), reads(two));
+  }
+  // Single quotes asked for: the two lines the install reads keep their double quotes (it throws without them).
+  const src = 'Game.GameName = "Demo";\nGame.ExecutableName = "demo.exe";\nGame.GUID = "Demo";\n';
+  const single = formatHandler(src, { quotes: 'single' });
+  assert.ok(single.ok);
+  if (single.ok) {
+    assert.equal(single.code, "Game.GameName = \"Demo\";\nGame.ExecutableName = \"demo.exe\";\nGame.GUID = 'Demo';\n");
+    assert.deepEqual(reads(single.code), ['demo.exe', 'Demo']);
+  }
+  // Spaces: `"My"+"Game"` reads as My"+"Game, and must go on doing so.
+  const glued = 'Game.GameName="My"+"Game";\nGame.ExecutableName="demo.exe";\nGame.GUID="Demo";\n';
+  assert.equal(fmt(glued), 'Game.GameName="My"+"Game";\nGame.ExecutableName = "demo.exe";\nGame.GUID = "Demo";\n');
+  // At the start of a line inside a block: the install reads it there, so it isn't pushed in.
+  const inBlock = 'if (a) {\nGame.GameName = "Demo";\nb();\n}\n';
+  assert.equal(fmt(inBlock), 'if (a) {\nGame.GameName = "Demo";\n  b();\n}\n');
+  // A line the install can't read yet may become readable (the reason double quotes are the default)...
+  assert.equal(fmt("Game.GameName = 'My Game'\n"), 'Game.GameName = "My Game";\n');
+  // ...but not when it would then read more than the one value.
+  assert.equal(fmt("Game.GameName = 'Demo'; Game.Description = 'Hello'\nvar s = 'x'\n"), "Game.GameName = 'Demo'; Game.Description = 'Hello'\nvar s = \"x\";\n");
+  // The same result when formatted again.
+  for (const t of [two, src, glued, inBlock]) {
+    const once = formatHandler(t);
+    assert.ok(once.ok);
+    const twice = once.ok ? formatHandler(once.code) : once;
+    assert.ok(once.ok && twice.ok && twice.code === once.code && !twice.changed);
+  }
+});
+
+test('hubLineKeeps: what counts as the same for a Hub install', () => {
+  const yes: [string, string][] = [
+    ['Game.GameName="Demo"', 'Game.GameName = "Demo";'], // the same read
+    ["Game.GameName = 'Demo'", 'Game.GameName = "Demo";'], // threw, now one clean value
+    ['  Game.GameName = "Demo";', 'Game.GameName = "Demo";'], // wasn't read, now one clean value
+    ['var a = "x"', "var a = 'x';"], // not a line the install reads
+    ["Game.GameName = 'Demo'", "Game.GameName = 'Demo';"], // threw and still throws
+  ];
+  const no: [string, string][] = [
+    ['Game.GameName = "Demo"; var d = \'x\'', 'Game.GameName = "Demo"; var d = "x";'], // reads more
+    ['Game.GameName = "Demo";', "Game.GameName = 'Demo';"], // would throw
+    ['Game.GameName="a"+"b";', 'Game.GameName = "a" + "b";'], // another text between the quotes
+    ['Game.GameName = "Demo";', '  Game.GameName = "Demo";'], // no longer read
+    ["  Game.GameName = 'Demo'", "Game.GameName = 'Demo'"], // wasn't read, would throw
+    ["Game.GameName = 'a'; var d = 'b'", 'Game.GameName = "a"; var d = "b";'], // threw, would read two strings as one
+    ['GAME.EXECUTABLENAMES = ["a.exe"];', "GAME.EXECUTABLENAMES = ['a.exe'];"], // any case, and names that start the same
+  ];
+  for (const [a, b] of yes) assert.equal(hubLineKeeps(a, b), true, `${a} -> ${b}`);
+  for (const [a, b] of no) assert.equal(hubLineKeeps(a, b), false, `${a} -> ${b}`);
 });
 
 test('format: CRLF and a BOM are kept; tabs are detected', () => {

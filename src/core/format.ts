@@ -12,7 +12,12 @@
 // - Lines inside a multi-line comment (or a string continued with a backslash) are left as they are.
 // - Lines at the top level stay unindented, so the Hub install still finds `Game.GameName` and
 //   `Game.ExecutableName` at the start of a line.
+// - The Hub install reads those two from the raw line, between its first and last `"` (hubscan.ts), so a line it
+//   reads keeps what it reads: no quote, space or indent changes there that would give another name (a second
+//   string on the line put in double quotes, `"a"+"b"` spaced out, single quotes asked for). A line it can't read
+//   yet may still become readable, which is why `'My Game'` gets its double quotes.
 import * as acorn from 'acorn';
+import { hubLineKeeps } from './hubscan';
 
 export interface FormatOptions {
   /** One level of indentation; detected from the file when left out (tab, 2 or 4 spaces). */
@@ -81,8 +86,38 @@ function restyle(body: string, items: Item[], o: FormatOptions): string {
   }
   if (!edits.length) return body;
   edits.sort((a, b) => b.at - a.at);
+  // A line the Hub install reads keeps what it reads (hubscan.ts): the edits on a line that would change that are
+  // left out, the rest go ahead.
+  const starts = [0];
+  for (let i = 0; i < body.length; i++) if (body[i] === '\n') starts.push(i + 1);
+  const lineOf = (pos: number) => {
+    let lo = 0;
+    let hi = starts.length - 1;
+    while (lo < hi) {
+      const mid = (lo + hi + 1) >> 1;
+      if (starts[mid] <= pos) lo = mid;
+      else hi = mid - 1;
+    }
+    return lo;
+  };
+  const perLine = new Map<number, typeof edits>();
+  for (const e of edits) {
+    const l = lineOf(e.at);
+    if (!perLine.has(l)) perLine.set(l, []);
+    perLine.get(l)!.push(e);
+  }
+  const dropped = new Set<(typeof edits)[number]>();
+  for (const [l, es] of perLine) {
+    const from = starts[l];
+    const to = l + 1 < starts.length ? starts[l + 1] - 1 : body.length;
+    const was = body.slice(from, to);
+    let now = was;
+    for (const e of es) now = now.slice(0, e.at - from) + e.text + now.slice(e.end - from); // `es` is in descending order
+    if (!hubLineKeeps(was, now)) es.forEach((e) => dropped.add(e));
+  }
   let out = body;
-  for (const e of edits) out = out.slice(0, e.at) + e.text + out.slice(e.end);
+  for (const e of edits) if (!dropped.has(e)) out = out.slice(0, e.at) + e.text + out.slice(e.end);
+  if (out === body) return body;
   // The guarantee: the same program. Positions and how literals are written aside, the trees must be equal.
   const shape = (n: any): string => JSON.stringify(n, (k, v) => (k === 'start' || k === 'end' || k === 'raw' || k === 'loc' ? undefined : v));
   const after = tree(out);
@@ -157,6 +192,7 @@ export function formatHandler(text: string, options: FormatOptions = {}): Format
   if (typeof lexed === 'string') return { ok: false, reason: `Formatting would have broken the code (${lexed}), so nothing was changed. Please report this handler.` };
   const { items, lineStarts } = lexed;
   const lines = styled.split('\n');
+  const written = body.split('\n'); // the lines as they were (quotes and semicolons never move a line break)
   const unit = options.indent ?? detectIndent(lines);
 
   // Lines inside a multi-line comment or token: left exactly as they are.
@@ -291,7 +327,10 @@ export function formatHandler(text: string, options: FormatOptions = {}): Format
     }
     // Trailing spaces go, unless they belong to a comment or string that goes on to the next line.
     const runsOn = its[its.length - 1].endLine > ln;
-    push(runsOn ? line : line.replace(/[ \t]+$/, ''), ln);
+    const laidOut = runsOn ? line : line.replace(/[ \t]+$/, '');
+    // A line the Hub install reads keeps what it reads (hubscan.ts): when spacing or indenting it would change that
+    // (`"a"+"b"` spaced out, a line at the start pushed in), the line stays as it is.
+    push(hubLineKeeps(written[ln], laidOut) ? laidOut : lines[ln], ln);
     // Update the bracket stack with this line's tokens.
     for (const it of its) {
       if (it.kind !== 'tok') continue;
