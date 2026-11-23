@@ -617,8 +617,8 @@ function gameSection(id: string): string {
   if (prog) queueMicrotask(syncDuo); // after the rows are in the page
   const why = "Link the folder this game is installed in, and Check tells you when ExecutableName, BinariesFolder or a symlink option names a file that isn't there. Only names and sizes are read, and the game's .exe and DLLs for hints about hooks, on this device. Nothing is uploaded.";
   const row = folder
-    ? `<li class="fp-item fp-gf"><button type="button" class="fp-open" data-gf="show" data-h="${id}" style="padding-left:22px" title="${esc(`The game on this PC: ${folder.name}. Check compares the handler's paths and file names with this folder, and the symlink options get a file picker.`)}">${icon('link', 13)}<span class="fp-name">${esc(folder.name)}</span><span class="fp-size">game on this PC</span></button><button type="button" class="fp-del" data-gf="forget" data-h="${id}" aria-label="Unlink the game folder ${esc(folder.name)}" title="Unlink">${icon('x', 13)}</button></li>`
-    : `<li class="fp-item fp-gf"><button type="button" class="fp-open fp-link" data-gf="pick" data-h="${id}" style="padding-left:22px" title="${esc(why)}">${icon('link', 13)}<span class="fp-name">Link the game's folder…</span></button></li>`;
+    ? `<li class="fp-item fp-gf"><button type="button" class="fp-open" data-gf="show" data-h="${id}" style="padding-left:8px" title="${esc(`The game on this PC: ${folder.name}. Check compares the handler's paths and file names with this folder, and the symlink options get a file picker.`)}">${icon('link', 13)}<span class="fp-name">${esc(folder.name)}</span><span class="fp-size">game on this PC</span></button><button type="button" class="fp-del" data-gf="pick" data-h="${id}" aria-label="Pick another game folder" title="Pick another folder">${icon('link', 13)}</button><button type="button" class="fp-del" data-gf="forget" data-h="${id}" aria-label="Unlink the game folder ${esc(folder.name)}" title="Unlink">${icon('x', 13)}</button></li>`
+    : `<li class="fp-item fp-gf"><button type="button" class="fp-open fp-link" data-gf="pick" data-h="${id}" style="padding-left:8px" title="${esc(why)}">${icon('link', 13)}<span class="fp-name">Link the game's folder…</span></button></li>`;
   return `${row}${prog ? `<li class="fp-game">${prog}</li>` : ''}`;
 }
 async function onGameAction(act: string) {
@@ -1748,12 +1748,12 @@ function switchTab(id: string, file?: string | null) {
   if (!$('#panel-simulate').hidden) runSim();
   if (!has(want)) editor.focus();
 }
-/** Every tab, in the order they show: each open handler's handler.js (when its tab is open), then its open files. */
+/** The tabs, in the order they show: the handler's handler.js (when its tab is open), then its open files. They are
+ *  the tabs of the handler in the editor only: the work is on one handler, and another open one is a switch away
+ *  (its name at the top of Files), with its own tabs kept. */
 function viewList(): { id: string; file: string | null }[] {
-  return tabs.flatMap((x) => {
-    const files = x.id === activeTab && pkgUI ? pkgUI.openList() : x.open ?? [];
-    return [...(x.main !== false ? [{ id: x.id, file: null }] : []), ...files.map((file) => ({ id: x.id, file }))];
-  });
+  const x = activeT();
+  return [...(x.main !== false ? [{ id: x.id, file: null }] : []), ...(pkgUI?.openList() ?? x.open ?? []).map((file) => ({ id: x.id, file }))];
 }
 /** The tab that shows now (none when every tab is closed). */
 const shownView = () => (pkgUI?.isEmpty() ? null : { id: activeTab, file: pkgUI?.active() ?? null });
@@ -1858,10 +1858,11 @@ function renderTabs() {
   requestAnimationFrame(() => document.querySelector('#htabs .htab-w.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
   const dot = (c?: { e: number; w: number }) => (!c ? '' : c.e ? ' e' : c.w ? ' w' : ' ok');
   const state = (c?: { e: number; w: number }) => (!c ? '' : c.e ? `, ${c.e} error${c.e === 1 ? '' : 's'}` : c.w ? `, ${c.w} warning${c.w === 1 ? '' : 's'}` : ', ready for Nucleus');
+  document.documentElement.dataset.handlers = String(tabs.length); // how many handlers are open (styles and tests)
   // The tabs are drawn anew: the keyboard's place among them is kept.
   const focused = $('#htabs').contains(document.activeElement) ? document.activeElement!.id : '';
   if (focused) queueMicrotask(() => document.getElementById(focused)?.focus());
-  $('#htabs').innerHTML = tabs.map((x) => {
+  $('#htabs').innerHTML = [activeT()].map((x) => {
     const here = x.id === activeTab, c = here ? live : x.counts, game = gameOf(here ? doc.name : x.meta.name);
     const files = here && pkgUI ? pkgUI.openList() : x.open ?? [];
     // Changed since it was opened (as VS Code shows it: a dot where the close button is, the × on hover).
@@ -1871,7 +1872,7 @@ function renderTabs() {
       const on = sameView(shown, { id: x.id, file });
       const name = file ? file.split('/').pop()! : 'handler.js';
       const ed = !file && edited;
-      return `<span class="htab-w${on ? ' on' : ''}${ed ? ' edited' : ''}${file ? ' ftab' : ''}" role="presentation"><button type="button" class="htab" role="tab" id="tab-${x.id}${file ? `-f${i}` : ''}" data-tab-id="${x.id}"${file ? ` data-file="${esc(file)}"` : ''} aria-selected="${on}" tabindex="${on ? 0 : -1}" title="${esc(file ? `${file} (${game})` : `${game}: handler.js`)}">${file ? fileIcon(file) : `<span class="ht-dot${dot(c)}" aria-hidden="true"></span>`}<span class="ht-name">${esc(name)}</span><span class="ht-of">${esc(game)}</span><span class="sr-only">${file ? '' : esc(state(c))}${ed ? ', edited' : ''}. Delete closes the tab</span>${ed ? '<span class="ht-ed" aria-hidden="true" title="Edited">●</span>' : ''}<span class="ht-x" data-close="${x.id}"${file ? ` data-close-file="${esc(file)}"` : ''} aria-hidden="true" title="Close the tab">×</span></button></span>`;
+      return `<span class="htab-w${on ? ' on' : ''}${ed ? ' edited' : ''}${file ? ' ftab' : ''}" role="presentation"><button type="button" class="htab" role="tab" id="tab-${x.id}${file ? `-f${i}` : ''}" data-tab-id="${x.id}"${file ? ` data-file="${esc(file)}"` : ''} aria-selected="${on}" tabindex="${on ? 0 : -1}" title="${esc(file ? `${file} (${game})` : `${game}: handler.js`)}">${file ? fileIcon(file) : `<span class="ht-dot${dot(c)}" aria-hidden="true"></span>`}<span class="ht-name">${esc(name)}</span><span class="sr-only">${file ? '' : esc(state(c))}${ed ? ', edited' : ''}. Delete closes the tab</span>${ed ? '<span class="ht-ed" aria-hidden="true" title="Edited">●</span>' : ''}<span class="ht-x" data-close="${x.id}"${file ? ` data-close-file="${esc(file)}"` : ''} aria-hidden="true" title="Close the tab">×</span></button></span>`;
     };
     return [...(x.main !== false ? [tab(null, 0)] : []), ...files.map((f, i) => tab(f, i))].join('');
   }).join('');
@@ -1919,7 +1920,7 @@ function initTabs() {
   renderTabs(); // after the ▾ exists, so it's shown or hidden from the start
   all.addEventListener('click', () => openMenu(all, 'Open handlers', tabs.map((x) => {
     const on = x.id === activeTab;
-    return { label: gameOf(on ? doc.name : x.meta.name), checked: on, run: () => showView(x.id, null) };
+    return { label: gameOf(on ? doc.name : x.meta.name), checked: on, run: () => switchTab(x.id) };
   })));
   // No scroll bar on the tabs: a mouse wheel scrolls them sideways (trackpads already do).
   strip.addEventListener('wheel', (e) => {
@@ -2876,7 +2877,7 @@ pkgUI = initPackageUI({
   }),
   switchTo: (id) => switchTab(id),
   closeHandler: (id) => closeTab(id),
-  newMenu: (anchor) => openMenu(anchor, 'New or open', addItems()),
+  switchMenu: (anchor) => openMenu(anchor, 'Open handlers', handlerItems()),
   tabsChanged: () => { if (tabsReady) (renderTabs(), saveTabs()); },
   getFiles: () => packageFiles,
   setFiles: (files) => { packageFiles = files; storeFiles(files); if (!doc.filesEdited) { doc.filesEdited = true; saveDocMeta(); } renderDocHead(); if (tabsReady) saveTabs(); },
@@ -2943,13 +2944,17 @@ const appItems = (): MenuItem[] => [
 $('#tab-add').addEventListener('click', () => openMenu($('#tab-add'), 'New or open', addItems()));
 $('#app-menu-open').addEventListener('click', () => openMenu($('#app-menu-open'), 'Menu', appItems()));
 $('#code-menu-phone').addEventListener('click', () => openMenu($('#code-menu-phone'), 'Save or share', [...saveItems(), { label: '', kind: 'separator' }, { label: 'Share…', run: openCodeDialog }]));
-$('#doc-switch').addEventListener('click', () => openMenu($('#doc-switch'), 'Open handlers', [
-  { kind: 'heading', label: 'Open handlers' },
-  ...tabs.map((x) => ({ label: gameOf(x.id === activeTab ? doc.name : x.meta.name), checked: x.id === activeTab, run: () => showView(x.id, null) })),
-  { label: `Close ${doc.name}`, run: () => closeTab(activeTab) },
-  { kind: 'separator', label: '' },
-  ...addItems(),
-]));
+/** The open handlers: switch to one (it comes back as it was left), close the one in the editor, or get another. */
+function handlerItems(): MenuItem[] {
+  return [
+    { kind: 'heading', label: 'Open handlers' },
+    ...tabs.map((x) => ({ label: gameOf(x.id === activeTab ? doc.name : x.meta.name), checked: x.id === activeTab, run: () => switchTab(x.id) })),
+    { label: `Close ${gameOf(doc.name)}`, run: () => closeTab(activeTab) },
+    { kind: 'separator', label: '' },
+    ...addItems(),
+  ];
+}
+$('#doc-switch').addEventListener('click', () => openMenu($('#doc-switch'), 'Open handlers', handlerItems()));
 // The side rail: icons only (the default), or with labels. Remembered in this browser.
 {
   const KEY = 'nucleus-workbench-rail-open';

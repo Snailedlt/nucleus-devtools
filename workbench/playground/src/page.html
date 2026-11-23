@@ -1746,7 +1746,10 @@ kbd.keys .kplus { color: var(--muted); padding: 0 1px; }
 /* The rail has Files and Lines, so the code pane's own two buttons go; with nothing else in it, so does its head. */
 @media (min-width: 861px) {
   :root[data-layout="rail"] .doc-title :is(.files-toggle, .lines-toggle) { display: none; }
-  :root[data-layout="rail"] .doc-head:not(:has(#doc-meta > *, #doc-edited:not([hidden]), #results-show:not([hidden]))) { display: none; }
+  /* "+ N files" opens Files: with Files open beside the code it says nothing new. */
+  :root[data-layout="rail"] .code-row:has(#files-panel:not([hidden])) #files-open { display: none; }
+  :root[data-layout="rail"] .doc-head:not(:has(#doc-meta > :not(#files-open), #doc-edited:not([hidden]), #results-show:not([hidden]))) { display: none; }
+  :root[data-layout="rail"] .code-row:has(#files-panel[hidden]) .doc-head:has(#files-open) { display: flex; }
 }
 .rail-btn.confirmed::after { content: "✓"; position: absolute; right: 2px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--ok); color: #fff; font: 700 10px/14px var(--font-body); text-align: center; }
 .rail-label { display: none; }
@@ -1860,7 +1863,14 @@ kbd.keys .kplus { color: var(--muted); padding: 0 1px; }
 .fp-h.on > .fp-hrow .fp-name { color: var(--fg); }
 .fp-h:not(.on) > .fp-hrow .fp-name { color: var(--muted); }
 .fp-tw { flex: none; color: var(--muted); }
-.fp-head { justify-content: space-between; min-height: 26px; margin: 0 0 4px 6px; }
+.fp-head { justify-content: space-between; min-height: 30px; margin: 0 0 6px 0; gap: 4px; text-transform: none; letter-spacing: 0; }
+/* The handler's name: the head of its files, and the way to the other open handlers. */
+.fp-switch { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 6px 0 8px; border: 0; border-radius: 7px; background: none; color: var(--fg); font: 600 13.5px var(--font-body); text-align: left; cursor: pointer; }
+.fp-switch:hover, .fp-switch[aria-expanded="true"] { background: var(--surface-2); }
+.fp-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.fp-switch .fp-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.fp-switch .fp-more { flex: none; padding: 0 6px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: 11px; font-weight: 600; line-height: 17px; }
+.fp-head .fp-cnt { margin-left: 0; }
 .fp-ibtn { width: 26px; height: 26px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--muted); cursor: pointer; }
 .fp-ibtn:hover, .fp-ibtn[aria-expanded="true"] { background: var(--surface-2); color: var(--fg); }
 .fp-ibtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }

@@ -1,7 +1,8 @@
-// Handler packages in the workbench: the Files panel (every open handler as a folder named after its game, laid out
-// like its Hub package: handler.js, then its other files), a second editor for a package's text files (ini, cfg,
-// json, xml…, with highlighting and checks) and a card for binaries. handler.js stays in the main editor, so
-// everything that reads "the handler" keeps reading it. The tabs above the code (one per open file) are the host's.
+// A handler's package in the workbench: the Files panel (the handler you're working on, laid out like its Hub
+// package: handler.js, then its other files, then its game on this PC; its name at the top switches to another open
+// handler), a second editor for the package's text files (ini, cfg, json, xml…, with highlighting and checks) and a
+// card for binaries. handler.js stays in the main editor, so everything that reads "the handler" keeps reading it.
+// The tabs above the code (one per open file of this handler) are the host's.
 import CodeMirror from 'codemirror';
 import { wrapEditor, wrapOn } from './wrap';
 import 'codemirror/mode/properties/properties';
@@ -93,8 +94,8 @@ export interface PkgHost {
   /** Optional: HTML for a handler's last rows (its game on this PC), and their clicks ([data-gf]). */
   extraSection?(id: string): string;
   onExtra?(act: string): void;
-  /** Optional: the New or open menu, for the + in the list's head. */
-  newMenu?(anchor: HTMLElement): void;
+  /** Optional: the menu of the handler's name at the top of the list: the open handlers, close this one, new or open. */
+  switchMenu?(anchor: HTMLElement): void;
 }
 
 export function initPackageUI(host: PkgHost) {
@@ -102,8 +103,6 @@ export function initPackageUI(host: PkgHost) {
   let open: string[] = [];
   /** Nothing shows in the code pane: every tab is closed. */
   let empty = false;
-  /** The handlers folded shut in the list. */
-  const folded = new Set<string>();
   let fileEd: CM = null;
   const docs = new Map<string, { doc: CM; enc: ReturnType<typeof textOf> extends infer T ? (T extends { enc: infer E } ? E : never) : never }>();
   let saveTimer = 0;
@@ -122,6 +121,15 @@ export function initPackageUI(host: PkgHost) {
       lint: { getAnnotations: (text: string) => (active ? checkFileText(active, text) : []).map((p) => ({ from: CodeMirror.Pos((p.line ?? 1) - 1, 0), to: CodeMirror.Pos((p.line ?? 1) - 1, 999), message: `${p.title}. ${p.why}`, severity: p.severity })), delay: 300 },
     } as any);
     fileEd.getInputField().setAttribute('aria-label', 'The file');
+    // As the main editor: one tab stop (the scroller) that hands focus to the editor (WCAG 2.1.1).
+    {
+      const scroller = fileEd.getScrollerElement() as HTMLElement;
+      scroller.tabIndex = 0;
+      scroller.setAttribute('role', 'region');
+      scroller.setAttribute('aria-label', 'The file');
+      fileEd.getInputField().tabIndex = -1;
+      scroller.addEventListener('focus', (e: FocusEvent) => { if (e.target === scroller) fileEd.focus(); });
+    }
     wrapEditor(fileEd); // Settings › Wrap long lines, Alt+Z
     fileEd.on('change', () => {
       if (pendingFile && pendingFile !== active) commit(); // another file's wait ends here
@@ -293,7 +301,7 @@ export function initPackageUI(host: PkgHost) {
     const sorted = [...fs].sort((a, b) => (a.name.includes('/') === b.name.includes('/') ? a.name.localeCompare(b.name) : a.name.includes('/') ? 1 : -1));
     const seenDirs = new Set<string>();
     const rows: string[] = [];
-    const pad = (depth: number) => 22 + depth * 14;
+    const pad = (depth: number) => 8 + depth * 14;
     for (const f of sorted) {
       const full = f.name.split('/');
       const parts = flat ? full.slice(1) : full;
@@ -325,15 +333,14 @@ export function initPackageUI(host: PkgHost) {
       : '';
     if (place) queueMicrotask(() => panel.querySelector<HTMLElement>(place)?.focus());
     const badge = (c?: { e: number; w: number }) => (!c ? '' : c.e ? `<span class="fp-cnt e" title="${c.e} error${c.e === 1 ? '' : 's'} in handler.js">${c.e}</span>` : c.w ? `<span class="fp-cnt w" title="${c.w} warning${c.w === 1 ? '' : 's'} in handler.js">${c.w}</span>` : '<span class="fp-cnt ok" title="Ready for Nucleus">✓</span>');
-    const groups = list.map((h) => {
-      const shut = folded.has(h.id);
-      const game = h.on ? gameFolderName(handler()) : h.name;
-      const head = `<div class="fp-item fp-hrow"><button type="button" class="fp-open fp-fold" data-fp-fold="${h.id}" aria-expanded="${!shut}" title="${esc(`${h.name}: installs to handlers\\${game}\\`)}">${icon(shut ? 'chevron-right' : 'chevron-down', 14, 'ui-ico fp-tw')}<span class="fp-name">${esc(h.name)}</span>${badge(h.counts)}</button><button type="button" class="fp-del" data-fp-add data-h="${h.id}" aria-label="Add files to ${esc(h.name)}" title="Add files… (or drop them on the list)">${icon('file-plus', 14)}</button><button type="button" class="fp-del" data-fp-hclose="${h.id}" aria-label="Close ${esc(h.name)}" title="Close this handler">${icon('x', 14)}</button></div>`;
-      if (shut) return `<li class="fp-h${h.on ? ' on' : ''}" data-h="${h.id}">${head}</li>`;
-      const rows = [`<li class="fp-item"><button type="button" class="fp-open" data-fp="" data-h="${h.id}" aria-current="${h.on && active === null && !empty}" style="padding-left:22px">${handlerIcon()}<span class="fp-name">handler.js</span></button></li>`, ...fileRows(h, game)];
-      return `<li class="fp-h${h.on ? ' on' : ''}" data-h="${h.id}">${head}<ul class="fp-list">${rows.join('')}${host.extraSection?.(h.id) ?? ''}</ul></li>`;
-    });
-    $('#files-list').innerHTML = `<div class="fp-head"><span>Files</span>${host.newMenu ? `<button type="button" class="fp-ibtn" data-fp-new aria-haspopup="menu" aria-label="New handler, or open a file, a folder or an example" title="New or open">${icon('plus', 15)}</button>` : ''}</div><ul class="fp-list fp-tree" aria-label="${esc(`Open handlers. Files dropped here are added to ${on ? on.name : 'the handler'}`)}">${groups.join('')}</ul>`;
+    // One handler: the one in the editor. Its name is the head of the list, and the way to the other open ones.
+    const h = on ?? list[0];
+    if (!h) { $('#files-list').innerHTML = ''; return; }
+    const game = gameFolderName(handler());
+    const others = list.length - 1;
+    const rows = [`<li class="fp-item"><button type="button" class="fp-open" data-fp="" data-h="${h.id}" aria-current="${active === null && !empty}" style="padding-left:8px">${handlerIcon()}<span class="fp-name">handler.js</span></button></li>`, ...fileRows(h, game)];
+    $('#files-list').innerHTML = `<div class="fp-head"><button type="button" class="fp-switch" data-fp-switch data-n="${list.length}" aria-haspopup="menu" aria-label="${esc(`${h.name}${others ? `, and ${others} more open handler${others === 1 ? '' : 's'}` : ''}: switch, close, new or open`)}" title="${esc(`${h.name}: installs to handlers\\${game}\\`)}"><span class="fp-name">${esc(h.name)}</span>${others ? `<span class="fp-more" aria-hidden="true">+${others}</span>` : ''}${icon('chevron-down', 14, 'ui-ico fp-tw')}</button>${badge(h.counts)}<button type="button" class="fp-ibtn" data-fp-add aria-label="Add files to ${esc(h.name)}" title="Add files… (or drop them on the list)">${icon('file-plus', 15)}</button></div>
+      <ul class="fp-list fp-tree" aria-label="${esc(`The files of ${h.name}. Files dropped here are added to it`)}"><li class="fp-h on" data-h="${h.id}"><ul class="fp-list">${rows.join('')}${host.extraSection?.(h.id) ?? ''}</ul></li></ul>`;
   }
 
   /** The Files panel in or out; the buttons that toggle it say which. Beside the code (not as a phone's sheet) the
@@ -358,14 +365,10 @@ export function initPackageUI(host: PkgHost) {
   const panel = $('#files-panel');
   panel.addEventListener('click', (e) => {
     const t = e.target as HTMLElement;
-    const fold = t.closest<HTMLElement>('[data-fp-fold]');
-    if (fold) { const id = fold.dataset.fpFold!; if (!folded.delete(id)) folded.add(id); render(); panel.querySelector<HTMLElement>(`[data-fp-fold="${id}"]`)?.focus(); return; }
-    const shut = t.closest<HTMLElement>('[data-fp-hclose]');
-    if (shut) return host.closeHandler(shut.dataset.fpHclose!);
     const add = t.closest<HTMLElement>('[data-fp-add]');
     if (add) { if (add.dataset.h) host.switchTo(add.dataset.h); return picker.click(); }
-    const fresh = t.closest<HTMLElement>('[data-fp-new]');
-    if (fresh) return host.newMenu?.(fresh);
+    const sw = t.closest<HTMLElement>('[data-fp-switch]');
+    if (sw) return host.switchMenu?.(sw);
     // Everything else is about one handler's rows: that handler comes into the editor first.
     const of = t.closest<HTMLElement>('[data-h]')?.dataset.h;
     const del = t.closest<HTMLElement>('[data-fp-del]');
