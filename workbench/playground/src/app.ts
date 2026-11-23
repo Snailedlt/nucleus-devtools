@@ -2877,7 +2877,6 @@ pkgUI = initPackageUI({
   }),
   switchTo: (id) => switchTab(id),
   closeHandler: (id) => closeTab(id),
-  switchMenu: (anchor) => openMenu(anchor, 'Open handlers', handlerItems()),
   tabsChanged: () => { if (tabsReady) (renderTabs(), saveTabs()); },
   getFiles: () => packageFiles,
   setFiles: (files) => { packageFiles = files; storeFiles(files); if (!doc.filesEdited) { doc.filesEdited = true; saveDocMeta(); } renderDocHead(); if (tabsReady) saveTabs(); },

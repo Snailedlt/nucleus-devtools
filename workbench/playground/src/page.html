@@ -147,6 +147,7 @@ body.resizing-v, body.resizing-v * { cursor: row-resize !important; user-select:
 #tabs-slot .htab-w.on { background: var(--surface); }
 #tabs-slot .htab { padding: 6px 4px 6px 10px; }
 #tabs-slot .htab-add { width: 26px; height: 26px; margin-bottom: 4px; }
+#tabs-slot .htab-all { display: none !important; } /* the open handlers are listed in Files there, not in a menu */
 #tabs-slot .htab-add:hover, #tabs-slot .htab-add[aria-expanded="true"] { background: var(--surface); }
 :root[data-zen] #tabs-slot { display: none !important; }
 @media (min-width: 861px) { :root[data-layout="rail"] header { min-height: 0; } }
@@ -1865,11 +1866,18 @@ kbd.keys .kplus { color: var(--muted); padding: 0 1px; }
 .fp-tw { flex: none; color: var(--muted); }
 .fp-head { justify-content: space-between; min-height: 30px; margin: 0 0 6px 0; gap: 4px; text-transform: none; letter-spacing: 0; }
 /* The handler's name: the head of its files, and the way to the other open handlers. */
-.fp-switch { flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px; height: 30px; padding: 0 6px 0 8px; border: 0; border-radius: 7px; background: none; color: var(--fg); font: 600 13.5px var(--font-body); text-align: left; cursor: pointer; }
-.fp-switch:hover, .fp-switch[aria-expanded="true"] { background: var(--surface-2); }
-.fp-switch:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
-.fp-switch .fp-name { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.fp-switch .fp-more { flex: none; padding: 0 6px; border-radius: 999px; background: var(--surface-2); color: var(--muted); font-size: 11px; font-weight: 600; line-height: 17px; }
+.fp-title { flex: 1; min-width: 0; padding-left: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; color: var(--fg); font: 600 13.5px var(--font-body); }
+.fp-head [data-fp-hclose] { opacity: 0; }
+.fp-head:hover [data-fp-hclose], .fp-head [data-fp-hclose]:focus-visible { opacity: 1; }
+@media (hover: none) { .fp-head [data-fp-hclose] { opacity: 1; } }
+/* The other open handlers: under the files, a row each, quieter than the one being worked on. */
+.fp-others { margin-top: 14px; padding-top: 10px; border-top: 1px solid var(--line); }
+.fp-sub { margin: 0 0 4px 8px; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.fp-others .fp-open { padding-left: 8px; color: var(--muted); }
+.fp-others .fp-open:hover { color: var(--fg); }
+.fp-others .fp-open .fp-name { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.fp-others .fp-del { display: grid; place-items: center; padding: 0; }
+.fp-others .fp-item:focus-within .fp-del { opacity: 1; }
 .fp-head .fp-cnt { margin-left: 0; }
 .fp-ibtn { width: 26px; height: 26px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--muted); cursor: pointer; }
 .fp-ibtn:hover, .fp-ibtn[aria-expanded="true"] { background: var(--surface-2); color: var(--fg); }

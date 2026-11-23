@@ -1,6 +1,6 @@
 // A handler's package in the workbench: the Files panel (the handler you're working on, laid out like its Hub
-// package: handler.js, then its other files, then its game on this PC; its name at the top switches to another open
-// handler), a second editor for the package's text files (ini, cfg, json, xml…, with highlighting and checks) and a
+// package: handler.js, then its other files, then its game on this PC; other open handlers are rows under
+// it), a second editor for the package's text files (ini, cfg, json, xml…, with highlighting and checks) and a
 // card for binaries. handler.js stays in the main editor, so everything that reads "the handler" keeps reading it.
 // The tabs above the code (one per open file of this handler) are the host's.
 import CodeMirror from 'codemirror';
@@ -94,8 +94,6 @@ export interface PkgHost {
   /** Optional: HTML for a handler's last rows (its game on this PC), and their clicks ([data-gf]). */
   extraSection?(id: string): string;
   onExtra?(act: string): void;
-  /** Optional: the menu of the handler's name at the top of the list: the open handlers, close this one, new or open. */
-  switchMenu?(anchor: HTMLElement): void;
 }
 
 export function initPackageUI(host: PkgHost) {
@@ -333,14 +331,16 @@ export function initPackageUI(host: PkgHost) {
       : '';
     if (place) queueMicrotask(() => panel.querySelector<HTMLElement>(place)?.focus());
     const badge = (c?: { e: number; w: number }) => (!c ? '' : c.e ? `<span class="fp-cnt e" title="${c.e} error${c.e === 1 ? '' : 's'} in handler.js">${c.e}</span>` : c.w ? `<span class="fp-cnt w" title="${c.w} warning${c.w === 1 ? '' : 's'} in handler.js">${c.w}</span>` : '<span class="fp-cnt ok" title="Ready for Nucleus">✓</span>');
-    // One handler: the one in the editor. Its name is the head of the list, and the way to the other open ones.
+    // One handler: the one in the editor, with its files. Any other open handlers are listed under it, a row each
+    // (in sight, not in a menu): a click brings one into the editor.
     const h = on ?? list[0];
     if (!h) { $('#files-list').innerHTML = ''; return; }
     const game = gameFolderName(handler());
-    const others = list.length - 1;
+    const rest = list.filter((x) => x !== h);
     const rows = [`<li class="fp-item"><button type="button" class="fp-open" data-fp="" data-h="${h.id}" aria-current="${active === null && !empty}" style="padding-left:8px">${handlerIcon()}<span class="fp-name">handler.js</span></button></li>`, ...fileRows(h, game)];
-    $('#files-list').innerHTML = `<div class="fp-head"><button type="button" class="fp-switch" data-fp-switch data-n="${list.length}" aria-haspopup="menu" aria-label="${esc(`${h.name}${others ? `, and ${others} more open handler${others === 1 ? '' : 's'}` : ''}: switch, close, new or open`)}" title="${esc(`${h.name}: installs to handlers\\${game}\\`)}"><span class="fp-name">${esc(h.name)}</span>${others ? `<span class="fp-more" aria-hidden="true">+${others}</span>` : ''}${icon('chevron-down', 14, 'ui-ico fp-tw')}</button>${badge(h.counts)}<button type="button" class="fp-ibtn" data-fp-add aria-label="Add files to ${esc(h.name)}" title="Add files… (or drop them on the list)">${icon('file-plus', 15)}</button></div>
-      <ul class="fp-list fp-tree" aria-label="${esc(`The files of ${h.name}. Files dropped here are added to it`)}"><li class="fp-h on" data-h="${h.id}"><ul class="fp-list">${rows.join('')}${host.extraSection?.(h.id) ?? ''}</ul></li></ul>`;
+    const others = rest.length ? `<div class="fp-others"><div class="fp-sub" id="fp-others-h">Other open handlers</div><ul class="fp-list" aria-labelledby="fp-others-h">${rest.map((x) => `<li class="fp-item"><button type="button" class="fp-open" data-fp-go="${x.id}" title="${esc(`Switch to ${x.name}`)}"><span class="fp-name">${esc(x.name)}</span>${badge(x.counts)}</button><button type="button" class="fp-del" data-fp-hclose="${x.id}" aria-label="Close ${esc(x.name)}" title="Close this handler">${icon('x', 13)}</button></li>`).join('')}</ul></div>` : '';
+    $('#files-list').innerHTML = `<div class="fp-head fp-item" data-fp-head data-n="${list.length}" title="${esc(`${h.name}: installs to handlers\\${game}\\`)}"><span class="fp-name fp-title">${esc(h.name)}</span>${badge(h.counts)}<button type="button" class="fp-ibtn" data-fp-add aria-label="Add files to ${esc(h.name)}" title="Add files… (or drop them on the list)">${icon('file-plus', 15)}</button><button type="button" class="fp-ibtn" data-fp-hclose="${h.id}" aria-label="Close ${esc(h.name)}" title="Close this handler">${icon('x', 15)}</button></div>
+      <ul class="fp-list fp-tree" aria-label="${esc(`The files of ${h.name}. Files dropped here are added to it`)}"><li class="fp-h on" data-h="${h.id}"><ul class="fp-list">${rows.join('')}${host.extraSection?.(h.id) ?? ''}</ul></li></ul>${others}`;
   }
 
   /** The Files panel in or out; the buttons that toggle it say which. Beside the code (not as a phone's sheet) the
@@ -367,8 +367,10 @@ export function initPackageUI(host: PkgHost) {
     const t = e.target as HTMLElement;
     const add = t.closest<HTMLElement>('[data-fp-add]');
     if (add) { if (add.dataset.h) host.switchTo(add.dataset.h); return picker.click(); }
-    const sw = t.closest<HTMLElement>('[data-fp-switch]');
-    if (sw) return host.switchMenu?.(sw);
+    const shut = t.closest<HTMLElement>('[data-fp-hclose]');
+    if (shut) return host.closeHandler(shut.dataset.fpHclose!);
+    const go = t.closest<HTMLElement>('[data-fp-go]');
+    if (go) return host.switchTo(go.dataset.fpGo!);
     // Everything else is about one handler's rows: that handler comes into the editor first.
     const of = t.closest<HTMLElement>('[data-h]')?.dataset.h;
     const del = t.closest<HTMLElement>('[data-fp-del]');

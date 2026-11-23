@@ -14,7 +14,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 ## Unreleased
 ### ⚠️ Changed
-- **Files beside the code, and tabs for open files.** As in most code editors: Files, left of the code, shows the handler you're working on (`handler.js`, then the files that go with it), and the tabs above the code are the files you opened. Its name at the top of Files switches to another open handler, which keeps its own tabs. Files starts open on a wide screen, and its button in the side rail hides it.
+- **Files beside the code, and tabs for open files.** As in most code editors: Files, left of the code, shows the handler you're working on (`handler.js`, then the files that go with it), and the tabs above the code are the files you opened. Other open handlers are listed under the files, and each keeps its own tabs. Files starts open on a wide screen, and its button in the side rail hides it.
 - **The side rail is the default layout.** New visitors get the tools in a strip on the left, as in most code editors, with more room for the code. If you've used the workbench before, your layout stays as it was. Settings › Layout switches between the rail and the slim bar on top.
 - **Setting a tool up is in the docs now.** *Get the tools* is a short page with a tile per tool. Each tile leads to that tool's Setup page in the docs, which has the download, the steps and how to check that it worked. Old links to a tool's steps on *Get the tools* lead on to its Setup page.
 - **The Form and Blocks views have been removed.** They were hidden since the last release; a different visual editor is planned instead. If your saved view was one of them, the workbench opens your handler as code and says so once.
