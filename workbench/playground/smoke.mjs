@@ -203,6 +203,27 @@ for (const theme of ['light', 'dark']) section(`workbench, ${theme}`, async () =
   await p.click('[role=tab][data-tab=simulate]');
   await p.waitForTimeout(800);
   check((await p.innerText('#panel-simulate')).length > 100, `${theme}: Try it renders`);
+  // The handler's own options (Game.AddOption): a row of pickers, only when it has some; a pick runs it again.
+  {
+    const was = await p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue());
+    const noRow = await p.isHidden('#sim-answers');
+    await p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.setValue('Game.GUID = "A";\nGame.GameName = "A";\nGame.ExecutableName = "a.exe";\nGame.AddOption("Mode", "Which mode", "mode", ["coop", "versus"]);\nGame.AddOption("Server", "Its address", "ip", []);\nGame.Play = function () {\n  Context.StartArguments = "-mode " + Context.Options["mode"] + " -ip " + Context.Options["ip"];\n};\n'));
+    await p.click('#sim-run');
+    await p.waitForTimeout(300);
+    const first = await p.innerText('#sim-out');
+    await p.selectOption('#sim-answers select[data-answer="mode"]', 'versus');
+    await p.fill('#sim-answers input[data-answer="ip"]', '10.0.0.2');
+    await p.press('#sim-answers input[data-answer="ip"]', 'Enter');
+    await p.waitForTimeout(300);
+    const second = await p.innerText('#sim-out');
+    check(noRow && /-mode coop -ip/.test(first) && /-mode versus -ip 10\.0\.0\.2/.test(second) && (await p.inputValue('#sim-answers input[data-answer="ip"]')) === '10.0.0.2', `${theme}: Try it's option pickers show for a handler with options, and a pick runs it again with that answer`);
+    await p.waitForTimeout(700); // a tip that fades in is checked once it's there
+    await axe(p, `${theme}, Try it's options`);
+    await p.evaluate((v) => document.querySelector('.CodeMirror').CodeMirror.setValue(v), was);
+    await p.click('#sim-run');
+    await p.waitForTimeout(300);
+    check(await p.isHidden('#sim-answers'), `${theme}: the option pickers go when the handler has no options`);
+  }
   // Keyboard: Tab reaches the editor, and typing goes into it.
   await p.focus('#lines-toggle');
   let focused = false;

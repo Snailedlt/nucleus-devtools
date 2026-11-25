@@ -4222,8 +4222,17 @@ var height = Context.Height;
 ### Context.HexEdit
 `HexEdit(fileToEdit: string, address: string, newBytes: number[]): boolean`
 Path variables
-Writes bytes at an address in a file.
-_✎ AI-written, based on Nucleus GenericContext.cs. Not from the official docs._
+Writes bytes into a file at an address. The address is text in hexadecimal without `0x` (`"7c"`; `"0x7c"` throws). The file must exist: a missing one throws, which ends the session inside `Game.Play`. The bytes are written as given, so a number that takes several bytes goes lowest byte first (little-endian) for most games.
+_✎ AI-written, based on Nucleus GenericContext.cs (HexEdit). Not from the official docs._
+In practice (AI-written): Overwrites the bytes at that place and leaves the rest of the file as it is. It's for a setting a game keeps in a binary file, where the text-file functions can't help. A number that takes several bytes is written lowest byte first in most such files: 960 as four bytes is `[192, 3, 0, 0]`.
+_✎ AI-written, based on Nucleus GenericContext.cs (HexEdit)._
+Example (AI-written):
+```js
+var cfg =
+  Context.GetFolder(Nucleus.Folder.InstancedGameFolder) +
+  "\\config.bin";
+Context.HexEdit(cfg, "7c", [192, 3, 0, 0]);
+```
 
 ### Context.HideCursor
 `HideCursor: boolean`
@@ -4945,7 +4954,8 @@ var saveType = Context.SaveType;
 ### Context.ScriptFolder
 `(read-only) ScriptFolder: string`
 read-only · Path variables
-Path to the Nucleus Co-op handlers root folder (Nucleus-Coop\handlers).
+The handler's own folder: `handlers\<handler file name without .js>` in Nucleus' folder, the same folder as `Game.Folder`. Not the `handlers` folder itself.
+_✎ AI-written, based on Nucleus GenericContext.cs (ScriptFolder). Not from the official docs._
 Example:
 ```js
 Context.ScriptFolder;
@@ -6870,6 +6880,38 @@ The current thread.
 `Sleep(millisecondsTimeout: number): void`
 Other .NET (System)
 Waits this many milliseconds. Nucleus waits with it, so keep it short.
+
+## Nucleus.Globals
+
+Nucleus' global paths and settings.
+
+### Nucleus.Globals.GameProfilesFolder
+`(read-only) GameProfilesFolder: string`
+read-only
+Folder where Nucleus keeps saved game profiles.
+
+### Nucleus.Globals.IsOneDriveEnabled
+`IsOneDriveEnabled: boolean`
+True if the Documents folder is inside OneDrive.
+
+### Nucleus.Globals.NucleusInstallRoot
+`(read-only) NucleusInstallRoot: string`
+read-only
+The Nucleus install folder (where NucleusCoop.exe is).
+
+### Nucleus.Globals.NucleusMaxPlayers
+`(read-only) NucleusMaxPlayers: number`
+read-only
+Maximum number of players Nucleus supports (32).
+
+### Nucleus.Globals.UserDocumentsRoot
+`UserDocumentsRoot: string`
+The user's Documents folder.
+
+### Nucleus.Globals.UserEnvironmentRoot
+`(read-only) UserEnvironmentRoot: string`
+read-only
+The user's profile folder, e.g. `C:\Users\me`.
 
 ## Nucleus enums
 

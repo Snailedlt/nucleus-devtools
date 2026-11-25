@@ -239,6 +239,11 @@ body.resizing-v, body.resizing-v * { cursor: row-resize !important; user-select:
 #line-pop .lp-doc pre { background: var(--surface-2); border-radius: 5px; padding: 6px 8px; font: 12px/1.45 var(--font-mono); margin: 0 0 6px; white-space: pre-wrap; overflow-wrap: anywhere; }
 #touch-title { position: fixed; z-index: 90; max-width: min(320px, calc(100vw - 16px)); background: var(--fg); color: var(--bg); border-radius: 6px; padding: 6px 10px; font-size: 13px; line-height: 1.4; white-space: pre-line; pointer-events: none; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
 #touch-title[hidden] { display: none; }
+/* Try it: the handler's own options (Game.AddOption), answered as a player would. Only there when it has some. */
+.sim-answers { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; margin: 0 0 8px; font-size: var(--fs-sm); }
+.sim-answers[hidden] { display: none; }
+.sim-answers label { display: inline-flex; align-items: center; gap: 6px; }
+.sim-answers input { width: 16ch; font: inherit; color: var(--fg); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-ctl); padding: 6px 10px; }
 /* The workbench's tooltip (tooltips.ts): what a `title` says, in our own bubble instead of the browser's. */
 #tooltip { position: fixed; inset: auto; margin: 0; max-width: min(340px, calc(100vw - 16px)); padding: 6px 10px; border: 0; border-radius: 8px; background: var(--fg); color: var(--bg); font: 12.5px/1.4 var(--font-body); white-space: pre-line; pointer-events: none; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
 @media (pointer: coarse) {
@@ -2166,6 +2171,7 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
           <button class="btn" id="sim-all" type="button" title="Every player count, input setup and monitor size">Test all combinations</button>
         </div>
           <button class="btn" id="sim-debug" type="button" title="Debug (F5): run the handler step by step, pause on breakpoints, and see every value"><span aria-hidden="true">▶ </span>Step through</button>
+        <div id="sim-answers" class="sim-answers" role="group" aria-label="The handler's options" hidden></div>
         <details class="how-works"><summary>How this works <span aria-hidden="true">ⓘ</span></summary><p class="muted">Each player's window, launch arguments and file changes, as Nucleus would set them up. Simulated: nothing on your computer is touched, and the game itself still needs a test in Nucleus.<span class="dev-only"> How: the handler is loaded and <code>Game.Play</code> runs once per player in this browser, following the Jint 2.11.58 rules Nucleus uses (checked against the real engine on every probe). File, registry and process calls are recorded, not performed.</span></p></details>
         <div id="dbg" class="dbg" hidden></div>
         <div id="sim-matrix" hidden></div>

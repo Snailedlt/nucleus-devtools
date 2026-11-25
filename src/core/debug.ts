@@ -380,7 +380,7 @@ export function partialTrace(): Trace | null {
 export function traceHandler(src: string, opts: TraceOptions): Trace {
   const maxSteps = Math.max(1, opts.maxSteps ?? DEFAULT_MAX_STEPS);
   const perPhase = Math.max(1, opts.maxStepsPerPhase ?? DEFAULT_MAX_STEPS_PER_PHASE);
-  const simOpts: SimOptions = { players: opts.players, width: opts.width, height: opts.height, keyboardPlayer: opts.keyboardPlayer, ...(opts.plugins ? { plugins: opts.plugins } : {}) };
+  const simOpts: SimOptions = { players: opts.players, width: opts.width, height: opts.height, keyboardPlayer: opts.keyboardPlayer, ...(opts.plugins ? { plugins: opts.plugins } : {}), ...(opts.options ? { options: opts.options } : {}), ...(opts.existing ? { existing: opts.existing } : {}), ...(opts.existsAll ? { existsAll: true } : {}) };
   const trace: Trace = { steps: [], calls: [], truncated: false, truncatedPhases: [], maxSteps, result: undefined as unknown as SimResult };
   current = { trace };
   const inst = instrument(src);

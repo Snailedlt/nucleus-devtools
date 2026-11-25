@@ -1,5 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { rankHandlers } from '../core/hub';
 import { hubScan, hubGameName } from '../core/hubscan';
 import { hubFolderName } from '../core/sim';
 import { gameFolderName } from '../core/pkgcheck';
@@ -38,4 +39,20 @@ test('Hub install scan: the linter agrees (BOM, indentation)', () => {
   const ok = 'Game.GUID = "demo";\nGame.GameName = "Demo";\nGame.ExecutableName = "demo.exe";\n';
   assert.deepEqual(lint('\uFEFF' + ok).filter((d) => d.rule === 'hub-install-parse'), [], 'a BOM is no problem');
   assert.ok(lint(ok.replace('Game.GameName', '  Game.GameName')).some((d) => d.rule === 'hub-install-parse'), 'indented');
+});
+
+test('rankHandlers: every word first, and it says when nothing has them all', () => {
+  const h = (title: string, downloadCount = 0, description = '') => ({ title, gameName: title, ownerName: 'someone', description, downloadCount });
+  const list = [h('Call of Duty: World at War', 900), h('World War Z', 500), h('Software Inc.', 800), h('Halo 2', 100), h('Cold Fear', 5, 'a cold war story')];
+  // "war" starts a word in two titles (not in "Software"); nothing has all three words.
+  const some = rankHandlers(list, ['cold', 'war', 'assault']);
+  assert.ok(some.length > 0 && some.every((x) => x.match === 'some'));
+  assert.ok(!some.some((x) => x.h.title === 'Software Inc.' || x.h.title === 'Halo 2'));
+  // A handler with every word comes before more popular ones with some.
+  const all = rankHandlers(list, ['cold', 'war']);
+  assert.deepEqual([all[0].h.title, all[0].match], ['Cold Fear', 'all']);
+  assert.equal(all[1].match, 'some');
+  assert.deepEqual(rankHandlers(list, ['halo']).map((x) => [x.h.title, x.match]), [['Halo 2', 'all']]);
+  assert.equal(rankHandlers(list, []).length, list.length); // no words: all of them, by downloads
+  assert.equal(rankHandlers(list, [])[0].h.title, 'Call of Duty: World at War');
 });

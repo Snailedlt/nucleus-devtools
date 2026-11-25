@@ -34,6 +34,8 @@ const ROOTS: [string, string][] = [
   ['System.Environment', 'System.Environment'],
   ['System.Threading.Thread', 'System.Threading.Thread'],
 ];
+// A static class under Nucleus (Nucleus.Globals): its members are looked up like any object's.
+for (const [name, c] of Object.entries(api.nucleusClasses)) if (c.statics && api.objects[c.statics]) ROOTS.push([c.statics, `Nucleus.${name}`]);
 
 const caches: Record<string, Entry[]> = {};
 /** Every API member handlers can use. With `withHub`, also the `Hub.*` lines hub.splitscreen.me writes on upload:
@@ -79,7 +81,7 @@ function objectAt(q: string, jintEq: (a: string, b: string) => boolean): Extract
   // Nucleus: its enums and helper classes are what it holds.
   if (path === 'Nucleus') children.push(...Object.keys(api.enums).map((e) => `Nucleus.${e}`), ...Object.keys(api.nucleusClasses).map((c) => `Nucleus.${c}`));
   if (path === 'PlayerList') children.push('Player');
-  const doc = api.globals[path]?.doc ?? entries.find((e) => e.path === path)?.member.doc;
+  const doc = api.globals[path]?.doc ?? entries.find((e) => e.path === path)?.member.doc ?? api.nucleusClasses[path.replace(/^Nucleus\./, '')]?.doc;
   return { kind: 'object', path, doc, members, children };
 }
 
@@ -131,7 +133,12 @@ export function lookup(query: string, opts: { objects?: boolean } = {}): LookupR
       ? { kind: 'enum', name: enumName, values: { [value]: e.values[value] }, doc: e.doc }
       : { kind: 'enum', name: enumName, values: e.values, doc: e.doc };
   }
-  if (api.nucleusClasses[en]) return { kind: 'class', name: en, ...api.nucleusClasses[en] };
+  if (api.nucleusClasses[en]) {
+    // A static class has nothing to construct: its members are the answer.
+    const c = api.nucleusClasses[en];
+    const statics = c.statics && !c.constructors?.length ? objectAt(`Nucleus.${en}`, jintEq) : undefined;
+    return statics ? { ...statics, doc: statics.doc ?? c.doc } : { kind: 'class', name: en, ...c };
+  }
   if (!q.includes('.')) {
     const byName = entries.filter((e) => e.name.toLowerCase() === q.toLowerCase());
     if (byName.length) return { kind: 'entries', entries: byName };

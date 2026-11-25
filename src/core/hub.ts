@@ -34,6 +34,26 @@ export function packageUrl(h: Pick<HubHandler, '_id' | 'currentPackage' | 'curre
   return `${HUB}/cdn/storage/packages/${h.currentPackage}/original/handler-${h._id}-v${h.currentVersion}.nc`;
 }
 
+/**
+ * Handlers for a search, best first. A word counts where a word of the handler starts with it ("war" finds
+ * "Warfare", not "Software"); the title and game name count double. `match` is "all" when every word was found
+ * and "some" otherwise: those are only the closest, not a handler for what was asked. All "all" come first, then
+ * by score and downloads. No words: every handler, by downloads.
+ */
+export function rankHandlers<T extends Pick<HubHandler, 'title' | 'gameName' | 'ownerName' | 'description' | 'downloadCount'>>(list: T[], words: string[]): { h: T; match: 'all' | 'some' }[] {
+  const starts = words.map((w) => new RegExp(`(^|[^a-z0-9])${w.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`));
+  return list
+    .map((h) => {
+      const title = `${h.title} ${h.gameName}`.toLowerCase();
+      const rest = `${h.ownerName} ${h.description ?? ''}`.toLowerCase();
+      const scores = starts.map((r) => (r.test(title) ? 2 : r.test(rest) ? 1 : 0));
+      return { h, score: starts.length ? scores.reduce<number>((a, b) => a + b, 0) : 1, match: (scores.every(Boolean) ? 'all' : 'some') as 'all' | 'some' };
+    })
+    .filter((x) => x.score > 0)
+    .sort((a, b) => Number(b.match === 'all') - Number(a.match === 'all') || b.score - a.score || (b.h.downloadCount ?? 0) - (a.h.downloadCount ?? 0))
+    .map(({ h, match }) => ({ h, match }));
+}
+
 export function handlerPageUrl(id: string): string {
   return `${HUB}/handler/${id}`;
 }

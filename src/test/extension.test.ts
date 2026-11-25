@@ -192,6 +192,20 @@ test('fix-all code action (source.fixAll.nucleus) and in quick fixes', async () 
   assert.deepEqual(provider.provideCodeActions(m.makeDocument(HEADER), null, { diagnostics: [], only: m.CodeActionKind.SourceFixAll }), []);
 });
 
+test('Try it panel: a handler with options gets a button per option, and the answer picked is used', async () => {
+  const run = (id: string, ...args: unknown[]) => m.__registered.commands.filter((c: any) => c.id === id).at(-1)!.fn(...args);
+  const plain = m.makeDocument(HEADER + 'Game.Play = function () { Context.StartArguments = "-w"; };\n');
+  m.window.activeTextEditor = { document: plain };
+  await run('splitscreenme.tryIt');
+  assert.doesNotMatch(m.__panels.at(-1)!.webview.html, /g-answers/); // nothing on screen without options
+  m.window.activeTextEditor = { document: m.makeDocument(HEADER + 'Game.AddOption("Mode", "Which mode", "mode", ["coop", "versus"]);\nGame.Play = function () { Context.StartArguments = "-mode " + Context.Options["mode"]; };\n') };
+  await run('splitscreenme.tryIt');
+  const panel = m.__panels.at(-1)!;
+  assert.match(panel.webview.html, /aria-labelledby="g-answers"/);
+  assert.match(panel.webview.html, /data-id="answer-mode"[^>]*>Mode: <strong>coop<\/strong>/);
+  assert.match(panel.webview.html, /-mode coop/);
+});
+
 test('Try it panel: simulates the active handler; toggle buttons, only our own script', async () => {
   const run = (id: string, ...args: unknown[]) => m.__registered.commands.filter((c: any) => c.id === id).at(-1)!.fn(...args);
   m.window.activeTextEditor = { document: m.makeDocument(HEADER + 'Game.Play = function () { Context.StartArguments = "-w " + Context.Width; };\n') };

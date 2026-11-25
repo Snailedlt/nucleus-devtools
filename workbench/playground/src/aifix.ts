@@ -77,7 +77,7 @@ export function pageTools() {
         const exact = lookup(q);
         if (exact.kind === 'enum') return { enum: `Nucleus.${exact.name}`, values: exact.values };
         if (exact.kind === 'class') return { class: `Nucleus.${exact.name}`, constructorParams: exact.params };
-        const entries = exact.kind === 'entries' ? exact.entries : search(q, 6);
+        const entries = exact.kind === 'entries' ? exact.entries : exact.kind === 'object' ? exact.members : search(q, 6);
         if (!entries.length) return { found: false, didYouMean: exact.kind === 'none' ? exact.didYouMean ?? null : null };
         return entries.slice(0, 6).map((e) => ({
           path: e.path,

@@ -2086,12 +2086,17 @@ class Analyzer {
     const list = blocked?.right.type === 'ArrayExpression' ? blocked.right.elements : [];
     const filters = proto.filter(([k, ns]) => /Filter$/.test(k) && !isOff(ns[ns.length - 1]));
     const needers = [...(list.length ? [['Game.ProtoInput.BlockedMessages', [blocked!]] as [string, Node[]]] : []), ...filters];
-    if (needers.length && !on('MessageFilterHook')) {
+    // Installed at runtime counts (ProtoInput.InstallHook(…, ProtoInput.Values.MessageFilterHookID), usually when input
+    // is locked): Proto Input keeps the blocked messages and filters it got at startup and applies them from then on.
+    const hookAtRuntime = /\bProtoInput\s*\.\s*InstallHook\s*\([^;]*\bMessageFilterHookID\b/.test(
+      codeOf(this.text).code.replace(/"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'/g, (q) => q[0] + ' '.repeat(q.length - 2) + q[0]),
+    );
+    if (needers.length && !on('MessageFilterHook') && !hookAtRuntime) {
       const n = needers[0][1][0];
       const names = needers.map(([k]) => `\`${k}\``);
       this.report({
         rule: 'protoinput-needs-hook',
-        message: `${names.length > 2 ? names.slice(0, 2).join(', ') + ' and more' : names.join(' and ')} only work${needers.length === 1 ? 's' : ''} inside Proto Input's message filter hook, which isn't on: add \`Game.ProtoInput.MessageFilterHook = true;\`, or ${needers.length === 1 ? 'it does' : 'they do'} nothing.`,
+        message: `${names.length > 2 ? names.slice(0, 2).join(', ') + ' and more' : names.join(' and ')} only work${needers.length === 1 ? 's' : ''} inside Proto Input's message filter hook, which isn't on: add \`Game.ProtoInput.MessageFilterHook = true;\` (or install it with \`ProtoInput.InstallHook\` when input is locked), or ${needers.length === 1 ? 'it does' : 'they do'} nothing.`,
         start: n.left.start,
         end: n.left.end,
         fixes: [{ title: 'Turn on the message filter hook', preferred: true, edits: [{ start: lineStart(this.text, n.start), end: lineStart(this.text, n.start), text: 'Game.ProtoInput.MessageFilterHook = true;\n' }] }],

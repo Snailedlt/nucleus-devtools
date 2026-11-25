@@ -77,6 +77,8 @@ export function docsPage(view: string, link: (value: string) => string, slots = 
     return { view, path: `Nucleus.${exact.name}`, crumbs: [{ label: 'Nucleus values' }, { label: `Nucleus.${exact.name}` }], markdown: `## enum Nucleus.${exact.name}\n\n${exact.doc ?? ''}\n\n${Object.entries(exact.values).map(([k, v]) => `- \`${k}\` = ${v}`).join('\n')}${users.length ? `\n\n## Options that take it\n\n${users.map(line).join('\n')}` : ''}` };
   }
   if (exact.kind === 'class') return { view, path: `Nucleus.${exact.name}`, crumbs: [{ label: `new Nucleus.${exact.name}` }], markdown: `## new Nucleus.${exact.name}(${exact.params.join(', ')})\n\n${exact.doc}` };
+  // A static class (Nucleus.Globals): its members.
+  if (exact.kind === 'object') return { view, path: exact.path, crumbs: [{ label: exact.path }], markdown: `## ${exact.path}\n\n${exact.doc ?? ''}\n\n${exact.members.map(line).join('\n')}` };
   if (api.globals[q]) {
     const g = api.globals[q];
     const grp = DOCS_GROUPS.find((x) => x.key === q);

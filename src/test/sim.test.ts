@@ -279,3 +279,66 @@ test('sandbox: the simulator with its trimmed API model gives the same results a
     for (const players of [1, 3]) assert.deepEqual(simulateIsolated(src, { ...OPTS, players }), JSON.parse(JSON.stringify(simulate(src, { ...OPTS, players }))), `${f}, ${players} player(s)`);
   }
 });
+
+test('simulate: Context.HexEdit names the file it patches (the file is its first argument)', () => {
+  const r = simulateIsolated(HEADER + 'Game.Play = function () {\n  Context.HexEdit("C:\\\\game\\\\config.bin", "7c", [192, 3, 0, 0]);\n  Context.PatchFile("a.exe", "b.exe", [1], [2]);\n};\n', OPTS);
+  assert.deepEqual(r.players[0].effects, ['Patches config.bin', 'Patches b.exe']);
+});
+
+const WITH_OPTIONS =
+  HEADER +
+  'Game.AddOption("Game", "Which game", "game", ["Half-Life", "Day of Defeat"]);\nGame.AddOption("Server", "Its address", "ip", []);\n' +
+  'Game.Play = function () {\n  Context.StartArguments = "-game " + Context.Options["game"] + " +connect " + Context.Options["ip"];\n};\n';
+test('simulate: the answers to Game.AddOption can be given', () => {
+  const first = simulateIsolated(WITH_OPTIONS, OPTS);
+  assert.equal(first.players[0].startArguments, '-game Half-Life +connect ');
+  assert.deepEqual(first.answers, [{ key: 'game', name: 'Game', value: 'Half-Life', choices: ['Half-Life', 'Day of Defeat'] }, { key: 'ip', name: 'Server', value: '' }]);
+  assert.equal(first.notes, undefined);
+  const r = simulateIsolated(WITH_OPTIONS, { ...OPTS, options: { game: 'Day of Defeat', ip: '10.0.0.2' } });
+  assert.equal(r.players[1].startArguments, '-game Day of Defeat +connect 10.0.0.2');
+  assert.deepEqual(r.answers!.map((a) => [a.key, a.value, a.chosen]), [['game', 'Day of Defeat', true], ['ip', '10.0.0.2', true]]);
+  assert.equal(r.notes, undefined);
+});
+test('simulate: an answer Nucleus could not give is noted, not an error', () => {
+  const r = simulateIsolated(WITH_OPTIONS, { ...OPTS, options: { game: 'Quake', gmae: 'Half-Life' } });
+  assert.equal(r.players[0].startArguments, '-game Quake +connect ');
+  assert.equal(r.notes!.length, 2);
+  assert.match(r.notes!.join('\n'), /"Quake" isn't one of the choices of the option "game"/);
+  assert.match(r.notes!.join('\n'), /No Game\.AddOption has the key "gmae" \(this handler's: "game", "ip"\)/);
+  assert.equal(r.players.some((p) => p.error), false);
+});
+
+test('simulate: which files exist can be said, and nothing exists otherwise', () => {
+  const src =
+    HEADER +
+    'Game.Play = function () {\n  var cfg = Context.GetFolder(Nucleus.Folder.InstancedGameFolder) + "\\\\cfg\\\\device.cfg";\n' +
+    '  var a = System.IO.File.Exists(cfg) ? "cfg" : "nocfg";\n  var b = System.IO.Directory.Exists("C:\\\\Saves") ? "saves" : "nosaves";\n  Context.StartArguments = a + " " + b;\n};\n';
+  const args = (o: object) => simulateIsolated(src, { ...OPTS, ...o }).players[0].startArguments;
+  assert.equal(args({}), 'nocfg nosaves');
+  assert.equal(args({ existsAll: true }), 'cfg saves');
+  assert.equal(args({ existing: ['cfg/device.cfg'] }), 'cfg nosaves');
+  assert.equal(args({ existing: ['*.cfg', 'c:\\saves\\'] }), 'cfg saves');
+  assert.equal(args({ existing: ['vice.cfg', 'other\\device.cfg'] }), 'nocfg nosaves'); // whole names, from the end of the path
+});
+test('simulate: environment variables have a value, unknown ones are null', () => {
+  const r = simulateIsolated(
+    HEADER + 'Game.Play = function () {\n  Context.StartArguments = System.Environment.GetEnvironmentVariable("userprofile") + "\\\\AppData|" + System.Environment.GetEnvironmentVariable("NOPE");\n};\n',
+    OPTS,
+  );
+  assert.equal(r.players[0].startArguments, 'C:\\Users\\me\\AppData|null');
+});
+test('simulate: a stream or reader from .NET is recorded instead of failing the run', () => {
+  const r = simulateIsolated(
+    HEADER +
+      'Game.Play = function () {\n  var s = System.IO.File.OpenWrite("C:\\\\game\\\\save.dat");\n  s.Seek(124, 0);\n  s.Close();\n' +
+      '  var reader = new System.IO.StreamReader("C:\\\\game\\\\a.txt");\n  var text = reader.ReadToEnd();\n  var n = 0;\n  while (reader.ReadLine() != null) n++;\n' +
+      '  Context.StartArguments = "[" + text + "]" + n;\n};\n',
+    OPTS,
+  );
+  assert.equal(r.players[0].error, undefined);
+  assert.equal(r.players[0].startArguments, '[]0');
+  assert.ok(r.players[0].calls.includes('File.OpenWrite(save.dat).Seek(124, 0)'), r.players[0].calls.join(' | '));
+  assert.ok(r.players[0].calls.some((c) => c.startsWith('new System.IO.StreamReader(')));
+  // A misspelled member of a listed type is still undefined, as in Jint.
+  assert.match(simulateIsolated(HEADER + 'Game.Play = function () {\n  System.IO.File.Exsits("a");\n};\n', OPTS).players[0].error ?? '', /Exsits|not a function|no method/i);
+});

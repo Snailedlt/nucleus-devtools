@@ -3343,7 +3343,8 @@ interface Context {
    */
   UserProfileConvertedToDocuments: boolean;
   /**
-   * Path to the Nucleus Co-op handlers root folder (Nucleus-Coop\handlers).
+   * The handler's own folder: `handlers\<handler file name without .js>` in Nucleus' folder, the same folder as `Game.Folder`. Not the `handlers` folder itself.
+   * (AI-written, based on Nucleus GenericContext.cs (ScriptFolder). Not from the official docs.)
    * @example Context.ScriptFolder
    */
   readonly ScriptFolder: string;
@@ -3635,8 +3636,14 @@ Context.ModifySaveFile(ini, ini, Nucleus.SaveType.INI, [
    */
   ModifySaveFile(installSavePath: string | number | boolean, saveFullPath: string | number | boolean, _type: Nucleus.SaveType | number | boolean, info: (Nucleus.SaveInfo)[]): boolean;
   /**
-   * Writes bytes at an address in a file.
-   * (AI-written, based on Nucleus GenericContext.cs. Not from the official docs.)
+   * Writes bytes into a file at an address. The address is text in hexadecimal without `0x` (`"7c"`; `"0x7c"` throws). The file must exist: a missing one throws, which ends the session inside `Game.Play`. The bytes are written as given, so a number that takes several bytes goes lowest byte first (little-endian) for most games.
+   * (AI-written, based on Nucleus GenericContext.cs (HexEdit). Not from the official docs.)
+   *
+   * In practice: Overwrites the bytes at that place and leaves the rest of the file as it is. It's for a setting a game keeps in a binary file, where the text-file functions can't help. A number that takes several bytes is written lowest byte first in most such files: 960 as four bytes is `[192, 3, 0, 0]`.
+   * (AI-written, based on Nucleus GenericContext.cs (HexEdit).)
+   * AI-written example:
+   * @example var cfg = Context.GetFolder(Nucleus.Folder.InstancedGameFolder) + "\\config.bin";
+Context.HexEdit(cfg, "7c", [192, 3, 0, 0]);
    */
   HexEdit(fileToEdit: string | number | boolean, address: string | number | boolean, newBytes: number[]): boolean;
   PatchFileFindAll(originalFile: string | number | boolean, patchedFile: string | number | boolean, patchFind: number[], patchReplace: number[]): boolean;

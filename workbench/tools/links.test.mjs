@@ -131,7 +131,8 @@ test('#docs links to the groups, the enums, the Nucleus classes and the main pag
     assert.equal(r.kind, 'enum', name);
     assert.equal(r.name, name);
   }
-  for (const name of Object.keys(api.nucleusClasses ?? {})) assert.equal(lookup(docs(`#docs-Nucleus.${name}`).view.slice(2)).kind, 'class', name);
+  // A class to construct, or a static one (Nucleus.Globals), which answers with its members.
+  for (const [name, c] of Object.entries(api.nucleusClasses ?? {})) assert.equal(lookup(docs(`#docs-Nucleus.${name}`).view.slice(2)).kind, c.statics ? 'object' : 'class', name);
   // A Docs view's own link opens that view again.
   for (const h of ['docs', 'docs-Context', 'docs-Context.ModifySaveFile', 'docs-window%20title']) assert.equal(links.docsHashOf(docs(`#${h}`).view), h);
 });

@@ -14,7 +14,7 @@ import { lint, lineOf, lineStart, RULES, RuleId, Severity, LintOptions, looksLik
 import { fixAll, matchLeftAfterFix } from './core/fix';
 import { formatHandler } from './core/format';
 import { lookup, search, formatEntry, formatObject, markdownReference } from './core/lookup';
-import { handlerPageUrl, HUB, HubHandler } from './core/hub';
+import { handlerPageUrl, HUB, HubHandler, rankHandlers } from './core/hub';
 import { hubHandlers, hubPackage } from './hubcache';
 import { renderHandler, toHandlerFileName, validateHandlerInfo, FEATURES, Feature } from './core/templates';
 import { buildPackage, extractEntries, findSkillDir, installAgentKit } from './core/pkg';
@@ -28,7 +28,7 @@ import { setupNotepadPP } from './setup-npp';
 import { runElevated, runMenu, startedFromExplorer } from './winhelp';
 import { builtIn, installPath, installRelease, installSelf, isStandalone, latestRelease, newer, TOOL, VERSION } from './standalone';
 import os from 'node:os';
-import { EVERY_KEYBOARD } from './core/sim';
+import { EVERY_KEYBOARD, SimOptions } from './core/sim';
 import { formatSimulation } from './simformat';
 import { serve } from './mcp';
 import { helpText } from './clihelp';
@@ -48,7 +48,7 @@ interface Args {
   positional: string[];
   flags: Map<string, string[]>;
 }
-const BOOL_FLAGS = new Set(['--no-controllers', '--no-kbm', '--list', '--open', '--no-code', '--text', '--elevated', '--version', '-v', '--from-notepad++', '--step', '--json', '--stdio', '--all', '--quiet', '--verbose', '--force', '--search', '--markdown', '--fix', '--fix-dry-run', '--hub', '--write', '--check', '--remove', '--list-features', '--popular', '--restart', '--status', '-h', '--help']);
+const BOOL_FLAGS = new Set(['--no-controllers', '--no-kbm', '--list', '--open', '--no-code', '--text', '--elevated', '--version', '-v', '--from-notepad++', '--step', '--json', '--stdio', '--all', '--quiet', '--verbose', '--force', '--search', '--markdown', '--fix', '--fix-dry-run', '--hub', '--write', '--check', '--remove', '--list-features', '--popular', '--restart', '--status', '--exists-all', '-h', '--help']);
 function parseArgs(argv: string[]): Args {
   const a: Args = { positional: [], flags: new Map() };
   for (let i = 0; i < argv.length; i++) {
@@ -307,8 +307,20 @@ function simArgs(args: Args, cmd: string) {
   // all: every player has their own keyboard and mouse (Nucleus' multiple keyboards and mice mode)
   const keyboardPlayer = kbArg === 'none' ? -1 : kbArg === 'all' ? EVERY_KEYBOARD : Number(kbArg) - 1;
   if (kbArg !== 'none' && kbArg !== 'all' && (!Number.isInteger(keyboardPlayer) || keyboardPlayer < 0 || keyboardPlayer >= players)) throw new Usage(`--keyboard must be a player number (1-${players}), "all" (each player their own) or "none"`);
+  // --option key=value: a player's answer to one of the handler's Game.AddOption options.
+  const options: Record<string, string> = {};
+  for (const o of args.flags.get('--option') ?? []) {
+    const eq = o.indexOf('=');
+    if (eq < 1) throw new Usage(`--option must look like key=value, e.g. --option "game=Day of Defeat" (got "${o}")`);
+    options[o.slice(0, eq)] = o.slice(eq + 1);
+  }
+  const existing = args.flags.get('--exists');
   const src = fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '');
-  return { file, src, keyboardPlayer, opts: { players, width: Number(res[1]), height: Number(res[2]), keyboardPlayer, plugins: pluginsFor(file) } };
+  const opts: SimOptions = { players, width: Number(res[1]), height: Number(res[2]), keyboardPlayer, plugins: pluginsFor(file) };
+  if (Object.keys(options).length) opts.options = options;
+  if (existing) opts.existing = existing;
+  if (has(args, '--exists-all')) opts.existsAll = true;
+  return { file, src, keyboardPlayer, opts };
 }
 
 function cmdSimulate(args: Args, json: boolean): number {
@@ -396,24 +408,17 @@ async function cmdHub(args: Args, json: boolean): Promise<number> {
   if (sub === 'search') {
     const words = rest.join(' ').toLowerCase().split(/\s+/).filter(Boolean);
     if (!words.length && !has(args, '--popular')) throw new Usage('hub search: give some words, e.g. "hub search halo" (or --popular for the most downloaded)');
-    // Rank by how many words match (title/game name count double), then popularity.
-    const hits = list
-      .map((h) => {
-        const title = `${h.title} ${h.gameName}`.toLowerCase();
-        const rest = `${h.ownerName} ${h.description ?? ''}`.toLowerCase();
-        const score = words.length ? words.reduce((n, w) => n + (title.includes(w) ? 2 : rest.includes(w) ? 1 : 0), 0) : 1;
-        return { h, score };
-      })
-      .filter((x) => x.score > 0)
-      .sort((a, b) => b.score - a.score || (b.h.downloadCount ?? 0) - (a.h.downloadCount ?? 0))
-      .map((x) => x.h)
-      .slice(0, Number(flag(args, '--limit') ?? 15));
+    const ranked = rankHandlers(list, words).slice(0, Number(flag(args, '--limit') ?? 15));
+    const hits = ranked.map((x) => x.h);
+    // Nothing has every word: say so first, or the closest ones read as "a handler exists".
+    const partial = words.length > 0 && hits.length > 0 && ranked[0].match === 'some';
     print(
       json,
-      hits.map((h) => ({ id: h._id, title: h.title, gameName: h.gameName, owner: h.ownerName, downloads: h.downloadCount, verified: h.verified, version: h.currentVersion, maxPlayers: h.maxPlayers, multipleKeyboardsAndMice: h.playableMultiMouseKeyboard, url: handlerPageUrl(h._id) })),
+      ranked.map(({ h, match }) => ({ id: h._id, title: h.title, gameName: h.gameName, owner: h.ownerName, downloads: h.downloadCount, verified: h.verified, version: h.currentVersion, maxPlayers: h.maxPlayers, multipleKeyboardsAndMice: h.playableMultiMouseKeyboard, url: handlerPageUrl(h._id), match })),
       () =>
         hits.length
-          ? hits.map((h) => `${h._id}  ${h.title}${h.verified ? ' (verified)' : ''} - by ${h.ownerName}, ${h.downloadCount ?? 0} downloads${h.playableMultiMouseKeyboard ? ', multi KB/M' : ''}`).join('\n') +
+          ? (partial ? `No handler matches all of "${words.join(' ')}". Closest:\n` : '') +
+            hits.map((h) => `${h._id}  ${h.title}${h.verified ? ' (verified)' : ''} - by ${h.ownerName}, ${h.downloadCount ?? 0} downloads${h.playableMultiMouseKeyboard ? ', multi KB/M' : ''}`).join('\n') +
             '\n\nFetch one with: ncdev hub fetch <id>'
           : 'No handlers found.',
     );

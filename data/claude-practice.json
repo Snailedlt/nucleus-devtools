@@ -423,6 +423,16 @@
    "example": "var gameFolder = Context.GetFolder(Nucleus.Folder.InstancedGameFolder);",
    "exampleIn": "Game.Play"
   },
+  "Context.HexEdit": {
+   "text": "Overwrites the bytes at that place and leaves the rest of the file as it is. It's for a setting a game keeps in a binary file, where the text-file functions can't help. A number that takes several bytes is written lowest byte first in most such files: 960 as four bytes is `[192, 3, 0, 0]`.",
+   "basis": {
+    "source": [
+     { "project": "Nucleus", "file": "GenericContext.cs", "what": "HexEdit" }
+    ]
+   },
+   "example": "var cfg = Context.GetFolder(Nucleus.Folder.InstancedGameFolder) + \"\\\\config.bin\";\nContext.HexEdit(cfg, \"7c\", [192, 3, 0, 0]);",
+   "exampleIn": "Game.Play"
+  },
   "Context.ModifySaveFile": {
    "text": "For INI files Nucleus writes each `Nucleus.IniSaveInfo` key into the file (copying it from the first path to the second first, when they differ); for CFG files each `Nucleus.CfgSaveInfo`; other entries are skipped. Handlers call it in `Game.Play`, mostly with the same path twice, to set each instance's resolution and window mode in the game's INI file; above all in Unreal Engine games.",
    "basis": {

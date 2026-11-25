@@ -51,6 +51,16 @@ test('lookup and search', () => {
   assert.equal(lookup('killmutex').kind, 'entries');
   assert.equal(lookup('player.ProtoInputInstanceHandle').kind, 'entries');
   assert.equal(lookup('Nucleus.Folder').kind, 'enum');
+  // A static class under Nucleus: its members can be looked up, and the class answers with them (nothing to construct).
+  const root = lookup('Nucleus.Globals.UserEnvironmentRoot');
+  assert.equal(root.kind, 'entries');
+  assert.equal(root.kind === 'entries' && root.entries[0].path, 'Nucleus.Globals.UserEnvironmentRoot');
+  for (const globals of [lookup('Nucleus.Globals'), lookup('Nucleus.Globals', { objects: true }), lookup('Globals')]) {
+    assert.equal(globals.kind, 'object');
+    assert.ok(globals.kind === 'object' && globals.members.some((e) => e.name === 'NucleusInstallRoot') && /static class/.test(globals.doc ?? ''));
+  }
+  assert.equal(lookup('Nucleus.IniSaveInfo').kind, 'class');
+  assert.ok(search('user profile folder').some((e) => e.path === 'Nucleus.Globals.UserEnvironmentRoot'));
   // An object Nucleus provides: what it is and its members, not "not part of the API".
   for (const [q, path, member] of [['Game', 'Game', 'GUID'], ['context', 'Context', 'StartArguments'], ['Game.Hook', 'Game.Hook', 'ForceFocus'], ['Player', 'Player', 'IsKeyboardPlayer']]) {
     const o = lookup(q, { objects: true });

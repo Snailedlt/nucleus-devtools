@@ -21,13 +21,19 @@ Commands:
                               For AI agents: vote on a doc you checked against Nucleus' source (counted
                               apart from people's votes; part "practice" is the AI-written "In practice")
   simulate <handler.js> [--players N] [--resolution 1920x1080] [--keyboard 1|all|none]
+        [--option <key>=<answer>]... [--exists <path>]... [--exists-all]
                               "Try it": load the handler and run Game.Play for each player the
                               way Nucleus would (emulating its Jint engine), without Nucleus or
                               the game. Shows each player's window, launch arguments and file
                               changes. File, registry and process calls are recorded, never
                               performed, and the handler has no access to this computer.
+                              --option answers one of the handler's Game.AddOption options (else
+                              its first choice). --exists names a file or folder that is there
+                              (the end of its path, * allowed), --exists-all says they all are:
+                              without them nothing exists, so "if (File.Exists(…))" never runs
   debug <handler.js> [--break <line>[ if <condition>]]... [--watch <expr>]... [--step]
         [--players N] [--resolution 1920x1080] [--keyboard 1|all|none]
+        [--option <key>=<answer>]... [--exists <path>]... [--exists-all]
                               Run the handler as simulate does and print where it stops: at each
                               breakpoint (e.g. --break "14 if Context.PlayerID == 1"), and where an
                               error ends a phase, with the variables, the call stack and the

@@ -61,14 +61,14 @@
       "intro": "Try it runs the handler once per player, the way Nucleus Co-op would, and shows what each player ends up with: the window, the launch arguments (what the game is started with) and every file change. It needs neither Nucleus nor the game, and changes nothing on the computer.",
       "shots": ["workbench-try-it", "workbench-test-all"],
       "sections": [
-        { "h": "The result", "md": "The **Try it** tab, or {key:tryIt}, runs it. Above the result are the number of players, the monitor size, and who has the keyboard and mouse. Each player gets a card with where the window goes, what the game is launched with, and which files are written or changed.\n\nIf the handler throws an error partway through, Try it shows where and why. In Nucleus the session would end at that point." },
+        { "h": "The result", "md": "The **Try it** tab, or {key:tryIt}, runs it. Above the result are the number of players, the monitor size, and who has the keyboard and mouse. Each player gets a card with where the window goes, what the game is launched with, and which files are written or changed.\n\nA handler that adds options of its own (`Game.AddOption`) gets them in a row under those: a list for each option, or a box for free text. Try it starts with each option's first choice. Picking another runs it again with that answer, which is how the code behind the other choices gets checked.\n\nIf the handler throws an error partway through, Try it shows where and why. In Nucleus the session would end at that point." },
         { "h": "Test all combinations", "md": "**Test all combinations** ({key:testAll}) runs every player count, input setup and screen size, and lists the ones that fail with the reason. A handler that works for two players can still break for three." },
         { "h": "The simulation", "md": "Try it is a simulation. It emulates Jint 2.11.58, the JavaScript engine Nucleus uses, and the handler API. File, registry and process calls are recorded and shown, never carried out.\n\nWhere it wasn't clear how Nucleus behaves, small test handlers were run in the real engine. There are more than a hundred, and they can be read under **Engine probes** in Advanced mode." },
         { "h": "Limits", "md": "Try it shows what the handler asks Nucleus to do. It can't show how the game reacts. Whether the windows end up in place, whether focus and input work, and whether the hooks suit the game only show in a real run in Nucleus Co-op." },
         { "h": "Reporting a difference", "md": "If Nucleus does something Try it didn't show, that's a bug in Try it. The icon in the corner of the result starts a report that puts what Try it showed next to what really happened." }
       ],
       "related": ["[Debugger](@guide:debugger)"],
-      "covers": ["f-tryit", "f-testall", "s-tryit", "f-tryit-differs"]
+      "covers": ["f-tryit", "f-tryit-answers", "f-testall", "s-tryit", "f-tryit-differs"]
     },
     {
       "id": "debugger", "slug": "tools/workbench/debugger", "nav": "Debugger", "title": "Debugger",

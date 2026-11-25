@@ -6,6 +6,13 @@ export function formatSimulation(r: SimResult, keyboardPlayer: number): string {
   out.push(sessionSummary(r));
   if (!r.loaded) out.push(`  ${r.loadError ?? ''}`);
   if (r.inputNote) out.push(`  Note: ${r.inputNote}`);
+  for (const n of r.notes ?? []) out.push(`  Note: ${n}`);
+  if (r.answers?.length) {
+    // Which answer each Game.AddOption option got: on one line when there are few.
+    const said = r.answers.map((a) => `${a.key} = ${a.value === '' ? '""' : a.value}${a.chosen ? '' : ' (default)'}`);
+    if (said.length <= 3) out.push(`  Options: ${said.join(', ')}`);
+    else out.push('  Options:', ...said.map((x) => `    ${x}`));
+  }
   const ignored = groupIgnored(r.ignored);
   if (ignored.length) out.push('', `Settings Nucleus skips (${ignored.length}):`, ...ignored.map((s) => `  ${s}`));
   for (const p of r.players) {

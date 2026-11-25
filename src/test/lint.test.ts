@@ -824,6 +824,16 @@ test('protoinput-needs-hook: BlockedMessages and filters need MessageFilterHook'
   assert.equal(only(HEADER + PI + 'Game.ProtoInput.MessageFilterHook = true;\nGame.ProtoInput.BlockedMessages = [0x0008];\n', 'protoinput-needs-hook').length, 0);
   assert.equal(only(HEADER + PI + 'Game.ProtoInput.BlockedMessages = [];\n', 'protoinput-needs-hook').length, 0);
 });
+test('protoinput-needs-hook: the hook installed at runtime counts', () => {
+  const blocked = HEADER + PI + 'Game.ProtoInput.BlockedMessages = [0x0008];\n';
+  const locked = (body: string) => `Game.ProtoInput.OnInputLocked = function () {\n  for (var i = 0; i < PlayerList.Count; i++) {\n    ${body}\n  }\n};\n`;
+  // Many Hub handlers install it when input is locked: Proto Input keeps the list from startup.
+  assert.equal(only(blocked + locked('ProtoInput.InstallHook(PlayerList[i].ProtoInputInstanceHandle, ProtoInput.Values.MessageFilterHookID);'), 'protoinput-needs-hook').length, 0);
+  // Another hook, a comment or a string installs nothing.
+  assert.equal(only(blocked + locked('ProtoInput.InstallHook(PlayerList[i].ProtoInputInstanceHandle, ProtoInput.Values.FocusHooksHookID);'), 'protoinput-needs-hook').length, 1);
+  assert.equal(only(blocked + locked('// ProtoInput.InstallHook(PlayerList[i].ProtoInputInstanceHandle, ProtoInput.Values.MessageFilterHookID);'), 'protoinput-needs-hook').length, 1);
+  assert.equal(only(blocked + locked('Context.Log("ProtoInput.InstallHook(handle, ProtoInput.Values.MessageFilterHookID)");'), 'protoinput-needs-hook').length, 1);
+});
 test('protoinput-needs-raw-input: key and cursor hooks need the raw input hook', () => {
   const KBM = PI + 'Game.SupportsMultipleKeyboardsAndMice = true;\n';
   const d = only(HEADER + KBM + 'Game.ProtoInput.GetCursorPosHook = true;\nGame.ProtoInput.GetKeyStateHook = true;\n', 'protoinput-needs-raw-input');

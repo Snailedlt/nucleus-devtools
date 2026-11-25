@@ -268,6 +268,12 @@ export function initDocs(deps: DocsDeps): DocsUI {
       crumbs = [{ label: `new Nucleus.${exact.name}`, code: true }];
       head = `<article class="api"><h3>new Nucleus.${esc(exact.name)}(${exact.params.join(', ')})</h3>${md(exact.doc)}</article>`;
     }
+    // A static class (Nucleus.Globals): what it is, then its members.
+    if (exact.kind === 'object') {
+      crumbs = [{ label: exact.path, code: true }];
+      head = `<article class="api"><h3>${esc(exact.path)}</h3>${md(exact.doc ?? '')}</article>`;
+      entries = exact.members;
+    }
     if (exact.kind === 'none' && exact.didYouMean) head = `<p class="muted">"${esc(q)}" isn't part of the handler API. Did you mean <button class="link" data-q="${esc(exact.didYouMean)}">${esc(exact.didYouMean)}</button>?</p>`;
     entries = entries.slice(0, 30);
     keepMascots(el, () => el.innerHTML = refBar(crumbs) + head

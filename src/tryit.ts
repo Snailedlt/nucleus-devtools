@@ -29,7 +29,7 @@ const cmd = (id: string, arg?: unknown) => `command:${id}${arg === undefined ? '
 const SET = 'splitscreenme.tryItSet';
 
 /** What the panel's buttons post: a settings change, or Test all. */
-export type TryItMessage = { type: 'set'; change: Partial<TryItState> } | { type: 'testAll' } | { type: 'report' };
+export type TryItMessage = { type: 'set'; change: Partial<TryItState> } | { type: 'testAll' } | { type: 'report' } | { type: 'answer'; key: string };
 /** The command that reports what Try it showed (src/reportvscode.ts). */
 export const REPORT_TRY_IT = 'splitscreenme.reportTryIt';
 /** A button that posts `msg`; `id` finds it again after a re-render (focus). */
@@ -76,7 +76,12 @@ export function renderTryIt(r: SimResult, state: TryItState, title: string, matr
     ${group('g-players', 'Players', [1, 2, 3, 4].map((n) => choice('players', String(n), state.players === n, { players: n, keyboardPlayer: state.keyboardPlayer >= n ? 0 : state.keyboardPlayer }, `${n} player${n === 1 ? '' : 's'}`)).join(''))}
     ${group('g-kb', 'Keyboard &amp; mouse', [...Array(state.players).keys()].map((i) => choice('kb', `P${i + 1}`, state.keyboardPlayer === i, { keyboardPlayer: i }, `Player ${i + 1}`)).join('') + choice('kb', 'each player their own', state.keyboardPlayer === EVERY_KEYBOARD, { keyboardPlayer: EVERY_KEYBOARD }) + choice('kb', 'nobody', state.keyboardPlayer === -1, { keyboardPlayer: -1 }))}
     ${group('g-monitor', 'Monitor', RESOLUTIONS.map(([w, h]) => choice('monitor', `${w}×${h}`, state.width === w && state.height === h, { width: w, height: h })).join(''))}
-    ${button('test-all', 'Test all combinations', { type: 'testAll' }, ' title="Every player count, input setup and monitor size"')}</div>`;
+    ${button('test-all', 'Test all combinations', { type: 'testAll' }, ' title="Every player count, input setup and monitor size"')}</div>${
+    // The handler's own options (Game.AddOption), only when it has some: each button picks that option's answer.
+    r.answers?.length
+      ? `<div class="controls">${group('g-answers', 'Options', r.answers.map((a) => button(`answer-${a.key}`, `${esc(a.name)}: <strong>${esc(a.value === '' ? '(empty)' : a.value)}</strong>`, { type: 'answer', key: a.key }, ` title="${esc(`Answer this option as a player would (Context.Options[&quot;${a.key}&quot;])`)}"`)).join(''))}</div>`
+      : ''
+  }`;
 
   const out: string[] = [];
   if (matrix) out.push(renderMatrix(matrix));
@@ -85,6 +90,7 @@ export function renderTryIt(r: SimResult, state: TryItState, title: string, matr
   } else {
     out.push(`<div class="banner ${r.sessionEnded ? 'error' : 'ok'}"><strong>${esc(sessionSummary(r))}</strong></div>`);
   }
+  for (const n of r.notes ?? []) out.push(`<p class="muted">${esc(n)}</p>`);
   if (r.inputNote) out.push(`<p class="muted">${esc(r.inputNote)}</p>`);
   const ignored = groupIgnored(r.ignored);
   if (ignored.length) out.push(`<h3>Settings Nucleus skips (${ignored.length})</h3><ul class="mono warn">${ignored.map((s) => `<li>${esc(s)}</li>`).join('')}</ul>`);
@@ -184,7 +190,24 @@ export function registerTryIt(context: vscode.ExtensionContext, isHandler: (doc:
   let run: AbortController | undefined; // the run on screen's way; a newer one cancels it
   let stuck: string | undefined; // text + options of the last run that timed out: not re-run automatically
   let matrixRun: AbortController | undefined;
-  const optsFor = (d: vscode.TextDocument): SimOptions => ({ players: state.players, width: state.width, height: state.height, keyboardPlayer: state.keyboardPlayer, plugins: d.isUntitled ? undefined : pluginsFor(d.fileName) });
+  // The answers picked for each handler's own options (Game.AddOption), while the window is open.
+  const answers = new Map<string, Record<string, string>>();
+  const optsFor = (d: vscode.TextDocument): SimOptions => {
+    const picked = answers.get(d.uri.toString());
+    return { players: state.players, width: state.width, height: state.height, keyboardPlayer: state.keyboardPlayer, plugins: d.isUntitled ? undefined : pluginsFor(d.fileName), ...(picked && Object.keys(picked).length ? { options: picked } : {}) };
+  };
+  const answer = async (key: string) => {
+    if (!doc || !shown || shown.uri !== doc.uri.toString()) return;
+    const d = doc;
+    const a = shown.r.answers?.find((x) => x.key === key);
+    if (!a) return;
+    const value = a.choices
+      ? await vscode.window.showQuickPick(a.choices.map((c) => ({ label: c, description: c === a.value ? 'now' : undefined })), { title: a.name, placeHolder: 'What the players pick for this option' }).then((p) => p?.label)
+      : await vscode.window.showInputBox({ title: a.name, value: a.value, prompt: 'What the players type for this option' });
+    if (value === undefined || doc !== d) return;
+    answers.set(d.uri.toString(), { ...answers.get(d.uri.toString()), [key]: value });
+    return render();
+  };
 
   /** `auto`: an edit or an editor switch, not something the user picked; then a text that timed out isn't run again. */
   const render = async (auto = false) => {
@@ -206,6 +229,13 @@ export function registerTryIt(context: vscode.ExtensionContext, isHandler: (doc:
       throw e;
     }
     if (mine !== run || !panel || doc !== d) return;
+    // An option the handler no longer has: its answer goes, and the run is done again without it.
+    const picked = answers.get(d.uri.toString());
+    const gone = r.loaded && picked ? Object.keys(picked).filter((k) => !r.answers?.some((a) => a.key === k)) : [];
+    if (gone.length) {
+      for (const k of gone) delete picked![k];
+      return render(auto);
+    }
     stuck = isTimeout(r) ? key : undefined;
     // The origin from the very text simulated (no code kept), for the report.
     shown = { r, state: { ...state }, uri: d.uri.toString(), handler: handlerOrigin(text) };
@@ -240,6 +270,7 @@ export function registerTryIt(context: vscode.ExtensionContext, isHandler: (doc:
         panel.webview.onDidReceiveMessage((m: TryItMessage) => {
           if (m?.type === 'set' && m.change && typeof m.change === 'object') void vscode.commands.executeCommand(SET, m.change);
           else if (m?.type === 'testAll') void vscode.commands.executeCommand(TEST_ALL);
+          else if (m?.type === 'answer' && typeof m.key === 'string') void answer(m.key);
           else if (m?.type === 'report' && shown) {
             // The handler the result on screen came from (the panel may already be on its way to another).
             const st = shown.state;

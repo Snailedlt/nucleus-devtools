@@ -322,10 +322,19 @@
    }
   },
   "Context.HexEdit": {
-   "doc": "Writes bytes at an address in a file.",
+   "doc": "Writes bytes into a file at an address. The address is text in hexadecimal without `0x` (`\"7c\"`; `\"0x7c\"` throws). The file must exist: a missing one throws, which ends the session inside `Game.Play`. The bytes are written as given, so a number that takes several bytes goes lowest byte first (little-endian) for most games.",
    "basis": {
     "source": [
-     { "project": "Nucleus", "file": "GenericContext.cs" }
+     { "project": "Nucleus", "file": "GenericContext.cs", "what": "HexEdit" }
+    ]
+   }
+  },
+  "Context.ScriptFolder": {
+   "doc": "The handler's own folder: `handlers\\<handler file name without .js>` in Nucleus' folder, the same folder as `Game.Folder`. Not the `handlers` folder itself.",
+   "override": true,
+   "basis": {
+    "source": [
+     { "project": "Nucleus", "file": "GenericContext.cs", "what": "ScriptFolder" }
     ]
    }
   },

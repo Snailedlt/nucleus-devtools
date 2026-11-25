@@ -169,10 +169,10 @@ const NUCLEUS: Record<string, RuleDoc> = {
   'protoinput-needs-hook': {
     plain: { title: 'Blocked messages and filters do nothing yet', why: "They only work inside Proto Input's message filter hook, which isn't turned on." },
     title: 'A message filter without its hook',
-    why: 'Game.ProtoInput.BlockedMessages and the message filters only act inside Proto Input\'s message filter hook; without that hook they do nothing.',
+    why: 'Game.ProtoInput.BlockedMessages and the message filters only act inside Proto Input\'s message filter hook; without that hook they do nothing. The hook can be on from the start (Game.ProtoInput.MessageFilterHook) or installed later with ProtoInput.InstallHook, which many handlers do when input is locked: the list and the filters work from then on.',
     bad: 'Game.ProtoInput.InjectStartup = true;\nGame.ProtoInput.BlockedMessages = [0x0008];',
     good: 'Game.ProtoInput.InjectStartup = true;\nGame.ProtoInput.MessageFilterHook = true;\nGame.ProtoInput.BlockedMessages = [0x0008];',
-    fix: 'Add `Game.ProtoInput.MessageFilterHook = true;` (the quick fix does).',
+    fix: 'Add `Game.ProtoInput.MessageFilterHook = true;` (the quick fix does), or install the hook yourself with `ProtoInput.InstallHook(handle, ProtoInput.Values.MessageFilterHookID)` in `Game.ProtoInput.OnInputLocked`.',
   },
   'blocked-message': {
     plain: { title: "A window message Proto Input can't block as written", why: "It isn't in Proto Input's message list (it blocks something else, or nothing), or it's in the list twice." },

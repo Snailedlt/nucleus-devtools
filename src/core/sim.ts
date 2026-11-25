@@ -26,6 +26,14 @@ export interface SimOptions {
   keyboardPlayer: number;
   /** Plugin globals from the handler folder's pluginsInfo.txt (see parsePluginsInfo). */
   plugins?: Record<string, string[]>;
+  /** The players' answers to the handler's `Game.AddOption` options, by key. Text, as Nucleus gives a saved
+   *  profile's answers back. An option without one gets its first list entry ("" for a free-text option). */
+  options?: Record<string, string>;
+  /** Files and folders `System.IO`'s `Exists` finds: full paths, or the end of one (`cfg\\device.cfg`, `*.ini`;
+   *  `*` stays inside a folder, `**` doesn't). Everything else doesn't exist. */
+  existing?: string[];
+  /** Every `Exists` answers true: each guarded branch runs once. */
+  existsAll?: boolean;
 }
 
 /**
@@ -56,6 +64,9 @@ export interface PlayerRun {
   note?: string;
 }
 
+/** One `Game.AddOption` option in a run: what it's called on Nucleus' options screen, its choices (none: free text)
+ *  and the answer it got (`chosen`: from SimOptions.options, not the default). */
+export interface SimAnswer { key: string; name: string; value: string; choices?: string[]; chosen?: boolean }
 export interface SimResult {
   loaded: boolean;
   loadError?: string;
@@ -75,6 +86,10 @@ export interface SimResult {
   sessionEnded?: { player: number; reason: string };
   /** A note about the input setup, e.g. every player has their own keyboard but the handler doesn't support it. */
   inputNote?: string;
+  /** The handler's `Game.AddOption` options and the answer each got. */
+  answers?: SimAnswer[];
+  /** What to know about the run's own setup: an answer Nucleus couldn't give, an option key that doesn't exist. */
+  notes?: string[];
 }
 
 class JintError extends Error {}
@@ -159,8 +174,9 @@ function describeCall(label: string, name: string, args: unknown[]): string | nu
       case 'PatchFile':
       case 'PatchFileFindAll':
       case 'PatchFileFindPattern':
-      case 'HexEdit':
         return `Patches ${base(a[1] ?? a[0])}`;
+      case 'HexEdit': // (file, address, bytes): the file comes first
+        return `Patches ${base(a[0])}`;
     }
   }
   return null;
@@ -299,6 +315,56 @@ function clr(type: string, label: string, log: string[], ignored: string[], stor
  *  116/117), a call needs a matching parameter count (118), and properties are values. Other
  *  names stay permissive: they may well exist in .NET. */
 const DOTNET_VALUES: Record<string, unknown> = { 'System.Environment.UserName': 'me', 'System.Environment.MachineName': 'MY-PC' };
+/** What `System.Environment.GetEnvironmentVariable` answers: the same made-up PC as Context's and Nucleus.Globals'
+ *  paths. Windows doesn't mind the case of a name; one that isn't here is null, as in .NET. */
+const ENV_VARS: Record<string, string> = {
+  USERPROFILE: 'C:\\Users\\me', USERNAME: 'me', COMPUTERNAME: 'MY-PC', HOMEDRIVE: 'C:', HOMEPATH: '\\Users\\me',
+  APPDATA: 'C:\\Users\\me\\AppData\\Roaming', LOCALAPPDATA: 'C:\\Users\\me\\AppData\\Local',
+  TEMP: 'C:\\Users\\me\\AppData\\Local\\Temp', TMP: 'C:\\Users\\me\\AppData\\Local\\Temp',
+  PUBLIC: 'C:\\Users\\Public', PROGRAMDATA: 'C:\\ProgramData', ALLUSERSPROFILE: 'C:\\ProgramData',
+  PROGRAMFILES: 'C:\\Program Files', 'PROGRAMFILES(X86)': 'C:\\Program Files (x86)',
+  SYSTEMDRIVE: 'C:', SYSTEMROOT: 'C:\\Windows', WINDIR: 'C:\\Windows',
+};
+/** What the members of a .NET object a call hands back (a stream, a reader) answer: an empty file. A member
+ *  that isn't here is a method that returns nothing. */
+const DOTNET_OBJECT_VALUES: Record<string, unknown> = { ReadToEnd: '', ReadLine: null, Read: -1, ReadByte: -1, Peek: -1, Seek: 0 };
+const DOTNET_OBJECT_PROPS: Record<string, unknown> = { Length: 0, Position: 0, EndOfStream: true, CanRead: true, CanWrite: true, CanSeek: true };
+/** A stand-in for a .NET object the handler got from a call (`System.IO.File.OpenWrite(p)`, `new
+ *  System.IO.StreamReader(p)`): what's called on it is recorded, so the run goes on as it would in Nucleus. */
+function dotnetObject(log: string[], label: string): any {
+  const proxy: any = new Proxy({}, {
+    get(_t, p) {
+      if (typeof p !== 'string' || p === 'then') return undefined;
+      if (p.startsWith(NOJINT)) p = p.slice(NOJINT.length);
+      if (p in DOTNET_OBJECT_PROPS) return DOTNET_OBJECT_PROPS[p];
+      const name = p;
+      return (...args: unknown[]) => {
+        log.push(`${label}.${name}(${args.map(fmt).join(', ')})`);
+        traceCall(log[log.length - 1], () => null);
+        return DOTNET_OBJECT_VALUES[name];
+      };
+    },
+    set: () => true,
+  });
+  dotnetLabels.set(proxy, label);
+  return proxy;
+}
+/** Which files and folders `Exists` finds (SimOptions.existing, existsAll), while a simulation runs. */
+let present: { all: boolean; list: RegExp[] } = { all: false, list: [] };
+const winPath = (p: unknown) => String(p ?? '').replace(/\//g, '\\').replace(/\\+$/, '').toLowerCase();
+function presentFrom(opt: SimOptions): typeof present {
+  const rx = (pattern: string) =>
+    new RegExp(
+      '(^|\\\\)' +
+        winPath(pattern)
+          .split(/(\*\*|\*)/)
+          .map((part) => (part === '**' ? '.*' : part === '*' ? '[^\\\\]*' : part.replace(/[.+?^${}()|[\]\\]/g, '\\$&')))
+          .join('') +
+        '$',
+    );
+  return { all: !!opt.existsAll, list: (opt.existing ?? []).filter((p) => typeof p === 'string' && winPath(p)).map(rx) };
+}
+const exists = (path: unknown) => present.all || present.list.some((r) => r.test(winPath(path)));
 function systemNs(log: string[], path = 'System'): any {
   const fn = function () {} as any;
   const owner = path.slice(0, path.lastIndexOf('.'));
@@ -325,9 +391,18 @@ function systemNs(log: string[], path = 'System'): any {
       const fx = effects && describeSystem(path, args);
       if (fx) effects!.push(fx);
       if (/Path\.Combine$/.test(path)) return args.join('\\');
-      if (/\.(Exists)$/.test(path)) return false;
+      if (/\.(Exists)$/.test(path)) return exists(args[0]);
+      if (/Environment\.GetEnvironmentVariable$/.test(path)) return ENV_VARS[String(args[0]).toUpperCase()] ?? null;
+      // A stream or a reader: what the handler does with it is recorded, instead of the run failing on `undefined`.
+      if (/IO\.File\.(Open\w*|Create\w*|AppendText)$/.test(path)) return dotnetObject(log, `${path.replace(/^System\.IO\./, '')}(${base(args[0])})`);
       if (/Path\.GetFileName$/.test(path)) return String(args[0]).split('\\').pop();
       return undefined;
+    },
+    // new System.IO.StreamReader(path), new System.IO.FileStream(…): recorded, like the calls.
+    construct(_t, args) {
+      log.push(`new ${path}(${args.map(fmt).join(', ')})`);
+      traceCall(log[log.length - 1], () => null);
+      return dotnetObject(log, `${path.slice(path.lastIndexOf('.') + 1)}(${typeof args[0] === 'string' ? base(args[0]) : ''})`);
     },
   });
   dotnetLabels.set(proxy, path);
@@ -543,12 +618,13 @@ function runSimulation(src: string, opt: SimOptions): SimResult {
     return result;
   }
 
+  present = presentFrom(opt);
   const loadLog: string[] = [];
   const gameStore: Record<string, unknown> = {};
-  const options: { key: string; values: unknown }[] = [];
+  const options: { key: string; name: string; values: unknown }[] = [];
   const game = clr('Game', 'Game', loadLog, result.ignored, gameStore, {
     AddOption: (name: string, desc: string, key: string, value: unknown) => {
-      options.push({ key, values: value });
+      options.push({ key, name: String(name ?? key), values: value });
     },
     Folder: `C:\\Nucleus\\handlers\\${hubFolderName(src)}`,
   });
@@ -660,6 +736,29 @@ function runSimulation(src: string, opt: SimOptions): SimResult {
     gameStore[`ForceDocuments${from}Copy`] = gameStore[`ForceUserProfile${from}Copy`];
     return true;
   };
+  // The answers to the handler's options: the ones given (text, as a saved profile gives them back), else a list
+  // option's first entry; an empty list is free text, "" until the user types.
+  const answers: Record<string, unknown> = {};
+  for (const o of optionsList()) answers[o.key] = Array.isArray(o.values) ? (o.values.length ? o.values[0] : '') : o.values;
+  const notes: string[] = [];
+  const given = opt.options ?? {};
+  for (const [key, value] of Object.entries(given)) {
+    const o = optionsList().find((x) => x.key === key);
+    if (!o) {
+      const keys = optionsList().map((x) => `"${x.key}"`);
+      notes.push(`No Game.AddOption has the key "${key}"${keys.length ? ` (this handler's: ${keys.join(', ')})` : ' (this handler adds no options)'}, so that answer isn't used.`);
+      continue;
+    }
+    const list = Array.isArray(o.values) && o.values.length ? o.values.map(String) : null;
+    if (list && !list.includes(String(value))) notes.push(`"${value}" isn't one of the choices of the option "${key}" (${list.map((v) => `"${v}"`).join(', ')}), so Nucleus couldn't give that answer.`);
+    answers[key] = String(value);
+  }
+  if (optionsList().length) result.answers = optionsList().map((o) => ({
+    key: o.key, name: o.name, value: plainValue(answers[o.key]),
+    ...(Array.isArray(o.values) && o.values.length ? { choices: o.values.map(String) } : {}),
+    ...(o.key in given ? { chosen: true } : {}),
+  }));
+  if (notes.length) result.notes = notes;
   const cfgToDocs = docs('Config');
   const saveToDocs = docs('Save');
   // GenericGameInfo.PrePlay sets Context, Player, Handler for every player and only then calls
@@ -702,9 +801,7 @@ function runSimulation(src: string, opt: SimOptions): SimResult {
         IsFullscreen: false,
         ...(typeof gameStore.LauncherExe === 'string' && gameStore.LauncherExe ? { LauncherFolder: gameStore.LauncherExe.replace(/[\\/][^\\/]*$/, '') } : {}),
       });
-      const options: Record<string, unknown> = {};
-      // A list option gives its first entry; an empty list is free text, "" until the user types.
-      for (const o of optionsList()) options[o.key] = Array.isArray(o.values) ? (o.values.length ? o.values[0] : '') : o.values;
+      const options: Record<string, unknown> = { ...answers };
       const gamepad = isKb(i) ? -1 : controllers++;
       const computed: Record<string, unknown> = {
         Width: w, Height: h, PosX: (i % cols) * w, PosY: Math.floor(i / cols) * h,

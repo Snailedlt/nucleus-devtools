@@ -18,7 +18,7 @@ import { renderHandler, validateHandlerInfo, FEATURES, Feature } from './core/te
 import { findSkillDir } from './core/pkg';
 import { pluginsFor } from './sandbox';
 import { simWorker } from './simworker';
-import { EVERY_KEYBOARD } from './core/sim';
+import { EVERY_KEYBOARD, SimOptions } from './core/sim';
 
 /** MCP protocol versions this server speaks, newest first. */
 const PROTOCOL_VERSIONS = ['2025-06-18', '2025-03-26', '2024-11-05'];
@@ -47,6 +47,21 @@ const SOURCE = {
   source: { type: 'string', description: 'The handler JavaScript. Give this or path.' },
   path: { type: 'string', description: 'Path to a handler .js file. Give this or source.' },
 };
+/** What a simulated run can be told (nucleus_simulate, nucleus_debug): the players' answers and which files exist. */
+const SIM_INPUTS = {
+  options: { type: 'object', additionalProperties: { type: 'string' }, description: "Answers to the handler's Game.AddOption options, by key, e.g. {\"game\": \"Day of Defeat\"}. Without one an option gets its first choice, so the code behind the others never runs." },
+  exists: { type: 'array', items: { type: 'string' }, description: 'Files and folders that System.IO.File.Exists / Directory.Exists find: full paths or the end of one ("cfg\\\\device.cfg", "*.ini"). Without it nothing exists, so "if (File.Exists(…))" never runs its body.' },
+  existsAll: { type: 'boolean', default: false, description: 'Every Exists answers true: each guarded branch runs once.' },
+};
+function simInputs(a: { options?: unknown; exists?: unknown; existsAll?: unknown }): Pick<SimOptions, 'options' | 'existing' | 'existsAll'> {
+  if (a.options !== undefined && (typeof a.options !== 'object' || a.options === null || Array.isArray(a.options))) throw new Error('options is an object of answers by option key, e.g. {"game": "Day of Defeat"}.');
+  if (a.exists !== undefined && !Array.isArray(a.exists)) throw new Error('exists is a list of paths, e.g. ["cfg\\\\device.cfg"].');
+  return {
+    ...(a.options ? { options: Object.fromEntries(Object.entries(a.options as Record<string, unknown>).map(([k, v]) => [k, String(v)])) } : {}),
+    ...(a.exists ? { existing: (a.exists as unknown[]).map(String) } : {}),
+    ...(a.existsAll ? { existsAll: true } : {}),
+  };
+}
 function readSource(a: { source?: string; path?: string }): { text: string; file?: string } {
   if (typeof a.source === 'string') return { text: a.source.replace(/^﻿/, '') };
   if (typeof a.path === 'string') {
@@ -139,6 +154,7 @@ export const TOOLS: Tool[] = [
         width: { type: 'integer', default: 1920, description: 'Monitor width' },
         height: { type: 'integer', default: 1080, description: 'Monitor height' },
         keyboardPlayer: { type: 'integer', minimum: -1, default: 1, description: 'Which player (1-based) uses keyboard and mouse; 0 for nobody; -1 for every player with their own keyboard and mouse (needs Game.SupportsMultipleKeyboardsAndMice).' },
+        ...SIM_INPUTS,
       },
     },
     annotations: { readOnlyHint: true },
@@ -154,7 +170,7 @@ export const TOOLS: Tool[] = [
       const players = int(a.players, 2, 1, 16, 'players');
       const kb = a.keyboardPlayer === -1 ? EVERY_KEYBOARD : int(a.keyboardPlayer, 1, 0, players, 'keyboardPlayer') - 1;
       // In the simulator's worker, so other calls are answered while it runs.
-      const r = await simWorker().simulate(text, { players, width: int(a.width, 1920, 320, 16384, 'width'), height: int(a.height, 1080, 200, 16384, 'height'), keyboardPlayer: kb, plugins: file ? pluginsFor(file) : undefined });
+      const r = await simWorker().simulate(text, { players, width: int(a.width, 1920, 320, 16384, 'width'), height: int(a.height, 1080, 200, 16384, 'height'), keyboardPlayer: kb, plugins: file ? pluginsFor(file) : undefined, ...simInputs(a) });
       return { text: formatSimulation(r, kb), data: r };
     },
   },
@@ -171,6 +187,7 @@ export const TOOLS: Tool[] = [
         watches: { type: 'array', items: { type: 'string' }, description: 'Expressions to show at each stop, e.g. "Context.Width".' },
         step: { type: 'boolean', default: false, description: 'Stop at every statement (long output; prefer breakpoints).' },
         players: { type: 'integer', minimum: 1, maximum: 16, default: 2 },
+        ...SIM_INPUTS,
       },
     },
     annotations: { readOnlyHint: true },
@@ -185,7 +202,7 @@ export const TOOLS: Tool[] = [
       });
       const players = Number(a.players ?? 2);
       if (!Number.isInteger(players) || players < 1 || players > 16) throw new Error(`players must be a whole number from 1 to 16 (got ${JSON.stringify(a.players)}).`);
-      const r = runDebug(text, { players, width: 1920, height: 1080, keyboardPlayer: 0, plugins: file ? pluginsFor(file) : undefined }, { breakpoints, watches: (a.watches ?? []).map(String), step: !!a.step });
+      const r = runDebug(text, { players, width: 1920, height: 1080, keyboardPlayer: 0, plugins: file ? pluginsFor(file) : undefined, ...simInputs(a) }, { breakpoints, watches: (a.watches ?? []).map(String), step: !!a.step });
       return { text: r.text, data: r.data };
     },
   },

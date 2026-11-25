@@ -1,6 +1,6 @@
 // Try it: runs the handler for each player (core/sim.ts) and shows what each one gets: window, start arguments,
 // files changed, recorded calls. Test all: every player count, input setup and monitor size.
-import { simulate, sessionSummary, groupIgnored } from '@core/sim';
+import { simulate, sessionSummary, groupIgnored, type SimResult } from '@core/sim';
 import { MATRIX_RESOLUTIONS, planMatrix, failureOf, jobOptions } from '@core/matrix';
 import { $, esc } from './dom';
 import { keepMascots, mascot } from './mascots';
@@ -26,7 +26,7 @@ export interface TryItDeps {
   tried: (t: { players: number; loaded: boolean }) => void;
 }
 
-export interface SimOptions { players: number; width: number; height: number; keyboardPlayer: number; plugins: Record<string, string[]> | undefined }
+export interface SimOptions { players: number; width: number; height: number; keyboardPlayer: number; plugins: Record<string, string[]> | undefined; options?: Record<string, string> }
 
 export function initTryIt(deps: TryItDeps): { run: () => void; options: () => SimOptions; testAll: () => void } {
   const { editor } = deps;
@@ -46,13 +46,50 @@ export function initTryIt(deps: TryItDeps): { run: () => void; options: () => Si
     const players = Number(($('#sim-players') as HTMLSelectElement).value);
     const [width, height] = ($('#sim-res') as HTMLSelectElement).value.split('x').map(Number);
     const keyboardPlayer = Number(($('#sim-kb') as HTMLSelectElement).value);
-    return { players, width, height, keyboardPlayer, plugins: deps.plugins() };
+    return { players, width, height, keyboardPlayer, plugins: deps.plugins(), ...(Object.keys(picked).length ? { options: { ...picked } } : {}) };
   }
+  // The handler's own options (Game.AddOption), answered as a player would: a list for a list option, a box for
+  // free text. The row is only there when the handler has options; an answer picked stays until the option goes.
+  let picked: Record<string, string> = {};
+  let answersShown = '';
+  function showAnswers(r: SimResult) {
+    const box = $('#sim-answers');
+    const list = r.answers ?? [];
+    box.hidden = !list.length;
+    const shape = JSON.stringify(list.map((a) => [a.key, a.name, a.choices]));
+    if (shape !== answersShown) {
+      // Drawn anew only when the options themselves change, so typing in a box isn't interrupted by a run.
+      answersShown = shape;
+      box.innerHTML = list.length
+        ? '<span class="muted">Options</span>' + list.map((a) => `<label>${esc(a.name)} ${a.choices
+            ? `<select data-answer="${esc(a.key)}">${a.choices.map((c) => `<option>${esc(c)}</option>`).join('')}</select>`
+            : `<input type="text" data-answer="${esc(a.key)}" spellcheck="false" autocomplete="off">`}</label>`).join('')
+        : '';
+    }
+    for (const el of box.querySelectorAll<HTMLSelectElement | HTMLInputElement>('[data-answer]')) {
+      const a = list.find((x) => x.key === el.dataset.answer);
+      if (a && el !== document.activeElement && (el instanceof HTMLInputElement || a.choices?.includes(a.value))) el.value = a.value;
+      el.title = `Context.Options["${el.dataset.answer}"]: what the players answer for this option`;
+    }
+  }
+  $('#sim-answers').addEventListener('change', (e) => {
+    const el = e.target as HTMLSelectElement | HTMLInputElement;
+    if (!el.dataset?.answer) return;
+    picked[el.dataset.answer] = el.value;
+    runSim();
+  });
   function runSim() {
     if (!$('#panel-simulate').hidden) deps.used('try-it');
     const o = simOptions();
     const kb = o.keyboardPlayer;
-    const r = simulate(editor.getValue(), o);
+    let r = simulate(editor.getValue(), o);
+    // An option the handler no longer has: its answer goes, and the run is done without it.
+    const gone = r.loaded ? Object.keys(picked).filter((k) => !r.answers?.some((a) => a.key === k)) : [];
+    if (gone.length) {
+      for (const k of gone) delete picked[k];
+      r = simulate(editor.getValue(), simOptions());
+    }
+    showAnswers(r);
     // Seen in Try it: the credit lines can say this version was simulated.
     if (!$('#panel-simulate').hidden) {
       deps.tried({ players: o.players, loaded: r.loaded && !r.loadError });
@@ -73,6 +110,7 @@ export function initTryIt(deps: TryItDeps): { run: () => void; options: () => Si
       // Nucli, pleased when every player starts; worried when the session ends.
       out.push(`<div class="banner ${r.sessionEnded ? 'error' : 'ok'} masc-banner">${mascot(r.sessionEnded ? 'n-bad' : 'n-ok', { size: 44 })}<div><strong>${esc(sessionSummary(r))}</strong></div>${differs}</div>`);
       if (r.inputNote) out.push(`<p class="note">${esc(r.inputNote)}</p>`);
+      for (const n of r.notes ?? []) out.push(`<p class="note">${esc(n)}</p>`);
     }
     if (r.ignored.length) {
       const uniq = groupIgnored(r.ignored);
