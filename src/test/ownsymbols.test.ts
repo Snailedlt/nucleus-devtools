@@ -187,6 +187,25 @@ test('Context.Options keys: the closing quote and bracket are added when the edi
   assert.equal(completionsAt(closed, at)![0].insertText, 'mode');
 });
 
+test('hover: grouping parentheses, a regular expression and a block comment don\'t throw the parameter off', () => {
+  const code = [
+    'function mine(first, second, third) {}',
+    'mine((1 + 2), 3, 4);',
+    'mine(/,[/,]\\//, 22, 33);',
+    'var half = 8 / 2, rest = mine(5, 6, 7);',
+    "/* don't */ Context.Width;",
+  ].join('\n');
+  const at = (needle: string, plus = 0) => hoverAt(code, code.indexOf(needle) + plus, {});
+  // Inside parentheses that only group: still the argument of the call around them.
+  assert.match(at('1 + 2')!.markdown, /\(parameter\) first\n/);
+  // A comma inside a regular expression isn't a separator; a division is still a division.
+  assert.match(at('22')!.markdown, /\(parameter\) second\n/);
+  assert.match(at('6, 7')!.markdown, /\(parameter\) second\n/);
+  // A quote in a block comment doesn't turn the rest of the line into text.
+  assert.match(at('Width', 1)!.markdown, /Width/);
+  assert.equal(at("don't", 1), undefined);
+});
+
 test('hover: an argument says which parameter it is', () => {
   const code = [
     'Game.AddOption("Game mode", "Pick how to play", "Mode", ["Co-op", "Versus"], "Co-op");',

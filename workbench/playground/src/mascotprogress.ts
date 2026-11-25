@@ -179,6 +179,7 @@ export function barProgress(root: ParentNode, p: number, onDone?: () => void, wa
   m.classList.add('prog');
   const s = (m._prog ??= { raf: 0, last: 0, p, shown: p, ph: 0, still: 0, t: 0, done: 0, len: 83, w: 0, wait: waiting }) as Bar;
   if (p !== s.p) s.still = 0; // it moved: no longer stalled
+  if (p < 1) s.done = 0; // back from the end (the review's slider): the last step is taken back
   s.p = p;
   s.wait = waiting;
   if (onDone) s.onDone = onDone;

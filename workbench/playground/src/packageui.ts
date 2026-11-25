@@ -91,7 +91,8 @@ export interface PkgHost {
   /** The files of the handler in the editor. */
   getFiles(): PackageFile[];
   /** Replaces the package's files (store them, update the header). */
-  setFiles(files: PackageFile[]): void;
+  /** `edited`: the file whose text changed (a typed edit), so its preview tab is kept whatever shows by then. */
+  setFiles(files: PackageFile[], edited?: string): void;
   /** Called when the main editor should show again (the host re-applies Code / Form). */
   showMain(): void;
   /** Called when the package's problems may have changed. */
@@ -160,7 +161,7 @@ export function initPackageUI(host: PkgHost) {
     pendingFile = null;
     const d = name ? docs.get(name) : undefined;
     if (!name || !d) return;
-    host.setFiles(files().map((f) => (f.name === name && !f.remote ? { name: f.name, data: bytesOf(d.doc.getValue(), d.enc) } : f)));
+    host.setFiles(files().map((f) => (f.name === name && !f.remote ? { name: f.name, data: bytesOf(d.doc.getValue(), d.enc) } : f)), name);
     host.changed();
   }
   const flush = () => { if (pendingFile) commit(); };

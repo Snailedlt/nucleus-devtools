@@ -48,6 +48,8 @@ export function initFileOpen(deps: FileOpenDeps) {
             deps.loadSource(h.handler.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n'), { name: `${h.name}.js`, kind: 'draft' });
             if (h.files.length) { deps.setPackageFiles(h.files); storeFiles(h.files); }
           }
+          // After the handlers are open (opening one clears the notice).
+          if (bundle.unreadable.length) notice(`This browser couldn't unpack ${bundle.unreadable.join(', ')}, so ${bundle.unreadable.length === 1 ? "it isn't" : "they aren't"} open here and saving won't include ${bundle.unreadable.length === 1 ? 'it' : 'them'}.`, { kind: 'warning' });
           return;
         }
         const pkg = await readPackage(buf);
@@ -75,8 +77,9 @@ export function initFileOpen(deps: FileOpenDeps) {
   async function openFolderHandler(h: FolderHandler) {
     try {
       if (h.files.length > FOLDER_MAX_FILES) {
-        notice(`${h.name} has ${h.files.length} files beside it, which looks like a game's folder, not a handler's: opened without them.`, { kind: 'warning' });
         deps.loadSource(clean(await h.js.text()), { name: h.name, kind: 'draft' });
+        // After it's open: opening clears the notice.
+        notice(`${h.name} has ${h.files.length} files beside it, which looks like a game's folder, not a handler's: opened without them.`, { kind: 'warning' });
         return;
       }
       const files: PackageFile[] = [];

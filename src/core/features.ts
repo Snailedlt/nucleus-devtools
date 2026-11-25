@@ -12,7 +12,7 @@ import { fixAll } from './fix';
 import { formatHandler } from './format';
 import { parseLikeJint } from './jsparse';
 import { addedOptions, codeStateAt, KEYWORDS, optionMarkdown, ownNameAt, ownReturnTypes, parseTolerant, visibleNames } from './ownsymbols';
-import { innerCallFrame } from './complete';
+import { innerCallFrame, regexEnd } from './complete';
 import { newHandlerSnippet, SNIPPETS } from './snippets';
 import { JS_FUNCTIONS, JS_GLOBAL_OBJECTS } from './jsbuiltins';
 import { lookup } from './lookup';
@@ -510,7 +510,8 @@ function callArguments(text: string, open: number): Span[] | undefined {
       const e = text.indexOf('*/', i + 2);
       if (e < 0) return undefined;
       i = e + 1;
-    } else if (c === '(' || c === '[' || c === '{') depth++;
+    } else if (c === '/' && regexEnd(text, i, limit) > 0) i = regexEnd(text, i, limit); // `/,/`: its comma isn't a separator
+    else if (c === '(' || c === '[' || c === '{') depth++;
     else if (c === ')' || c === ']' || c === '}') {
       if (depth === 0) {
         if (c !== ')') return undefined;

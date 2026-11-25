@@ -64,7 +64,8 @@ export interface BundleHandler { name: string; handler: string; files: PackageFi
  */
 export function buildBundle(list: BundleHandler[]): Uint8Array {
   const files: { name: string; data: Uint8Array }[] = [];
-  const used = new Set<string>();
+  // "handler" is taken: a root handler.js is what makes a .zip one package, not several handlers.
+  const used = new Set<string>(['handler']);
   for (const h of list) {
     let name = h.name;
     for (let n = 2; used.has(name.toLowerCase()); n++) name = `${h.name} (${n})`;
@@ -83,8 +84,14 @@ export function buildBundle(list: BundleHandler[]): Uint8Array {
   }
   return zipBytes([...[...dirs].sort().map((name) => ({ name })), ...files]);
 }
-/** Reads a .zip of several handlers (two or more .js at its root and no handler.js); null when it isn't one. */
-export async function readBundle(buf: ArrayBuffer): Promise<BundleHandler[] | null> {
+/** The handlers of a bundle, with the names of the entries this browser couldn't unpack (they're left out). */
+export type Bundle = BundleHandler[] & { unreadable: string[] };
+/**
+ * Reads a .zip of several handlers, as buildBundle writes them: two or more .js at its root, no handler.js, and
+ * every other entry in a folder named after one of them. Null when it isn't one (a package with a helper .js and
+ * files at its root stays one package, for readPackage).
+ */
+export async function readBundle(buf: ArrayBuffer): Promise<Bundle | null> {
   let records: ZipRecord[];
   try {
     records = zipRecords(new Uint8Array(buf)).filter((r) => r.body);
@@ -93,11 +100,13 @@ export async function readBundle(buf: ArrayBuffer): Promise<BundleHandler[] | nu
   }
   const roots = records.filter((e) => !e.name.includes('/') && /\.js$/i.test(e.name));
   if (roots.length < 2 || roots.some((e) => e.name.toLowerCase() === 'handler.js')) return null;
+  const folders = new Set(roots.map((r) => r.name.replace(/\.js$/i, '').toLowerCase()));
+  if (records.some((e) => !roots.includes(e) && !folders.has(e.name.split('/')[0].toLowerCase()))) return null;
   const read = async (e: ZipRecord) => (e.method === 0 ? e.body!.slice() : e.method === 8 ? inflate(e.body!) : null);
-  const out: BundleHandler[] = [];
+  const out = Object.assign([] as BundleHandler[], { unreadable: [] as string[] });
   for (const r of roots) {
     const code = await read(r);
-    if (!code) continue;
+    if (!code) { out.unreadable.push(r.name); continue; }
     const name = r.name.replace(/\.js$/i, '');
     const prefix = `${name.toLowerCase()}/`;
     const files: PackageFile[] = [];
@@ -105,6 +114,7 @@ export async function readBundle(buf: ArrayBuffer): Promise<BundleHandler[] | nu
       if (!e.name.toLowerCase().startsWith(prefix)) continue;
       const data = await read(e);
       if (data) files.push({ name: e.name, data });
+      else out.unreadable.push(e.name);
     }
     out.push({ name, handler: new TextDecoder().decode(code), files });
   }

@@ -2819,7 +2819,8 @@ document.querySelectorAll<HTMLElement>('[data-skip]').forEach((a) => a.addEventL
  *  bound, as keycaps, and "no key set" for an action whose shortcut was cleared. The page's markup carries the
  *  default as plain text until this runs. */
 function fillKeys() {
-  document.querySelectorAll<HTMLElement>('[data-key]').forEach((el) => {
+  // Check's cards carry a data-key of their own (the problem's key): not those.
+  document.querySelectorAll<HTMLElement>('[data-key]:not(.pcard)').forEach((el) => {
     const keys = labelOf(el.dataset.key!);
     el.innerHTML = keys ? keysHtml(keys) : 'no key set';
   });
@@ -2921,7 +2922,7 @@ pkgUI = initPackageUI({
   newMenu: (anchor) => openMenu(anchor, 'New or open', addItems()),
   tabsChanged: () => { if (tabsReady) (renderTabs(), saveTabs()); },
   getFiles: () => packageFiles,
-  setFiles: (files) => { keepPreview({ id: activeTab, file: pkgUI?.active() ?? null }); packageFiles = files; storeFiles(files); if (!doc.filesEdited) { doc.filesEdited = true; saveDocMeta(); } renderDocHead(); if (tabsReady) saveTabs(); },
+  setFiles: (files, edited) => { keepPreview({ id: activeTab, file: edited ?? pkgUI?.active() ?? null }); packageFiles = files; storeFiles(files); if (!doc.filesEdited) { doc.filesEdited = true; saveDocMeta(); } renderDocHead(); if (tabsReady) saveTabs(); },
   showMain: showMainCode,
   changed: () => { pkgProblems = pkgUI!.problems(); (editor as any).performLint(); },
   extraSection: gameSection,
@@ -3734,7 +3735,8 @@ $('#code-close').addEventListener('click', () => codeDialog.close());
 codeDialog.querySelectorAll<HTMLButtonElement>('[data-code]').forEach((b) =>
   b.addEventListener('click', async () => {
     const kind = b.dataset.code;
-    const picked = dlPicked();
+    // From the command palette the dialog isn't open and its list isn't filled in: the handler in the editor.
+    const picked = codeDialog.open ? dlPicked() : [activeTab];
     codeDialog.close();
     if (kind === 'copy') return copyCode();
     if (kind === 'link') return copyLink(shareButton());
