@@ -139,6 +139,17 @@ body.resizing-v, body.resizing-v * { cursor: row-resize !important; user-select:
 #status { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 12.5px; }
 .code-row { flex: 1; min-height: 0; display: flex; position: relative; }
 .code-col { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; position: relative; }
+/* The tabs above the code (side rail layout): a strip the open tab joins the code from. */
+#tabs-slot:empty { display: none; }
+#tabs-slot .htabs-wrap { background: var(--surface-2); border-bottom: 1px solid var(--line); padding: 5px 6px 0; align-self: auto; flex: none; }
+#tabs-slot .htab-w { margin-bottom: -1px; border-radius: 7px 7px 0 0; }
+#tabs-slot .htab-w:hover { background: color-mix(in srgb, var(--surface) 70%, transparent); }
+#tabs-slot .htab-w.on { background: var(--surface); }
+#tabs-slot .htab { padding: 6px 4px 6px 10px; }
+#tabs-slot .htab-add { width: 26px; height: 26px; margin-bottom: 4px; }
+#tabs-slot .htab-add:hover, #tabs-slot .htab-add[aria-expanded="true"] { background: var(--surface); }
+:root[data-zen] #tabs-slot { display: none !important; }
+@media (min-width: 861px) { :root[data-layout="rail"] header { min-height: 0; } }
 #editor { flex: 1; min-height: 0; min-width: 0; position: relative; }
 /* Lines: a Pawno-style list of every name, beside the code */
 .lines-toggle { padding: 2px 10px; font-size: 12.5px; margin-left: 6px; }
@@ -1657,7 +1668,9 @@ header { flex-wrap: nowrap; gap: 12px; min-height: 40px; }
 .htab-w:hover .htab, .htab-w.on .htab { color: var(--fg); }
 .htab-w.on .htab { font-weight: 600; }
 .htab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.htab .ht-name { overflow: hidden; text-overflow: ellipsis; }
+.htab .ht-name { overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; min-width: 6ch; }
+.htab-w:not(.ftab) .ht-name { flex: none; } /* "handler.js" is never cut */
+.htab .ht-of { color: var(--muted); font-weight: 400; font-size: 12px; overflow: hidden; text-overflow: ellipsis; flex: 0 20 auto; min-width: 0; } /* the game a tab's file belongs to: it gives way before the file's name */
 .htab .fi-badge { flex: none; }
 .htab .ht-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--line); }
 .htab .ht-dot.e { background: var(--err); } .htab .ht-dot.w { background: var(--warn); } .htab .ht-dot.ok { background: var(--ok); }
@@ -1850,6 +1863,7 @@ kbd.keys .kplus { color: var(--muted); padding: 0 1px; }
 .fp-h.on > .fp-hrow .fp-name { color: var(--fg); }
 .fp-h:not(.on) > .fp-hrow .fp-name { color: var(--muted); }
 .fp-tw { flex: none; color: var(--muted); }
+.fp-head { justify-content: space-between; min-height: 26px; margin: 0 0 4px 6px; }
 .fp-ibtn { width: 26px; height: 26px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--muted); cursor: pointer; }
 .fp-ibtn:hover, .fp-ibtn[aria-expanded="true"] { background: var(--surface-2); color: var(--fg); }
 .fp-ibtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
@@ -1860,6 +1874,10 @@ kbd.keys .kplus { color: var(--muted); padding: 0 1px; }
 .fp-tree .fp-dir { gap: 4px; }
 .fp-gf .fp-open { font-size: 12px; gap: 6px; }
 .fp-gf .ui-ico { flex: none; }
+/* One handler open: its name is a title over its files, not a folder to open. */
+.fp-title { cursor: default; font-weight: 600; padding-left: 8px; }
+.fp-title:hover { background: none; }
+.fp-h:not(.on) > .fp-hrow .fp-cnt { opacity: .75; }
 .fp-cnt { margin-left: auto; flex: none; min-width: 18px; padding: 0 5px; border-radius: 999px; font-size: 11px; font-weight: 600; line-height: 16px; text-align: center; }
 .fp-cnt.e { background: var(--err-bg, color-mix(in srgb, var(--err) 14%, var(--surface))); color: var(--err); }
 .fp-cnt.w { background: var(--warn-bg, color-mix(in srgb, var(--warn) 16%, var(--surface))); color: var(--warn); }
@@ -1956,7 +1974,7 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
       <svg class="logo logo-v3" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect x="2" y="3" width="28" height="12.5" rx="3.4" fill="var(--p1)"></rect><rect x="2" y="17.5" width="13" height="11.5" rx="3.4" fill="var(--p2)"></rect><circle cx="23.5" cy="23.25" r="5.75" fill="var(--p3)"></circle></svg>
       <h1><span class="brand-long">Nucleus Handler </span>Workbench</h1></a><a class="start-link home-link" href="https://snailedlt.github.io/nucleus-devtools/start/" title="The home page: what the workbench and the VS Code extension do, and how to get them"><svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M2.5 7.2 8 2.8l5.5 4.4M4 6.3V13h3V9.5h2V13h3V6.3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Home</a></div>
     </div>
-    <div class="htabs-wrap"><div id="htabs" role="tablist" aria-label="Open handlers"></div><button class="htab-add" id="tab-add" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="New handler, open a file, or an example"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>
+    <div class="htabs-wrap"><div id="htabs" role="tablist" aria-label="Open files"></div><button class="htab-add" id="tab-add" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="New handler, open a file, or an example"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>
     <div class="switch" role="group" aria-label="Show">
       <button type="button" data-view="code" aria-pressed="false">Handler</button>
       <button type="button" data-view="results" aria-pressed="true">Results <span class="count" id="count-switch">0</span></button>
@@ -1979,7 +1997,7 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
     <nav class="rail" aria-label="Tools">
       <a class="rail-btn rail-logo start-link" href="https://snailedlt.github.io/nucleus-devtools/start/" aria-label="Home" data-rail="Home"><svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path d="M2.5 7.2 8 2.8l5.5 4.4M4 6.3V13h3V9.5h2V13h3V6.3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="rail-label" aria-hidden="true">Home</span></a>
       <button class="rail-btn" type="button" data-rail="add" aria-label="New, open a file or an example" aria-haspopup="menu"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="rail-label" aria-hidden="true">New or open</span></button>
-      <button class="rail-btn" type="button" data-rail="files" aria-label="Files in this handler's package" aria-pressed="false" aria-controls="files-panel"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="rail-label" aria-hidden="true">Files</span></button>
+      <button class="rail-btn" type="button" data-rail="files" aria-label="Files: your handlers and their files" aria-pressed="false" aria-controls="files-panel"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="rail-label" aria-hidden="true">Files</span></button>
       <button class="rail-btn" type="button" data-rail="lines" aria-label="Lines"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="rail-label" aria-hidden="true">Lines</span></button>
       <button class="rail-btn" type="button" data-rail="share" aria-label="Share: a link, the code, or a post for Discord"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="rail-label" aria-hidden="true">Share</span></button><button class="rail-btn" type="button" data-rail="save" aria-label="Save the handler"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="rail-label" aria-hidden="true">Save</span></button>
       <span class="rail-sp"></span>
@@ -1994,21 +2012,21 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
   <main class="main" id="main" data-view="results">
     <section class="pane" aria-label="Handler source">
       <div class="code-row">
-        <!-- The code column: what the handler is, a notice, the package's file tabs, then the code. Files and Lines
-             stand beside it, as tall as the pane. -->
+        <!-- The code column: the tabs (in the side rail layout; the slim bar has them in the header), what the
+             handler is, a notice, then the code. Files and Lines stand beside it, as tall as the pane. -->
         <div class="code-col">
+          <div id="tabs-slot"></div>
       <div class="pane-head doc-head">
         <div class="doc-title"><button type="button" id="doc-switch" class="phone-name" aria-haspopup="menu" aria-label="Open handlers: switch, new or open"><span id="doc-name">Untitled handler</span><svg class="chev" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span id="doc-edited" class="muted" hidden>· edited</span><button class="btn files-toggle" id="files-toggle" type="button" aria-pressed="false" aria-controls="files-panel"><span class="fi-badge fi-dir" aria-hidden="true">▤</span>Files<span class="files-n" id="files-n"></span><span class="files-game" id="files-game" hidden title="Your game's folder is linked">+ game</span></button><button class="btn lines-toggle" id="lines-toggle" type="button" aria-pressed="false" aria-controls="lines" title="List every name a handler can use; click one to insert it (Ctrl+B)">Lines</button><button class="btn results-show" id="results-show" type="button" hidden aria-label="Show the results: Check, Try it and Docs" title="Show the results: Check, Try it and Docs (Ctrl+J)">Results <span class="count" id="count-results"></span><span data-icon="panel-right-open" data-icon-size="16"></span></button><button class="btn icon phone-only" id="code-menu-phone" type="button" aria-label="Save or copy the handler" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
         <div id="doc-meta"></div>
       </div>
       <div id="notice" hidden><svg class="notice-icon" viewBox="0 0 24 24" aria-hidden="true"></svg><div class="notice-text"></div><button class="btn notice-action" type="button" hidden></button><button class="notice-close" type="button" aria-label="Dismiss" title="Dismiss"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
-        <div id="file-strip" role="tablist" aria-label="Files in this package" hidden></div>
         <div id="line-pop" role="dialog" aria-label="Problems on this line" hidden></div>
         <div id="editor"><div id="sig" hidden></div></div>
         <div id="file-editor" hidden></div>
         <div id="file-card" hidden></div>
         </div>
-        <section id="files-panel" aria-label="Files in this package" hidden><div class="splitter" id="split-files" role="separator" aria-orientation="vertical" aria-label="Resize the Files panel (double-click to reset, menu key for layout)" title="Drag to resize · double-click to reset · right-click for layout" tabindex="0"></div><div id="files-list"></div></section>
+        <section id="files-panel" aria-label="Files: your handlers and their files" hidden><div class="splitter" id="split-files" role="separator" aria-orientation="vertical" aria-label="Resize the Files panel (double-click to reset, menu key for layout)" title="Drag to resize · double-click to reset · right-click for layout" tabindex="0"></div><div id="files-list"></div></section>
         <section id="lines" aria-label="Names a handler can use" hidden>
           <div class="splitter" id="split-lines" role="separator" aria-orientation="vertical" aria-label="Resize the Lines list (double-click to reset, menu key for layout)" title="Drag to resize · double-click to reset · right-click for layout" tabindex="0"></div>
           <div class="sheet-grip" id="split-sheet" role="separator" aria-orientation="horizontal" aria-label="Resize the list (double-click to reset)" title="Drag to resize · double-tap to reset" tabindex="0"></div>

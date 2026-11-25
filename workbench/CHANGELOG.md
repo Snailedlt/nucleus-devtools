@@ -14,7 +14,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
 ## Unreleased
 ### ⚠️ Changed
-- **Files starts open, left of the code.** On a wide screen the Files panel is open beside the code, as tall as the pane, as the file list of most code editors. The side rail has a Files button that hides and shows it, and Settings › Layout moves it to the right. If you close it, it stays closed.
+- **Files beside the code, and tabs for open files.** As in most code editors: Files, left of the code, shows your handler's `handler.js` and the files that go with it, and the tabs above the code are the files you opened. Open a second handler and Files shows a folder for each, with the one you're working on open and the others a click away. Files starts open on a wide screen, and its button in the side rail hides it.
 - **The side rail is the default layout.** New visitors get the tools in a strip on the left, as in most code editors, with more room for the code. If you've used the workbench before, your layout stays as it was. Settings › Layout switches between the rail and the slim bar on top.
 - **Setting a tool up is in the docs now.** *Get the tools* is a short page with a tile per tool. Each tile leads to that tool's Setup page in the docs, which has the download, the steps and how to check that it worked. Old links to a tool's steps on *Get the tools* lead on to its Setup page.
 - **The Form and Blocks views have been removed.** They were hidden since the last release; a different visual editor is planned instead. If your saved view was one of them, the workbench opens your handler as code and says so once.
@@ -33,7 +33,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
   </details>
 ### 🛠️ Improved
-- **The game folder is a row in Files.** *Link the game's folder…* is the last row of the file list instead of a section of its own, with the explanation in its tooltip. Every open handler keeps its own link.
+- **Each handler links its own game folder.** *Link the game's folder…* is the last row of every handler in Files, so two handlers for two games each compare against their own install.
 - **Next, previous and close handler are in the command palette.** They show their shortcuts there, and the tour names your own keys for Check, Lines and Save if you changed them, without a reload.
 - **Animations: All, Balanced, Some or None.** Settings › Motion has one simple choice. *Balanced*, the default, moves everything except Nucli editing your code during fixes. *Some* keeps the interface easing into place and the loaders moving, and holds Duo and Nucli still otherwise. *None* moves nothing. "Play once, then rest" is gone: anyone who had it gets lively mascots. The switches underneath are still there.
 - **Messages where you're looking.** When *Insert into handler* can't place an example, the reason shows under the button instead of in a toast; Alt+Z's word wrap note shows in the code, and names the key you've bound it to. Toasts are left for things whose place is gone (a closed menu).
