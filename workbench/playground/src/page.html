@@ -505,7 +505,7 @@ details.set-sec[open] summary { margin-bottom: 4px; }
 .code-part-h { display: flex; align-items: flex-start; gap: 10px; margin: 0 0 14px 2px; }
 .code-part-i { flex: none; display: grid; place-items: center; height: 22px; color: var(--accent); }
 .code-part-h .code-h { margin: 0; font-size: 16px; line-height: 22px; font-weight: 700; color: var(--fg); text-transform: none; letter-spacing: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.code-part-h > div { min-width: 0; }
+.code-part-h > div { flex: 1; min-width: 0; }
 .code-part-h .code-h .code-of { font-weight: 500; color: var(--muted); }
 .code-part-h .code-h:focus { outline: none; }
 .code-part-h p { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
@@ -525,7 +525,7 @@ details.set-sec[open] summary { margin-bottom: 4px; }
 #code-dialog .code-part :is(.code-opt, .code-hero)::after { content: ""; flex: none; width: 7px; height: 7px; margin-right: 4px; border: solid var(--muted); border-width: 2px 2px 0 0; transform: rotate(45deg); opacity: 0; transition: opacity .16s ease-out; }
 #code-dialog .code-part :is(.code-opt, .code-hero):is(:hover, :focus-visible)::after { opacity: 1; }
 #code-dialog .code-part :is(.code-hero, .code-lead)::after { opacity: 1; border-color: var(--accent); }
-@media (max-width: 760px) {
+@media (max-width: 460px) {
   .code-cols { grid-template-columns: 1fr; }
   .code-part:first-child { padding-right: 0; }
   .code-part + .code-part { padding-left: 0; border-left: 0; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
@@ -542,6 +542,33 @@ details.set-sec[open] summary { margin-bottom: 4px; }
 #dl-items { display: grid; gap: 0; max-height: 28vh; overflow: auto; padding-left: 22px; margin-inline: -8px; padding-right: 8px; }
 #dl-items .set-check { margin-inline: 0; }
 .code-many { width: 100%; }
+/* Compact: a choice is its icon and its name. What it does shows in the line at the foot of the dialog while it is
+   pointed at or focused (a touch screen, which can't point, keeps the line under each name instead). */
+#code-dialog { width: min(540px, calc(100vw - 32px)); padding: 16px 18px 12px; border-radius: 14px; }
+.code-head { margin-bottom: 12px; }
+#code-dialog .code-head h2 { font-size: 16px; }
+.code-part:first-child { padding-right: 14px; }
+.code-part + .code-part { padding-left: 14px; }
+.code-part-h { align-items: center; gap: 8px; margin: 0 0 6px 8px; }
+.code-part-h .code-h { font-size: 14px; }
+.code-part-h p { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.code-part .code-top, .code-part .code-grid { gap: 1px; }
+.code-part .code-grid { margin-top: 1px; }
+#code-dialog .code-part :is(.code-opt, .code-hero) { gap: 10px; padding: 6px 8px; border-radius: 8px; }
+#code-dialog .code-part :is(.code-hero, .code-lead) { margin-bottom: 3px; padding-block: 7px; }
+#code-dialog .code-part :is(.code-opt, .code-hero) > svg { padding: 1px 8px; border-radius: 0; background: none; }
+#code-dialog .code-part .code-hero > svg { background: none; color: var(--accent); }
+.code-ext { width: 34px; height: 20px; border-radius: 5px; font-size: 10.5px; }
+#code-dialog .code-part :is(.code-opt, .code-hero) b { font-weight: 600; }
+.dl-set { margin-bottom: 6px; padding: 0 0 6px; }
+.dl-set legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.dl-set .set-check { padding: 3px 8px; margin-inline: 0; font-size: 13.5px; }
+#dl-items { margin-inline: 0; padding-right: 0; }
+.code-hint { margin: 10px 0 0; padding: 8px 8px 0; border-top: 1px solid var(--line); min-height: calc(1.4em + 8px); font-size: 12.5px; line-height: 1.4; color: var(--muted); }
+@media (hover: hover) {
+  #code-dialog .code-part button small:not(.code-warn-line):not(.code-keep) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+}
+@media (hover: none) { .code-hint { display: none; } }
 #dl-note:empty { display: none; }
 #code-dialog button svg { flex: none; color: var(--accent); }
 #code-dialog button span { display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: left; }
@@ -2402,10 +2429,11 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
       <button class="code-opt" type="button" data-code="js"><i class="code-ext" aria-hidden="true">.js</i><span><b>The code only</b><small>The .js, without its files</small></span></button>
       <button class="code-opt" type="button" data-code="nc"><i class="code-ext" aria-hidden="true">.nc</i><span><b>Hub-format package</b><small>A .nc, the Hub's package format</small></span></button>
     </div>
-    <button class="code-opt code-lead code-many" type="button" data-code="bundle" id="dl-many" hidden><i class="code-ext" aria-hidden="true">.zip</i><span><b id="dl-many-b">Download them as one .zip</b><small>Each handler's .js, with its files in a folder of the same name. Dropping the .zip on the workbench opens them all.</small></span></button>
+    <button class="code-opt code-lead code-many" type="button" data-code="bundle" id="dl-many" hidden><i class="code-ext" aria-hidden="true">.zip</i><span><b id="dl-many-b">All as one .zip</b><small>Each handler's .js and its files in one .zip. Drop it on the workbench to open them all.</small></span></button>
     <p class="muted small" id="dl-note" role="status" style="margin:8px 0 0"></p>
     </section>
     </div>
+    <p class="code-hint" id="code-hint" aria-hidden="true"></p>
   </div>
   <div id="code-done" hidden>
     <p class="code-saved" id="code-saved"></p>

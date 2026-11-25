@@ -3519,6 +3519,7 @@ function openCodeDialog(download: string[] = [activeTab]) {
   const base = location.href.replace(/#.*$/, '').length + 1;
   if (unchanged) advise(base + doc.hash!.length);
   else void encodeShare(editor.getSelection() || editor.getValue()).then((id) => { if (codeDialog.open && opening === codeDialogOpening) advise(base + id.length); }, () => {});
+  $('#code-discord-sub').classList.toggle('code-keep', len > DISCORD_LIMIT); // too long to paste: that stays on screen
   $('#code-discord-sub').textContent = len > DISCORD_LIMIT ? `Too long for one message (${len.toLocaleString()} of ${DISCORD_LIMIT.toLocaleString()} characters): select the lines that matter first` : 'The code in a code block, ready to paste';
   codeDialog.showModal();
 }
@@ -3587,9 +3588,18 @@ function syncDownload() {
   // One handler: as a .zip, the .js or a .nc. Several: one .zip of them all.
   ($('#dl-kinds') as HTMLElement).hidden = n !== 1;
   ($('#dl-many') as HTMLElement).hidden = n < 2;
-  $('#dl-many-b').textContent = `Download ${n} handlers as one .zip`;
+  $('#dl-many-b').textContent = `${n} handlers as one .zip`;
   $('#dl-note').textContent = n ? '' : 'Tick at least one handler to download.';
 }
+/** What the choice under the pointer (or the keyboard) does, in the line at the foot of the dialog. */
+const CODE_HINT = 'Point at a choice to see what it does.';
+function codeHint(e: Event) {
+  const b = e.type === 'pointerout' || e.type === 'focusout' ? null : (e.target as HTMLElement).closest<HTMLElement>('#code-dialog [data-code]');
+  const said = b && [...b.querySelectorAll<HTMLElement>('small:not([hidden])')].map((x) => x.textContent!.trim()).filter(Boolean).join(' ');
+  $('#code-hint').textContent = said || CODE_HINT;
+}
+for (const type of ['pointerover', 'pointerout', 'focusin', 'focusout']) $('#code-main').addEventListener(type, codeHint);
+$('#code-hint').textContent = CODE_HINT;
 $('#dl-items').addEventListener('change', syncDownload);
 $('#dl-all').addEventListener('change', () => { const on = ($('#dl-all') as HTMLInputElement).checked; document.querySelectorAll<HTMLInputElement>('#dl-items input').forEach((i) => (i.checked = on)); syncDownload(); });
 /** A handler's code and files as they'd be saved: the one in the editor with its credit lines, another as it was left. */
