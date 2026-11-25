@@ -1871,7 +1871,12 @@ kbd.keys .kplus { color: var(--muted); padding: 0 1px; }
 .fp-tree .fp-del { display: grid; place-items: center; padding: 0; }
 .fp-tree .fp-item:focus-within .fp-del { opacity: 1; }
 @media (hover: none) { .fp-tree .fp-del { opacity: 1; } }
-.fp-tree .fp-dir { gap: 4px; }
+.fp-tree .fp-dir { gap: 4px; color: var(--muted); font-size: 12.5px; }
+/* A handler's picture in the list: its game's initials, under its Hub cover when there is one. */
+.fp-hrow .mono { position: relative; flex: none; display: grid; place-items: center; width: 18px; height: 18px; border-radius: 5px; overflow: hidden; background: oklch(0.47 0.11 var(--h)); color: #fff; font: 700 8.5px/1 var(--font-display); letter-spacing: 0; margin-right: 2px; }
+.fp-hrow .mono .cv { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* The preview tab: a file looked at, not kept yet (the next file picked takes its tab). */
+.htab-w.preview .ht-name { font-style: italic; }
 .fp-gf .fp-open { font-size: 12px; gap: 6px; }
 .fp-gf .ui-ico { flex: none; }
 /* One handler open: its name is a title over its files, not a folder to open. */

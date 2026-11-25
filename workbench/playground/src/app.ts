@@ -1758,6 +1758,37 @@ function viewList(): { id: string; file: string | null }[] {
 /** The tab that shows now (none when every tab is closed). */
 const shownView = () => (pkgUI?.isEmpty() ? null : { id: activeTab, file: pkgUI?.active() ?? null });
 const sameView = (a: { id: string; file: string | null } | null, b: { id: string; file: string | null }) => !!a && a.id === b.id && a.file === b.file;
+/**
+ * The preview tab, as in VS Code: a file picked with one click in Files opens in it, and the next file picked that
+ * way takes it over, so looking through files doesn't pile up tabs. A double click on the file or on its tab,
+ * or a change to it, keeps it (it becomes a tab of its own). There is one at most.
+ */
+let previewTab: { id: string; file: string | null } | null = null;
+function keepPreview(v = previewTab) {
+  if (!previewTab || !v || !sameView(previewTab, v)) return;
+  previewTab = null;
+  renderTabs();
+}
+/** A file picked in Files: shown in its tab when it has one; else in the preview tab (`keep`: a tab of its own). */
+function openFromList(id: string, file: string | null, keep: boolean) {
+  const v = { id, file };
+  const has = (id === activeTab ? viewList() : []).some((x) => sameView(x, v)) || (id !== activeTab && (file ? (tabs.find((x) => x.id === id)?.open ?? []).includes(file) : tabs.find((x) => x.id === id)?.main !== false));
+  if (keep) { if (previewTab && sameView(previewTab, v)) previewTab = null; }
+  else if (!has) {
+    // The file the preview tab showed gives its place up.
+    const old = previewTab;
+    if (old && !sameView(old, v)) {
+      const x = tabs.find((y) => y.id === old.id);
+      if (x && old.file) { if (old.id === activeTab) pkgUI?.closeFile(old.file); else x.open = (x.open ?? []).filter((n) => n !== old.file); if (x.file === old.file) x.file = null; }
+      else if (x) x.main = false;
+    }
+    previewTab = v;
+  }
+  showView(id, file);
+  saveTabs();
+  renderTabs();
+  pkgUI?.render();
+}
 /** Shows a tab: a handler's handler.js (file null) or one of its package files. */
 function showView(id: string, file: string | null) {
   if (id !== activeTab) return switchTab(id, file);
@@ -1772,6 +1803,7 @@ function closeView(id: string, file: string | null) {
   const i = order.findIndex((v) => v.id === id && v.file === file);
   if (i < 0) return;
   const wasShown = sameView(shownView(), { id, file });
+  if (previewTab && sameView(previewTab, { id, file })) previewTab = null;
   if (file) {
     if (id === activeTab) pkgUI?.closeFile(file);
     else { x.open = (x.open ?? []).filter((n) => n !== file); if (x.file === file) x.file = null; }
@@ -1805,6 +1837,7 @@ function closeTab(id: string) {
     switchTab(tabs[i + 1]?.id ?? tabs[i - 1].id);
   }
   const [gone] = tabs.splice(i, 1);
+  if (previewTab?.id === gone.id) previewTab = null;
   lastClosed = { tab: gone, index: i };
   try { localStorage.removeItem(textKey(gone.id)); localStorage.removeItem(filesKey(gone.id)); } catch { /* ignore */ }
   saveTabs();
@@ -1870,9 +1903,10 @@ function renderTabs() {
     const edited = meta.kind !== 'draft' && meta.kind !== 'new' && (here ? editor.getValue() !== loadedText : x.text !== x.base);
     const tab = (file: string | null, i: number) => {
       const on = sameView(shown, { id: x.id, file });
+      const pre = sameView(previewTab, { id: x.id, file });
       const name = file ? file.split('/').pop()! : 'handler.js';
       const ed = !file && edited;
-      return `<span class="htab-w${on ? ' on' : ''}${ed ? ' edited' : ''}${file ? ' ftab' : ''}" role="presentation"><button type="button" class="htab" role="tab" id="tab-${x.id}${file ? `-f${i}` : ''}" data-tab-id="${x.id}"${file ? ` data-file="${esc(file)}"` : ''} aria-selected="${on}" tabindex="${on ? 0 : -1}" title="${esc(file ? `${file} (${game})` : `${game}: handler.js`)}">${file ? fileIcon(file) : `<span class="ht-dot${dot(c)}" aria-hidden="true"></span>`}<span class="ht-name">${esc(name)}</span>${tabs.length > 1 ? `<span class="ht-of">${esc(game)}</span>` : ''}<span class="sr-only">${file ? '' : esc(state(c))}${ed ? ', edited' : ''}. Delete closes the tab</span>${ed ? '<span class="ht-ed" aria-hidden="true" title="Edited">●</span>' : ''}<span class="ht-x" data-close="${x.id}"${file ? ` data-close-file="${esc(file)}"` : ''} aria-hidden="true" title="Close the tab">×</span></button></span>`;
+      return `<span class="htab-w${on ? ' on' : ''}${ed ? ' edited' : ''}${file ? ' ftab' : ''}${pre ? ' preview' : ''}" role="presentation"><button type="button" class="htab" role="tab" id="tab-${x.id}${file ? `-f${i}` : ''}" data-tab-id="${x.id}"${file ? ` data-file="${esc(file)}"` : ''} aria-selected="${on}" tabindex="${on ? 0 : -1}" title="${esc(file ? `${file} (${game})` : `${game}: handler.js`)}">${file ? fileIcon(file) : `<span class="ht-dot${dot(c)}" aria-hidden="true"></span>`}<span class="ht-name">${esc(name)}</span>${tabs.length > 1 ? `<span class="ht-of">${esc(game)}</span>` : ''}<span class="sr-only">${file ? '' : esc(state(c))}${ed ? ', edited' : ''}. Delete closes the tab</span>${ed ? '<span class="ht-ed" aria-hidden="true" title="Edited">●</span>' : ''}<span class="ht-x" data-close="${x.id}"${file ? ` data-close-file="${esc(file)}"` : ''} aria-hidden="true" title="Close the tab">×</span></button></span>`;
     };
     return [...(x.main !== false ? [tab(null, 0)] : []), ...files.map((f, i) => tab(f, i))].join('');
   }).join('');
@@ -1933,7 +1967,9 @@ function initTabs() {
     const close = t.closest<HTMLElement>('[data-close]');
     if (close) return closeView(close.dataset.close!, close.dataset.closeFile ?? null);
     const tab = t.closest<HTMLElement>('[data-tab-id]');
-    if (tab) showView(tab.dataset.tabId!, tab.dataset.file ?? null);
+    if (!tab) return;
+    showView(tab.dataset.tabId!, tab.dataset.file ?? null);
+    if (e.detail >= 2) keepPreview({ id: tab.dataset.tabId!, file: tab.dataset.file ?? null }); // a double click keeps the preview tab
   });
   strip.addEventListener('auxclick', (e) => {
     const tab = (e.target as HTMLElement).closest<HTMLElement>('[data-tab-id]');
@@ -1946,6 +1982,8 @@ function initTabs() {
     else if (e.key === 'ArrowLeft') (e.preventDefault(), stepHandler(-1), focusShown());
     else if (e.key === 'Delete' && of) (e.preventDefault(), closeView(of.dataset.tabId!, of.dataset.file ?? null), focusShown());
   });
+  // Typing in a previewed handler.js keeps its tab.
+  editor.on('change', (_cm: unknown, ch: { origin?: string }) => { if (ch.origin && ch.origin !== 'setValue' && ch.origin !== '+swap') keepPreview({ id: activeTab, file: null }); });
   // The dot follows Check.
   editor.on('change', () => {
     // The edited dot at once (as VS Code); the counts and saving a moment later.
@@ -2873,14 +2911,18 @@ pkgUI = initPackageUI({
   editor,
   handlers: () => (tabsReady ? tabs : []).map((x) => {
     const on = x.id === activeTab;
-    return { id: x.id, name: gameOf(on ? doc.name : x.meta.name), on, files: on ? packageFiles : x.files, counts: on ? countsOf(current) : x.counts };
+    const name = gameOf(on ? doc.name : x.meta.name), meta = on ? doc : x.meta;
+    // The game's picture: its initials, under its cover from the Hub when the handler is the Hub's or a Hub handler has its name.
+    const hub = meta.kind === 'hub' && meta.hubIndex !== undefined ? HUB_EXAMPLES.handlers[meta.hubIndex] : HUB_EXAMPLES.handlers.find((h) => (h.game || h.title).toLowerCase() === name.toLowerCase());
+    return { id: x.id, name, on, files: on ? packageFiles : x.files, counts: on ? countsOf(current) : x.counts, icon: monogram(name, hub?.cover) };
   }),
   switchTo: (id) => switchTab(id),
   closeHandler: (id) => closeTab(id),
+  openView: openFromList,
   newMenu: (anchor) => openMenu(anchor, 'New or open', addItems()),
   tabsChanged: () => { if (tabsReady) (renderTabs(), saveTabs()); },
   getFiles: () => packageFiles,
-  setFiles: (files) => { packageFiles = files; storeFiles(files); if (!doc.filesEdited) { doc.filesEdited = true; saveDocMeta(); } renderDocHead(); if (tabsReady) saveTabs(); },
+  setFiles: (files) => { keepPreview({ id: activeTab, file: pkgUI?.active() ?? null }); packageFiles = files; storeFiles(files); if (!doc.filesEdited) { doc.filesEdited = true; saveDocMeta(); } renderDocHead(); if (tabsReady) saveTabs(); },
   showMain: showMainCode,
   changed: () => { pkgProblems = pkgUI!.problems(); (editor as any).performLint(); },
   extraSection: gameSection,

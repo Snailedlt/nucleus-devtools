@@ -1402,10 +1402,13 @@ section('files and tabs', async () => {
   check((await s.p.$$('#files-panel .fp-h.on [data-gf=pick]')).length === 1 && (await s.p.$$('#files-panel .fp-h:not(.on) .fp-open[data-fp]')).length === 0, "files: the handler in the editor is open, with its own row for the game's folder; the others are shut");
   // Another handler's handler.js, from the list: its tab shows, the file's tab stays.
   if (handlers > 1) {
-    await s.p.click('#files-panel .fp-h:not(.on) [data-fp-fold]'); // another handler's folder: it comes into the editor
+    // Another handler's folder opens where it is; a click on its handler.js brings it into the editor.
+    await s.p.click('#files-panel .fp-h:not(.on) [data-fp-fold]');
+    check((await s.p.$$('#files-panel .fp-h:not(.on) .fp-open[data-fp]')).length >= 1 && (await now()).tabs.includes('*config.ini'), 'files: a folder of another handler opens without leaving the file that shows');
+    await s.p.click('#files-panel .fp-h:not(.on) .fp-open[data-fp=""]');
     await s.p.waitForTimeout(500);
     const other = await now();
-    check(other.code && other.tabs.includes('config.ini') && other.tabs.filter((t) => t.startsWith('*')).join() === '*handler.js', `files: another handler's folder brings it into the editor, and the tabs stay (${JSON.stringify(other)})`);
+    check(other.code && other.tabs.includes('config.ini') && other.tabs.filter((t) => t.startsWith('*')).join() === '*handler.js', `files: a file of another handler brings that handler into the editor, and the tabs stay (${JSON.stringify(other)})`);
     await s.p.click('#htabs .ftab .htab');
     await s.p.waitForTimeout(500);
     check((await now()).tabs.includes('*config.ini'), "files: a tab of another handler's file brings that handler back with the file showing");
@@ -1459,6 +1462,43 @@ section('files and tabs', async () => {
   await s.p.click('.rail [data-rail=save]', { button: 'right' });
   check(/As a folder, for another editor/.test(await s.p.innerText('.app-menu')), 'files: Save as offers a folder for another editor');
   await s.p.keyboard.press('Escape');
+  // The preview tab, as in VS Code: one click shows a file in it and the next file picked takes it over; a double click
+  // keeps the file in a tab of its own. Folders inside a handler fold. Each handler has its game's picture.
+  await s.p.evaluate(() => {
+    const dt = new DataTransfer();
+    for (const n of ['a.ini', 'b.ini', 'c.ini']) dt.items.add(new File(['[S]\nK=1\n'], n, { type: 'text/plain' }));
+    document.querySelector('#files-panel').dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
+  });
+  await s.p.waitForTimeout(500);
+  const names = () => s.p.evaluate(() => [...document.querySelectorAll('#htabs .htab-w')].map((t) => `${t.classList.contains('preview') ? '~' : ''}${t.querySelector('.ht-name').textContent}`));
+  const before = (await names()).filter((n) => /^~?[abc]\.ini$/.test(n));
+  await s.p.click('#files-panel .fp-h.on .fp-open[data-fp$="b.ini"]');
+  await s.p.waitForTimeout(250);
+  const oneClick = await names();
+  await s.p.click('#files-panel .fp-h.on .fp-open[data-fp$="c.ini"]');
+  await s.p.waitForTimeout(250);
+  const next = await names();
+  check(oneClick.includes('~b.ini') && next.includes('~c.ini') && !next.includes('~b.ini') && !next.includes('b.ini'), `files: one click shows a file in the preview tab, and the next file picked takes that tab over (${before.join()} | ${oneClick.join()} | ${next.join()})`);
+  await s.p.dblclick('#files-panel .fp-h.on .fp-open[data-fp$="c.ini"]');
+  await s.p.waitForTimeout(250);
+  await s.p.click('#files-panel .fp-h.on .fp-open[data-fp$="b.ini"]');
+  await s.p.waitForTimeout(250);
+  const kept = await names();
+  check(kept.includes('c.ini') && kept.includes('~b.ini'), `files: a double click keeps the file's tab, and the next file gets the preview tab (${kept.join()})`);
+  await s.p.dblclick('#htabs .htab-w.preview .htab');
+  await s.p.waitForTimeout(250);
+  check(!(await names()).some((n) => n.startsWith('~')), 'files: a double click on the preview tab keeps it');
+  const dirs = await s.p.$$('#files-panel .fp-h.on [data-fp-dir]');
+  if (dirs.length) {
+    const rowsBefore = (await s.p.$$('#files-panel .fp-h.on .fp-open[data-fp]')).length;
+    await dirs[0].click();
+    await s.p.waitForTimeout(150);
+    const rowsShut = (await s.p.$$('#files-panel .fp-h.on .fp-open[data-fp]')).length;
+    await s.p.click('#files-panel .fp-h.on [data-fp-dir]');
+    await s.p.waitForTimeout(150);
+    check(rowsShut < rowsBefore && (await s.p.$$('#files-panel .fp-h.on .fp-open[data-fp]')).length === rowsBefore, `files: a folder inside a handler folds shut and opens again (${rowsBefore} -> ${rowsShut})`);
+  }
+  check((await s.p.$$eval('#files-panel .fp-hrow', (l) => l.every((r) => !!r.querySelector('.mono')))), "files: every handler has its game's picture");
   // One handler open: no folders, its files under its name, and tabs without the game beside them.
   while ((await s.p.$$('#files-panel .fp-h')).length > 1) { await s.p.evaluate(() => document.querySelector('#files-panel .fp-h:not(.on) [data-fp-hclose]').click()); await s.p.waitForTimeout(200); }
   const one = await s.p.evaluate(() => ({ folds: document.querySelectorAll('#files-panel [data-fp-fold]').length, title: !!document.querySelector('#files-panel .fp-hrow .fp-title'), rows: document.querySelectorAll('#files-panel .fp-h.on .fp-open[data-fp]').length, of: document.querySelectorAll('#htabs .ht-of').length }));
