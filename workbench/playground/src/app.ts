@@ -1737,53 +1737,14 @@ function switchTab(id: string, file?: string | null) {
   (CodeMirror as any).signal(editor, 'change', editor, { origin: '+swap', from: { line: 0, ch: 0 }, to: { line: 0, ch: 0 }, text: [''], removed: [''] });
   (editor as any).performLint();
   renderDocHead();
-  // What shows: the file asked for, else the one that was up, else handler.js (its tab opens again if it was closed
-  // and the handler has no other tab).
+  // The package file that was showing when this handler was left shows again; else handler.js.
   const has = (n?: string | null): n is string => !!n && packageFiles.some((f) => f.name === n);
-  const want = file !== undefined ? file : has(x.file) ? x.file : x.main !== false ? null : pkgUI?.openList()[0] ?? null;
+  const want = file !== undefined ? file : has(x.file) ? x.file : null;
   if (has(want)) pkgUI?.openFile(want);
-  else x.main = true;
   saveTabs();
   renderTabs();
   if (!$('#panel-simulate').hidden) runSim();
   if (!has(want)) editor.focus();
-}
-/** The tabs, in the order they show: the handler's handler.js (when its tab is open), then its open files. They are
- *  the tabs of the handler in the editor only: the work is on one handler, and another open one is a switch away
- *  (its name at the top of Files), with its own tabs kept. */
-function viewList(): { id: string; file: string | null }[] {
-  const x = activeT();
-  return [...(x.main !== false ? [{ id: x.id, file: null }] : []), ...(pkgUI?.openList() ?? x.open ?? []).map((file) => ({ id: x.id, file }))];
-}
-/** The tab that shows now (none when every tab is closed). */
-const shownView = () => (pkgUI?.isEmpty() ? null : { id: activeTab, file: pkgUI?.active() ?? null });
-const sameView = (a: { id: string; file: string | null } | null, b: { id: string; file: string | null }) => !!a && a.id === b.id && a.file === b.file;
-/** Shows a tab: a handler's handler.js (file null) or one of its package files. */
-function showView(id: string, file: string | null) {
-  if (id !== activeTab) return switchTab(id, file);
-  if (file) pkgUI?.openFile(file);
-  else pkgUI?.showHandler();
-}
-/** Closes a tab. The handler stays in Files; the tab next to it shows, or nothing when it was the last. */
-function closeView(id: string, file: string | null) {
-  const x = tabs.find((y) => y.id === id);
-  if (!x) return;
-  const order = viewList();
-  const i = order.findIndex((v) => v.id === id && v.file === file);
-  if (i < 0) return;
-  const wasShown = sameView(shownView(), { id, file });
-  if (file) {
-    if (id === activeTab) pkgUI?.closeFile(file);
-    else { x.open = (x.open ?? []).filter((n) => n !== file); if (x.file === file) x.file = null; }
-  } else x.main = false;
-  if (wasShown) {
-    const next = order[i + 1] ?? order[i - 1];
-    if (next) showView(next.id, next.file);
-    else pkgUI?.showEmpty();
-  }
-  saveTabs();
-  renderTabs();
-  pkgUI?.render();
 }
 /** A new, empty tab (the caller fills it, e.g. loadSource). */
 function openTab() {
@@ -1854,27 +1815,19 @@ function renderTabs() {
   const live = countsOf(current);
   const allBtn = document.getElementById('tab-all');
   if (allBtn) allBtn.hidden = tabs.length < 2; // the list of open handlers: there as soon as there's more than one
-  const shown = shownView();
-  requestAnimationFrame(() => document.querySelector('#htabs .htab-w.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
+  requestAnimationFrame(() => document.querySelector(`#tab-${activeTab}`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
   const dot = (c?: { e: number; w: number }) => (!c ? '' : c.e ? ' e' : c.w ? ' w' : ' ok');
   const state = (c?: { e: number; w: number }) => (!c ? '' : c.e ? `, ${c.e} error${c.e === 1 ? '' : 's'}` : c.w ? `, ${c.w} warning${c.w === 1 ? '' : 's'}` : ', ready for Nucleus');
   document.documentElement.dataset.handlers = String(tabs.length); // how many handlers are open (styles and tests)
   // The tabs are drawn anew: the keyboard's place among them is kept.
   const focused = $('#htabs').contains(document.activeElement) ? document.activeElement!.id : '';
   if (focused) queueMicrotask(() => document.getElementById(focused)?.focus());
-  $('#htabs').innerHTML = [activeT()].map((x) => {
-    const here = x.id === activeTab, c = here ? live : x.counts, game = gameOf(here ? doc.name : x.meta.name);
-    const files = here && pkgUI ? pkgUI.openList() : x.open ?? [];
+  $('#htabs').innerHTML = tabs.map((x) => {
+    const on = x.id === activeTab, c = on ? live : x.counts, name = on ? doc.name : x.meta.name, files = on ? packageFiles.length : x.files.length;
     // Changed since it was opened (as VS Code shows it: a dot where the close button is, the × on hover).
-    const meta = here ? doc : x.meta;
-    const edited = meta.kind !== 'draft' && meta.kind !== 'new' && (here ? editor.getValue() !== loadedText : x.text !== x.base);
-    const tab = (file: string | null, i: number) => {
-      const on = sameView(shown, { id: x.id, file });
-      const name = file ? file.split('/').pop()! : 'handler.js';
-      const ed = !file && edited;
-      return `<span class="htab-w${on ? ' on' : ''}${ed ? ' edited' : ''}${file ? ' ftab' : ''}" role="presentation"><button type="button" class="htab" role="tab" id="tab-${x.id}${file ? `-f${i}` : ''}" data-tab-id="${x.id}"${file ? ` data-file="${esc(file)}"` : ''} aria-selected="${on}" tabindex="${on ? 0 : -1}" title="${esc(file ? `${file} (${game})` : `${game}: handler.js`)}">${file ? fileIcon(file) : `<span class="ht-dot${dot(c)}" aria-hidden="true"></span>`}<span class="ht-name">${esc(name)}</span><span class="sr-only">${file ? '' : esc(state(c))}${ed ? ', edited' : ''}. Delete closes the tab</span>${ed ? '<span class="ht-ed" aria-hidden="true" title="Edited">●</span>' : ''}<span class="ht-x" data-close="${x.id}"${file ? ` data-close-file="${esc(file)}"` : ''} aria-hidden="true" title="Close the tab">×</span></button></span>`;
-    };
-    return [...(x.main !== false ? [tab(null, 0)] : []), ...files.map((f, i) => tab(f, i))].join('');
+    const meta = on ? doc : x.meta;
+    const edited = meta.kind !== 'draft' && meta.kind !== 'new' && (on ? editor.getValue() !== loadedText : x.text !== x.base);
+    return `<span class="htab-w${on ? ' on' : ''}${edited ? ' edited' : ''}" role="presentation"><button type="button" class="htab" role="tab" id="tab-${x.id}" data-tab-id="${x.id}" aria-selected="${on}" tabindex="${on ? 0 : -1}" title="${esc(name)}${files ? ` (with ${files} other file${files === 1 ? '' : 's'})` : ''}"><span class="ht-dot${dot(c)}" aria-hidden="true"></span><span class="ht-name">${esc(name)}</span>${files ? '<span class="ht-pk" aria-hidden="true">pkg</span>' : ''}<span class="sr-only">${esc(state(c))}${edited ? ', edited' : ''}. Delete closes it</span>${edited ? '<span class="ht-ed" aria-hidden="true" title="Edited">●</span>' : ''}<span class="ht-x" data-close="${x.id}" aria-hidden="true" title="Close">×</span></button></span>`;
   }).join('');
 }
 function initTabs() {
@@ -1892,15 +1845,13 @@ function initTabs() {
   Object.assign(activeT(), { meta: doc, base: loadedText, files: packageFiles, cm: editor.getDoc() });
   tabsReady = true;
   {
-    // The open handler's tabs from last time, and the one that was showing.
+    // The open handler's package file tabs from last time, and the file that was showing.
     const x = activeT();
     const has = (n?: string | null): n is string => !!n && packageFiles.some((f) => f.name === n);
     const open = (x.open ?? []).filter(has);
-    if (open.length || x.main === false) {
+    if (open.length) {
       pkgUI?.reset(open);
-      const want = has(x.file) ? x.file : x.main !== false ? null : open[0] ?? null;
-      if (has(want)) pkgUI?.openFile(want);
-      else x.main = true;
+      if (has(x.file)) pkgUI?.openFile(x.file);
     }
   }
   saveTabs();
@@ -1931,20 +1882,19 @@ function initTabs() {
   strip.addEventListener('click', (e) => {
     const t = e.target as HTMLElement;
     const close = t.closest<HTMLElement>('[data-close]');
-    if (close) return closeView(close.dataset.close!, close.dataset.closeFile ?? null);
+    if (close) return closeTab(close.dataset.close!);
     const tab = t.closest<HTMLElement>('[data-tab-id]');
-    if (tab) showView(tab.dataset.tabId!, tab.dataset.file ?? null);
+    if (tab) switchTab(tab.dataset.tabId!);
   });
   strip.addEventListener('auxclick', (e) => {
     const tab = (e.target as HTMLElement).closest<HTMLElement>('[data-tab-id]');
-    if (e.button === 1 && tab) (e.preventDefault(), closeView(tab.dataset.tabId!, tab.dataset.file ?? null));
+    if (e.button === 1 && tab) (e.preventDefault(), closeTab(tab.dataset.tabId!));
   });
   strip.addEventListener('keydown', (e) => {
-    const of = (e.target as HTMLElement).closest<HTMLElement>('[data-tab-id]');
-    const focusShown = () => document.querySelector<HTMLElement>('#htabs .htab-w.on .htab')?.focus();
+    const focusShown = () => document.getElementById(`tab-${activeTab}`)?.focus();
     if (e.key === 'ArrowRight') (e.preventDefault(), stepHandler(1), focusShown());
     else if (e.key === 'ArrowLeft') (e.preventDefault(), stepHandler(-1), focusShown());
-    else if (e.key === 'Delete' && of) (e.preventDefault(), closeView(of.dataset.tabId!, of.dataset.file ?? null), focusShown());
+    else if (e.key === 'Delete') (e.preventDefault(), closeTab(activeTab));
   });
   // The dot follows Check.
   editor.on('change', () => {
@@ -2111,10 +2061,9 @@ function commandList(): OpenEntry[] {
     c('Fix problems automatically', '', 'fix all repair autofix', click('#fix-all'), 'Every safe automatic fix, with a before/after to review'),
     c('Try it: simulate the handler', labelOf('tryIt'), 'run play simulate try', () => selectTab('simulate')),
     c('Go to line', labelOf('goToLine'), 'go to line number jump column', () => setTimeout(() => showOpen('line'), 0)),
-    c('Next tab', labelOf('nextHandler'), 'next handler file tab switch', () => stepHandler(1)),
-    c('Previous tab', labelOf('prevHandler'), 'previous handler file tab switch', () => stepHandler(-1)),
-    c('Close this tab', labelOf('closeHandler'), 'close file tab', () => closeShown()),
-    c('Close this handler', '', 'close handler remove from files list', () => closeTab(activeTab)),
+    c('Next open handler', labelOf('nextHandler'), 'next handler tab switch', () => stepHandler(1)),
+    c('Previous open handler', labelOf('prevHandler'), 'previous handler tab switch', () => stepHandler(-1)),
+    c('Close this handler', labelOf('closeHandler'), 'close handler tab', () => closeTab(activeTab)),
     c('Find', labelOf('find'), 'find search', () => openFind(editor)),
     c('Find and replace', labelOf('replace'), 'replace find search', () => openFind(editor, true)),
     c('Test all combinations', labelOf('testAll'), 'matrix players monitors keyboards test all', () => { selectTab('simulate'); click('#sim-all')(); }),
@@ -2710,22 +2659,14 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
     goToCheck: () => goToCheck(),
     nextHandler: () => stepHandler(1),
     prevHandler: () => stepHandler(-1),
-    closeHandler: () => closeShown(),
+    closeHandler: () => closeTab(activeTab),
   };
   run[id]?.();
 });
-/** The next (or previous) tab, round the ends. */
+/** The next (or previous) open handler's tab, round the ends. */
 function stepHandler(dir: 1 | -1) {
-  const order = viewList();
-  if (!order.length) return;
-  const i = order.findIndex((v) => sameView(shownView(), v));
-  const next = order[i < 0 ? 0 : (i + dir + order.length) % order.length];
-  showView(next.id, next.file);
-}
-/** Closes the tab that shows. */
-function closeShown() {
-  const v = shownView();
-  if (v) closeView(v.id, v.file);
+  const i = tabs.findIndex((x) => x.id === activeTab);
+  switchTab(tabs[(i + dir + tabs.length) % tabs.length].id);
 }
 
 // F6 / Shift+F6, as in VS Code: the header, the Files panel, the code, Lines and the results, in turn.
@@ -2897,13 +2838,6 @@ const DEFAULT_LAYOUT: Layout = 'rail';
 const layout = (): Layout => { try { const v = localStorage.getItem(LAYOUT_KEY); return v === 'rail' || v === 'bar' ? v : DEFAULT_LAYOUT; } catch { return DEFAULT_LAYOUT; } };
 function applyLayout(l: Layout) {
   document.documentElement.dataset.layout = l;
-  // The tabs: above the code in the side rail layout (Files stands beside them, as in a code editor); in the slim
-  // bar's header otherwise.
-  const strip = document.querySelector<HTMLElement>('.htabs-wrap');
-  if (strip) {
-    if (l === 'rail') $('#tabs-slot').append(strip);
-    else document.querySelector('header .brand')?.after(strip);
-  }
   document.querySelectorAll<HTMLInputElement>('input[name="set-layout"]').forEach((r) => (r.checked = r.value === l));
   requestAnimationFrame(() => editor.refresh());
 }

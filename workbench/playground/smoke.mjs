@@ -432,7 +432,7 @@ for (const theme of ['light', 'dark']) section(`workbench, ${theme}`, async () =
       await p.waitForTimeout(1500);
       if (await p.$eval('#files-panel', (e) => e.hidden)) await p.click('#files-toggle');
       await p.waitForTimeout(300);
-      const rows = (await p.$$('#files-panel .fp-h.on .fp-open[data-fp]')).length;
+      const rows = (await p.$$('#files-panel .fp-open[data-fp]')).length; // handler.js and the package's files (not the game folder's row)
       check(rows === pick.files + 1, `${theme}: ${pick.title} opens with its ${pick.files} package file(s) in Files (${rows - 1} listed)`);
       const hubRow = await p.$('#files-panel .fp-open:has(.fp-hub)');
       if (hubRow) {
@@ -510,7 +510,7 @@ for (const theme of ['light', 'dark']) section(`workbench, ${theme}`, async () =
             p.waitForEvent('download'),
             p.evaluate(() => {
               document.querySelector('#file-editor .CodeMirror').CodeMirror.replaceRange('; second edit\n', { line: 0, ch: 0 });
-              document.querySelector('#files-panel .fp-h.on .fp-open[data-fp=""]').click();
+              document.querySelector('#files-panel .fp-open[data-fp=""]').click();
               document.querySelector('#share-open').click();
               document.querySelector('#code-dialog [data-code=file]').click();
             }),
@@ -634,7 +634,7 @@ for (const theme of ['light', 'dark']) section(`workbench, ${theme}`, async () =
   // One handler per tab: another handler opens a new tab; one that's already open switches to its tab.
   await p.goto(BASE + '#example-mistakes');
   await p.waitForTimeout(800);
-  const nTabs = () => p.evaluate(() => Number(document.documentElement.dataset.handlers)); // open handlers (the tabs are one handler's files)
+  const nTabs = async () => (await p.$$('#htabs [role=tab]')).length;
   const tabsBefore = await nTabs();
   const otherHub = await p.evaluate(() => window.HUB_EXAMPLES?.handlers?.[0]?.id ?? null);
   if (otherHub) {
@@ -643,7 +643,7 @@ for (const theme of ['light', 'dark']) section(`workbench, ${theme}`, async () =
     const tabsAfter = await nTabs();
     await p.evaluate(() => { location.hash = 'example-mistakes'; });
     await p.waitForTimeout(600);
-    check(tabsAfter === tabsBefore + 1 && (await nTabs()) === tabsAfter && /mistakes/i.test(await p.textContent('#doc-name')), `${theme}: another handler opens beside the first, and an open one is switched to, not opened twice (${tabsBefore} -> ${tabsAfter})`);
+    check(tabsAfter === tabsBefore + 1 && (await nTabs()) === tabsAfter && /mistakes/i.test(await p.innerText('#htabs [aria-selected=true]')), `${theme}: another handler opens a new tab, and an open one switches to its tab (${tabsBefore} -> ${tabsAfter})`);
     // The ▾ (all open handlers) follows the number of tabs, on a fresh load as after any change.
     const allShown = () => p.isVisible('#tab-all');
     check((await allShown()) === (tabsAfter >= 2), `${theme}: ▾ all open handlers shown with ${tabsAfter} tabs`);
@@ -655,18 +655,11 @@ for (const theme of ['light', 'dark']) section(`workbench, ${theme}`, async () =
     await p.reload();
     await p.waitForTimeout(800);
     check((await allShown()) === ((await nTabs()) >= 2), `${theme}: ▾ the same after a reload`);
-    const closeOne = async (pg) => {
-          // Close the handler in the editor: the × beside its name at the top of Files.
-          await pg.evaluate(() => { if (document.querySelector('#files-panel').hidden) document.querySelector('#files-toggle').click(); });
-          await pg.evaluate(() => document.querySelector('#files-panel [data-fp-head] [data-fp-hclose]').click());
-          await pg.waitForTimeout(250);
-        };
-    const openHandlers = () => p.evaluate(() => { if (document.querySelector('#files-panel').hidden) document.querySelector('#files-toggle').click(); return Number(document.querySelector('#files-panel [data-fp-head]')?.dataset.n ?? 1); });
-    while ((await openHandlers()) > 1) await closeOne(p);
-    check(!(await allShown()), `${theme}: ▾ hidden with one handler open`);
+    while ((await nTabs()) > 1) { await p.click('#htabs .htab-w:not(.on) [data-close]'); await p.waitForTimeout(150); }
+    check(!(await allShown()), `${theme}: ▾ hidden with one tab`);
     await p.reload();
     await p.waitForTimeout(800);
-    check(!(await allShown()), `${theme}: ▾ still hidden with one handler open after a reload (it showed on first load)`);
+    check(!(await allShown()), `${theme}: ▾ still hidden with one tab after a reload (it showed on first load)`);
   }
   // The side rail's Save: right-click offers the formats, like the arrow beside Save in the slim bar.
   await p.evaluate(() => localStorage.setItem('nucleus-workbench-layout', 'rail'));
@@ -1257,53 +1250,45 @@ section('tabs and package files', async () => {
     check(!inA && inB, `tabs: the same code, pluginsInfo.txt in one tab only: only the other flags the plugin (${inA}, ${inB})`);
     // Start a Check in tab A, and change to tab B before its result is in: tab B keeps its own.
     await s.p.evaluate(() => {
-      window.__tabB = document.querySelector('#htabs [role=tab]').dataset.tabId;
-      // The other open handler (A, with pluginsInfo.txt) and back, by the list of open handlers (▾).
-      const other = () => { document.querySelector('#tab-all').click(); document.querySelector('.app-menu [role=menuitemcheckbox][aria-checked=false]').click(); };
-      other();
+      const ts = [...document.querySelectorAll('#htabs [role=tab]')];
+      const on = ts.findIndex((t) => t.getAttribute('aria-selected') === 'true');
+      const a = ts.find((t) => /other file/.test(t.title)); // tab A: the one with pluginsInfo.txt
+      const bId = (window.__tabB = ts[on].dataset.tabId);
+      a.click();
       window.__holdNext = true;
       document.querySelector('.CodeMirror').CodeMirror.performLint();
-      other();
+      // The tabs are drawn anew on a switch: tab B's element by its id.
+      document.querySelector(`#htabs [data-tab-id="${bId}"]`).click();
     });
     await s.p.waitForTimeout(1500);
-    const backOnB = await s.p.evaluate(() => document.querySelector('#htabs [role=tab]')?.dataset.tabId === window.__tabB);
+    const backOnB = await s.p.evaluate(() => document.querySelector('#htabs [aria-selected=true]')?.dataset.tabId === window.__tabB);
     check(backOnB && await flagged(), "tabs: a Check started in the other tab and finished after the switch doesn't replace this tab's result");
   } else say('skip: no Hub handler in this build for the two-tab Check test');
   check(!s.errors.length, `tabs with package files: no page errors ${s.errors.join(' ')}`);
   await s.ctx.close();
 });
 section('handler tab keys', async () => {
-  // Next / Previous tab and Close this tab are shortcuts like the rest (keyactions.ts), so they can't take another
-  // shortcut's key: in the code Ctrl+Shift+[ folds (it used to switch handlers), and in Find Alt+W is "whole word" (it
-  // used to close the handler too).
+  // Next / Previous open handler and Close this handler are shortcuts like the rest (keyactions.ts), so they can't
+  // take another shortcut's key: in the code Ctrl+Shift+[ folds (it used to switch handlers), and in Find Alt+W is
+  // "whole word" (it used to close the handler too).
   const s = await page('light');
   await s.p.goto(BASE + '#example-mistakes');
   await s.p.waitForSelector('.CodeMirror');
   await s.p.waitForTimeout(900);
   await s.p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
-  // Two tabs: handler.js and a file of its package.
-  await s.p.evaluate(() => {
-    if (document.querySelector('#files-panel').hidden) document.querySelector('#files-toggle').click();
-    const dt = new DataTransfer();
-    dt.items.add(new File(['[Video]\nWidth=1920\n'], 'config.ini', { type: 'text/plain' }));
-    document.querySelector('#files-panel').dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
-  });
-  await s.p.waitForTimeout(500);
-  await s.p.click('#htabs .htab-w:first-child .htab');
-  await s.p.waitForTimeout(300);
-  const now = () => s.p.evaluate(() => ({ name: document.querySelector('#htabs .htab-w.on .ht-name')?.textContent, tabs: document.querySelectorAll('#htabs [role=tab]').length, folded: document.querySelectorAll('.CodeMirror-foldmarker').length, word: document.querySelector('.fw-opt[data-opt=word]')?.getAttribute('aria-pressed') ?? null }));
+  const now = () => s.p.evaluate(() => ({ name: document.querySelector('#doc-name')?.textContent, tabs: document.querySelectorAll('#htabs [role=tab]').length, folded: document.querySelectorAll('.CodeMirror-foldmarker').length, word: document.querySelector('.fw-opt[data-opt=word]')?.getAttribute('aria-pressed') ?? null }));
   const inCode = () => s.p.evaluate(() => { const cm = document.querySelector('.CodeMirror').CodeMirror; cm.focus(); cm.setCursor(cm.getValue().split('\n').findIndex((l) => l.includes('Game.Play')), 5); });
   const start = await now();
   await inCode();
   await s.p.keyboard.press('Control+Shift+BracketLeft');
   await s.p.waitForTimeout(300);
   const folded = await now();
-  check(start.tabs >= 2 && folded.name === start.name && folded.folded === 1, `tab keys: Ctrl+Shift+[ in the code folds the block and stays on the tab (${JSON.stringify(folded)})`);
+  check(start.tabs >= 2 && folded.name === start.name && folded.folded === 1, `tab keys: Ctrl+Shift+[ in the code folds the block and stays on the handler (${JSON.stringify(folded)})`);
   await s.p.keyboard.press('Control+Shift+BracketRight');
   await s.p.keyboard.press('Alt+PageDown');
   await s.p.waitForTimeout(400);
   const next = await now();
-  check(next.name !== start.name && next.tabs === start.tabs, `tab keys: Alt+PageDown goes to the next tab (${next.name})`);
+  check(next.name !== start.name && next.tabs === start.tabs, `tab keys: Alt+PageDown goes to the next open handler (${next.name})`);
   await s.p.keyboard.press('Alt+PageUp');
   await s.p.waitForTimeout(400);
   check((await now()).name === start.name, 'tab keys: Alt+PageUp goes back');
@@ -1318,8 +1303,8 @@ section('handler tab keys', async () => {
   await inCode();
   await s.p.keyboard.press('Alt+W');
   await s.p.waitForTimeout(400);
-  check((await now()).tabs === start.tabs - 1, 'tab keys: Alt+W in the code closes the tab');
-  check(await s.p.evaluate(() => /Next tab/.test(document.querySelector('#help-dialog')?.textContent ?? '')), 'tab keys: they are in the shortcut list');
+  check((await now()).tabs === start.tabs - 1, 'tab keys: Alt+W in the code closes the handler');
+  check(await s.p.evaluate(() => /Next open handler/.test(document.querySelector('#help-dialog')?.textContent ?? '')), 'tab keys: they are in the shortcut list');
   check(!s.errors.length, `tab keys: no page errors ${s.errors.join(' ')}`);
   await s.ctx.close();
 });
@@ -1361,99 +1346,52 @@ section('word wrap note', async () => {
   await s.ctx.close();
 });
 section('closing handlers', async () => {
-  // Every handler can be closed (the × beside its name in Files), the last one too: a new one from the template takes
-  // its place (no empty page); Undo brings the closed one back and the untouched template goes.
+  // Every handler can be closed, the last one too: a new one from the template takes its place (no empty page); Undo
+  // brings the closed one back and the untouched template goes.
   const s = await page('light');
   await s.p.goto(BASE + '#example-mistakes');
   await s.p.waitForTimeout(900);
   await s.p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
   const tabsNow = () => s.p.$$eval('#htabs [role=tab]', (l) => l.length);
-  const handlersNow = () => s.p.$eval('#files-panel [data-fp-head]', (b) => Number(b.dataset.n));
-  if (await s.p.$eval('#files-panel', (e) => e.hidden)) await s.p.click('#files-toggle');
-  const closeHandler = () => (async (pg) => {
-  // Close the handler in the editor: the × beside its name at the top of Files.
-  await pg.evaluate(() => { if (document.querySelector('#files-panel').hidden) document.querySelector('#files-toggle').click(); });
-  await pg.evaluate(() => document.querySelector('#files-panel [data-fp-head] [data-fp-hclose]').click());
-  await pg.waitForTimeout(250);
-})(s.p);
-  for (let n = await handlersNow(); n > 1; n--) await closeHandler();
+  for (let n = await tabsNow(); n > 1; n--) { await s.p.click('#htabs [aria-selected=true] .ht-x'); await s.p.waitForTimeout(250); }
   const lastName = await s.p.textContent('#doc-name');
-  await closeHandler();
-  check((await handlersNow()) === 1 && (await tabsNow()) === 1 && (await s.p.isVisible('#main')) && (await s.p.textContent('#doc-name')) === 'My Game.js', 'handlers: closing the last one opens a new one from the template');
+  await s.p.click('#htabs [aria-selected=true] .ht-x');
+  await s.p.waitForTimeout(300);
+  check((await tabsNow()) === 1 && (await s.p.isVisible('#main')) && (await s.p.textContent('#doc-name')) === 'My Game.js', 'tabs: closing the last handler opens a new one from the template');
   await s.p.click('#notice .notice-action');
   await s.p.waitForTimeout(400);
-  check((await handlersNow()) === 1 && (await s.p.textContent('#doc-name')) === lastName, `handlers: Undo brings the last one back, with the untouched template gone (${lastName})`);
-  check(!s.errors.length, `handlers: no page errors ${s.errors.join(' ')}`);
+  check((await tabsNow()) === 1 && (await s.p.textContent('#doc-name')) === lastName, `tabs: Undo brings the last one back, with the untouched template gone (${lastName})`);
+  check(!s.errors.length, `tabs: no page errors ${s.errors.join(' ')}`);
   await s.ctx.close();
 });
-section('files and tabs', async () => {
-  // Files shows the handler in the editor (handler.js, its other files, its game on this PC), and the tabs above the
-  // code are that handler's open files. A tab's × closes the tab; with every tab closed the code pane says so and
-  // brings handler.js back; the tabs are there again after a reload. Other open handlers are rows under the files; a
-  // click switches, and each comes back with its own tabs.
+section('files panel and folders', async () => {
+  // Files starts open left of the code on a wide screen and the side rail has a button for it; a closed panel stays
+  // closed. A package's text file is readable by axe (contrast, a named editor). Each handler has its own game folder
+  // row. Open a folder… reads <Name>.js with the files of its folder, and an unpacked package; Save as offers a folder.
   const s = await page('light');
   await s.p.goto(BASE + '#example-mistakes');
   await s.p.waitForSelector('.CodeMirror');
   await s.p.waitForTimeout(900);
   await s.p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
-  check(await s.p.isVisible('#files-panel'), 'files: the list is open beside the code on a wide screen');
-  const now = () => s.p.evaluate(() => ({
-    tabs: [...document.querySelectorAll('#htabs .htab-w')].map((t) => `${t.classList.contains('on') ? '*' : ''}${t.querySelector('.ht-name').textContent}`),
-    handler: document.querySelector('#files-panel [data-fp-head] .fp-title')?.textContent,
-    handlers: Number(document.querySelector('#files-panel [data-fp-head]')?.dataset.n),
-    rows: [...document.querySelectorAll('#files-panel .fp-open[data-fp] .fp-name')].map((b) => b.textContent),
-    current: [...document.querySelectorAll('#files-panel .fp-open[aria-current=true]')].map((b) => b.querySelector('.fp-name').textContent),
-    code: !document.querySelector('#editor').hidden, fileEd: !document.querySelector('#file-editor').hidden, card: !document.querySelector('#file-card').hidden,
-  }));
-  const first = await now();
-  check(first.tabs.join() === '*handler.js' && first.rows.join() === 'handler.js' && (await s.p.$$('#files-panel [data-gf=pick]')).length === 1, `files: one handler shows its handler.js, one tab and its game folder row (${JSON.stringify(first)})`);
-  // A file in the handler's package: it opens in a tab of its own, beside handler.js.
+  check(await s.p.isVisible('#files-panel'), 'files: the panel is open beside the code on a wide screen');
+  check((await s.p.$$('#files-panel [data-gf=pick]')).length === 1, "files: the game folder is a row at the end of the handler's files");
   await s.p.evaluate(() => {
     const dt = new DataTransfer();
     dt.items.add(new File(['[Video]\nWidth=1920\n'], 'config.ini', { type: 'text/plain' }));
     document.querySelector('#files-panel').dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
   });
   await s.p.waitForTimeout(500);
-  const withFile = await now();
-  check(withFile.tabs.join() === 'handler.js,*config.ini' && withFile.fileEd && withFile.current.join() === 'config.ini', `files: an added file opens in its own tab (${JSON.stringify(withFile)})`);
-  // Another handler: Files and the tabs are its own; switching back brings the first one's tabs, the file showing.
-  if (withFile.handlers >= 2) { await s.p.click('#files-panel [data-fp-go]'); await s.p.waitForTimeout(500); }
-  const second = await now();
-  if (second.handlers >= 2 && second.handler !== withFile.handler) {
-    check(second.tabs.join() === '*handler.js' && !second.rows.includes('config.ini'), `files: another handler shows only its own files and tabs (${JSON.stringify(second)})`);
-    check(/Other open handlers/i.test(await s.p.innerText('#files-panel')), 'files: the other open handlers are listed under the files');
-    await s.p.click(`#files-panel [data-fp-go]:has-text(${JSON.stringify(withFile.handler)})`);
-    await s.p.waitForTimeout(500);
-    const backTo = await now();
-    check(backTo.handler === withFile.handler && backTo.tabs.join() === 'handler.js,*config.ini' && backTo.fileEd, `files: switching back from the list of other open handlers brings its tabs and the file that showed (${JSON.stringify(backTo)})`);
-  } else say(`skip files: no second handler could be opened for the switch test (${JSON.stringify(second)})`);
-  // Closing tabs: the last one leaves a note with the way back.
-  for (let n = (await now()).tabs.length; n > 0; n--) { await s.p.click('#htabs .htab-w.on .ht-x', { force: true }); await s.p.waitForTimeout(250); }
-  const none = await now();
-  check(!none.tabs.length && none.rows.includes('config.ini') && none.card && /No file is open/.test(await s.p.innerText('#file-card')), `files: closing every tab leaves the files in the list and says no file is open (${JSON.stringify(none)})`);
-  await axe(s.p, 'files and tabs, no file open');
-  await s.p.click('#file-card [data-card=main]');
-  await s.p.waitForTimeout(300);
-  const back = await now();
-  check(back.code && back.tabs.join() === '*handler.js', `files: Open handler.js brings the code back in a tab (${JSON.stringify(back)})`);
-  await s.p.click('#files-panel .fp-open[data-fp$="config.ini"]');
-  await s.p.waitForTimeout(300);
-  await s.p.reload();
-  await s.p.waitForSelector('#htabs .htab-w'); // a package file may be what shows, so not the code editor
-  await s.p.waitForTimeout(900);
-  const again = await now();
-  check(again.tabs.includes('*config.ini') && again.tabs.includes('handler.js') && again.fileEd, `files: the open tabs and the one that showed are back after a reload (${JSON.stringify(again)})`);
-  // The rail's Files button hides and shows the list.
+  check((await s.p.isVisible('#file-editor')) && (await s.p.$$('#file-strip .fs-tab')).length === 2, 'files: an added file opens in its own file tab, beside handler.js');
+  await axe(s.p, 'files panel, a package file open');
+  await s.p.click('#file-strip .fs-tab[data-fs=""]');
   await s.p.click('.rail [data-rail=files]');
-  check(!(await s.p.isVisible('#files-panel')) && (await s.p.getAttribute('.rail [data-rail=files]', 'aria-pressed')) === 'false', "files: the rail's Files button hides the list");
+  check(!(await s.p.isVisible('#files-panel')) && (await s.p.getAttribute('.rail [data-rail=files]', 'aria-pressed')) === 'false', "files: the rail's Files button hides the panel");
   await s.p.reload();
-  await s.p.waitForSelector('#htabs .htab-w'); // a package file may be what shows, so not the code editor
+  await s.p.waitForSelector('.CodeMirror');
   await s.p.waitForTimeout(600);
-  check(!(await s.p.isVisible('#files-panel')), 'files: a closed list stays closed after a reload');
+  check(!(await s.p.isVisible('#files-panel')), 'files: a closed panel stays closed after a reload');
   await s.p.click('.rail [data-rail=files]');
   check(await s.p.isVisible('#files-panel'), "files: the rail's Files button shows it again");
-  await axe(s.p, 'files and tabs');
-  // Open a folder…: <Name>.js with its files in <Name>/ (as "Save as a folder" writes it), and an unpacked package.
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'wb-folder-'));
   fs.mkdirSync(path.join(dir, 'one', 'Foo', 'cfg'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'one', 'Foo.js'), 'Game.GameName = "Foo";\n');
@@ -1461,18 +1399,21 @@ section('files and tabs', async () => {
   fs.mkdirSync(path.join(dir, 'pkg', 'Stuff'), { recursive: true });
   fs.writeFileSync(path.join(dir, 'pkg', 'handler.js'), 'Game.GameName = "Pk";\n');
   fs.writeFileSync(path.join(dir, 'pkg', 'Stuff', 'readme.txt'), 'hi\n');
-  const group = (name) => s.p.evaluate((n) => (document.querySelector('#files-panel [data-fp-head] .fp-title')?.textContent === n ? [...document.querySelectorAll('#files-panel .fp-open[data-fp] .fp-name')].map((x) => x.textContent) : null), name);
+  const listed = () => s.p.evaluate(() => ({ name: document.querySelector('#doc-name')?.textContent, files: [...document.querySelectorAll('#files-panel .fp-open[data-fp] .fp-name')].map((x) => x.textContent) }));
   await s.p.setInputFiles('#folder-input', path.join(dir, 'one'));
   await s.p.waitForTimeout(700);
-  check(((await group('Foo')) ?? []).join() === 'handler.js,config.ini' && (await s.p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue())).includes('"Foo"'), `files: Open a folder reads <Name>.js and the files of its folder (${JSON.stringify(await group('Foo'))})`);
+  const one = await listed();
+  check(one.name === 'Foo.js' && one.files.join() === 'handler.js,config.ini', `files: Open a folder reads <Name>.js and the files of its folder (${JSON.stringify(one)})`);
   await s.p.setInputFiles('#folder-input', path.join(dir, 'pkg'));
   await s.p.waitForTimeout(700);
-  check(((await group('pkg')) ?? []).join() === 'handler.js,readme.txt', `files: Open a folder reads an unpacked package (${JSON.stringify(await group('pkg'))})`);
+  const pkg = await listed();
+  check(pkg.name === 'pkg.js' && pkg.files.join() === 'handler.js,readme.txt', `files: Open a folder reads an unpacked package (${JSON.stringify(pkg)})`);
   fs.rmSync(dir, { recursive: true, force: true });
   await s.p.click('.rail [data-rail=save]', { button: 'right' });
   check(/As a folder, for another editor/.test(await s.p.innerText('.app-menu')), 'files: Save as offers a folder for another editor');
   await s.p.keyboard.press('Escape');
-  check(!s.errors.length, `files and tabs: no page errors ${s.errors.join(' ')}`);
+  await axe(s.p, 'files panel');
+  check(!s.errors.length, `files panel and folders: no page errors ${s.errors.join(' ')}`);
   await s.ctx.close();
 });
 section('learn', async () => {
