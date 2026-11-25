@@ -22,6 +22,7 @@ How to write it (people and AI agents read this; the release workflow publishes 
 
 ### ✨ New
 
+- **Check a real Nucleus session against Try it.** `ncdev verify <handler.js> --nucleus <folder>`, run on the Windows PC after the session started, reads Nucleus' debug log and error file and the game's windows and says where they differ from Try it ("player 2's window is 1920 × 1080; Try it expected 960 × 1080"), with what to change. `ncdev test --wait` starts Nucleus, waits for you to press Play and prints the same report. `--json` for scripts, and `nucleus_verify` for AI agents (#1).
 - **Hover a value to see which parameter it is.** In a call like `Game.AddOption("Mode", …)`, hovering a text, a number or a list shows the name of the parameter it's passed as, its type and what to pass, in VS Code, Notepad++ and every editor that uses `ncdev lsp`. A name keeps its own docs and gets a line about the parameter under them.
 - **ncdev for Linux.** Releases now include `ncdev-linux-x64`, the standalone ncdev for Linux (nothing else to install; `ncdev update` keeps it current), so every editor setup can run `ncdev lsp`. `nucleus.js` with Node.js still works everywhere else.
 - **The Claude Code plugin brings the tools too.** Installing the nucleus-coop plugin now also adds the `nucleus` MCP server (check, fix, Try it, API lookup, Hub search), so Claude Code calls them as tools without any setup.

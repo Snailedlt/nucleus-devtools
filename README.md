@@ -480,6 +480,7 @@ The skill loads automatically when you ask about Nucleus handlers.
 | `nucleus_fix` | Fix a handler automatically |
 | `nucleus_format` | Format a handler |
 | `nucleus_simulate` | Try a handler (simulated) |
+| `nucleus_verify` | Check a real Nucleus session against Try it |
 | `nucleus_debug` | Debug a handler (simulated) |
 | `nucleus_explain` | Explain a line |
 | `nucleus_api` | Look up the handler API |
