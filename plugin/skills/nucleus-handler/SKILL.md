@@ -30,8 +30,9 @@ This skill ships a self-contained Node CLI at `${CLAUDE_SKILL_DIR}/scripts/nucle
 | `node .../nucleus.js new --name "Game" --exe Game.exe [--steam-id N] [--features protoinput,goldberg,resolution-ini,options]` | Start a new handler from a lint-clean template. |
 | `node .../nucleus.js package <file.js>` | Build the `.nc` package for hub.splitscreen.me. `lint` already checks the files in the handler's `<Name>/` folder next to it, as they go into the package. |
 | `node .../nucleus.js install <file.js> --nucleus <folder>` / `test …` | Install the handler into the user's Nucleus Co-op, or install and start Nucleus with it selected. They change the user's Nucleus folder (and `test` closes a running Nucleus), so only with the user's OK. |
+| `node .../nucleus.js test <file.js> --nucleus <folder> --wait` / `verify <file.js> --nucleus <folder>` | On the user's Windows PC, with their OK: `test --wait` starts Nucleus, waits while the user picks the players and presses Play, then reports what happened; `verify` does the report alone, after a session started. It reads Nucleus' debug log and error file and the game's windows and compares them with `simulate` ("player 2's window is 1920 × 1080; Try it expected 960 × 1080"), with what to change. Fix from it, then test again. It can't tell whether input or the game itself works: ask the user. |
 
-Through MCP instead of a shell (`node .../nucleus.js mcp`), the same tools are `nucleus_lint`, `nucleus_fix`, `nucleus_format`, `nucleus_simulate`, `nucleus_debug`, `nucleus_explain`, `nucleus_rules`, `nucleus_api`, `nucleus_api_search`, `nucleus_new_handler`, `nucleus_hub_search`, `nucleus_hub_handler`, `nucleus_game_imports` (what an installed game's .exe and DLLs use, and the hooks that match) and `nucleus_vote_doc` (after you checked a doc against the Nucleus source: 👍 or 👎, counted apart from people's votes).
+Through MCP instead of a shell (`node .../nucleus.js mcp`), the same tools are `nucleus_lint`, `nucleus_fix`, `nucleus_format`, `nucleus_simulate`, `nucleus_debug`, `nucleus_explain`, `nucleus_rules`, `nucleus_api`, `nucleus_api_search`, `nucleus_new_handler`, `nucleus_hub_search`, `nucleus_hub_handler`, `nucleus_game_imports` (what an installed game's .exe and DLLs use, and the hooks that match), `nucleus_verify` (a real session against Try it) and `nucleus_vote_doc` (after you checked a doc against the Nucleus source: 👍 or 👎, counted apart from people's votes).
 
 If `node` is unavailable, read [reference/api.md](reference/api.md) (grep for `### Game.Name`) and apply the rules below by hand.
 
@@ -73,7 +74,7 @@ See [reference/recipes.md](reference/recipes.md) for tested patterns: INI/XML/te
 - `Context.ModifySaveFile(..., Nucleus.SaveType.INI, [new Nucleus.IniSaveInfo(section, key, value)])` edits INI files (use `CfgSaveInfo` for CFG; other entry types are skipped). For several reads/writes, `var ini = new Nucleus.IniFile(path); ini.IniWriteValue(section, key, value); ini.IniReadValue(section, key)`.
 - `Nucleus.Globals.NucleusInstallRoot`, `Nucleus.Globals.UserDocumentsRoot`, `Nucleus.Globals.UserEnvironmentRoot`: Nucleus' install folder and the user's Documents and profile folders.
 - Use `\\` in path strings. `System.IO.*` (.NET) is available for files and folders.
-- `Context.Log("...")` writes to Nucleus' debug log; use it to confirm what `Game.Play` computed.
+- `Context.Log("...")` writes to Nucleus' `app.log` (in `%APPDATA%\Nucleus Coop`), not to `debug-log.txt`; use it to confirm what `Game.Play` computed.
 
 ## Credit lines (who made it, what was checked)
 

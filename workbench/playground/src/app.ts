@@ -34,6 +34,7 @@ import { formatHandler } from '@core/format';
 import { canSaveIntoFolder, rememberedName, saveIntoNucleus, saveIntoFolder } from './nucleussave';
 import { buildBundle, buildPackage, storeFiles, storedFiles, fileSize, sizeOf, PackageFile } from './package';
 import { initLines } from './lines-ui';
+import { initFlow } from './flowview';
 import { initTips } from './tips-ui';
 import { initSettings } from './settings-ui';
 import { announceLine, hoverDelay, initA11y } from './a11y';
@@ -195,6 +196,8 @@ try {
 }
 
 let current: Diagnostic[] = [];
+/** Flow (flowview.ts), set up once the editor is. */
+let flowUI: ReturnType<typeof initFlow> | undefined;
 let currentText = '';
 // The game's folder, if the author picked one for this tab (gamefolder.ts): only names and sizes, kept in this page.
 let gameFolder: GameFolder | null = null;
@@ -316,6 +319,7 @@ const editor = CodeMirror($('#editor'), {
         setFixCount(r.fixable, r.cleanups ?? 0);
         renderProblems(text);
         countsChanged();
+        flowUI?.refresh();
         // Unused code (tagged unnecessary) is faded, as VS Code fades it; hints among it get no squiggle.
         for (const m of fadeMarks) m.clear();
         fadeMarks = current.filter((d) => d.tags?.includes('unnecessary') && d.end > d.start).map((d) => editor.markText(posAt(text, d.start), posAt(text, d.end), { className: 'cm-unnecessary' }));
@@ -2171,6 +2175,7 @@ function commandList(): OpenEntry[] {
     c('Go to the next problem', labelOf('nextProblem'), 'next problem error warning', () => stepProblem(1)),
     c('Go to the previous problem', labelOf('prevProblem'), 'previous problem error warning', () => stepProblem(-1)),
     c('Go to line…', labelOf('goToLine'), 'line jump goto', () => { editor.focus(); editor.execCommand('jumpToLine'); }),
+    c('Show the handler as a flow diagram, or as code', labelOf('flow'), 'flow diagram visual graph chart view callbacks steps blocks', () => flowUI?.toggle(), 'Settings, questions and each callback as connected steps'),
     c('Show or hide Lines', labelOf('lines'), 'lines list names insert sidebar', () => lines.toggle(), 'Every option, Context member and enum, click to insert'),
     c('Search the handler API', '', 'api docs reference search', () => { selectTab('api'); ($('#api-q') as HTMLInputElement).focus(); }),
     c('Open examples and Hub handlers', labelOf('open'), 'open examples hub templates switch', () => setTimeout(() => showOpen(), 0)),
@@ -2592,6 +2597,25 @@ const lines = initLines({
   },
 });
 
+flowUI = initFlow({
+  editor,
+  // Only Check's results for this very text (they arrive a moment after a change; Flow is drawn again then).
+  problems: () => (currentText === editor.getValue() ? current : []),
+  openReference: (path) => {
+    selectTab('api');
+    if (narrow()) ($('.switch button[data-view=results]') as HTMLButtonElement)?.click();
+    docs.go(`q:${path}`);
+  },
+  showInCode: (from, to) => {
+    flowUI?.close();
+    const a = editor.posFromIndex(from);
+    editor.setSelection(a, editor.posFromIndex(to));
+    editor.scrollIntoView({ from: a, to: editor.posFromIndex(to) }, 80);
+    editor.focus();
+  },
+});
+requestAnimationFrame(() => flowUI?.restore());
+
 const tips = initTips({
   editor,
   toast,
@@ -2599,6 +2623,7 @@ const tips = initTips({
   audience: () => (mode === 'dev' ? 'developer' : 'newcomer'),
   actions: {
     lines: () => lines.show(),
+    flow: () => { if (!flowUI?.isOpen()) flowUI?.toggle(); },
     new: () => ($('#new-open') as HTMLButtonElement).click(),
     examples: () => showOpen(),
     tryit: () => {
@@ -2610,6 +2635,7 @@ const tips = initTips({
   },
   targets: {
     lines: () => $('#lines-toggle'),
+    flow: () => document.querySelector<HTMLElement>('#flow-toggle:not([hidden])') ?? document.querySelector<HTMLElement>('.rail [data-rail=flow]'),
     new: () => $('#tab-add'),
     examples: () => $('#tab-add'),
     tryit: () => document.querySelector<HTMLElement>('[role=tab][data-tab=simulate]'),
@@ -2737,6 +2763,7 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
     saveAs: () => openMenu(shown('#save-more', '.rail [data-rail=save]', '#code-menu-phone') ?? $('#save-more'), 'Save as', saveItems(), document.documentElement.dataset.layout === 'rail' ? 'right' : 'below'),
     saveNucleus: () => void saveToNucleus(),
     lines: () => lines.toggle(),
+    flow: () => flowUI?.toggle(),
     results: () => resultsKey(),
     zen: () => zen.toggle(),
     settings: () => settings.open(),
@@ -2905,7 +2932,8 @@ try {
 /** The handler's code in the main pane (after a package file was shown there). */
 function showMainCode() {
   pkgUI?.deselect();
-  $('#editor').hidden = false;
+  // With Flow open the handler shows as its diagram (the code stays behind it).
+  $('#editor').hidden = !!flowUI?.isOpen();
   editor.refresh();
   if (tabsReady) activeT().main = true; // its tab is open (again)
 }
@@ -3016,6 +3044,7 @@ document.querySelectorAll<HTMLElement>('.rail [data-rail]').forEach((b) => b.add
   if (act === 'add') openMenu(b, 'New or open', addItems(), 'right');
   else if (act === 'menu') openMenu(b, 'Menu', appItems(), 'right');
   else if (act === 'lines') lines.toggle();
+  else if (act === 'flow') flowUI?.toggle();
   else if (act === 'files') ($('#files-toggle') as HTMLButtonElement).click();
   else if (act === 'save') { if ((e as MouseEvent).shiftKey) openMenu(b, 'Save as', saveItems(), 'right'); else saveOrAsk(b); }
   else if (act === 'share') openCodeDialog();

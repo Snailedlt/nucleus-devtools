@@ -76,6 +76,12 @@ test('lookup and search', () => {
   // Game.* first: what a handler sets, before the Context fields that mirror them.
   assert.deepEqual(search('window title').slice(0, 3).map((e) => e.path.split('.')[0]), ['Game', 'Game', 'Game']);
   assert.match(search('focus')[0].path, /^Game\./);
+  // A question in plain words: the little words don't count, and most of the rest is enough.
+  const focus = search('my game pauses when it loses focus').slice(0, 5).map((e) => e.path);
+  assert.ok(focus.some((p) => /Focus/.test(p)), focus.join(', '));
+  assert.deepEqual(search('the mutex').map((e) => e.path), search('mutex').map((e) => e.path));
+  // Two words still both have to match, as when typing a name.
+  assert.ok(search('window title').every((e) => /window/i.test(e.path + e.member.doc + (e.member.practice ?? '')) && /title/i.test(e.path + e.member.doc + (e.member.practice ?? ''))));
 });
 
 test('generated api.md and bundled CLI are up to date', () => {

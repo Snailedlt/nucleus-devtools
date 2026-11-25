@@ -22,7 +22,7 @@ export interface Tip {
   /** Who it's for: newcomers (Guided) or experienced authors (Advanced mode). Unset: both. */
   for?: 'newcomer' | 'developer';
   /** Optional action button. */
-  action?: { label: string; run: 'lines' | 'new' | 'examples' | 'tryit' | 'share' | 'tutorial' };
+  action?: { label: string; run: 'lines' | 'flow' | 'new' | 'examples' | 'tryit' | 'share' | 'tutorial' };
 }
 
 const has = (c: TipContext, s: string) => c.text.includes(s);
@@ -173,6 +173,7 @@ const SETTINGS = T('Setting', [
 ]);
 
 const FEATURES_ = T('Feature', [
+  { id: 'f-flow', text: 'Flow ({key:flow}) shows the handler as a diagram: its settings, the questions it asks, and what each callback does, step by step, with each if as a fork. Every step can show its code.', action: { label: 'Show Flow', run: 'flow' } },
   { id: 'f-lines', text: 'Lines lists every name a handler can use. Names already in the handler show their value; click one to insert it.', action: { label: 'Show Lines', run: 'lines' } },
   { id: 'f-hover', text: 'Hover any name in the code for its docs. Hover a value you pass to a call, like a text in Game.AddOption(…), and it says which parameter that is. In Lines, the (i) next to a name also says how many Hub handlers use it.' },
   { id: 'f-tryit', text: 'Try it shows what each player gets: window, launch arguments and every file change, without Nucleus or the game.', action: { label: 'Try it', run: 'tryit' } },

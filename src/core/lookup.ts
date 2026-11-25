@@ -140,20 +140,44 @@ export function lookup(query: string, opts: { objects?: boolean } = {}): LookupR
 }
 
 /** Ranked free-text search over names and docs. */
+/** Words that say little in a search ("my game pauses when it loses focus" is about pausing, losing and focus). */
+const STOP = new Set('a an the it its it\'s is are was be been to of in on at for and or but my me i we you when what how why do does did with without this that there so if then than as by from into up out can can\'t cant wont won\'t doesnt doesn\'t not no yes get gets got make makes such thing things something anything way'.split(' '));
+/** A word's stem for matching: "pauses" finds "pause", "starting" "start". Short words stay as they are. */
+const stem = (w: string) => {
+  for (const end of ['ing', 'ed', 'es', 's']) if (w.endsWith(end) && w.length - end.length >= 4) return w.slice(0, -end.length);
+  return w;
+};
+
+/**
+ * API members for a search: every word in the name or the docs (its doc, "In practice", category) ranks first;
+ * a longer question ("game pauses when it loses focus") also finds members with most of its words.
+ */
 export function search(query: string, limit = 20): Entry[] {
-  const words = query.toLowerCase().split(/\s+/).filter(Boolean);
-  if (!words.length) return [];
-  const scored = allEntries(true)
+  const all = query.toLowerCase().split(/[^a-z0-9_.']+/).filter(Boolean);
+  if (!all.length) return [];
+  const content = all.filter((w) => !STOP.has(w));
+  const words = (content.length ? content : all).map(stem);
+  // One or two words: all of them must match (as you type a name). Three or more: at least half.
+  const entries = allEntries(true);
+  const texts = entries.map((e) => `${e.path} ${e.member.doc} ${e.member.category ?? ''} ${e.member.practice ?? ''}`.toLowerCase());
+  // A word that's nowhere in the API (a name it doesn't have, a typo) means no match: every word is needed then.
+  const unknown = words.some((w) => !texts.some((t) => t.includes(w)));
+  const need = words.length <= 2 || unknown ? words.length : Math.ceil(words.length / 2);
+  const scored = entries
     .map((e) => {
       const name = e.path.toLowerCase();
-      const doc = `${e.member.doc} ${e.member.category ?? ''}`.toLowerCase();
+      const doc = `${e.member.doc} ${e.member.category ?? ''} ${e.member.practice ?? ''}`.toLowerCase();
       let score = 0;
+      let hits = 0;
       for (const w of words) {
+        const inName = name.includes(w);
         if (e.name.toLowerCase() === w) score += 20;
-        else if (name.includes(w)) score += 8;
+        else if (inName) score += 8;
         if (doc.includes(w)) score += 3;
-        else if (!name.includes(w)) return { e, score: -1 };
+        if (inName || doc.includes(w)) hits++;
       }
+      if (hits < need) return { e, score: -1 };
+      if (hits === words.length) score += 2 * words.length;
       if (e.member.deprecated) score -= 4;
       // Context.X fields that mirror Game.X are rarely what you want to set.
       if (e.owner === 'Context' && api.objects.Game.members[e.name] && e.member.kind !== 'method') score -= 5;

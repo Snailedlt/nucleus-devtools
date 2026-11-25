@@ -51,6 +51,8 @@ export interface PlayerRun {
   effects: string[];
   /** e.g. "left half of the screen, 960 × 1080" */
   window: string;
+  /** The same window in pixels on the player's screen (Nucleus' Width/Height/PosX/PosY for this player). */
+  rect?: { x: number; y: number; width: number; height: number };
   error?: string;
   /** Something about how Nucleus treats this player's setup, e.g. Game.Play running after launch. */
   note?: string;
@@ -736,7 +738,7 @@ function runSimulation(src: string, opt: SimOptions): SimResult {
         if (rows === 1) return cols === 2 ? (col === 0 ? 'the left half of the screen' : 'the right half of the screen') : `column ${col + 1}`;
         return `the ${row === 0 ? 'top' : 'bottom'}-${col === 0 ? 'left' : 'right'} quarter of the screen`;
       })();
-      const run: PlayerRun = { index: i, startArguments: '', calls, effects: [], window: `${where}, ${w} × ${h}` };
+      const run: PlayerRun = { index: i, startArguments: '', calls, effects: [], window: `${where}, ${w} × ${h}`, rect: { x: (i % cols) * w, y: Math.floor(i / cols) * h, width: w, height: h } };
       const argsBefore = String(ctxStore.StartArguments ?? '');
       effects = run.effects;
       try {

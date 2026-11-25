@@ -29,6 +29,8 @@ import { ruleUrl } from './core/ruledocs';
 import { checkPackage } from './core/pkgcheck';
 import { packageFilesFor } from './pkgfiles';
 import { parseBreakpoint, runDebug } from './debugrun';
+import { formatVerify, parseDebugLog, verifySession, type Observation } from './core/verify';
+import { crashSince, newestCrash, observeWindows, readDebugLog } from './verifywin';
 
 declare const __VERSION__: string;
 const VERSION = typeof __VERSION__ === 'string' ? __VERSION__ : '0.0.0';
@@ -156,6 +158,43 @@ export const TOOLS: Tool[] = [
       // In the simulator's worker, so other calls are answered while it runs.
       const r = await simWorker().simulate(text, { players, width: int(a.width, 1920, 320, 16384, 'width'), height: int(a.height, 1080, 200, 16384, 'height'), keyboardPlayer: kb, plugins: file ? pluginsFor(file) : undefined });
       return { text: formatSimulation(r, kb), data: r };
+    },
+  },
+  {
+    name: 'nucleus_verify',
+    title: 'Check a real Nucleus session against Try it',
+    description:
+      "After a real Nucleus Co-op session started (on Windows, where Nucleus and the game are): reads Nucleus' debug-log.txt (players set up, launched programs, logged errors), its error file when Nucleus stopped the session, and the game's processes and windows, and says where they differ from nucleus_simulate's prediction (\"player 2's window is 1920 × 1080; Try it expected 960 × 1080\"), with what to change. Give nucleus (the Nucleus Co-op folder). Off Windows, or to check saved files, give debugLog (the log's text) and windows (what was observed: { exe, processes: [{pid,name}], windows: [{pid,title,rect:{x,y,width,height},monitor}] }). players defaults to how many Nucleus set up. Read-only.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        ...SOURCE,
+        nucleus: { type: 'string', description: 'The Nucleus Co-op folder (with NucleusCoop.exe and debug-log.txt).' },
+        debugLog: { type: 'string', description: "The text of Nucleus' debug-log.txt, instead of reading it from the folder." },
+        windows: { type: 'object', description: 'The observed processes and windows, instead of reading them (Windows only).' },
+        players: { type: 'integer', minimum: 1, maximum: 16 },
+        width: { type: 'integer', description: "Screen width; default: the one Nucleus logged, else 1920" },
+        height: { type: 'integer', description: "Screen height; default: the one Nucleus logged, else 1080" },
+        exe: { type: 'string', description: "The game's program to look for, when it isn't Game.ExecutableName (a launcher)." },
+      },
+    },
+    annotations: { readOnlyHint: true },
+    run: async (a) => {
+      const { text, file } = readSource(a);
+      const nucleus = typeof a.nucleus === 'string' ? a.nucleus : undefined;
+      const logText = typeof a.debugLog === 'string' ? a.debugLog : nucleus ? readDebugLog(nucleus) : undefined;
+      if (!nucleus && logText === undefined && !a.windows) throw new Error('Give nucleus (the Nucleus Co-op folder), or debugLog and windows.');
+      const log = logText !== undefined ? parseDebugLog(logText) : undefined;
+      const players = Number(a.players ?? (log?.started ? new Set(log.playersSetUp).size : 2)) || 2;
+      if (!Number.isInteger(players) || players < 1 || players > 16) throw new Error('players must be a whole number from 1 to 16.');
+      const screen = a.width === undefined && a.height === undefined && log?.monitors[0] ? log.monitors[0] : { width: Number(a.width ?? 1920), height: Number(a.height ?? 1080) };
+      const sim = await simWorker().simulate(text, { players, width: screen.width, height: screen.height, keyboardPlayer: 0, plugins: file ? pluginsFor(file) : undefined });
+      const crash = nucleus ? newestCrash(nucleus, crashSince(log)) : undefined;
+      const exe = typeof a.exe === 'string' ? a.exe : sim.options.find((o) => o.path === 'Game.ExecutableName')?.value.replace(/^"|"$/g, '');
+      let seen = a.windows as Observation | undefined;
+      if (!seen && process.platform === 'win32' && exe) seen = observeWindows(exe);
+      const r = verifySession({ sim, log, crash: crash?.crash, seen });
+      return { text: formatVerify(r), data: { ...r, crashFile: crash?.file, exe } };
     },
   },
   {

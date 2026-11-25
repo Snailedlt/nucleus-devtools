@@ -3,7 +3,7 @@
 // is kept as a shortcut for `ncdev lint <paths>`.
 import { sendAiVote } from './aivote';
 import { installHandler } from './install';
-import { AFTER_START, debugLogOn, debugLogPath, nucleusStatus, setDebugLog, stopNucleus, testInNucleus } from './nucleusrun';
+import { AFTER_START, nucleusRunning, debugLogOn, debugLogPath, nucleusStatus, setDebugLog, stopNucleus, testInNucleus } from './nucleusrun';
 import { lintPluginsFor } from './plugins';
 import { checkPackage } from './core/pkgcheck';
 import { packageFilesFor } from './pkgfiles';
@@ -39,6 +39,9 @@ import type { PeFile } from './core/pe';
 import { serve as serveLsp } from './lsp';
 import { buildReport, DISCORD_THREAD, findDuplicates, handlerHelp, handlerOrigin, REPO_URL, simSummary, TOOLS_REPO, type ReportInput } from './core/report';
 import { spawn } from 'node:child_process';
+import { formatVerify, parseDebugLog, verifySession, type Observation, type SessionLog } from './core/verify';
+import type { SimOptions } from './core/sim';
+import { crashSince, newestCrash, observeWindows, readDebugLog } from './verifywin';
 
 const HELP = helpText(VERSION);
 
@@ -48,7 +51,7 @@ interface Args {
   positional: string[];
   flags: Map<string, string[]>;
 }
-const BOOL_FLAGS = new Set(['--no-controllers', '--no-kbm', '--list', '--open', '--no-code', '--text', '--elevated', '--version', '-v', '--from-notepad++', '--step', '--json', '--stdio', '--all', '--quiet', '--verbose', '--force', '--search', '--markdown', '--fix', '--fix-dry-run', '--hub', '--write', '--check', '--remove', '--list-features', '--popular', '--restart', '--status', '-h', '--help']);
+const BOOL_FLAGS = new Set(['--wait', '--no-controllers', '--no-kbm', '--list', '--open', '--no-code', '--text', '--elevated', '--version', '-v', '--from-notepad++', '--step', '--json', '--stdio', '--all', '--quiet', '--verbose', '--force', '--search', '--markdown', '--fix', '--fix-dry-run', '--hub', '--write', '--check', '--remove', '--list-features', '--popular', '--restart', '--status', '-h', '--help']);
 function parseArgs(argv: string[]): Args {
   const a: Args = { positional: [], flags: new Map() };
   for (let i = 0; i < argv.length; i++) {
@@ -81,7 +84,7 @@ async function main(argv: string[]): Promise<number> {
       rl.close();
     }
   }
-  const commands = ['report', 'lint', 'format', 'simulate', 'api', 'docs', 'hub', 'new', 'install', 'test', 'package', 'imports', 'init-agent', 'rules', 'mcp', 'lsp', 'dap', 'setup', 'workbench', 'debug', 'explain', 'update', 'version'];
+  const commands = ['report', 'lint', 'format', 'simulate', 'api', 'docs', 'hub', 'new', 'install', 'test', 'verify', 'package', 'imports', 'init-agent', 'rules', 'mcp', 'lsp', 'dap', 'setup', 'workbench', 'debug', 'explain', 'update', 'version'];
   let cmd = argv[0] && commands.includes(argv[0]) ? argv.shift()! : undefined;
   if (!cmd && (argv[0] === '--version' || argv[0] === '-v')) cmd = 'version';
   if (path.basename(process.argv[1] ?? '').startsWith('nucleus-lint')) cmd ??= 'lint';
@@ -136,6 +139,8 @@ async function main(argv: string[]): Promise<number> {
       return cmdInstall(args, json);
     case 'test':
       return cmdTest(args, json);
+    case 'verify':
+      return cmdVerify(args, json);
     case 'package':
       return cmdPackage(args, json);
     case 'imports':
@@ -485,10 +490,90 @@ async function cmdTest(args: Args, json: boolean): Promise<number> {
     await stopNucleus();
   }
   const log = flag(args, '--debug-log');
-  if (log === 'on' || log === 'off') setDebugLog(nucleus, log === 'on');
+  const wait = has(args, '--wait') ? flag(args, '--timeout') ?? '600' : undefined;
+  if (wait !== undefined && log === 'off') throw new Usage('test: --wait reads the debug log, so it needs it on');
+  if (log === 'on' || log === 'off' || wait !== undefined) setDebugLog(nucleus, log !== 'off');
+  const before = readDebugLog(nucleus)?.length ?? 0;
   const r = testInNucleus(file, nucleus);
-  print(json, { started: true, file: r.dest, guid: r.guid, debugLog: debugLogOn(nucleus), log: debugLogPath(nucleus) }, () => `${AFTER_START}\nDebug log: ${debugLogOn(nucleus) ? debugLogPath(nucleus) : 'off (--debug-log on turns it on)'}`);
-  return 0;
+  const started = { started: true, file: r.dest, guid: r.guid, debugLog: debugLogOn(nucleus), log: debugLogPath(nucleus) };
+  if (wait === undefined) {
+    print(json, started, () => `${AFTER_START}\nDebug log: ${debugLogOn(nucleus) ? debugLogPath(nucleus) : 'off (--debug-log on turns it on)'}`);
+    return 0;
+  }
+  // --wait: until the session is set up (the debug log stops growing for a while after its players), then verify.
+  const seconds = Number(wait);
+  if (!Number.isFinite(seconds) || seconds < 10) throw new Usage('--timeout: the most seconds to wait for the session (at least 10), e.g. --timeout 300');
+  if (!json) console.error(`${AFTER_START}\nWaiting for the session (up to ${seconds} s): pick the players and press Play in Nucleus.`);
+  const session = await waitForSession(nucleus, before, seconds * 1000);
+  if (!session) {
+    print(json, { ...started, session: false }, () => `No session started within ${seconds} s. Run "ncdev verify ${file} --nucleus ${nucleus}" once it has.`);
+    return 4;
+  }
+  const players = new Set(session.playersSetUp).size;
+  const base = simOptsFrom(args, file);
+  const screen = flag(args, '--resolution') === undefined && session.monitors[0] ? session.monitors[0] : base;
+  const v = verifyFile(file, { ...base, players, width: screen.width, height: screen.height }, nucleus, session);
+  print(json, { ...started, session: true, verify: v.result, crashFile: v.crashFile }, () => formatVerify(v.result));
+  return v.result.ok ? 0 : 1;
+}
+
+/** Polls Nucleus' debug log until a new session (after byte `from`) has set up its players and gone quiet. */
+async function waitForSession(nucleus: string, from: number, ms: number): Promise<SessionLog | undefined> {
+  const end = Date.now() + ms;
+  let last = '';
+  let quietSince = 0;
+  while (Date.now() < end) {
+    await new Promise((res) => setTimeout(res, 2000));
+    const all = readDebugLog(nucleus) ?? '';
+    // Cleared or replaced meanwhile: read it from the start.
+    if (all.length < from) from = 0;
+    const text = all.slice(from);
+    const s = parseDebugLog(text);
+    if (!s.started) continue;
+    if (text !== last) {
+      last = text;
+      quietSince = Date.now();
+      continue;
+    }
+    // Quiet for 15 s after the PIDs were stored (the instances are up), or for 45 s in any case.
+    if (Date.now() - quietSince >= (s.pids.length ? 15000 : 45000)) return s;
+    if (!nucleusRunning()) return s;
+  }
+  const s = parseDebugLog((readDebugLog(nucleus) ?? '').slice(from));
+  return s.started ? s : undefined;
+}
+
+// ncdev verify: what a real Nucleus session did, against Try it (core/verify.ts; the Windows side is verifywin.ts).
+function cmdVerify(args: Args, json: boolean): number {
+  const { file, opts } = simArgs(args, 'verify');
+  const nucleus = flag(args, '--nucleus');
+  const logFile = flag(args, '--log');
+  const windowsFile = flag(args, '--windows');
+  if (!nucleus && !logFile && !windowsFile) throw new Usage('verify: --nucleus <folder> is required (or --log <debug-log.txt> and --windows <file.json> to check saved ones)');
+  const logText = logFile ? fs.readFileSync(logFile, 'utf8') : nucleus ? readDebugLog(nucleus) : undefined;
+  const log = logText !== undefined ? parseDebugLog(logText) : undefined;
+  const seen: Observation | undefined = windowsFile ? JSON.parse(fs.readFileSync(windowsFile, 'utf8')) : undefined;
+  // Without --players, compare with as many players as Nucleus set up.
+  const players = flag(args, '--players') === undefined && log?.started ? new Set(log.playersSetUp).size || opts.players : opts.players;
+  // Without --resolution, the screen Nucleus logged for the players.
+  const screen = flag(args, '--resolution') === undefined && log?.monitors[0] ? log.monitors[0] : opts;
+  const v = verifyFile(file, { ...opts, players, width: screen.width, height: screen.height }, nucleus, log, seen, flag(args, '--exe'));
+  print(json, { file, ...v.result, crashFile: v.crashFile, exe: v.exe }, () => formatVerify(v.result));
+  return v.result.ok ? 0 : 1;
+}
+
+function simOptsFrom(args: Args, file: string) {
+  return simArgs({ ...args, positional: [file] }, 'test').opts;
+}
+
+/** Try it for the handler, then the session's log, error file and windows compared with it. */
+function verifyFile(file: string, opts: SimOptions, nucleus: string | undefined, log: SessionLog | undefined, seen?: Observation, exeFlag?: string) {
+  const src = fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '');
+  const sim = simulateIsolated(src, opts);
+  const crash = nucleus ? newestCrash(nucleus, crashSince(log)) : undefined;
+  const exe = exeFlag ?? sim.options.find((o) => o.path === 'Game.ExecutableName')?.value.replace(/^"|"$/g, '');
+  if (!seen && process.platform === 'win32' && exe) seen = observeWindows(exe);
+  return { result: verifySession({ sim, log, crash: crash?.crash, seen }), crashFile: crash?.file, exe };
 }
 
 // ncdev imports: a game's program files read for the hooks a handler likely needs (core/pe.ts, core/importhooks.ts).

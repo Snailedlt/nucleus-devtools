@@ -37,11 +37,21 @@ Commands:
   new --name <game> --exe <file.exe> [--steam-id N] [--max-players N]
       [--features ${FEATURES.map((f) => f.id).join(',')}] [--out file.js] [--force]
                               Create a handler from a template (--list-features: the features)
-  test <handler.js> --nucleus <folder> [--restart] [--debug-log on|off] [--force] [--status]
+  test <handler.js> --nucleus <folder> [--restart] [--debug-log on|off] [--wait [--timeout s]]
+       [--force] [--status]
                               Test in Nucleus Co-op (Windows): install the handler, then start
                               Nucleus with its game selected. --restart closes a running Nucleus
                               first (it reads handlers when it starts); --debug-log sets Nucleus'
-                              debug log; --status only says whether it's running and the log's on
+                              debug log; --wait turns it on, waits for the session you start
+                              (600 s, or --timeout) and prints verify's report; --status only
+                              says whether it's running and the log's on
+  verify <handler.js> --nucleus <folder> [--players N] [--resolution 1920x1080] [--exe <name.exe>]
+         [--log <debug-log.txt>] [--windows <file.json>]
+                              After a real session started: what Nucleus' debug log and error file
+                              say, and the game's processes and windows (Windows), compared with
+                              Try it ("player 2's window is 1920 × 1080; Try it expected 960 ×
+                              1080"), with what to change. --players defaults to how many Nucleus
+                              set up; --log and --windows check saved ones. Exit 1 if it differs
   install <handler.js> --nucleus <folder> [--force]
                               Copy the handler (and its <Name>/ folder) into Nucleus Co-op's
                               handlers folder. --force replaces an installed one and installs

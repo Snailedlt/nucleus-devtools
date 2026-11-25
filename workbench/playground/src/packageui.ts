@@ -173,7 +173,11 @@ export function initPackageUI(host: PkgHost) {
     $('#file-editor').hidden = which !== 'text';
     $('#file-card').hidden = which !== 'card';
     if (which === 'main') host.showMain();
-    else $('#editor').hidden = true;
+    else {
+      $('#editor').hidden = true;
+      // Flow stands in for the handler's code: a package file shown in the pane takes its place too.
+      document.dispatchEvent(new Event('nc-package-file-shown'));
+    }
   }
 
   function openFile(name: string, line?: number) {
