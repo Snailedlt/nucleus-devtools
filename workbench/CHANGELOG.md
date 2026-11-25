@@ -35,6 +35,8 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
   </details>
 ### 🛠️ Improved
+- **Adding and removing a handler's files is easier to find.** Files has an *Add files…* row under each handler's files, and the × that removes a file shows on the file you have open, not only under the pointer.
+- **Tooltips look like the workbench everywhere.** Every tooltip is the workbench's own bubble now, also the ones that used to be the browser's.
 - **Folders look like folders in Files.** Each handler and each folder inside a package has a folder icon, open or shut.
 - **Each handler links its own game folder.** *Link the game's folder…* is the last row of every handler in Files, so two handlers for two games each compare against their own install.
 - **Next, previous and close handler are in the command palette.** They show their shortcuts there, and the tour names your own keys for Check, Lines and Save if you changed them, without a reload.

@@ -239,6 +239,8 @@ body.resizing-v, body.resizing-v * { cursor: row-resize !important; user-select:
 #line-pop .lp-doc pre { background: var(--surface-2); border-radius: 5px; padding: 6px 8px; font: 12px/1.45 var(--font-mono); margin: 0 0 6px; white-space: pre-wrap; overflow-wrap: anywhere; }
 #touch-title { position: fixed; z-index: 90; max-width: min(320px, calc(100vw - 16px)); background: var(--fg); color: var(--bg); border-radius: 6px; padding: 6px 10px; font-size: 13px; line-height: 1.4; white-space: pre-line; pointer-events: none; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
 #touch-title[hidden] { display: none; }
+/* The workbench's tooltip (tooltips.ts): what a `title` says, in our own bubble instead of the browser's. */
+#tooltip { position: fixed; inset: auto; margin: 0; max-width: min(340px, calc(100vw - 16px)); padding: 6px 10px; border: 0; border-radius: 8px; background: var(--fg); color: var(--bg); font: 12.5px/1.4 var(--font-body); white-space: pre-line; pointer-events: none; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
 @media (pointer: coarse) {
   .open-foot { display: none !important; }
   .entry.active:not(:focus-visible) { background: var(--e-bg); box-shadow: none; }
@@ -1928,6 +1930,7 @@ kbd.keys .kplus { color: var(--muted); padding: 0 1px; }
 .fp-tree .fp-open .fp-name { display: block; white-space: nowrap; text-overflow: ellipsis; } /* one line each; the tooltip has the whole name */
 .fp-tree .fp-del { display: grid; place-items: center; padding: 0; }
 .fp-tree .fp-item:focus-within .fp-del { opacity: 1; }
+.fp-tree .fp-open[aria-current="true"] ~ .fp-del, .fp-tree .fp-h.on > .fp-hrow .fp-del { opacity: 1; }
 @media (hover: none) { .fp-tree .fp-del { opacity: 1; } }
 .fp-tree .fp-dir { gap: 4px; color: var(--muted); font-size: 12.5px; }
 /* The preview tab: a file looked at, not kept yet (the next file picked takes its tab). */

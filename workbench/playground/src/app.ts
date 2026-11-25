@@ -41,6 +41,7 @@ import { initNews } from './news';
 import { initPanels, type PanelEdge } from './panels-ui';
 import { initZen } from './zen';
 import { initTouchTitles } from './touch-titles';
+import { initTooltips } from './tooltips';
 import { keepMascots, mascot, mascotsOn } from './mascots';
 import { barProgress } from './mascotprogress';
 import { fixWithNucli, applyEditsToText } from './fixfx';
@@ -3428,6 +3429,7 @@ if (!document.querySelector('.pane-head [role=tab][aria-selected=true]')) {
   requestAnimationFrame(placeInk);
 }
 initTouchTitles();
+initTooltips();
 
 // The phone's own "Select all" selects the whole editable area. CodeMirror then redraws that same
 // selection in its own form, and the phone takes the redraw as a new selection by the page and
