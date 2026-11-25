@@ -44,12 +44,16 @@ export function initFileOpen(deps: FileOpenDeps) {
         // Several handlers in one .zip (what Download gives for more than one): each opens.
         const bundle = await readBundle(buf);
         if (bundle) {
+          const unkept: string[] = []; // handlers whose files are too big to keep after a reload
           for (const h of bundle) {
             deps.loadSource(h.handler.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n'), { name: `${h.name}.js`, kind: 'draft' });
-            if (h.files.length) { deps.setPackageFiles(h.files); storeFiles(h.files); }
+            if (h.files.length) { deps.setPackageFiles(h.files); if (!storeFiles(h.files)) unkept.push(h.name); }
           }
-          // After the handlers are open (opening one clears the notice).
-          if (bundle.unreadable.length) notice(`This browser couldn't unpack ${bundle.unreadable.join(', ')}, so ${bundle.unreadable.length === 1 ? "it isn't" : "they aren't"} open here and saving won't include ${bundle.unreadable.length === 1 ? 'it' : 'them'}.`, { kind: 'warning' });
+          // After the handlers are open (opening one clears the notice): everything there is to say, at once.
+          const said: string[] = [];
+          if (bundle.unreadable.length) said.push(`This browser couldn't unpack ${bundle.unreadable.join(', ')}, so ${bundle.unreadable.length === 1 ? "it isn't" : "they aren't"} open here and saving won't include ${bundle.unreadable.length === 1 ? 'it' : 'them'}.`);
+          if (unkept.length) said.push(`The files of ${unkept.join(', ')} are too big to keep after a reload: save before closing the page.`);
+          if (said.length) notice(said.join(' '), { kind: 'warning' });
           return;
         }
         const pkg = await readPackage(buf);
