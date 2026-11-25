@@ -4,7 +4,7 @@
 // hidden from screen readers, the label says what it is. Report a problem and Request a feature keep the shared
 // report icons (reportIcon), so those stay the same everywhere a report starts.
 /*! Lucide icons (settings, keyboard, sparkles, compass, house, book-open, flask-conical, wrench, panel-left, panel-right-close, panel-right-open, maximize,
- *  chevron-down, chevron-right, plus, x, file-plus, link):
+ *  chevron-down, chevron-right, plus, x, file-plus, link, download):
  *  ISC License, Copyright (c) Lucide Icons and Contributors. Permission to use, copy, modify, and/or distribute this
  *  software for any purpose with or without fee is hereby granted, provided that the above copyright notice and this
  *  permission notice appear in all copies. THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES. */
@@ -27,6 +27,7 @@ export const ICONS = {
   plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
   x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
   'file-plus': '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M9 15h6"/><path d="M12 18v-6"/>',
+  download: '<path d="M12 15V3"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/>',
   link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',
 } as const;
 

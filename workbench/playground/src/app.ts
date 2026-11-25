@@ -32,7 +32,7 @@ import { counts } from './aifix';
 import { fixAll } from '@core/fix';
 import { formatHandler } from '@core/format';
 import { canSaveIntoFolder, rememberedName, saveIntoNucleus, saveIntoFolder } from './nucleussave';
-import { buildPackage, storeFiles, storedFiles, fileSize, sizeOf, PackageFile } from './package';
+import { buildBundle, buildPackage, storeFiles, storedFiles, fileSize, sizeOf, PackageFile } from './package';
 import { initLines } from './lines-ui';
 import { initTips } from './tips-ui';
 import { initSettings } from './settings-ui';
@@ -2732,7 +2732,7 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
     open: () => togglePalette(false),
     tryIt: () => selectTab('simulate'),
     testAll: () => (selectTab('simulate'), click('#sim-all')()),
-    save: () => void saveAs(),
+    save: () => saveOrAsk(),
     saveAs: () => openMenu(shown('#save-more', '.rail [data-rail=save]', '#code-menu-phone') ?? $('#save-more'), 'Save as', saveItems(), document.documentElement.dataset.layout === 'rail' ? 'right' : 'below'),
     saveNucleus: () => void saveToNucleus(),
     lines: () => lines.toggle(),
@@ -2916,6 +2916,7 @@ pkgUI = initPackageUI({
   switchTo: (id) => switchTab(id),
   closeHandler: (id) => closeTab(id),
   openView: openFromList,
+  download: (ids, anchor) => openDownload(ids, anchor),
   newMenu: (anchor) => openMenu(anchor, 'New or open', addItems()),
   tabsChanged: () => { if (tabsReady) (renderTabs(), saveTabs()); },
   getFiles: () => packageFiles,
@@ -3013,7 +3014,7 @@ document.querySelectorAll<HTMLElement>('.rail [data-rail]').forEach((b) => b.add
   else if (act === 'menu') openMenu(b, 'Menu', appItems(), 'right');
   else if (act === 'lines') lines.toggle();
   else if (act === 'files') ($('#files-toggle') as HTMLButtonElement).click();
-  else if (act === 'save') { if ((e as MouseEvent).shiftKey) openMenu(b, 'Save as', saveItems(), 'right'); else void saveAs(undefined, b); }
+  else if (act === 'save') { if ((e as MouseEvent).shiftKey) openMenu(b, 'Save as', saveItems(), 'right'); else saveOrAsk(b); }
   else if (act === 'share') openCodeDialog();
   else if (act === 'test') testGuide.open();
   else return; // Home is a link
@@ -3483,7 +3484,8 @@ let codeDialogOpening = 0;
 function openCodeDialog() {
   pkgUI?.flush(); // a package file typed in just now counts
   const opening = ++codeDialogOpening; // a slow link from an earlier opening doesn't update this one
-  $('#save-h').textContent = 'Share';
+  // Sharing is one handler: the one in the editor, named here (other open handlers aren't part of it).
+  $('#save-h').textContent = tabsReady && tabs.length > 1 ? `Share ${gameOf(doc.name)}` : 'Share';
   $('#code-main').hidden = false;
   $('#code-done').hidden = true;
   const len = editor.getValue().length + 10;
@@ -3554,6 +3556,75 @@ async function saveAs(kind: SaveKind = saveKind(), trigger: HTMLElement = saveBu
     if (e?.code === 'declined') return;
     notice("Couldn't save the file here. Share › Copy the code instead, and paste it into a .js file.", { kind: 'error' });
   }
+}
+/**
+ * Download, when more than one handler is open: one prompt, wherever it is asked from. Which handlers (the one in
+ * the editor, some, or all of them) and as what. Only the ticks it opens with differ: Save has the handler in the
+ * editor ticked, a folder's button in Files that handler, the button at the top of Files all of them.
+ * One handler downloads as the kind picked (.zip, .js or .nc); several as one .zip with a .js and a folder each.
+ */
+const dlDialog = $('#dl-dialog') as HTMLDialogElement;
+let dlTrigger: HTMLElement | null = null;
+function openDownload(ids: string[] = [activeTab], trigger: HTMLElement = saveButton()) {
+  pkgUI?.flush();
+  dlTrigger = trigger;
+  const kind = saveKind();
+  $('#dl-items').innerHTML = tabs.map((x) => `<label class="set-check"><input type="checkbox" name="dl-h" value="${x.id}"${ids.includes(x.id) ? ' checked' : ''}> <span>${esc(gameOf(x.id === activeTab ? doc.name : x.meta.name))}${x.id === activeTab ? ' <small>(open in the editor)</small>' : ''}</span></label>`).join('');
+  $('#dl-kinds').innerHTML = '<legend>As</legend>' + (['zip', 'js', 'nc'] as SaveKind[]).map((k) => `<label class="set-check"><input type="radio" name="dl-kind" value="${k}"${k === kind ? ' checked' : ''}> <span>${esc(SAVE_LABEL[k])}</span></label>`).join('');
+  syncDownload();
+  dlDialog.showModal();
+}
+const dlPicked = () => [...document.querySelectorAll<HTMLInputElement>('#dl-items input:checked')].map((i) => i.value);
+function syncDownload() {
+  const n = dlPicked().length;
+  const all = $('#dl-all') as HTMLInputElement;
+  all.checked = n === tabs.length;
+  all.indeterminate = n > 0 && n < tabs.length;
+  // Several handlers: one .zip, so the kinds (which are for one handler) don't apply.
+  document.querySelectorAll<HTMLInputElement>('#dl-kinds input').forEach((i) => (i.disabled = n > 1));
+  ($('#dl-kinds') as HTMLFieldSetElement).classList.toggle('muted', n > 1);
+  $('#dl-note').textContent = n > 1 ? `${n} handlers in one .zip: each handler's .js, with its files in a folder of the same name (as Nucleus Co-op's handlers folder holds them). Dropping that .zip on the workbench opens them all.` : n === 1 ? '' : 'Pick at least one handler.';
+  ($('#dl-go') as HTMLButtonElement).disabled = !n;
+}
+$('#dl-items').addEventListener('change', syncDownload);
+$('#dl-all').addEventListener('change', () => { const on = ($('#dl-all') as HTMLInputElement).checked; document.querySelectorAll<HTMLInputElement>('#dl-items input').forEach((i) => (i.checked = on)); syncDownload(); });
+$('#dl-cancel').addEventListener('click', () => dlDialog.close());
+$('#dl-form').addEventListener('submit', (e) => {
+  e.preventDefault();
+  const ids = dlPicked();
+  const kind = (document.querySelector<HTMLInputElement>('#dl-kinds input:checked')?.value ?? 'zip') as SaveKind;
+  dlDialog.close();
+  void downloadHandlers(ids, kind, dlTrigger ?? saveButton());
+});
+/** A handler's code and files as they'd be saved: the one in the editor with its credit lines, another as it was left. */
+function exportOf(id: string): { name: string; text: string; files: PackageFile[] } {
+  const x = tabs.find((y) => y.id === id)!;
+  if (id === activeTab) { const text = exportText(); return { name: handlerFileName(), text, files: packageFiles }; }
+  return { name: saveFileName(x.text, x.meta.name), text: x.text, files: x.files };
+}
+async function downloadHandlers(ids: string[], kind: SaveKind, trigger: HTMLElement) {
+  if (!ids.length) return;
+  if (ids.length === 1 && ids[0] === activeTab) return saveAs(kind, trigger);
+  if (!downloads) return notice("Saving files isn't available here. Share › Copy the code, and paste it into a .js file.", { kind: 'error' });
+  try {
+    const list = ids.map(exportOf);
+    const one = list.length === 1 ? list[0] : null;
+    const filename = one ? `${one.name}.${kind}` : 'handlers.zip';
+    const data = one ? (kind === 'js' ? new TextEncoder().encode(one.text) : buildPackage(one.text, one.files)) : buildBundle(list.map((h) => ({ name: h.name, handler: h.text, files: h.files })));
+    await downloads.save({ filename, data });
+    waka.saved();
+    use(one ? `save-${kind}` : 'save-bundle');
+    confirmOn(trigger, 'Saved ✓', one ? `Saved ${filename}.` : `Saved ${filename}: ${list.length} handlers (${list.map((h) => h.name).join(', ')}).`);
+    if (!one || kind !== 'js') noteRemoteFiles(list.flatMap((h) => h.files.filter((f) => f.remote)));
+  } catch (e: any) {
+    if (e?.code === 'declined') return;
+    notice("Couldn't save the file here.", { kind: 'error' });
+  }
+}
+/** Save: straight to a file with one handler open; the Download prompt (this handler ticked) with several. */
+function saveOrAsk(trigger: HTMLElement = saveButton()) {
+  if (tabsReady && tabs.length > 1) return openDownload([activeTab], trigger);
+  void saveAs(undefined, trigger);
 }
 /** After saving a package: the Hub package's big files that aren't downloaded here aren't in it. */
 function noteRemoteFiles(remote = packageFiles.filter((f) => f.remote)) {
@@ -3654,7 +3725,7 @@ async function copyForDiscord(trigger: HTMLElement) {
     notice("The browser didn't let this page copy. Use Copy the code instead.", { kind: 'warning' });
   }
 }
-$('#code-menu-open').addEventListener('click', () => void saveAs());
+$('#code-menu-open').addEventListener('click', () => saveOrAsk());
 $('#save-more').addEventListener('click', () => openMenu($('#save-more'), 'Save as', saveItems()));
 $('#share-open').addEventListener('click', openCodeDialog);
 $('#code-close').addEventListener('click', () => codeDialog.close());

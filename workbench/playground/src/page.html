@@ -490,6 +490,11 @@ details.set-sec[open] summary { margin-bottom: 4px; }
 .more-list .btn { text-align: left; padding: 12px 14px; font-size: 15px; }
 /* Save or copy: one recommended action (the .zip for Nucleus), the rest as a grid of small choices. */
 #code-dialog { width: min(560px, calc(100vw - 32px)); }
+/* Download: which handlers (the open one, some, or all), and as what. */
+.dl-set { border: 0; margin: 0 0 12px; padding: 0; display: grid; gap: 4px; }
+.dl-set legend { padding: 0; margin-bottom: 4px; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+#dl-items { display: grid; gap: 4px; margin-left: 22px; max-height: 40vh; overflow: auto; }
+#dl-note { margin: 0 0 12px; min-height: 1.4em; }
 #code-dialog button svg { flex: none; color: var(--accent); }
 #code-dialog button span { display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: left; }
 #code-dialog button small { color: var(--muted); font-size: 12.5px; font-weight: 400; }
@@ -2439,6 +2444,19 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
   <div class="actions"><button class="btn primary" type="button" id="help-close">Close</button></div>
 </dialog>
 
+
+<dialog id="dl-dialog" aria-labelledby="dl-h">
+  <form id="dl-form">
+    <h2 id="dl-h">Download</h2>
+    <fieldset class="dl-set"><legend>Which handlers</legend>
+      <label class="set-check"><input type="checkbox" id="dl-all"> <span>All open handlers</span></label>
+      <div id="dl-items"></div>
+    </fieldset>
+    <fieldset class="dl-set" id="dl-kinds"><legend>As</legend></fieldset>
+    <p class="muted small" id="dl-note" role="status"></p>
+    <div class="actions"><button class="btn" type="button" id="dl-cancel">Cancel</button><button class="btn primary" type="submit" id="dl-go">Download</button></div>
+  </form>
+</dialog>
 
 <dialog id="new-dialog">
   <form id="new-form">

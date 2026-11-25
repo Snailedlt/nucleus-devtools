@@ -83,6 +83,8 @@ export interface PkgHost {
   closeHandler(id: string): void;
   /** The open-file tabs may have changed: which files are open, which one shows. */
   tabsChanged(): void;
+  /** Optional: the Download prompt, with these handlers ticked (one folder's button: that handler; the head's: all). */
+  download?(ids: string[], anchor: HTMLElement): void;
   /** A file picked in the list (null: handler.js). One click opens it in the preview tab, which the next file picked
    *  takes over; `keep` (a double click) gives it a tab of its own. */
   openView(id: string, file: string | null, keep: boolean): void;
@@ -355,7 +357,7 @@ export function initPackageUI(host: PkgHost) {
       const shut = !single && !(handlerOpen.get(h.id) ?? h.on);
       const game = h.on ? gameFolderName(handler()) : h.name;
       const tip = esc(`${h.name}: installs to handlers\\${game}\\`);
-      const acts = `<button type="button" class="fp-del" data-fp-add data-h="${h.id}" aria-label="Add files to ${esc(h.name)}" title="Add files… (or drop them on the list)">${icon('file-plus', 14)}</button><button type="button" class="fp-del" data-fp-hclose="${h.id}" aria-label="Close ${esc(h.name)}" title="Close this handler">${icon('x', 14)}</button>`;
+      const acts = `${!single && host.download ? `<button type="button" class="fp-del" data-fp-dl="${h.id}" aria-label="Download ${esc(h.name)}" title="Download this handler…">${icon('download', 14)}</button>` : ''}<button type="button" class="fp-del" data-fp-add data-h="${h.id}" aria-label="Add files to ${esc(h.name)}" title="Add files… (or drop them on the list)">${icon('file-plus', 14)}</button><button type="button" class="fp-del" data-fp-hclose="${h.id}" aria-label="Close ${esc(h.name)}" title="Close this handler">${icon('x', 14)}</button>`;
       const head = single
         ? `<div class="fp-item fp-hrow fp-one" title="${tip}"><span class="fp-open fp-title"><span class="fp-name">${esc(h.name)}</span>${badge(h.counts)}</span>${acts}</div>`
         : `<div class="fp-item fp-hrow"><button type="button" class="fp-open fp-fold" data-fp-fold="${h.id}" aria-expanded="${!shut}" title="${tip}">${icon(shut ? 'chevron-right' : 'chevron-down', 14, 'ui-ico fp-tw')}<span class="fp-name">${esc(h.name)}</span>${badge(h.counts)}</button>${acts}</div>`;
@@ -364,7 +366,7 @@ export function initPackageUI(host: PkgHost) {
       const rows = [`<li class="fp-item"><button type="button" class="fp-open" data-fp="" data-h="${h.id}" aria-current="${h.on && active === null && !empty}" style="padding-left:${base}px">${handlerIcon()}<span class="fp-name">handler.js</span></button></li>`, ...fileRows(h, game, base)];
       return `<li class="fp-h${h.on ? ' on' : ''}" data-h="${h.id}">${head}<ul class="fp-list">${rows.join('')}${host.extraSection?.(h.id, base) ?? ''}</ul></li>`;
     });
-    $('#files-list').innerHTML = `<div class="fp-head"><span>Files</span>${host.newMenu ? `<button type="button" class="fp-ibtn" data-fp-new aria-haspopup="menu" aria-label="New handler, or open a file, a folder or an example" title="New or open">${icon('plus', 15)}</button>` : ''}</div><ul class="fp-list fp-tree" aria-label="${esc(`Open handlers. Files dropped here are added to ${on ? on.name : 'the handler'}`)}">${groups.join('')}</ul>`;
+    $('#files-list').innerHTML = `<div class="fp-head"><span>Files</span>${!single && host.download ? `<button type="button" class="fp-ibtn" data-fp-dl="" aria-label="Download every open handler" title="Download all…">${icon('download', 15)}</button>` : ''}${host.newMenu ? `<button type="button" class="fp-ibtn" data-fp-new aria-haspopup="menu" aria-label="New handler, or open a file, a folder or an example" title="New or open">${icon('plus', 15)}</button>` : ''}</div><ul class="fp-list fp-tree" aria-label="${esc(`Open handlers. Files dropped here are added to ${on ? on.name : 'the handler'}`)}">${groups.join('')}</ul>`;
   }
 
   /** The Files panel in or out; the buttons that toggle it say which. Beside the code (not as a phone's sheet) the
@@ -407,6 +409,8 @@ export function initPackageUI(host: PkgHost) {
       panel.querySelector<HTMLElement>(`[data-fp-dir="${CSS.escape(key)}"]`)?.focus();
       return;
     }
+    const dl = t.closest<HTMLElement>('[data-fp-dl]');
+    if (dl) return host.download?.(dl.dataset.fpDl ? [dl.dataset.fpDl] : host.handlers().map((h) => h.id), dl);
     const shut = t.closest<HTMLElement>('[data-fp-hclose]');
     if (shut) return host.closeHandler(shut.dataset.fpHclose!);
     const add = t.closest<HTMLElement>('[data-fp-add]');

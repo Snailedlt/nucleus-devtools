@@ -4,7 +4,7 @@
 // an unpacked package (handler.js and its folders).
 import { $ } from './dom';
 import { notice } from './toast';
-import { readPackage, storeFiles, type PackageFile } from './package';
+import { readBundle, readPackage, storeFiles, type PackageFile } from './package';
 
 export interface FileOpenDeps {
   loadSource: (src: string, meta: { name: string; kind: 'draft' }) => void;
@@ -40,7 +40,17 @@ export function initFileOpen(deps: FileOpenDeps) {
   async function openFile(file: File) {
     try {
       if (/\.(zip|nc)$/i.test(file.name)) {
-        const pkg = await readPackage(await file.arrayBuffer());
+        const buf = await file.arrayBuffer();
+        // Several handlers in one .zip (what Download gives for more than one): each opens.
+        const bundle = await readBundle(buf);
+        if (bundle) {
+          for (const h of bundle) {
+            deps.loadSource(h.handler.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n'), { name: `${h.name}.js`, kind: 'draft' });
+            if (h.files.length) { deps.setPackageFiles(h.files); storeFiles(h.files); }
+          }
+          return;
+        }
+        const pkg = await readPackage(buf);
         if (!pkg) {
           notice(`${file.name} doesn't contain a handler.js this page can read.`, { kind: 'error' });
           return;

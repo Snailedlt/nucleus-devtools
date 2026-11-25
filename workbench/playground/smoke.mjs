@@ -1498,11 +1498,40 @@ section('files and tabs', async () => {
     await s.p.waitForTimeout(150);
     check(rowsShut < rowsBefore && (await s.p.$$('#files-panel .fp-h.on .fp-open[data-fp]')).length === rowsBefore, `files: a folder inside a handler folds shut and opens again (${rowsBefore} -> ${rowsShut})`);
   }
+  // Download, with several handlers open: one prompt from every button, only its ticks differ. Sharing is one handler.
+  const ticks = () => s.p.evaluate(() => ({ open: document.querySelector('#dl-dialog').open, all: document.querySelector('#dl-all').checked, on: [...document.querySelectorAll('#dl-items input')].map((i) => i.checked), kinds: [...document.querySelectorAll('#dl-kinds input')].map((i) => !i.disabled) }));
+  const nHandlers = await s.p.$$eval('#files-panel .fp-h', (l) => l.length);
+  if (nHandlers > 1) {
+    await s.p.click('.rail [data-rail=save]');
+    const fromSave = await ticks();
+    check(fromSave.open && fromSave.on.filter(Boolean).length === 1 && !fromSave.all && fromSave.kinds.every(Boolean), `download: Save asks which handlers, with the one in the editor ticked (${JSON.stringify(fromSave)})`);
+    await s.p.click('#dl-cancel');
+    await s.p.evaluate(() => document.querySelector('#files-panel .fp-h:not(.on) [data-fp-dl]').click());
+    const fromFolder = await ticks();
+    const which = await s.p.evaluate(() => [...document.querySelectorAll('#files-panel .fp-h')].findIndex((h) => !h.classList.contains('on')));
+    check(fromFolder.open && fromFolder.on.filter(Boolean).length === 1 && fromFolder.on[which], `download: a folder's button asks the same, with that handler ticked (${JSON.stringify(fromFolder)})`);
+    await s.p.click('#dl-cancel');
+    await s.p.evaluate(() => document.querySelector('#files-panel .fp-head [data-fp-dl]').click());
+    const fromHead = await ticks();
+    check(fromHead.open && fromHead.all && fromHead.on.every(Boolean) && fromHead.kinds.every((k) => !k), `download: the button at the top of Files asks the same, with every handler ticked (${JSON.stringify(fromHead)})`);
+    const [zip] = await Promise.all([s.p.waitForEvent('download'), s.p.click('#dl-go')]);
+    const bytes = fs.readFileSync(await zip.path()).toString('latin1');
+    check(zip.suggestedFilename() === 'handlers.zip' && (bytes.match(/\.js/g) ?? []).length >= nHandlers, `download: several handlers come as one .zip with a .js each (${zip.suggestedFilename()})`);
+    await s.p.click('.rail [data-rail=share]');
+    await s.p.waitForTimeout(300);
+    const shareTitle = await s.p.textContent('#save-h');
+    check(/^Share ./.test(shareTitle) && shareTitle !== 'Share', `share: with several handlers open, Share names the one it shares (${shareTitle})`);
+    await s.p.keyboard.press('Escape');
+  }
   // One handler open: no folders, its files under its name, and tabs without the game beside them.
   while ((await s.p.$$('#files-panel .fp-h')).length > 1) { await s.p.evaluate(() => document.querySelector('#files-panel .fp-h:not(.on) [data-fp-hclose]').click()); await s.p.waitForTimeout(200); }
   const one = await s.p.evaluate(() => ({ folds: document.querySelectorAll('#files-panel [data-fp-fold]').length, title: !!document.querySelector('#files-panel .fp-hrow .fp-title'), rows: document.querySelectorAll('#files-panel .fp-h.on .fp-open[data-fp]').length, of: document.querySelectorAll('#htabs .ht-of').length }));
   check(one.folds === 0 && one.title && one.rows >= 1 && one.of === 0, `files: with one handler open its files show under its name, with no folder to open and plain tabs (${JSON.stringify(one)})`);
   await axe(s.p, 'files and tabs, one handler');
+  check((await s.p.$$('#files-panel [data-fp-dl]')).length === 0, 'download: with one handler open, Files has no download buttons (Save saves it)');
+  const [single] = await Promise.all([s.p.waitForEvent('download'), s.p.click('.rail [data-rail=save]')]);
+  check(!(await s.p.evaluate(() => document.querySelector('#dl-dialog').open)) && /\.(zip|js|nc)$/.test(single.suggestedFilename()), `download: with one handler open, Save saves it without asking (${single.suggestedFilename()})`);
+  await s.p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
   check(!s.errors.length, `files and tabs: no page errors ${s.errors.join(' ')}`);
   await s.ctx.close();
 });
