@@ -141,7 +141,7 @@ export function lookup(query: string, opts: { objects?: boolean } = {}): LookupR
 
 /** Ranked free-text search over names and docs. */
 /** Words that say little in a search ("my game pauses when it loses focus" is about pausing, losing and focus). */
-const STOP = new Set('a an the it its it\'s is are was be been to of in on at for and or but my me i we you when what how why do does did with without this that there so if then than as by from into up out can can\'t cant wont won\'t doesnt doesn\'t not no yes get gets got make makes'.split(' '));
+const STOP = new Set('a an the it its it\'s is are was be been to of in on at for and or but my me i we you when what how why do does did with without this that there so if then than as by from into up out can can\'t cant wont won\'t doesnt doesn\'t not no yes get gets got make makes such thing things something anything way'.split(' '));
 /** A word's stem for matching: "pauses" finds "pause", "starting" "start". Short words stay as they are. */
 const stem = (w: string) => {
   for (const end of ['ing', 'ed', 'es', 's']) if (w.endsWith(end) && w.length - end.length >= 4) return w.slice(0, -end.length);
@@ -158,8 +158,12 @@ export function search(query: string, limit = 20): Entry[] {
   const content = all.filter((w) => !STOP.has(w));
   const words = (content.length ? content : all).map(stem);
   // One or two words: all of them must match (as you type a name). Three or more: at least half.
-  const need = words.length <= 2 ? words.length : Math.ceil(words.length / 2);
-  const scored = allEntries(true)
+  const entries = allEntries(true);
+  const texts = entries.map((e) => `${e.path} ${e.member.doc} ${e.member.category ?? ''} ${e.member.practice ?? ''}`.toLowerCase());
+  // A word that's nowhere in the API (a name it doesn't have, a typo) means no match: every word is needed then.
+  const unknown = words.some((w) => !texts.some((t) => t.includes(w)));
+  const need = words.length <= 2 || unknown ? words.length : Math.ceil(words.length / 2);
+  const scored = entries
     .map((e) => {
       const name = e.path.toLowerCase();
       const doc = `${e.member.doc} ${e.member.category ?? ''} ${e.member.practice ?? ''}`.toLowerCase();

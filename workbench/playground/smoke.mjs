@@ -1351,6 +1351,40 @@ section('word wrap note', async () => {
   check(!s.errors.length, `word wrap: no page errors ${s.errors.join(' ')}`);
   await s.ctx.close();
 });
+section('flow', async () => {
+  // Flow draws the handler as a diagram in place of the code, from the code, and goes back to it.
+  const s = await page('light');
+  await s.p.goto(BASE + '#example-mistakes');
+  await s.p.waitForSelector('.CodeMirror');
+  await s.p.waitForTimeout(900);
+  await s.p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
+  await s.p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.setValue([
+    'Game.GameName = "Flow Test";', 'Game.ExecutableName = "flow.exe";', 'Game.AddOption("Mode?", "", "Mode", ["A", "B"]);',
+    'Game.Play = function () {', '  var savePath = (Context.SavePath = Context.GetFolder(Nucleus.Folder.InstancedGameFolder) + "\\\\a.ini");',
+    '  var savePkgOrigin = System.IO.Path.Combine(Game.Folder, "a.ini");', '  System.IO.File.Copy(savePkgOrigin, savePath, true);',
+    '  if (Context.Options["Mode"] == "A") {', '    Context.StartArguments = "-w " + Context.Width;', '  }', '};',
+  ].join('\n')));
+  await s.p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.focus());
+  await s.p.keyboard.press('Control+K');
+  await s.p.keyboard.press('V');
+  await s.p.waitForSelector('#flow .b-flow');
+  const shown = await s.p.evaluate(() => ({
+    editor: document.getElementById('editor').hidden,
+    verbs: [...document.querySelectorAll('#flow .b-verb')].map((e) => e.textContent),
+    fork: !!document.querySelector('#flow .b-fork'),
+    place: [...document.querySelectorAll('#flow .tok.k-place')].map((e) => e.textContent),
+    question: document.querySelector('#flow .b-q')?.textContent ?? '',
+  }));
+  check(shown.editor && shown.verbs.includes('Game settings') && shown.verbs.includes('Copy a file') && shown.fork && shown.place.includes("This player's game folder") && /Mode\?/.test(shown.question), `flow: Ctrl+K V draws the settings, the question, the copy as one step and the if as a fork (${JSON.stringify(shown)})`);
+  await s.p.locator('#flow .b-node:has(.b-verb:text("Copy a file")) [data-code]').click();
+  check(/System\.IO\.File\.Copy/.test(await s.p.locator('#flow pre.f-code').first().textContent()), 'flow: a step shows its code on request');
+  await s.p.locator('#flow .b-node:has(.b-verb:text("Copy a file")) .codebtn[data-go]').click();
+  const back = await s.p.evaluate(() => ({ flow: document.getElementById('flow').hidden, sel: document.querySelector('.CodeMirror').CodeMirror.getSelection() }));
+  check(back.flow && back.sel.startsWith('var savePath') && back.sel.endsWith('true);'), `flow: "Show in the code" goes back to the code with the step selected (${JSON.stringify(back)})`);
+  check(!s.errors.length, `flow: no page errors ${s.errors.join(' ')}`);
+  await s.ctx.close();
+});
+
 section('closing handlers', async () => {
   // Every handler can be closed (the × on its folder in Files), the last one too: a new one from the template takes
   // its place (no empty page); Undo brings the closed one back and the untouched template goes.

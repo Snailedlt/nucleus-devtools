@@ -1384,6 +1384,10 @@ for (const platform of ['Linux', 'MacIntel']) {
     assert.equal(k.appActionFor(event('j', true)), undefined);
     assert.equal(k.appActionFor({ ...event('r', true), altKey: true }), 'results');
     k.setBinding('zen', '');
+    // Flow (Ctrl+K V) starts with Ctrl+K too: with both unbound, Ctrl+K is free again.
+    assert.equal(k.appActionFor(event('k', true)), 'pending');
+    f.advance(2000);
+    k.setBinding('flow', '');
     assert.equal(k.appActionFor(event('k', true)), undefined);
     k.resetBinding('zen');
     assert.equal(k.binding('zen'), `${mod}+K Z`);
