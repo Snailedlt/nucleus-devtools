@@ -69,7 +69,7 @@ export function readGuideSources(here) {
   for (const dir of galleryDirs) for (const f of fs.existsSync(dir) ? fs.readdirSync(dir) : []) { const m = /^(.*)-light\.webp$/.exec(f); if (m) sizes[m[1]] = webpSize(path.join(dir, f)); }
   const mapFile = path.join(here, '..', 'docs', 'images', 'guide', 'workbench-map.json');
   return {
-    tools: json(path.join(root, 'data', 'tools.json')), editors: json(path.join(root, 'data', 'editors.json')),
+    tools: json(path.join(root, 'data', 'tools.json')), editors: json(path.join(root, 'data', 'editors.json')), compare: json(path.join(root, 'data', 'tools-compare.json')),
     guide: json(path.join(here, 'src', 'guide.json')), tourParts: json(path.join(here, 'src', 'tourparts.json')),
     gallery, videos, settingsTabs, sizes, galleryDirs, map: fs.existsSync(mapFile) ? json(mapFile) : null,
   };

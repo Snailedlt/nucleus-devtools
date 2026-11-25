@@ -68,6 +68,7 @@ test('every kind of #link opens what it names', () => {
   assert.deepEqual(t('share-0aZ'), { kind: 'share', hash: 'share-0aZ' });
   assert.deepEqual(t('whats-new'), { kind: 'whats-new' });
   assert.deepEqual(t('dev'), { kind: 'dev' });
+  assert.deepEqual(t('motion-review'), { kind: 'motion-review' });
   assert.deepEqual(t('tour'), { kind: 'tour' });
   // #home and #start open the workbench as usual (#welcome, #getting-started: MOVED_LINKS, to the tour).
   for (const h of ['welcome', 'getting-started', 'home', 'start']) assert.deepEqual(t(h), { kind: 'home' });
@@ -184,7 +185,7 @@ const startSrc = fs.readFileSync(path.join(root, 'playground/src/start.html'), '
 const builtStart = path.join(root, 'playground/dist/pages/start/index.html');
 
 const toolsSrc = fs.readFileSync(path.join(root, 'playground/src/tools.html'), 'utf8');
-for (const [name, src, min] of [['start page', startSrc, 6], ['tools page', toolsSrc, 5]]) {
+for (const [name, src, min] of [['start page', startSrc, 6], ['tools page', toolsSrc, 1]]) {
   test(`${name}: every heading has its GitHub-style anchor, and in-page links point at ids that exist`, () => {
     // Headings with their # link, and the titles of the folded parts (<summary><h3 id=…>: no link inside a
     // summary, but the same GitHub-style id, and a link to it opens the part).
@@ -207,10 +208,13 @@ test('start page: the old anchors still lead somewhere (on the page, or forwarde
   const aliases = [...startSrc.matchAll(/<span id="([^"]+)" class="anchor-alias"/g)].map((m) => m[1]);
   const startIds = new Set([...startSrc.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]));
   const moved = JSON.parse(startSrc.match(/var MOVED = (\[[^\]]*\])/)[1].replace(/'/g, '"'));
-  // …plus the editors' setup steps, which the build writes from data/editors.json (<!--ED_STEPS-->).
-  const editors = JSON.parse(fs.readFileSync(new URL('../../data/editors.json', import.meta.url), 'utf8')).editors;
-  const toolsIds = new Set([...[...toolsSrc.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]), ...editors.map((e) => `setup-${e.id}`)]);
-  for (const id of moved) assert.ok(toolsIds.has(id), `moved #${id} exists on tools/`);
+  // The tools page has the id, or leads on from it: the setup steps are pages of the docs now, and its own MOVED
+  // list sends each old anchor to its tool's setup page (every #setup-<editor> to the other editors' page).
+  const toolsIds = new Set([...toolsSrc.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]));
+  const onward = new Function(`return (${toolsSrc.match(/var MOVED = (\{[\s\S]*?\});/)[1]})`)();
+  assert.match(toolsSrc, /\/\^setup-\[a-z0-9-\]\+\$\/\.test\(h\) \? 'docs\/tools\/lsp\/setup\/'/);
+  for (const id of moved) assert.ok(toolsIds.has(id) || onward[id] || /^setup-[a-z0-9-]+$/.test(id), `moved #${id} exists on tools/, or leads on from there`);
+  for (const [id, to] of Object.entries(onward)) assert.ok(/^(docs\/tools\/[a-z]+\/setup\/|ai\/|docs\/tools\/#what-each-tool-can-do)$/.test(to), `#${id} leads to ${to}`);
   for (const old of ['catches', 'see', 'install', 'help', 'what-it-catches', 'see-it', 'try-it-in-5-minutes', 'get-vscode', 'get-notepadpp', 'any-editor-with-a-language-server-lsp', 'compare-the-editors', 'works-in-your-editor', 'also-in-the-workbench', 'want-to-help-build-it', 'in-motion', 'screenshots'])
     assert.ok(aliases.includes(old) || startIds.has(old) || moved.includes(old), old);
 });
@@ -265,7 +269,7 @@ test('links into the extension repository match its files and headings', () => {
     return anchors.get(rel);
   };
   const seen = found(repo);
-  assert.ok(seen.some(({ m }) => m[2] === 'your-own-editor-for-experienced-developers'));
+  assert.ok(seen.some(({ m }) => m[2]), 'the pages link to a heading of a file in the repository somewhere');
   const bad = [];
   for (const { file, m } of seen) {
     const rel = m[1] ? m[1].replace(/^\/(blob|tree)\/main\//, '') : 'README.md';

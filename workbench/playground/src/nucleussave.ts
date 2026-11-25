@@ -84,22 +84,48 @@ export async function saveIntoNucleus(handler: string, files: PackageFile[], pic
   const handlers = await handlersOf(root);
   if (!handlers) return { ok: false, reason: 'not-nucleus' };
   await remember(root);
-  const game = gameFolderName(handler).replace(/\\/g, '') || 'handler';
   try {
-    await writeFile(handlers, [`${game}.js`], new TextEncoder().encode(handler));
-    let n = 0;
-    let skipped = 0;
-    for (const f of files) {
-      const parts = f.name.split('/').filter((p) => p && p !== '.' && p !== '..');
-      // As a Hub install: a top-level folder's contents go into handlers/<GameName>/; files at the root are dropped.
-      if (parts.length < 2 || f.remote) {
-        skipped++;
-        continue;
-      }
-      await writeFile(handlers, [game, ...parts.slice(1)], f.data);
-      n++;
+    const w = await writeHandler(handlers, handler, files);
+    return { ok: true, folder: root.name, js: `handlers\\${w.game}.js`, files: w.files, skipped: w.skipped };
+  } catch (e: any) {
+    return { ok: false, reason: 'error', message: e?.message };
+  }
+}
+
+/** Writes a handler as a Hub install lays it out: <Game>.js, and the contents of each top-level folder of its
+ *  package in <Game>/ (files at the package's root are dropped, and so are a Hub package's files that aren't here). */
+async function writeHandler(dir: Dir, handler: string, files: PackageFile[]): Promise<{ game: string; files: number; skipped: number }> {
+  const game = gameFolderName(handler).replace(/\\/g, '') || 'handler';
+  await writeFile(dir, [`${game}.js`], new TextEncoder().encode(handler));
+  let n = 0;
+  let skipped = 0;
+  for (const f of files) {
+    const parts = f.name.split('/').filter((p) => p && p !== '.' && p !== '..');
+    if (parts.length < 2 || f.remote) {
+      skipped++;
+      continue;
     }
-    return { ok: true, folder: root.name, js: `handlers\\${game}.js`, files: n, skipped };
+    await writeFile(dir, [game, ...parts.slice(1)], f.data);
+    n++;
+  }
+  return { game, files: n, skipped };
+}
+
+/**
+ * Saves a handler into any folder, for working on it in another editor: <Game>.js with its files in <Game>/, the
+ * layout of Nucleus Co-op's handlers folder, which the VS Code extension, ncdev and the Notepad++ plugin read.
+ * "Open a folder…" reads it back.
+ */
+export async function saveIntoFolder(handler: string, files: PackageFile[]): Promise<SaveResult> {
+  let dir: Dir;
+  try {
+    dir = await (window as any).showDirectoryPicker({ id: 'handler-folder', mode: 'readwrite' });
+  } catch (e: any) {
+    return e?.name === 'AbortError' ? { ok: false, reason: 'cancelled' } : { ok: false, reason: 'denied', message: e?.message };
+  }
+  try {
+    const w = await writeHandler(dir, handler, files);
+    return { ok: true, folder: dir.name, js: `${w.game}.js`, files: w.files, skipped: w.skipped };
   } catch (e: any) {
     return { ok: false, reason: 'error', message: e?.message };
   }

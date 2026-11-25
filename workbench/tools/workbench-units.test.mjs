@@ -1243,7 +1243,7 @@ test('PR77 results: reload and size resets preserve visibility and panel sides',
   assert.equal(p.resultsShown(), false);
   assert.equal(f.ids.get('results-show').hidden, false);
   assert.equal(f.ids.get('set-results').checked, false);
-  assert.equal(f.ids.get('main').style.getPropertyValue('--split-l'), '0.7fr');
+  assert.equal(f.ids.get('main').style.getPropertyValue('--split-l'), '70fr');
   p.resetOne('main');
   assert.equal(p.resultsShown(), false);
   assert.equal(JSON.parse(f.storage.getItem('nucleus-workbench-panels')).lines, 400);
@@ -1418,3 +1418,130 @@ for (const platform of ['Linux', 'MacIntel']) {
     assert.equal(tip.hidden, true);
   });
 }
+
+test('progress: the wide strip fits its bar to the element, and Duo stands ready while there is no total', async () => {
+  const b = await loaderBrowser('still'), bar = b.make('masc-load wide');
+  const svg = bar.part('svg'), circle = bar.part('.ld-chk circle');
+  bar.parts.set('.ld-track, .ld-fill, .ld-done', [bar.querySelector('.ld-fill')]);
+  bar.clientWidth = 240;
+  b.api.barProgress(bar, 0.5);
+  // 240 px at 0.8 px a unit: 300 units shown, the bar 271.5 long (room for the check at its end).
+  assert.equal(svg.attrs.viewBox, '4 56 300.0 51');
+  assert.equal(bar.querySelector('.ld-fill').attrs.x2, '290.0');
+  assert.equal(circle.attrs.cx, '294.5');
+  assert.equal(b.style(bar, '.ld-fill', 'stroke-dashoffset'), '135.75');
+  // A wider panel: the bar grows, Duo keeps his size.
+  bar.clientWidth = 400;
+  b.api.barProgress(bar, 0.5);
+  assert.equal(svg.attrs.viewBox, '4 56 500.0 51');
+  assert.equal(b.style(bar, '.ld-fill', 'stroke-dashoffset'), '235.75');
+  // At the start he stays inside the strip.
+  b.api.barProgress(bar, 0);
+  assert.match(b.style(bar, '.ld-w', 'transform'), /^translate\(19\.00px/);
+
+  const live = await loaderBrowser('loop'), duo = live.make('masc-load');
+  live.api.barProgress(duo, 0, undefined, true);
+  for (let i = 0; i < 80; i++) live.frame(16);
+  assert.equal(live.style(duo, '.ld-sw', 'opacity'), '0', 'waiting for a total is not a stall: no sweat');
+  live.api.barProgress(duo, 0);
+  for (let i = 0; i < 80; i++) live.frame(16);
+  assert.equal(live.style(duo, '.ld-sw', 'opacity'), '1', 'a real stall shows');
+});
+
+test('motion list: every mascot scene and every UI animation is in the motion review', async () => {
+  const list = JSON.parse(fs.readFileSync(path.join(root, 'playground/src/motionlist.json'), 'utf8'));
+  const ids = [...fs.readFileSync(path.join(root, 'playground/src/mascots.ts'), 'utf8').match(/export type MascotId = ([^;]+);/)[1].matchAll(/'([^']+)'/g)].map((m) => m[1]);
+  assert.deepEqual(list.scenes.map((s) => s.id).sort(), [...ids].sort(), 'motionlist.json scenes = MascotId');
+  const page = fs.readFileSync(path.join(root, 'playground/src/page.html'), 'utf8');
+  const frames = [...new Set([...page.matchAll(/@keyframes ([\w-]+)/g)].map((m) => m[1]))].sort();
+  const listed = [...new Set(list.ui.flatMap((u) => u.keyframes))].sort();
+  assert.deepEqual(listed, frames, 'every @keyframes of page.html is named by an entry of motionlist.json (and none is stale)');
+  for (const u of list.ui) assert.ok(u.name && u.moves && u.when && Number.isFinite(u.ms), JSON.stringify(u));
+  // Reduced motion: the workbench's own setting decides, so the scenes' rules must not sit behind the media query.
+  const src = fs.readFileSync(path.join(root, 'playground/src/mascots.ts'), 'utf8');
+  assert.match(src, /MASCOT_CSS\.split\('@media \(prefers-reduced-motion: no-preference\)'\)\.join\('@media all'\)/);
+  assert.ok(fs.readFileSync(path.join(root, 'playground/src/mascots.gen.ts'), 'utf8').includes('@media (prefers-reduced-motion: no-preference)'));
+});
+
+test('settings text: a shortcut it names is an action, filled in with the person\'s own keys', () => {
+  const page = fs.readFileSync(path.join(root, 'playground/src/page.html'), 'utf8');
+  const actions = fs.readFileSync(path.join(root, 'playground/src/keyactions.ts'), 'utf8');
+  const named = [...page.matchAll(/<span data-key="([\w-]+)">([^<]*)<\/span>/g)];
+  assert.ok(named.length >= 4, 'the Settings dialog names shortcuts through data-key');
+  for (const [, id, shown] of named) {
+    const def = new RegExp(`\\{ id: '${id}',[^}]*keys: '([^']*)'`).exec(actions)?.[1];
+    assert.ok(def !== undefined, `data-key="${id}" is an action in keyactions.ts`);
+    assert.equal(shown, def, `the text shows ${id}'s default until the page fills in the bound keys`);
+  }
+  // No rebindable shortcut is written out by hand in the Settings dialog.
+  const settings = page.slice(page.indexOf('<dialog id="settings-dialog"'), page.indexOf('<dialog id="code-dialog"'));
+  const plain = settings.replace(/<span data-key="[\w-]+">[^<]*<\/span>/g, '').replace(/<kbd class="keys">.*?<\/kbd>\)/g, '');
+  assert.doesNotMatch(plain, /\b(?:Ctrl|Alt|Shift)\+[A-Z0-9]\b/, 'a shortcut in Settings text goes through data-key');
+  assert.match(fs.readFileSync(path.join(root, 'playground/src/app.ts'), 'utf8'), /onBindingsChange\(\(\) => \(applyKeys\(\), renderHelpKeys\(\), refreshKeyHints\(\), fillKeys\(\)\)\);/);
+});
+
+test('motion: Some keeps the loaders moving and holds the rest; every level says what it does', async () => {
+  const b = await progressBrowser('motion.ts'), m = b.api;
+  assert.equal(m.PRESETS.some.mascots, 'work', 'Some: only the scenes that show work under way move');
+  assert.equal(m.PRESETS.none.mascots, 'still');
+  assert.deepEqual([m.PRESETS.all.mascots, m.PRESETS.balanced.mascots], ['loop', 'loop']);
+  assert.notDeepEqual(m.PRESETS.all, m.PRESETS.balanced, 'All and Balanced differ (Nucli editing the code)');
+  for (const k of ['all', 'balanced', 'some', 'none', 'custom']) assert.ok(m.PRESET_TEXT[k].length > 20, `${k} has a sentence`);
+  m.setMotion(m.PRESETS.some);
+  assert.equal(b.document.documentElement.dataset.mascots, 'work');
+  // The device asking for less motion caps it at Still.
+  b.media.matches = true; b.media.change();
+  assert.equal(m.motion().mascots, 'still');
+  assert.equal(m.presetOf(m.savedMotion()), 'some');
+
+  // A loader moves at "Loaders only" as it does when lively.
+  const live = await loaderBrowser('work'), ring = live.make('masc-n-ring');
+  live.api.ringProgress(ring, 0.5);
+  assert.equal(live.frames.size, 1, 'the ring runs its frame loop');
+
+  // A held scene shows the moment that says what it is for: every scene has one, and the rules that hold it are there.
+  const src = fs.readFileSync(path.join(root, 'playground/src/mascots.ts'), 'utf8');
+  const ids = [...src.match(/export type MascotId = ([^;]+);/)[1].matchAll(/'([^']+)'/g)].map((x) => x[1]);
+  const pose = Object.fromEntries([...src.match(/export const POSE: Record<MascotId, number> = \{([^}]+)\}/)[1].matchAll(/'?([\w-]+)'?: ([\d.]+)/g)].map((x) => [x[1], Number(x[2])]));
+  assert.deepEqual(Object.keys(pose).sort(), [...ids].sort(), 'POSE names every scene');
+  for (const id of ['n-sleep', 'n-ok', 'n-bad', 'n-fix', 'n-scan']) assert.ok(pose[id] > 0.5, `${id} isn't held at its first frame`);
+  assert.match(src, /const HELD = ':root\[data-mascots="still"\] \.masc, :root\[data-mascots="work"\] \.masc:not\(\.busy\):not\(\.prog\)';/);
+  assert.match(src, /for \(const a of m\.getAnimations\(\{ subtree: true \}\)\) a\.currentTime = at;/);
+});
+
+test('ring: at 100 % it plays a last step (closed, green, a check, a smile), red with a "!" when it went wrong', async () => {
+  const b = await loaderBrowser(), ring = b.make('masc-n-ring');
+  const path2 = ring.part('.rq-chk path'), circle = ring.part('.rq-chk circle');
+  ring.part('.rq-chk'); ring.part('.sp');
+  let done = 0;
+  b.api.ringProgress(ring, 0.4, () => done++);
+  for (let i = 0; i < 40; i++) b.frame();
+  assert.equal(b.style(ring, '.rq-chk', 'opacity'), '0', 'no badge on the way');
+  assert.equal(b.style(ring, '.rqarc', 'stroke'), '');
+  b.api.ringProgress(ring, 1);
+  for (let i = 0; i < 1000 && b.frames.size; i++) b.frame();
+  assert.equal(done, 1, 'onDone runs once, after the last step');
+  assert.equal(b.style(ring, '.rqarc', 'stroke'), '#55d137');
+  assert.equal(b.style(ring, '.rq-chk', 'opacity'), '1');
+  assert.equal(b.style(ring, '.rq-chk', 'transform'), 'scale(1.000)');
+  assert.equal(circle.style.fill, '#55d137');
+  assert.equal(path2.attrs.d, 'M55.8 16.2 l2.9 2.9 l5.4 -5.7');
+  assert.ok(ring.querySelectorAll('.fb').every((e) => e.style.opacity === '1'), 'he smiles');
+  assert.equal(b.style(ring, '.rqb0', 'opacity'), '0.00', 'the electrons are gone');
+  // Back from the end (the review's slider): the last step is taken back.
+  b.api.ringProgress(ring, 0.3);
+  b.frame();
+  assert.equal(b.style(ring, '.rq-chk', 'opacity'), '0');
+  assert.equal(b.style(ring, '.rqarc', 'stroke'), '');
+
+  // It went wrong: red, a "!", no smile. On Still the end is drawn at once.
+  const s = await loaderBrowser('still'), bad = s.make('masc-n-ring');
+  const badPath = bad.part('.rq-chk path'); bad.part('.rq-chk circle'); bad.part('.rq-chk');
+  let ended = 0;
+  s.api.ringProgress(bad, 1, () => ended++, true);
+  assert.equal(ended, 1);
+  assert.equal(s.frames.size, 0);
+  assert.equal(s.style(bad, '.rqarc', 'stroke'), '#e5484d');
+  assert.equal(badPath.attrs.d, 'M60 11.6 v5.6 M60 20.6 v.2');
+  assert.ok(bad.querySelectorAll('.fa').every((e) => e.style.opacity === '1'), 'no smile');
+});

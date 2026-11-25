@@ -22,6 +22,7 @@ How to write it (people and AI agents read this; the release workflow publishes 
 
 ### ✨ New
 
+- **Hover a value to see which parameter it is.** In a call like `Game.AddOption("Mode", …)`, hovering a text, a number or a list shows the name of the parameter it's passed as, its type and what to pass, in VS Code, Notepad++ and every editor that uses `ncdev lsp`. A name keeps its own docs and gets a line about the parameter under them.
 - **ncdev for Linux.** Releases now include `ncdev-linux-x64`, the standalone ncdev for Linux (nothing else to install; `ncdev update` keeps it current), so every editor setup can run `ncdev lsp`. `nucleus.js` with Node.js still works everywhere else.
 - **The Claude Code plugin brings the tools too.** Installing the nucleus-coop plugin now also adds the `nucleus` MCP server (check, fix, Try it, API lookup, Hub search), so Claude Code calls them as tools without any setup.
 
@@ -31,6 +32,8 @@ How to write it (people and AI agents read this; the release workflow publishes 
 
 ### 🐛 Fixed
 
+- **A word in a text isn't taken for a name.** Hovering "Game" inside a text such as `"Game mode"`, or in a comment, showed the docs of `Game`, and go to definition followed it.
+- **Format can't change the name a Hub install reads.** With single quotes chosen (`splitscreenme.format.quotes`, `--quotes single`), Format also changed the quotes on the `Game.GameName` and `Game.ExecutableName` lines, and a handler formatted that way failed to install from the Hub. Those two lines now keep what the install reads from them: their double quotes stay, and a line with a second string on it, or a name put together with `+`, is left as written.
 - **Format says what it changes.** The MCP server and the skill described Format as changing indentation and spacing only. By default it also switches to double quotes and adds missing semicolons, and they say so now. It still never moves a line.
 
 ---

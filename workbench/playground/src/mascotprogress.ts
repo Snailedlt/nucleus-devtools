@@ -2,16 +2,20 @@
 // - Nucli's ring (n-ring, Test all): the arc grows to the progress, and the four electrons ride just behind its tip on
 //   springs. When the progress jumps they chase it: the first slams into the tip and bounces back, the others bump
 //   into each other (squash, rebound), then they settle. The physics are the concept sheet's (design/mascots, "Progress
-//   ring, v2"), run live.
+//   ring, v2"), run live. At 100 % it says so: the ring closes and turns green, the electrons go, a check pops at the
+//   top and Nucli smiles (red and a "!" when what it counted went wrong).
 // - Duo's bar (load, reading a game's folder): he pushes the end of the bar. While it moves he walks; when it stalls he
 //   leans in and strains (a sweat drop); at 100 % he lets go, the bar turns green, a check pops and he hops.
+//   With the class `wide` the bar is as long as the element is wide and Duo stays small (about 30 px): a low strip
+//   instead of a square scene.
 // Call ringProgress / barProgress with 0..1 as often as the progress changes; a mascot redrawn by keepMascots() keeps
 // its state (it lives on the element). "Still" (and reduced motion) shows the pose for that progress, nothing moving.
 import { motion } from './motion';
 
 type Sim = { raf: number; last: number; rest?: () => void; [k: string]: unknown };
 type El = HTMLElement & { _prog?: Sim };
-const still = () => motion().mascots !== 'loop';
+/** Loaders move when Duo and Nucli are lively and at "Loaders only"; otherwise they show the pose for the progress. */
+const still = () => { const m = motion().mascots; return m !== 'loop' && m !== 'work'; };
 const loader = (root: ParentNode, cls: string): El | null =>
   root instanceof HTMLElement && root.classList.contains(cls) ? (root as El) : root.querySelector<El>('.' + cls);
 
@@ -45,30 +49,66 @@ function start(m: El) {
 
 // ---- The ring ----
 const CAP = 0.034, GAP = 0.046, K0 = 1400, K1 = 700, D0 = 2 * Math.sqrt(K0) * 0.3, D1 = 2 * Math.sqrt(K1) * 0.3, E = 0.45, ARC = 276.5;
-type Ring = Sim & { p: number; head: number; x: number[]; v: number[]; sq: number[] };
+type Ring = Sim & { p: number; head: number; x: number[]; v: number[]; sq: number[]; done: number; bad: boolean; onDone?: () => void };
+const RING_OK = '#55d137', RING_BAD = '#e5484d', RING_DONE = 0.75;
 
-/** Nucli's ring (n-ring) under `root` shows `p` (0..1). */
-export function ringProgress(root: ParentNode, p: number): void {
+/**
+ * Nucli's ring (n-ring) under `root` shows `p` (0..1). At 1 it plays its last step (the ring closes and turns green,
+ * a check pops, Nucli smiles), then `onDone` runs (at once on Still). `bad`: what it counted went wrong, so the last
+ * step is red with a "!" and no smile.
+ */
+export function ringProgress(root: ParentNode, p: number, onDone?: () => void, bad = false): void {
   const m = loader(root, 'masc-n-ring');
   if (!m) return;
   p = Math.max(0, Math.min(1, p));
   m.classList.add('prog');
-  const s = (m._prog ??= { raf: 0, last: 0, p, head: 0, x: [0, 1, 2, 3].map((k) => -CAP - k * GAP), v: [0, 0, 0, 0], sq: [0, 0, 0, 0] }) as Ring;
+  const s = (m._prog ??= { raf: 0, last: 0, p, head: 0, x: [0, 1, 2, 3].map((k) => -CAP - k * GAP), v: [0, 0, 0, 0], sq: [0, 0, 0, 0], done: 0, bad }) as Ring;
+  if (p < 1) s.done = 0; // back from the end (the review's slider): the last step is taken back
   s.p = p;
+  s.bad = bad;
+  if (onDone) s.onDone = onDone;
+  const finish = () => { const f = s.onDone; s.onDone = undefined; f?.(); };
   const q = (sel: string) => m.querySelector<SVGElement>(sel);
+  const all = (sel: string, prop: string, v: string) => m.querySelectorAll<SVGElement>(sel).forEach((e) => e.style.setProperty(prop, v));
   const draw = () => {
-    q('.rqarc')?.style.setProperty('stroke-dashoffset', (ARC * (1 - s.head)).toFixed(1));
+    const d = s.done;
+    const arc = q('.rqarc');
+    arc?.style.setProperty('stroke-dashoffset', (ARC * (1 - s.head)).toFixed(1));
+    // The last step: the ring takes the result's colour, the electrons shrink away into its end.
+    arc?.style.setProperty('stroke', d ? (s.bad ? RING_BAD : RING_OK) : ''); // '' gives the gradient back
+    const gone = Math.min(1, d / 0.14);
     for (let k = 0; k < 4; k++) {
       q('.rq' + k)?.style.setProperty('transform', `rotate(${(s.x[k] * 360).toFixed(2)}deg)`);
       const sq = s.sq[k];
-      q('.rqb' + k)?.style.setProperty('transform', sq > 0.002 ? `scale(${(1 - sq).toFixed(3)}, ${(1 + sq * 0.7).toFixed(3)})` : 'none');
+      q('.rqb' + k)?.style.setProperty('transform', d ? `scale(${(1 - gone).toFixed(3)})` : sq > 0.002 ? `scale(${(1 - sq).toFixed(3)}, ${(1 + sq * 0.7).toFixed(3)})` : 'none');
+      q('.rqb' + k)?.style.setProperty('opacity', d ? (1 - gone).toFixed(2) : '1');
     }
-    q('.n-core')?.style.setProperty('transform', Math.max(...s.sq) > 0.12 ? 'scale(1.025, .975)' : 'none');
+    // The badge pops at the top, where the ring closed: a check, or a "!" when it went wrong.
+    const pop = !d ? 0 : d < 0.08 ? 0 : d < 0.2 ? 1.3 * ((d - 0.08) / 0.12) : d < 0.32 ? 1.3 - (0.3 * (d - 0.2)) / 0.12 : 1;
+    all('.rq-chk', 'transform', `scale(${pop.toFixed(3)})`);
+    all('.rq-chk', 'opacity', pop ? '1' : '0');
+    all('.rq-chk circle', 'fill', s.bad ? RING_BAD : RING_OK);
+    q('.rq-chk path')?.setAttribute('d', s.bad ? 'M60 11.6 v5.6 M60 20.6 v.2' : 'M55.8 16.2 l2.9 2.9 l5.4 -5.7');
+    // Nucli: a small bounce, and a smile when it went well. The sparkles come out with it.
+    const hop = d > 0.1 && d < 0.5 ? Math.sin(((d - 0.1) / 0.4) * Math.PI) : 0;
+    q('.n-core')?.style.setProperty('transform', d ? `scale(${(1 + 0.07 * hop).toFixed(3)})` : Math.max(...s.sq) > 0.12 ? 'scale(1.025, .975)' : 'none');
+    const smile = !!d && !s.bad;
+    all('.fa', 'opacity', smile ? '0' : '1');
+    all('.fb', 'opacity', smile ? '1' : '0');
+    all('.sp', 'opacity', smile && d > 0.12 ? Math.max(0, Math.min(1, (0.75 - d) / 0.2)).toFixed(2) : '0');
   };
-  // The pose for this progress: the arc to it, the electrons lined up behind its tip.
-  s.rest = () => { s.head = s.p; s.x = s.x.map((_, k) => s.p - CAP - k * GAP); s.v = [0, 0, 0, 0]; s.sq = [0, 0, 0, 0]; draw(); };
+  // The pose for this progress: the arc to it, the electrons lined up behind its tip; at 100 %, the last step's end.
+  s.rest = () => { s.head = s.p; s.x = s.x.map((_, k) => s.p - CAP - k * GAP); s.v = [0, 0, 0, 0]; s.sq = [0, 0, 0, 0]; s.done = s.p >= 1 ? RING_DONE : 0; draw(); if (s.done) finish(); };
   if (still()) return s.rest();
   run(m, (dt) => {
+    // The last step runs once the ring has closed.
+    if (s.p >= 1 && 1 - s.head < 0.004) {
+      s.head = 1;
+      s.done = Math.min(RING_DONE, (s.done || 0.0001) + dt);
+      draw();
+      if (s.done >= RING_DONE) { finish(); return false; }
+      return true;
+    }
     // Small steps, so the springs and the bumps stay stable at any frame rate.
     for (let t = 0; t < dt; t += 1 / 600) {
       const h = Math.min(1 / 600, dt - t);
@@ -104,32 +144,67 @@ export function ringProgress(root: ParentNode, p: number): void {
 }
 
 // ---- The bar ----
-const X0 = 18.5, L = 83, XMAX = 84, SC = 0.46;
-type Bar = Sim & { p: number; shown: number; ph: number; still: number; t: number; done: number; onDone?: () => void };
+const X0 = 18.5, SC = 0.46;
+/** The wide strip: screen pixels per drawing unit (Duo is about 38 units tall), and the part of the drawing it shows. */
+const WIDE_PX = 0.8, WIDE_X = 4, WIDE_Y = 56, WIDE_H = 51;
+type Bar = Sim & { p: number; shown: number; ph: number; still: number; t: number; done: number; len: number; w: number; wait: boolean; onDone?: () => void };
 
-/** Duo's bar (load) under `root` shows `p` (0..1). `onDone` runs once he has finished at 100 % (at once on Still). */
-export function barProgress(root: ParentNode, p: number, onDone?: () => void): void {
+/** The wide strip's bar is as long as the element is wide: the lines, the gradient and the check move with it. */
+function fitWide(m: El, s: Bar): boolean {
+  const w = m.clientWidth;
+  if (!w || w === s.w) return false;
+  s.w = w;
+  const units = w / WIDE_PX;
+  // Room at the end for the check that pops there.
+  const len = Math.max(40, units - (X0 - WIDE_X) - 14);
+  s.len = len;
+  const end = (X0 + len).toFixed(1);
+  m.querySelector('svg')?.setAttribute('viewBox', `${WIDE_X} ${WIDE_Y} ${units.toFixed(1)} ${WIDE_H}`);
+  m.querySelectorAll('.ld-track, .ld-fill, .ld-done').forEach((e) => e.setAttribute('x2', end));
+  m.querySelector('.ld-fill')?.setAttribute('stroke-dasharray', `${len.toFixed(1)} ${(len + 200).toFixed(0)}`);
+  m.querySelector('linearGradient[id*="ldg"]')?.setAttribute('x2', (X0 + len + 4.5).toFixed(1));
+  m.querySelector('.ld-chk circle')?.setAttribute('cx', (X0 + len + 4.5).toFixed(1));
+  m.querySelector('.ld-chk path')?.setAttribute('d', `M${(X0 + len + 0.7).toFixed(1)} 100.7 l2.7 2.7 l4.9 -5.2`);
+  return true;
+}
+
+/**
+ * Duo's bar (load) under `root` shows `p` (0..1). `onDone` runs once he has finished at 100 % (at once on Still).
+ * `waiting`: there's no progress to show yet (the step before has no total), so he stands ready instead of straining.
+ */
+export function barProgress(root: ParentNode, p: number, onDone?: () => void, waiting = false): void {
   const m = loader(root, 'masc-load');
   if (!m) return;
   p = Math.max(0, Math.min(1, p));
   m.classList.add('prog');
-  const s = (m._prog ??= { raf: 0, last: 0, p, shown: p, ph: 0, still: 0, t: 0, done: 0 }) as Bar;
+  const s = (m._prog ??= { raf: 0, last: 0, p, shown: p, ph: 0, still: 0, t: 0, done: 0, len: 83, w: 0, wait: waiting }) as Bar;
   if (p !== s.p) s.still = 0; // it moved: no longer stalled
+  if (p < 1) s.done = 0; // back from the end (the review's slider): the last step is taken back
   s.p = p;
+  s.wait = waiting;
   if (onDone) s.onDone = onDone;
+  const wide = m.classList.contains('wide');
+  if (wide) fitWide(m, s);
   const finish = () => { const f = s.onDone; s.onDone = undefined; f?.(); };
   // Every match: Duo's face is drawn in two halves, each with its own expressions.
   const set = (sel: string, prop: string, v: string) => m.querySelectorAll<SVGElement>(sel).forEach((e) => e.style.setProperty(prop, v));
   const draw = () => {
-    const x = Math.min(X0 + L * s.shown + 4.5 - 10, XMAX);
+    const L = s.len;
+    // In the wide strip he stays inside it at the start (the square scene has room to his left).
+    const x = Math.max(wide ? WIDE_X + 15 : 0, Math.min(X0 + L * s.shown + 4.5 - 10, L + 1));
     const moving = !s.done && s.still < 0.6;
-    const stall = !s.done && !moving;
+    const ready = !s.done && !moving && s.wait;
+    const stall = !s.done && !moving && !s.wait;
     let rot = 0, y = 0, sy = 1, lf = 0, rf = 0;
     if (s.done) {
-      // He lets go and hops once.
+      // He lets go and hops once (a low hop in the wide strip: there's text right above it).
       const h = (s.done - 0.15) / 0.42;
-      if (h > 0 && h < 1) { y = -16 * Math.sin(h * Math.PI); sy = 1 + 0.1 * Math.sin(h * Math.PI); }
+      if (h > 0 && h < 1) { y = -(wide ? 9 : 16) * Math.sin(h * Math.PI); sy = 1 + 0.1 * Math.sin(h * Math.PI); }
       rot = 6 * Math.max(0, 1 - s.done / 0.15);
+    } else if (ready) {
+      // Nothing to push yet: hands on the bar, breathing.
+      rot = 5;
+      sy = 1 + 0.025 * Math.sin(s.t * 3.2);
     } else if (stall) {
       rot = 13 + 1.6 * Math.sin(s.t * 42);
       sy = 1 - 0.05 * Math.abs(Math.sin(s.t * 17));
@@ -155,13 +230,18 @@ export function barProgress(root: ParentNode, p: number, onDone?: () => void): v
     set('.look', 'transform', s.done ? 'none' : 'translate(2.6px, .4px)');
   };
   s.rest = () => { s.shown = s.p; s.done = s.p >= 1 ? 1 : 0; s.still = 0; draw(); if (s.done) finish(); };
+  // The wide strip follows its element's width (the Files panel is resizable).
+  if (wide && !s.sized && typeof ResizeObserver === 'function') {
+    s.sized = true;
+    new ResizeObserver(() => { if (fitWide(m, s)) draw(); }).observe(m);
+  }
   if (still()) return s.rest();
   run(m, (dt) => {
     s.t += dt;
     const before = s.shown;
     s.shown += (s.p - s.shown) * (1 - Math.exp(-dt / 0.12));
     if (Math.abs(s.p - s.shown) < 1e-4) s.shown = s.p;
-    const dx = Math.abs(s.shown - before) * L;
+    const dx = Math.abs(s.shown - before) * s.len;
     s.ph += dx * 0.6;
     if (dx < 0.02) s.still += dt;
     if (s.shown >= 1) s.done += dt;

@@ -56,6 +56,7 @@ export type LinkTarget =
   | { kind: 'whats-new' }
   | { kind: 'docs'; hash: string }
   | { kind: 'dev' }
+  | { kind: 'motion-review' }
   | { kind: 'tour' }
   | { kind: 'home' }
   | { kind: 'learn'; lesson?: string }
@@ -81,6 +82,7 @@ export function routeLink(h: string, cat: LinkCatalog): LinkTarget {
   if (h === 'whats-new') return { kind: 'whats-new' };
   if (h === 'docs' || h.startsWith('docs-')) return { kind: 'docs', hash: h };
   if (h === 'dev') return { kind: 'dev' };
+  if (h === 'motion-review') return { kind: 'motion-review' };
   if (h === 'tour') return { kind: 'tour' };
   // #home, #start: the workbench as usual (#welcome and #getting-started lead to the tour, MOVED_LINKS).
   if (/^(?:welcome|getting-started|home|start)$/i.test(h)) return { kind: 'home' };

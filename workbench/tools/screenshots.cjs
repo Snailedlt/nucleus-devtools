@@ -11,7 +11,7 @@ const { execFileSync } = require('child_process');
 const { chromium, devices } = require('playwright');
 const args = process.argv.slice(2);
 const onlyAt = args.indexOf('--only');
-// --only <names>: just these (comma-separated). Gallery: check, suggestions, try-it, debugger, test-all,
+// --only <names>: just these (comma-separated). Gallery: check, wide, zen, motion, suggestions, try-it, debugger, test-all,
 // looks, fix-all, phone. The docs' guide: map. Release notes: lines, whats-new, guide.
 const ONLY = onlyAt >= 0 ? args[onlyAt + 1].split(',') : null;
 const want = (name) => !ONLY || ONLY.includes(name);
@@ -74,6 +74,36 @@ const box = (p, sel) => p.$eval(sel, (e) => { const r = e.getBoundingClientRect(
     ({ ctx, p } = await open(b, t, GAL, 'example-mistakes'));
     await hoverWord(p, 16, 'GetFolder');
     await gallery(p, 'check', t);
+    await ctx.close();
+    }
+
+    // A wider editor: the results pane hidden (the Results button stands in for it), and Zen mode on its way in.
+    if (want('wide')) {
+    ({ ctx, p } = await open(b, t, GAL, 'example-mistakes'));
+    await p.click('.CodeMirror');
+    await p.mouse.move(930, 560);
+    await p.keyboard.press('Control+j');
+    await p.waitForTimeout(500);
+    await gallery(p, 'wide', t);
+    await ctx.close();
+    }
+    if (want('zen')) {
+    ({ ctx, p } = await open(b, t, GAL, 'example-mistakes'));
+    await p.click('.CodeMirror');
+    await p.mouse.move(930, 560); // off the code, so no hover opens
+    await p.keyboard.press('Control+k');
+    await p.keyboard.press('z');
+    await p.waitForTimeout(900); // the way out is still showing
+    await gallery(p, 'zen', t);
+    await ctx.close();
+    }
+    // Settings › Motion.
+    if (want('motion')) {
+    ({ ctx, p } = await open(b, t, GAL, 'example-mistakes'));
+    await p.evaluate(() => document.getElementById('settings-open').click()); // it sits in the More menu at this width
+    await p.click('#st-motion');
+    await p.waitForTimeout(500);
+    await gallery(p, 'motion', t);
     await ctx.close();
     }
 

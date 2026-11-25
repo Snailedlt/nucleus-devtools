@@ -1480,7 +1480,7 @@
             ],
             "enumDescriptions": [
               "\"Double\" quotes (also what the Hub install reads Game.GameName and Game.ExecutableName between)",
-              "'Single' quotes",
+              "'Single' quotes (Game.GameName and Game.ExecutableName keep their double quotes: the Hub install needs them)",
               "Leave quotes as written"
             ],
             "default": "double",

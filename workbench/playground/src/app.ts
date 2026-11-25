@@ -19,6 +19,7 @@ import 'codemirror/addon/edit/closebrackets';
 import { semanticMarks } from './semmarks';
 import { codeHandlers, fixedCodeKeys, foldRange, keysByPosition, lineCommentFold, selectReferences, vscodeMouse } from './keys';
 import { ACTIONS, appActionFor, codeKeyMap, keyLabel, labelOf, noKeyText, binding, onBindingsChange, stepOf, type Group } from './keybindings';
+import { keysHtml } from './kbd';
 import { lint, Diagnostic, RULES, lineOf, pluginGlobals, type TextEdit } from '@core/lint';
 import { api, ownerLabel, Resolved, type Member } from '@core/api';
 import { resolveAt } from '@core/complete';
@@ -30,8 +31,8 @@ import { simulate, parsePluginsInfo } from '@core/sim';
 import { counts } from './aifix';
 import { fixAll } from '@core/fix';
 import { formatHandler } from '@core/format';
-import { canSaveIntoFolder, rememberedName, saveIntoNucleus } from './nucleussave';
-import { buildPackage, storeFiles, storedFiles, fileSize, sizeOf, PackageFile } from './package';
+import { canSaveIntoFolder, rememberedName, saveIntoNucleus, saveIntoFolder } from './nucleussave';
+import { buildBundle, buildPackage, storeFiles, storedFiles, fileSize, sizeOf, PackageFile } from './package';
 import { initLines } from './lines-ui';
 import { initTips } from './tips-ui';
 import { initSettings } from './settings-ui';
@@ -40,6 +41,7 @@ import { initNews } from './news';
 import { initPanels, type PanelEdge } from './panels-ui';
 import { initZen } from './zen';
 import { initTouchTitles } from './touch-titles';
+import { initTooltips } from './tooltips';
 import { keepMascots, mascot, mascotsOn } from './mascots';
 import { barProgress } from './mascotprogress';
 import { fixWithNucli, applyEditsToText } from './fixfx';
@@ -313,6 +315,7 @@ const editor = CodeMirror($('#editor'), {
         pkgProblems = pkgUI ? pkgUI.problems() : [];
         setFixCount(r.fixable, r.cleanups ?? 0);
         renderProblems(text);
+        countsChanged();
         // Unused code (tagged unnecessary) is faded, as VS Code fades it; hints among it get no squiggle.
         for (const m of fadeMarks) m.clear();
         fadeMarks = current.filter((d) => d.tags?.includes('unnecessary') && d.end > d.start).map((d) => editor.markText(posAt(text, d.start), posAt(text, d.end), { className: 'cm-unnecessary' }));
@@ -360,7 +363,7 @@ const editorHandlers: Record<string, (cm: any) => void> = {
 };
 const applyKeys = () => editor.setOption('extraKeys', codeKeyMap(editorHandlers, fixedCodeKeys));
 applyKeys();
-onBindingsChange(() => (applyKeys(), renderHelpKeys(), refreshKeyHints()));
+onBindingsChange(() => (applyKeys(), renderHelpKeys(), refreshKeyHints(), fillKeys()));
 // Set once the key hints are made (further down).
 let refreshKeyHints = () => {};
 keysByPosition(editor);
@@ -563,9 +566,10 @@ function folderProgText(p: FolderProgress): string {
 function folderProgHtml(): string {
   const p = folderProg;
   if (!p || p.phase === 'done') return '';
-  // Reading the program files has a real progress: Duo pushes the bar (the <progress> stays for screen readers).
-  const duo = p.phase === 'binaries' && mascotsOn() ? mascot('load', { size: 168, view: [10, 40, 102, 72], className: 'fp-duo' }) : '';
-  const bar = p.phase === 'binaries' ? `${duo}<progress id="gf-prog-bar" max="${Math.max(1, p.totalBytes)}" value="${p.bytes}" aria-label="Reading the game's program files"></progress>` : '<progress id="gf-prog-bar" aria-label="Listing the game\'s files"></progress>';
+  // Duo pushes the bar, a low strip as wide as the panel (the <progress> stays for screen readers). Listing has no
+  // total, so there he stands ready; reading the program files has a real progress.
+  const duo = mascotsOn() ? mascot('load', { size: 240, view: [4, 56, 300, 51], className: 'fp-duo wide' }) : '';
+  const bar = p.phase === 'binaries' ? `${duo}<progress id="gf-prog-bar" max="${Math.max(1, p.totalBytes)}" value="${p.bytes}" aria-label="Reading the game's program files"></progress>` : `${duo}<progress id="gf-prog-bar" aria-label="Listing the game's files"></progress>`;
   // The status text is read out when the step changes (aria-live), not at every file.
   return `<div class="fp-prog"><div class="fp-prog-row"><span id="gf-prog-text" role="status" aria-live="polite">${esc(p.phase === 'listing' ? `Reading ${p.name}…` : `Reading ${p.name}'s program files…`)}</span><button class="link" type="button" data-gf="cancel">Cancel</button></div>${bar}<div class="fp-prog-n muted" id="gf-prog-n">${esc(folderProgText(p))}</div></div>`;
 }
@@ -593,6 +597,7 @@ onFolderProgress((p) => {
   }
   if (changed || !bar) { pkgUI?.render(); if (p.phase === 'done') (editor as any).performLint(); return; }
   if (p.phase === 'binaries') { bar.max = Math.max(1, p.totalBytes); bar.value = p.bytes; if (duo) barProgress(duo, folderShare(p)); }
+  else if (duo) barProgress(duo, 0, undefined, true);
   const n = document.getElementById('gf-prog-n');
   if (n) n.textContent = folderProgText(p);
 });
@@ -601,13 +606,21 @@ const folderShare = (p: FolderProgress) => (p.phase === 'binaries' ? p.bytes / M
 // the new Duo is put at the current progress: without it he'd play his demo loop until the next update.
 function syncDuo() {
   const d = document.querySelector<HTMLElement>('.fp-duo');
-  if (d && folderProg?.phase === 'binaries') barProgress(d, folderShare(folderProg));
+  if (!d || !folderProg || folderProg.phase === 'done') return;
+  if (folderProg.phase === 'binaries') barProgress(d, folderShare(folderProg));
+  else barProgress(d, 0, undefined, true);
 }
-function gameSection(): string {
-  if (folderProg?.phase === 'binaries') queueMicrotask(syncDuo); // after the section is in the page
-  return `<section class="fp-game" aria-label="Your game on this PC"><div class="fp-head">Your game on this PC</div>${folderProgHtml()}${gameFolder
-    ? `<div class="fp-gname"><span class="fi-badge fi-dir" aria-hidden="true">▸</span>${esc(gameFolder.name)}</div><p>Check compares the handler's paths and file names with this folder, and the symlink options get a file picker. Nothing is uploaded.</p><div class="fp-gacts"><button class="btn" type="button" data-gf="show">What's in it</button><button class="btn" type="button" data-gf="pick">Pick another</button><button class="btn" type="button" data-gf="forget">Unlink</button></div>`
-    : `<p>Link the folder your game is installed in, and Check tells you when <code>ExecutableName</code>, <code>BinariesFolder</code> or a symlink option names a file that isn't there. Only names and sizes are read, and the game's .exe and DLLs for hints about hooks, on this device.</p><div class="fp-gacts"><button class="btn" type="button" data-gf="pick">Link the game's folder…</button></div>`}</section>`;
+/** A handler's last rows in Files: its game on this PC (the install folder Check compares the handler's paths with). */
+function gameSection(id: string, indent = 22): string {
+  const on = id === activeTab || !tabsReady;
+  const folder = on ? gameFolder : tabs.find((x) => x.id === id)?.folder ?? null;
+  const prog = on ? folderProgHtml() : '';
+  if (prog) queueMicrotask(syncDuo); // after the rows are in the page
+  const why = "Link the folder this game is installed in, and Check tells you when ExecutableName, BinariesFolder or a symlink option names a file that isn't there. Only names and sizes are read, and the game's .exe and DLLs for hints about hooks, on this device. Nothing is uploaded.";
+  const row = folder
+    ? `<li class="fp-item fp-gf"><button type="button" class="fp-open" data-gf="show" data-h="${id}" style="padding-left:${indent}px" title="${esc(`The game on this PC: ${folder.name}. Check compares the handler's paths and file names with this folder, and the symlink options get a file picker.`)}">${icon('link', 13)}<span class="fp-name">${esc(folder.name)}</span><span class="fp-size">game on this PC</span></button><button type="button" class="fp-del" data-gf="pick" data-h="${id}" aria-label="Pick another game folder" title="Pick another folder">${icon('link', 13)}</button><button type="button" class="fp-del" data-gf="forget" data-h="${id}" aria-label="Unlink the game folder ${esc(folder.name)}" title="Unlink">${icon('x', 13)}</button></li>`
+    : `<li class="fp-item fp-gf"><button type="button" class="fp-open fp-link" data-gf="pick" data-h="${id}" style="padding-left:${indent}px" title="${esc(why)}">${icon('link', 13)}<span class="fp-name">Link the game's folder…</span></button></li>`;
+  return `${row}${prog ? `<li class="fp-game">${prog}</li>` : ''}`;
 }
 async function onGameAction(act: string) {
   if (act === 'cancel') { cancelFolderRead(); announce('Stopped reading the game folder.'); return; }
@@ -1304,7 +1317,7 @@ $('#ps-text').addEventListener('click', () => stripStep(0));
 
 function jumpTo(offset: number) {
   if (narrow()) setView('code');
-  if (pkgUI?.active()) pkgUI.showHandler();
+  if (pkgUI?.away()) pkgUI.showHandler();
   const p = editor.posFromIndex(offset);
   editor.setCursor(p);
   editor.scrollIntoView(p, 80);
@@ -1392,7 +1405,7 @@ const debug = mountDebugger({
   panel: $('#panel-simulate'),
   options: simOptions,
   showTryIt: () => selectTab('simulate'),
-  showCode: () => { if (pkgUI?.active()) pkgUI.showHandler(); },
+  showCode: () => { if (pkgUI?.away()) pkgUI.showHandler(); },
   rerun: runSim,
   used: () => use('debugger'),
 });
@@ -1632,6 +1645,7 @@ function loadSource(src: string, meta: DocMeta, opts: { fresh?: boolean } = {}) 
   packageFiles = [];
   storeFiles([]);
   pkgUI?.reset();
+  if (tabsReady) activeT().main = true;
   editor.setValue(src);
   editor.clearHistory();
   foldCredit();
@@ -1654,9 +1668,20 @@ function loadSource(src: string, meta: DocMeta, opts: { fresh?: boolean } = {}) 
 editor.on('change', () => renderDocHead());
 
 // ---------------------------------------------------------------------------
-// Open handlers: tabs above the code. Each keeps its own code (and undo history), where it came from and its
-// package's other files. The open one lives in the usual draft keys; the others in their own keys.
-interface Tab { id: string; meta: DocMeta; base: string; text: string; files: PackageFile[]; cm?: any; counts?: { e: number; w: number }; folder?: GameFolder | null }
+// Open handlers. Each keeps its own code (and undo history), where it came from, its package's other files and its
+// game folder. Files lists them, a folder each; the tabs above the code are open files: a handler's handler.js and
+// the package files opened from the list. Closing a tab leaves the handler in the list; closing the handler (the × on
+// its folder) takes it out. The open one lives in the usual draft keys; the others in their own keys.
+// (A `Tab` is an open handler: the name is from when each handler was one tab.)
+interface Tab {
+  id: string; meta: DocMeta; base: string; text: string; files: PackageFile[]; cm?: any; counts?: { e: number; w: number }; folder?: GameFolder | null;
+  /** Its handler.js has a tab (the default). */
+  main?: boolean;
+  /** Its package files that have a tab. */
+  open?: string[];
+  /** The package file that was showing when another handler took the editor (null: handler.js). */
+  file?: string | null;
+}
 const TABS_KEY = 'nucleus-workbench-tabs';
 const textKey = (id: string) => `${STORE_KEY}:${id}`;
 const filesKey = (id: string) => `nucleus-workbench-files:${id}`;
@@ -1671,18 +1696,23 @@ const activeT = () => tabs.find((x) => x.id === activeTab)!;
 const countsOf = (list: Diagnostic[]) => ({ e: list.filter((d) => d.severity === 'error').length, w: list.filter((d) => d.severity === 'warning').length });
 function saveTabs() {
   try {
-    localStorage.setItem(TABS_KEY, JSON.stringify({ active: activeTab, tabs: tabs.map((x) => ({ id: x.id, meta: x.id === activeTab ? doc : x.meta, base: x.id === activeTab ? loadedText : x.base, counts: x.counts })) }));
+    localStorage.setItem(TABS_KEY, JSON.stringify({ active: activeTab, tabs: tabs.map((x) => {
+      const on = x.id === activeTab;
+      return { id: x.id, meta: on ? doc : x.meta, base: on ? loadedText : x.base, counts: x.counts, main: x.main !== false, open: on && pkgUI ? pkgUI.openList() : x.open ?? [], file: on && pkgUI ? pkgUI.active() : x.file ?? null };
+    }) }));
   } catch { /* storage full or off: the tabs live for this visit */ }
 }
 /** Puts the open handler's state into its tab (before switching away). */
 function stashTab() {
   pkgUI?.flush(); // its edits stay with this tab
   const x = activeT();
-  Object.assign(x, { meta: doc, base: loadedText, text: editor.getValue(), files: packageFiles, cm: editor.getDoc(), counts: countsOf(current), folder: gameFolder });
+  Object.assign(x, { meta: doc, base: loadedText, text: editor.getValue(), files: packageFiles, cm: editor.getDoc(), counts: countsOf(current), folder: gameFolder, open: pkgUI?.openList() ?? [], file: pkgUI?.active() ?? null });
   try { localStorage.setItem(textKey(x.id), x.text); } catch { /* ignore */ }
   storeFiles(x.files, filesKey(x.id));
 }
-function switchTab(id: string) {
+/** Makes a handler the one in the editor. `file` picks what shows: one of its package files, or null for
+ *  handler.js; left out, what was showing when it was last here. */
+function switchTab(id: string, file?: string | null) {
   if (id === activeTab || !tabs.some((x) => x.id === id)) return;
   stashTab();
   activeTab = id;
@@ -1699,8 +1729,8 @@ function switchTab(id: string) {
   editor.swapDoc(x.cm ?? CodeMirror.Doc(x.text, 'javascript'));
   x.cm = editor.getDoc();
   gameFolder = x.folder ?? null;
+  pkgUI?.reset((x.open ?? []).filter((n) => packageFiles.some((f) => f.name === n)));
   afterFolderChange();
-  pkgUI?.reset();
   if (doc.hash) history.replaceState(null, '', '#' + doc.hash);
   else if (location.hash) history.replaceState(null, '', location.pathname + location.search);
   clearNotice();
@@ -1708,10 +1738,85 @@ function switchTab(id: string) {
   (CodeMirror as any).signal(editor, 'change', editor, { origin: '+swap', from: { line: 0, ch: 0 }, to: { line: 0, ch: 0 }, text: [''], removed: [''] });
   (editor as any).performLint();
   renderDocHead();
+  // What shows: the file asked for, else the one that was up, else handler.js (its tab opens again if it was closed
+  // and the handler has no other tab).
+  const has = (n?: string | null): n is string => !!n && packageFiles.some((f) => f.name === n);
+  const want = file !== undefined ? file : has(x.file) ? x.file : x.main !== false ? null : pkgUI?.openList()[0] ?? null;
+  if (has(want)) pkgUI?.openFile(want);
+  else x.main = true;
   saveTabs();
   renderTabs();
   if (!$('#panel-simulate').hidden) runSim();
-  editor.focus();
+  if (!has(want)) editor.focus();
+}
+/** Every tab, in the order they show: each open handler's handler.js (when its tab is open), then its open files. */
+function viewList(): { id: string; file: string | null }[] {
+  return tabs.flatMap((x) => {
+    const files = x.id === activeTab && pkgUI ? pkgUI.openList() : x.open ?? [];
+    return [...(x.main !== false ? [{ id: x.id, file: null }] : []), ...files.map((file) => ({ id: x.id, file }))];
+  });
+}
+/** The tab that shows now (none when every tab is closed). */
+const shownView = () => (pkgUI?.isEmpty() ? null : { id: activeTab, file: pkgUI?.active() ?? null });
+const sameView = (a: { id: string; file: string | null } | null, b: { id: string; file: string | null }) => !!a && a.id === b.id && a.file === b.file;
+/**
+ * The preview tab, as in VS Code: a file picked with one click in Files opens in it, and the next file picked that
+ * way takes it over, so looking through files doesn't pile up tabs. A double click on the file or on its tab,
+ * or a change to it, keeps it (it becomes a tab of its own). There is one at most.
+ */
+let previewTab: { id: string; file: string | null } | null = null;
+function keepPreview(v = previewTab) {
+  if (!previewTab || !v || !sameView(previewTab, v)) return;
+  previewTab = null;
+  renderTabs();
+}
+/** A file picked in Files: shown in its tab when it has one; else in the preview tab (`keep`: a tab of its own). */
+function openFromList(id: string, file: string | null, keep: boolean) {
+  const v = { id, file };
+  const has = (id === activeTab ? viewList() : []).some((x) => sameView(x, v)) || (id !== activeTab && (file ? (tabs.find((x) => x.id === id)?.open ?? []).includes(file) : tabs.find((x) => x.id === id)?.main !== false));
+  if (keep) { if (previewTab && sameView(previewTab, v)) previewTab = null; }
+  else if (!has) {
+    // The file the preview tab showed gives its place up.
+    const old = previewTab;
+    if (old && !sameView(old, v)) {
+      const x = tabs.find((y) => y.id === old.id);
+      if (x && old.file) { if (old.id === activeTab) pkgUI?.closeFile(old.file); else x.open = (x.open ?? []).filter((n) => n !== old.file); if (x.file === old.file) x.file = null; }
+      else if (x) x.main = false;
+    }
+    previewTab = v;
+  }
+  showView(id, file);
+  saveTabs();
+  renderTabs();
+  pkgUI?.render();
+}
+/** Shows a tab: a handler's handler.js (file null) or one of its package files. */
+function showView(id: string, file: string | null) {
+  if (id !== activeTab) return switchTab(id, file);
+  if (file) pkgUI?.openFile(file);
+  else pkgUI?.showHandler();
+}
+/** Closes a tab. The handler stays in Files; the tab next to it shows, or nothing when it was the last. */
+function closeView(id: string, file: string | null) {
+  const x = tabs.find((y) => y.id === id);
+  if (!x) return;
+  const order = viewList();
+  const i = order.findIndex((v) => v.id === id && v.file === file);
+  if (i < 0) return;
+  const wasShown = sameView(shownView(), { id, file });
+  if (previewTab && sameView(previewTab, { id, file })) previewTab = null;
+  if (file) {
+    if (id === activeTab) pkgUI?.closeFile(file);
+    else { x.open = (x.open ?? []).filter((n) => n !== file); if (x.file === file) x.file = null; }
+  } else x.main = false;
+  if (wasShown) {
+    const next = order[i + 1] ?? order[i - 1];
+    if (next) showView(next.id, next.file);
+    else pkgUI?.showEmpty();
+  }
+  saveTabs();
+  renderTabs();
+  pkgUI?.render();
 }
 /** A new, empty tab (the caller fills it, e.g. loadSource). */
 function openTab() {
@@ -1733,11 +1838,13 @@ function closeTab(id: string) {
     switchTab(tabs[i + 1]?.id ?? tabs[i - 1].id);
   }
   const [gone] = tabs.splice(i, 1);
+  if (previewTab?.id === gone.id) previewTab = null;
   lastClosed = { tab: gone, index: i };
   try { localStorage.removeItem(textKey(gone.id)); localStorage.removeItem(filesKey(gone.id)); } catch { /* ignore */ }
   saveTabs();
   renderTabs();
-  notice(`Closed ${gone.meta.name}.`, { kind: 'info', action: { label: 'Undo', run: reopenClosed } });
+  pkgUI?.render();
+  notice(`Closed ${gameOf(gone.meta.name)}.`, { kind: 'info', action: { label: 'Undo', run: reopenClosed } });
 }
 function reopenClosed() {
   if (!lastClosed) return;
@@ -1760,28 +1867,56 @@ function reopenClosed() {
     saveTabs();
     renderTabs();
   }
+  pkgUI?.render();
   clearNotice();
 }
+/** The dot on a handler's tab and the count on its folder in Files follow Check: drawn again when a result changes
+ *  them for the handler in the editor. */
+let shownCounts = '';
+function countsChanged() {
+  if (!tabsReady) return;
+  const c = countsOf(current), key = `${activeTab}:${c.e}:${c.w}`;
+  if (key === shownCounts) return;
+  shownCounts = key;
+  activeT().counts = c;
+  renderTabs();
+  pkgUI?.render();
+}
+/** The game a handler is for, as its folder in Files and beside its tabs: its name without the file ending. */
+const gameOf = (name: string) => name.replace(/\.(js|zip|nc)$/i, '') || name;
 function renderTabs() {
   const live = countsOf(current);
   const allBtn = document.getElementById('tab-all');
   if (allBtn) allBtn.hidden = tabs.length < 2; // the list of open handlers: there as soon as there's more than one
-  requestAnimationFrame(() => document.querySelector(`#tab-${activeTab}`)?.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
+  const shown = shownView();
+  requestAnimationFrame(() => document.querySelector('#htabs .htab-w.on')?.scrollIntoView({ block: 'nearest', inline: 'nearest' }));
   const dot = (c?: { e: number; w: number }) => (!c ? '' : c.e ? ' e' : c.w ? ' w' : ' ok');
   const state = (c?: { e: number; w: number }) => (!c ? '' : c.e ? `, ${c.e} error${c.e === 1 ? '' : 's'}` : c.w ? `, ${c.w} warning${c.w === 1 ? '' : 's'}` : ', ready for Nucleus');
+  document.documentElement.dataset.handlers = String(tabs.length); // how many handlers are open (styles and tests)
+  // The tabs are drawn anew: the keyboard's place among them is kept.
+  const focused = $('#htabs').contains(document.activeElement) ? document.activeElement!.id : '';
+  if (focused) queueMicrotask(() => document.getElementById(focused)?.focus());
   $('#htabs').innerHTML = tabs.map((x) => {
-    const on = x.id === activeTab, c = on ? live : x.counts, name = on ? doc.name : x.meta.name, files = on ? packageFiles.length : x.files.length;
+    const here = x.id === activeTab, c = here ? live : x.counts, game = gameOf(here ? doc.name : x.meta.name);
+    const files = here && pkgUI ? pkgUI.openList() : x.open ?? [];
     // Changed since it was opened (as VS Code shows it: a dot where the close button is, the × on hover).
-    const meta = on ? doc : x.meta;
-    const edited = meta.kind !== 'draft' && meta.kind !== 'new' && (on ? editor.getValue() !== loadedText : x.text !== x.base);
-    return `<span class="htab-w${on ? ' on' : ''}${edited ? ' edited' : ''}" role="presentation"><button type="button" class="htab" role="tab" id="tab-${x.id}" data-tab-id="${x.id}" aria-selected="${on}" tabindex="${on ? 0 : -1}" title="${esc(name)}${files ? ` (with ${files} other file${files === 1 ? '' : 's'})` : ''}"><span class="ht-dot${dot(c)}" aria-hidden="true"></span><span class="ht-name">${esc(name)}</span>${files ? '<span class="ht-pk" aria-hidden="true">pkg</span>' : ''}<span class="sr-only">${esc(state(c))}${edited ? ', edited' : ''}. Delete closes it</span>${edited ? '<span class="ht-ed" aria-hidden="true" title="Edited">●</span>' : ''}<span class="ht-x" data-close="${x.id}" aria-hidden="true" title="Close">×</span></button></span>`;
+    const meta = here ? doc : x.meta;
+    const edited = meta.kind !== 'draft' && meta.kind !== 'new' && (here ? editor.getValue() !== loadedText : x.text !== x.base);
+    const tab = (file: string | null, i: number) => {
+      const on = sameView(shown, { id: x.id, file });
+      const pre = sameView(previewTab, { id: x.id, file });
+      const name = file ? file.split('/').pop()! : 'handler.js';
+      const ed = !file && edited;
+      return `<span class="htab-w${on ? ' on' : ''}${ed ? ' edited' : ''}${file ? ' ftab' : ''}${pre ? ' preview' : ''}" role="presentation"><button type="button" class="htab" role="tab" id="tab-${x.id}${file ? `-f${i}` : ''}" data-tab-id="${x.id}"${file ? ` data-file="${esc(file)}"` : ''} aria-selected="${on}" tabindex="${on ? 0 : -1}" title="${esc(file ? `${file} (${game})` : `${game}: handler.js`)}">${file ? fileIcon(file) : `<span class="ht-dot${dot(c)}" aria-hidden="true"></span>`}<span class="ht-name">${esc(name)}</span>${tabs.length > 1 ? `<span class="ht-of">${esc(game)}</span>` : ''}<span class="sr-only">${file ? '' : esc(state(c))}${ed ? ', edited' : ''}. Delete closes the tab</span>${ed ? '<span class="ht-ed" aria-hidden="true" title="Edited">●</span>' : ''}<span class="ht-x" data-close="${x.id}"${file ? ` data-close-file="${esc(file)}"` : ''} aria-hidden="true" title="Close the tab">×</span></button></span>`;
+    };
+    return [...(x.main !== false ? [tab(null, 0)] : []), ...files.map((f, i) => tab(f, i))].join('');
   }).join('');
 }
 function initTabs() {
   try {
     const s = JSON.parse(localStorage.getItem(TABS_KEY) || 'null');
     if (s?.tabs?.length) {
-      tabs = s.tabs.map((x: { id: string; meta: DocMeta; base: string; counts?: Tab['counts'] }) => ({ id: x.id, meta: x.meta, base: x.base ?? '', counts: x.counts, text: x.id === s.active ? '' : localStorage.getItem(textKey(x.id)) ?? '', files: x.id === s.active ? [] : storedFiles(filesKey(x.id)) }));
+      tabs = s.tabs.map((x: { id: string; meta: DocMeta; base: string; counts?: Tab['counts']; main?: boolean; open?: string[]; file?: string | null }) => ({ id: x.id, meta: x.meta, base: x.base ?? '', counts: x.counts, main: x.main !== false, open: Array.isArray(x.open) ? x.open : [], file: x.file ?? null, text: x.id === s.active ? '' : localStorage.getItem(textKey(x.id)) ?? '', files: x.id === s.active ? [] : storedFiles(filesKey(x.id)) }));
       activeTab = tabs.some((x) => x.id === s.active) ? s.active : tabs[0].id;
     }
   } catch { /* ignore */ }
@@ -1791,7 +1926,20 @@ function initTabs() {
   }
   Object.assign(activeT(), { meta: doc, base: loadedText, files: packageFiles, cm: editor.getDoc() });
   tabsReady = true;
+  {
+    // The open handler's tabs from last time, and the one that was showing.
+    const x = activeT();
+    const has = (n?: string | null): n is string => !!n && packageFiles.some((f) => f.name === n);
+    const open = (x.open ?? []).filter(has);
+    if (open.length || x.main === false) {
+      pkgUI?.reset(open);
+      const want = has(x.file) ? x.file : x.main !== false ? null : open[0] ?? null;
+      if (has(want)) pkgUI?.openFile(want);
+      else x.main = true;
+    }
+  }
   saveTabs();
+  pkgUI?.render(); // Files lists the handlers now that they're here
   // Left from the old "nothing open" page (removed): never read now.
   try { localStorage.removeItem('nucleus-workbench-none-open'); } catch { /* ignore */ }
   const strip = $('#htabs');
@@ -1807,7 +1955,7 @@ function initTabs() {
   renderTabs(); // after the ▾ exists, so it's shown or hidden from the start
   all.addEventListener('click', () => openMenu(all, 'Open handlers', tabs.map((x) => {
     const on = x.id === activeTab;
-    return { label: on ? doc.name : x.meta.name, checked: on, run: () => switchTab(x.id) };
+    return { label: gameOf(on ? doc.name : x.meta.name), checked: on, run: () => showView(x.id, null) };
   })));
   // No scroll bar on the tabs: a mouse wheel scrolls them sideways (trackpads already do).
   strip.addEventListener('wheel', (e) => {
@@ -1818,21 +1966,25 @@ function initTabs() {
   strip.addEventListener('click', (e) => {
     const t = e.target as HTMLElement;
     const close = t.closest<HTMLElement>('[data-close]');
-    if (close) return closeTab(close.dataset.close!);
+    if (close) return closeView(close.dataset.close!, close.dataset.closeFile ?? null);
     const tab = t.closest<HTMLElement>('[data-tab-id]');
-    if (tab) switchTab(tab.dataset.tabId!);
+    if (!tab) return;
+    showView(tab.dataset.tabId!, tab.dataset.file ?? null);
+    if (e.detail >= 2) keepPreview({ id: tab.dataset.tabId!, file: tab.dataset.file ?? null }); // a double click keeps the preview tab
   });
   strip.addEventListener('auxclick', (e) => {
     const tab = (e.target as HTMLElement).closest<HTMLElement>('[data-tab-id]');
-    if (e.button === 1 && tab) (e.preventDefault(), closeTab(tab.dataset.tabId!));
+    if (e.button === 1 && tab) (e.preventDefault(), closeView(tab.dataset.tabId!, tab.dataset.file ?? null));
   });
   strip.addEventListener('keydown', (e) => {
-    const i = tabs.findIndex((x) => x.id === activeTab);
-    const go = (j: number) => { switchTab(tabs[(j + tabs.length) % tabs.length].id); document.getElementById(`tab-${activeTab}`)?.focus(); };
-    if (e.key === 'ArrowRight') (e.preventDefault(), go(i + 1));
-    else if (e.key === 'ArrowLeft') (e.preventDefault(), go(i - 1));
-    else if (e.key === 'Delete') (e.preventDefault(), closeTab(activeTab));
+    const of = (e.target as HTMLElement).closest<HTMLElement>('[data-tab-id]');
+    const focusShown = () => document.querySelector<HTMLElement>('#htabs .htab-w.on .htab')?.focus();
+    if (e.key === 'ArrowRight') (e.preventDefault(), stepHandler(1), focusShown());
+    else if (e.key === 'ArrowLeft') (e.preventDefault(), stepHandler(-1), focusShown());
+    else if (e.key === 'Delete' && of) (e.preventDefault(), closeView(of.dataset.tabId!, of.dataset.file ?? null), focusShown());
   });
+  // Typing in a previewed handler.js keeps its tab.
+  editor.on('change', (_cm: unknown, ch: { origin?: string }) => { if (ch.origin && ch.origin !== 'setValue' && ch.origin !== '+swap') keepPreview({ id: activeTab, file: null }); });
   // The dot follows Check.
   editor.on('change', () => {
     // The edited dot at once (as VS Code); the counts and saving a moment later.
@@ -1998,9 +2150,10 @@ function commandList(): OpenEntry[] {
     c('Fix problems automatically', '', 'fix all repair autofix', click('#fix-all'), 'Every safe automatic fix, with a before/after to review'),
     c('Try it: simulate the handler', labelOf('tryIt'), 'run play simulate try', () => selectTab('simulate')),
     c('Go to line', labelOf('goToLine'), 'go to line number jump column', () => setTimeout(() => showOpen('line'), 0)),
-    c('Next open handler', labelOf('nextHandler'), 'next handler tab switch', () => stepHandler(1)),
-    c('Previous open handler', labelOf('prevHandler'), 'previous handler tab switch', () => stepHandler(-1)),
-    c('Close this handler', labelOf('closeHandler'), 'close handler tab', () => closeTab(activeTab)),
+    c('Next tab', labelOf('nextHandler'), 'next handler file tab switch', () => stepHandler(1)),
+    c('Previous tab', labelOf('prevHandler'), 'previous handler file tab switch', () => stepHandler(-1)),
+    c('Close this tab', labelOf('closeHandler'), 'close file tab', () => closeShown()),
+    c('Close this handler', '', 'close handler remove from files list', () => closeTab(activeTab)),
     c('Find', labelOf('find'), 'find search', () => openFind(editor)),
     c('Find and replace', labelOf('replace'), 'replace find search', () => openFind(editor, true)),
     c('Test all combinations', labelOf('testAll'), 'matrix players monitors keyboards test all', () => { selectTab('simulate'); click('#sim-all')(); }),
@@ -2025,7 +2178,7 @@ function commandList(): OpenEntry[] {
     c('New handler…', '', 'new create template', () => newDialog.showModal()),
     c('Copy the handler', '', 'copy clipboard code', () => copyCode()),
     c('Copy a link to this handler', '', 'share link url copy', click('[data-code=link]')),
-    c('Share the file (.zip and a message to post)', '', 'share file zip attach discord send package', click('[data-code=file]')),
+    c('Share the file (.zip and a message to post)', '', 'share file zip attach discord send package', () => void shareFile(shareButton())),
     c('Download for Nucleus (.zip)', labelOf('save'), 'save download zip nc package nucleus', click('[data-code=zip]')),
     c('Download the code (.js)', '', 'save download js file', click('[data-code=js]')),
     c('Theme: light', '', 'theme light colour color appearance', () => setThemeMode('light')),
@@ -2483,9 +2636,8 @@ function focusShownCode() {
   const shown = (el: Element) => (el as HTMLElement).offsetParent !== null && el.getClientRects().length > 0;
   if (shown(editor.getWrapperElement())) return editor.focus();
   // A package file's editor, then its card, before the head's buttons (Files, Lines…).
-  const row = document.querySelector<HTMLElement>('.main > .pane:not(.side) .code-row');
-  const pick = (sel: string) => [...(row?.querySelectorAll<HTMLElement>(sel) ?? [])].find(shown);
-  (pick('.CodeMirror textarea') ?? pick(FOCUSABLE))?.focus();
+  const pick = (root: string, sel: string) => [...(document.querySelector(root)?.querySelectorAll<HTMLElement>(sel) ?? [])].find(shown);
+  (pick('#file-editor', '.CodeMirror textarea') ?? pick('#file-card', FOCUSABLE))?.focus();
 }
 const zen = initZen({ refresh: () => editor.refresh(), focusCode: focusShownCode, announce, keys: () => labelOf('zen') });
 // Asked for a results tab: out of Zen mode at any width; the hidden pane back on wide screens (phones switch views).
@@ -2581,7 +2733,7 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
     open: () => togglePalette(false),
     tryIt: () => selectTab('simulate'),
     testAll: () => (selectTab('simulate'), click('#sim-all')()),
-    save: () => void saveAs(),
+    save: () => saveOrAsk(),
     saveAs: () => openMenu(shown('#save-more', '.rail [data-rail=save]', '#code-menu-phone') ?? $('#save-more'), 'Save as', saveItems(), document.documentElement.dataset.layout === 'rail' ? 'right' : 'below'),
     saveNucleus: () => void saveToNucleus(),
     lines: () => lines.toggle(),
@@ -2597,14 +2749,22 @@ document.addEventListener('keydown', (e: KeyboardEvent) => {
     goToCheck: () => goToCheck(),
     nextHandler: () => stepHandler(1),
     prevHandler: () => stepHandler(-1),
-    closeHandler: () => closeTab(activeTab),
+    closeHandler: () => closeShown(),
   };
   run[id]?.();
 });
-/** The next (or previous) open handler's tab, round the ends. */
+/** The next (or previous) tab, round the ends. */
 function stepHandler(dir: 1 | -1) {
-  const i = tabs.findIndex((x) => x.id === activeTab);
-  switchTab(tabs[(i + dir + tabs.length) % tabs.length].id);
+  const order = viewList();
+  if (!order.length) return;
+  const i = order.findIndex((v) => sameView(shownView(), v));
+  const next = order[i < 0 ? 0 : (i + dir + order.length) % order.length];
+  showView(next.id, next.file);
+}
+/** Closes the tab that shows. */
+function closeShown() {
+  const v = shownView();
+  if (v) closeView(v.id, v.file);
 }
 
 // F6 / Shift+F6, as in VS Code: the header, the Files panel, the code, Lines and the results, in turn.
@@ -2655,6 +2815,16 @@ document.querySelectorAll<HTMLElement>('[data-skip]').forEach((a) => a.addEventL
   }, true);
 }
 /** The shortcut list (?): from keybindings.ts, so it shows the keys as they're set now. */
+/** Shortcuts named in the page's own text (`<span data-key="<action id>">`, in Settings): the keys the person has
+ *  bound, as keycaps, and "no key set" for an action whose shortcut was cleared. The page's markup carries the
+ *  default as plain text until this runs. */
+function fillKeys() {
+  // Check's cards carry a data-key of their own (the problem's key): not those.
+  document.querySelectorAll<HTMLElement>('[data-key]:not(.pcard)').forEach((el) => {
+    const keys = labelOf(el.dataset.key!);
+    el.innerHTML = keys ? keysHtml(keys) : 'no key set';
+  });
+}
 function renderHelpKeys() {
   const body = document.querySelector('#help-dialog table.keys tbody');
   if (!body) return;
@@ -2668,6 +2838,7 @@ function renderHelpKeys() {
     .join('');
 }
 renderHelpKeys();
+fillKeys();
 initKeySettings($('#sp-keys'));
 $('#help-rebind').addEventListener('click', () => (helpDialog.close(), settings.open('keys')));
 
@@ -2736,10 +2907,22 @@ function showMainCode() {
   pkgUI?.deselect();
   $('#editor').hidden = false;
   editor.refresh();
+  if (tabsReady) activeT().main = true; // its tab is open (again)
 }
 pkgUI = initPackageUI({
   editor,
+  handlers: () => (tabsReady ? tabs : []).map((x) => {
+    const on = x.id === activeTab;
+    return { id: x.id, name: gameOf(on ? doc.name : x.meta.name), on, files: on ? packageFiles : x.files, counts: on ? countsOf(current) : x.counts };
+  }),
+  switchTo: (id) => switchTab(id),
+  closeHandler: (id) => closeTab(id),
+  openView: openFromList,
+  download: (ids, anchor) => openDownload(ids, anchor),
+  newMenu: (anchor) => openMenu(anchor, 'New or open', addItems()),
+  tabsChanged: () => { if (tabsReady) (renderTabs(), saveTabs()); },
   getFiles: () => packageFiles,
+  edited: (name) => keepPreview({ id: activeTab, file: name }),
   setFiles: (files) => { packageFiles = files; storeFiles(files); if (!doc.filesEdited) { doc.filesEdited = true; saveDocMeta(); } renderDocHead(); if (tabsReady) saveTabs(); },
   showMain: showMainCode,
   changed: () => { pkgProblems = pkgUI!.problems(); (editor as any).performLint(); },
@@ -2752,19 +2935,34 @@ pkgUI = initPackageUI({
 
 const LAYOUT_KEY = 'nucleus-workbench-layout';
 type Layout = 'bar' | 'rail';
-const layout = (): Layout => { try { return localStorage.getItem(LAYOUT_KEY) === 'rail' ? 'rail' : 'bar'; } catch { return 'bar'; } };
-function setLayout(l: Layout) {
-  try { localStorage.setItem(LAYOUT_KEY, l); } catch { /* ignore */ }
+/** The side rail is the default (the maintainer, 2026-11-22): the tools in a strip on the left, as in most code
+ *  editors. Whoever picked the slim bar keeps it. */
+const DEFAULT_LAYOUT: Layout = 'rail';
+const layout = (): Layout => { try { const v = localStorage.getItem(LAYOUT_KEY); return v === 'rail' || v === 'bar' ? v : DEFAULT_LAYOUT; } catch { return DEFAULT_LAYOUT; } };
+function applyLayout(l: Layout) {
   document.documentElement.dataset.layout = l;
+  // The tabs: above the code in the side rail layout (Files stands beside them, as in a code editor); in the slim
+  // bar's header otherwise.
+  const strip = document.querySelector<HTMLElement>('.htabs-wrap');
+  if (strip) {
+    if (l === 'rail') $('#tabs-slot').append(strip);
+    else document.querySelector('header .brand')?.after(strip);
+  }
   document.querySelectorAll<HTMLInputElement>('input[name="set-layout"]').forEach((r) => (r.checked = r.value === l));
   requestAnimationFrame(() => editor.refresh());
 }
-setLayout(layout());
+/** A choice: kept. (Opening the page doesn't save the default, so a later default reaches whoever never chose.) */
+function setLayout(l: Layout) {
+  try { localStorage.setItem(LAYOUT_KEY, l); } catch { /* ignore */ }
+  applyLayout(l);
+}
+applyLayout(layout());
 document.querySelectorAll<HTMLInputElement>('input[name="set-layout"]').forEach((r) => r.addEventListener('change', () => r.checked && setLayout(r.value as Layout)));
 const homeHref = () => (document.querySelector<HTMLAnchorElement>('a.home-link')?.href ?? 'start/');
 const addItems = (): MenuItem[] => [
   { label: 'New handler…', run: () => newDialog.showModal() },
   { label: 'Open a file…', hint: '.js .zip .nc', run: () => fileInput.click() },
+  { label: 'Open a folder…', hint: 'from another editor', run: () => folderInput.click() },
   { label: 'Examples and Hub handlers', hint: 'Ctrl K', run: () => showOpen() },
   ...(lastClosed ? [{ kind: 'separator' as const, label: '' }, { label: `Reopen ${lastClosed.tab.meta.name}`, run: reopenClosed }] : []),
 ];
@@ -2791,7 +2989,7 @@ $('#app-menu-open').addEventListener('click', () => openMenu($('#app-menu-open')
 $('#code-menu-phone').addEventListener('click', () => openMenu($('#code-menu-phone'), 'Save or share', [...saveItems(), { label: '', kind: 'separator' }, { label: 'Share…', run: openCodeDialog }]));
 $('#doc-switch').addEventListener('click', () => openMenu($('#doc-switch'), 'Open handlers', [
   { kind: 'heading', label: 'Open handlers' },
-  ...tabs.map((x) => ({ label: x.id === activeTab ? doc.name : x.meta.name, checked: x.id === activeTab, run: () => switchTab(x.id) })),
+  ...tabs.map((x) => ({ label: gameOf(x.id === activeTab ? doc.name : x.meta.name), checked: x.id === activeTab, run: () => showView(x.id, null) })),
   { label: `Close ${doc.name}`, run: () => closeTab(activeTab) },
   { kind: 'separator', label: '' },
   ...addItems(),
@@ -2818,7 +3016,8 @@ document.querySelectorAll<HTMLElement>('.rail [data-rail]').forEach((b) => b.add
   if (act === 'add') openMenu(b, 'New or open', addItems(), 'right');
   else if (act === 'menu') openMenu(b, 'Menu', appItems(), 'right');
   else if (act === 'lines') lines.toggle();
-  else if (act === 'save') { if ((e as MouseEvent).shiftKey) openMenu(b, 'Save as', saveItems(), 'right'); else void saveAs(undefined, b); }
+  else if (act === 'files') ($('#files-toggle') as HTMLButtonElement).click();
+  else if (act === 'save') { if ((e as MouseEvent).shiftKey) openMenu(b, 'Save as', saveItems(), 'right'); else saveOrAsk(b); }
   else if (act === 'share') openCodeDialog();
   else if (act === 'test') testGuide.open();
   else return; // Home is a link
@@ -2981,7 +3180,20 @@ onNarrowChange(() => editor.refresh());
 // ---------------------------------------------------------------------------
 // Open a file from the computer (picker or drag & drop): .js, or a .zip/.nc package (fileopen-ui.ts)
 
-const fileInput = initFileOpen({ loadSource, setPackageFiles });
+const { fileInput, folderInput } = initFileOpen({
+  loadSource,
+  setPackageFiles,
+  // A folder with several handlers (Nucleus Co-op's handlers folder): which ones to open.
+  choose: (names, open) => {
+    const anchor = shown('#tab-add', '.rail [data-rail=add]', '#doc-switch') ?? $('#tab-add');
+    const side = anchor.matches('.rail-btn') ? 'right' : 'below';
+    openMenu(anchor, 'Handlers in this folder', [
+      { kind: 'heading', label: `${names.length} handlers in this folder` },
+      ...(names.length <= 8 ? [{ label: 'Open them all', run: () => open(names.map((_, i) => i)) }, { kind: 'separator' as const, label: '' }] : []),
+      ...names.map((n, i) => ({ label: gameOf(n), run: () => open([i]) })),
+    ], side);
+  },
+});
 
 // ---------------------------------------------------------------------------
 // Save for Nucleus: a .zip with handler.js that Nucleus' "Extract handler" installs (the file name: savefile.ts)
@@ -3064,6 +3276,13 @@ function openFromHash(): boolean {
       devBar.show();
       dropHash();
       return false;
+    case 'motion-review':
+      // #motion-review: everything that moves, on one sheet (for reviewing the motion; nothing in the UI links to it).
+      dropHash();
+      import('./motionreview')
+        .then((m) => m.openMotionReview({ toast: (text) => showToast(text), note: (text) => codeNote(editor, editor.getCursor().line, text, { mood: 'info' }) }))
+        .catch(() => notice("The motion review didn't load. Check the connection and open the link again.", { kind: 'error' }));
+      return false;
     case 'hub':
       return void openHub(t.index), true;
     case 'probe':
@@ -3126,7 +3345,7 @@ const TOUR_ACTS: Record<string, TourStep['act']> = {
   tryit: { text: 'Click Try it to run the handler.', click: '.pane-head [data-tab=simulate]', show: '.pane.side' },
   docs: { text: 'Click Docs to open it.', click: '.pane-head [data-tab=api]', show: '.pane.side' },
   lines: { text: 'Click Lines to open it.', click: '#lines-toggle, .rail [data-rail=lines]', key: (e) => stepOf(e) === binding('lines'), run: () => lines.toggle(), show: '#lines', ...tourToggle(() => lines.isOpen(), () => lines.toggle()) },
-  files: { text: 'Click Files to open it.', click: '#files-toggle', show: '#files-panel', ...tourToggle(filesOn, () => ($('#files-toggle') as HTMLButtonElement).click()) },
+  files: { text: 'Click Files to open it.', click: '#files-toggle, .rail [data-rail=files]', show: '#files-panel', ...tourToggle(filesOn, () => ($('#files-toggle') as HTMLButtonElement).click()) },
   save: { text: 'Click the arrow to see the ways to save.', click: '#save-more', show: '.app-menu', undo: () => closeMenu() },
   menu: { text: 'Click the menu to open it.', click: '#app-menu-open, .rail [data-rail=menu]', show: '.app-menu', undo: () => closeMenu() },
 };
@@ -3212,6 +3431,7 @@ if (!document.querySelector('.pane-head [role=tab][aria-selected=true]')) {
   requestAnimationFrame(placeInk);
 }
 initTouchTitles();
+initTooltips();
 
 // The phone's own "Select all" selects the whole editable area. CodeMirror then redraws that same
 // selection in its own form, and the phone takes the redraw as a new selection by the page and
@@ -3265,13 +3485,16 @@ function syncSaveButton() {
 }
 syncSaveButton();
 let codeDialogOpening = 0;
-function openCodeDialog() {
+let discordAsFile = false;
+function openCodeDialog(download: string[] = [activeTab]) {
   pkgUI?.flush(); // a package file typed in just now counts
   const opening = ++codeDialogOpening; // a slow link from an earlier opening doesn't update this one
-  $('#save-h').textContent = 'Share';
+  $('#save-h').textContent = 'Share or download';
+  // Sharing is one handler: the one in the editor, named here when more are open (they aren't part of it).
+  $('#code-share-h').innerHTML = tabsReady && tabs.length > 1 ? `Share <span class="code-of">${esc(gameOf(doc.name))}</span>` : 'Share';
+  if (tabsReady) fillDownload(download);
   $('#code-main').hidden = false;
   $('#code-done').hidden = true;
-  const len = editor.getValue().length + 10;
   // Which of the two leads: the link when it carries the whole handler and fits a Discord message, else the file.
   const selection = !!editor.getSelection();
   // Unchanged (code and package files): the link is the handler's own; a name link (#hub-…) is short and opens its files too.
@@ -3288,19 +3511,21 @@ function openCodeDialog() {
   }
   const advise = (linkLength: number | null) => {
     const a = shareAdvice({ selection, files: packageFiles.length, linkLength, named, missing: remote.length });
-    $('#code-link-sub').textContent = a.linkSub;
-    $('#code-file-sub').textContent = a.fileSub;
+    // A link that can't carry all of it (files, or too long to post) says so on the button; the .zip is in Download.
+    $('#code-link-sub').textContent = a.fileFirst ? `${a.linkSub}. Download the .zip to send all of it.` : a.linkSub;
+    $('#code-link-sub').classList.toggle('code-keep', a.fileFirst);
     $('#code-file-warn').hidden = !a.fileWarn;
     $('#code-file-warn').lastChild!.textContent = a.fileWarn;
-    codeDialog.querySelector('[data-code=link]')!.className = a.fileFirst ? 'code-opt' : 'code-hero';
-    codeDialog.querySelector('[data-code=file]')!.className = a.fileFirst ? 'code-hero' : 'code-opt';
   };
   advise(null);
   // The link's real length takes a moment (it's compressed): the dialog opens at once and settles when it's known.
   const base = location.href.replace(/#.*$/, '').length + 1;
   if (unchanged) advise(base + doc.hash!.length);
   else void encodeShare(editor.getSelection() || editor.getValue()).then((id) => { if (codeDialog.open && opening === codeDialogOpening) advise(base + id.length); }, () => {});
-  $('#code-discord-sub').textContent = len > DISCORD_LIMIT ? `Too long for one message (${len.toLocaleString()} of ${DISCORD_LIMIT.toLocaleString()} characters): select the lines that matter first` : 'The code in a code block, ready to paste';
+  // Too long for one Discord message: the button says so, and saves the .zip with a message to post instead.
+  discordAsFile = (editor.getSelection() || editor.getValue()).length + 10 > DISCORD_LIMIT;
+  $('#code-discord-sub').classList.toggle('code-keep', discordAsFile);
+  $('#code-discord-sub').textContent = discordAsFile ? 'Too long for one message: this saves the .zip and copies a message to post with it. Or select fewer lines first.' : 'The code in a code block, ready to paste';
   codeDialog.showModal();
 }
 function showInstallSteps(filename: string) {
@@ -3339,6 +3564,71 @@ async function saveAs(kind: SaveKind = saveKind(), trigger: HTMLElement = saveBu
     if (e?.code === 'declined') return;
     notice("Couldn't save the file here. Share › Copy the code instead, and paste it into a .js file.", { kind: 'error' });
   }
+}
+/**
+ * Download, when more than one handler is open: one prompt, wherever it is asked from. Which handlers (the one in
+ * the editor, some, or all of them) and as what. Only the ticks it opens with differ: Save has the handler in the
+ * editor ticked, a folder's button in Files that handler, the button at the top of Files all of them.
+ * One handler downloads as the kind picked (.zip, .js or .nc); several as one .zip with a .js and a folder each.
+ */
+let dlTrigger: HTMLElement | null = null;
+/** Opens Share or download with these handlers ticked for the download (and the keyboard on its Download part). */
+function openDownload(ids: string[] = [activeTab], trigger: HTMLElement = saveButton()) {
+  dlTrigger = trigger;
+  openCodeDialog(ids);
+  requestAnimationFrame(() => (document.querySelector<HTMLElement>('#dl-many:not([hidden]), #dl-kinds:not([hidden]) [data-code]') ?? $('#code-dl-h')).focus());
+}
+/** A handler's size as its row says it: its handler.js and the files with it. */
+const dlFiles = (x: Tab) => { const n = (x.id === activeTab ? packageFiles : x.files).length + 1; return `${n} file${n === 1 ? '' : 's'}`; };
+/** The Download part: which handlers (shown once more than one is open), then how. */
+function fillDownload(ids: string[]) {
+  ($('#dl-set') as HTMLElement).hidden = tabs.length < 2;
+  $('#dl-items').innerHTML = tabs.map((x) => `<label class="set-check"><input type="checkbox" name="dl-h" value="${x.id}"${ids.includes(x.id) ? ' checked' : ''}> <span>${icon('folder', 15)}<span class="dl-name">${esc(gameOf(x.id === activeTab ? doc.name : x.meta.name))}</span><small>${dlFiles(x)}</small>${x.id === activeTab ? '<small class="dl-here">in the editor</small>' : ''}</span></label>`).join('');
+  syncDownload();
+}
+const dlPicked = () => (tabs.length < 2 ? [activeTab] : [...document.querySelectorAll<HTMLInputElement>('#dl-items input:checked')].map((i) => i.value));
+function syncDownload() {
+  const n = dlPicked().length;
+  const all = $('#dl-all') as HTMLInputElement;
+  all.checked = n === tabs.length;
+  all.indeterminate = n > 0 && n < tabs.length;
+  // One handler: as a .zip, the .js or a .nc. Several: one .zip of them all.
+  ($('#dl-kinds') as HTMLElement).hidden = n !== 1;
+  ($('#dl-many') as HTMLElement).hidden = n < 2;
+  $('#dl-many-b').textContent = `${n} handlers as one .zip`;
+  $('#dl-note').textContent = n ? '' : 'Tick at least one handler to download.';
+}
+$('#dl-items').addEventListener('change', syncDownload);
+$('#dl-all').addEventListener('change', () => { const on = ($('#dl-all') as HTMLInputElement).checked; document.querySelectorAll<HTMLInputElement>('#dl-items input').forEach((i) => (i.checked = on)); syncDownload(); });
+/** A handler's code and files as they'd be saved: the one in the editor with its credit lines, another as it was left. */
+function exportOf(id: string): { name: string; text: string; files: PackageFile[] } {
+  const x = tabs.find((y) => y.id === id)!;
+  if (id === activeTab) { const text = exportText(); return { name: handlerFileName(), text, files: packageFiles }; }
+  return { name: saveFileName(x.text, x.meta.name), text: x.text, files: x.files };
+}
+async function downloadHandlers(ids: string[], kind: SaveKind, trigger: HTMLElement) {
+  if (!ids.length) return;
+  if (ids.length === 1 && ids[0] === activeTab) return saveAs(kind, trigger);
+  if (!downloads) return notice("Saving files isn't available here. Share › Copy the code, and paste it into a .js file.", { kind: 'error' });
+  try {
+    const list = ids.map(exportOf);
+    const one = list.length === 1 ? list[0] : null;
+    const filename = one ? `${one.name}.${kind}` : 'handlers.zip';
+    const data = one ? (kind === 'js' ? new TextEncoder().encode(one.text) : buildPackage(one.text, one.files)) : buildBundle(list.map((h) => ({ name: h.name, handler: h.text, files: h.files })));
+    await downloads.save({ filename, data });
+    waka.saved();
+    use(one ? `save-${kind}` : 'save-bundle');
+    confirmOn(trigger, 'Saved ✓', one ? `Saved ${filename}.` : `Saved ${filename}: ${list.length} handlers (${list.map((h) => h.name).join(', ')}).`);
+    if (!one || kind !== 'js') noteRemoteFiles(list.flatMap((h) => h.files.filter((f) => f.remote)));
+  } catch (e: any) {
+    if (e?.code === 'declined') return;
+    notice("Couldn't save the file here.", { kind: 'error' });
+  }
+}
+/** Save: straight to a file with one handler open; the Download prompt (this handler ticked) with several. */
+function saveOrAsk(trigger: HTMLElement = saveButton()) {
+  if (tabsReady && tabs.length > 1) return openDownload([activeTab], trigger);
+  void saveAs(undefined, trigger);
 }
 /** After saving a package: the Hub package's big files that aren't downloaded here aren't in it. */
 function noteRemoteFiles(remote = packageFiles.filter((f) => f.remote)) {
@@ -3401,12 +3691,30 @@ async function saveToNucleus(pick = false, trigger: HTMLElement = saveButton()) 
     notice(`Couldn't save into the folder${r.message ? ` (${r.message})` : ''}. Save the .zip instead and drag it onto Nucleus Co-op.`, { kind: 'error' });
   }
 }
+/** The handler and its files into a folder you pick, as VS Code, Notepad++ and ncdev read them (and as Nucleus
+ *  Co-op's handlers folder holds them); "Open a folder…" brings it back. */
+async function saveToFolder(trigger: HTMLElement = saveButton()) {
+  pkgUI?.flush();
+  const viaZip = async (why: string) => {
+    await saveAs('zip', trigger);
+    notice(`${why} Unpack the .zip where your editor works; "Open a folder…" reads it back.`, { kind: 'info' });
+  };
+  if (!canSaveIntoFolder()) return viaZip("This browser can't save into a folder (Chrome and Edge can).");
+  const r = await saveIntoFolder(exportText(), packageFiles);
+  if (r.ok) {
+    waka.saved();
+    use('save-folder');
+    confirmOn(trigger, 'Saved ✓', `Saved into ${r.folder}: ${r.js}${r.files ? ` and ${r.files} file${r.files === 1 ? '' : 's'} in its folder` : ''}.${r.skipped ? ` ${r.skipped} file${r.skipped === 1 ? '' : 's'} left out (at the package's top level, or not downloaded from the Hub).` : ''}`);
+  } else if (r.reason === 'denied') await viaZip("The browser didn't allow saving into a folder here.");
+  else if (r.reason === 'error') notice(`Couldn't save into the folder${r.message ? ` (${r.message})` : ''}. Save the .zip instead.`, { kind: 'error' });
+}
 const saveItems = (): MenuItem[] => [
   { label: 'Save as', kind: 'heading' },
   // A Hub package's big files aren't here to save: said before saving, with the way to get them.
   ...((r) => (r.length ? [{ label: `${missingFilesText(r.length)} Open the Hub page`, run: () => void window.open(r[0].remote!.url, '_blank', 'noopener') }] : []))(packageFiles.filter((f) => f.remote)),
   ...(['zip', 'js', 'nc'] as SaveKind[]).map((k) => ({ label: SAVE_LABEL[k], checked: saveKind() === k, run: () => void saveAs(k) })),
   { label: '', kind: 'separator' as const },
+  { label: 'As a folder, for another editor…', run: () => void saveToFolder() },
   { label: nucleusFolderName ? `Into Nucleus Co-op (${nucleusFolderName})` : 'Into Nucleus Co-op…', run: () => void saveToNucleus() },
   ...(nucleusFolderName ? [{ label: 'Into another Nucleus Co-op folder…', run: () => void saveToNucleus(true) }] : []),
   { label: 'How to install it in Nucleus', run: () => showInstallSteps(`${handlerFileName()}.zip`) },
@@ -3421,18 +3729,24 @@ async function copyForDiscord(trigger: HTMLElement) {
     notice("The browser didn't let this page copy. Use Copy the code instead.", { kind: 'warning' });
   }
 }
-$('#code-menu-open').addEventListener('click', () => void saveAs());
+$('#code-menu-open').addEventListener('click', () => saveOrAsk());
 $('#save-more').addEventListener('click', () => openMenu($('#save-more'), 'Save as', saveItems()));
-$('#share-open').addEventListener('click', openCodeDialog);
+$('#share-open').addEventListener('click', () => openCodeDialog());
 $('#code-close').addEventListener('click', () => codeDialog.close());
 codeDialog.querySelectorAll<HTMLButtonElement>('[data-code]').forEach((b) =>
   b.addEventListener('click', async () => {
     const kind = b.dataset.code;
+    // From the command palette the dialog isn't open and its list isn't filled in: the handler in the editor.
+    const picked = codeDialog.open ? dlPicked() : [activeTab];
     codeDialog.close();
     if (kind === 'copy') return copyCode();
     if (kind === 'link') return copyLink(shareButton());
-    if (kind === 'discord') return copyForDiscord(shareButton());
-    if (kind === 'file') return shareFile(shareButton());
+    if (kind === 'discord') return discordAsFile ? shareFile(shareButton()) : copyForDiscord(shareButton());
+    // Download: the handlers ticked (the one in the editor when only one is open), as the kind of the button.
+    const ids = picked, trigger = dlTrigger ?? saveButton();
+    dlTrigger = null;
+    if (kind === 'bundle') return downloadHandlers(ids, 'zip', trigger);
+    if (kind === 'zip' || kind === 'js' || kind === 'nc') return downloadHandlers(ids, kind, trigger);
   }),
 );
 initSheetDrag();

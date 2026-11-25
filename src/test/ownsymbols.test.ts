@@ -186,3 +186,62 @@ test('Context.Options keys: the closing quote and bracket are added when the edi
   const closed = t.replace('Options["\n', 'Options[""]\n');
   assert.equal(completionsAt(closed, at)![0].insertText, 'mode');
 });
+
+test('hover: grouping parentheses, a regular expression and a block comment don\'t throw the parameter off', () => {
+  const code = [
+    'function mine(first, second, third) {}',
+    'mine((1 + 2), 3, 4);',
+    'mine(/,[/,]\\//, 22, 33);',
+    'var half = 8 / 2, rest = mine(5, 6, 7);',
+    'var n = 1, myreturn = 4;',
+    'mine(n++ / 2, 66 / 3, 77);',
+    'mine(myreturn / 2, 88 / 4, 99);',
+    "/* don't */ Context.Width;",
+  ].join('\n');
+  const at = (needle: string, plus = 0) => hoverAt(code, code.indexOf(needle) + plus, {});
+  // Inside parentheses that only group: still the argument of the call around them.
+  assert.match(at('1 + 2')!.markdown, /\(parameter\) first\n/);
+  // A comma inside a regular expression isn't a separator; a division is still a division.
+  assert.match(at('22')!.markdown, /\(parameter\) second\n/);
+  assert.match(at('6, 7')!.markdown, /\(parameter\) second\n/);
+  // After a postfix ++ and after a name that only ends in "return", a slash still divides.
+  assert.match(at('77')!.markdown, /\(parameter\) third\n/);
+  assert.match(at('99')!.markdown, /\(parameter\) third\n/);
+  // A quote in a block comment doesn't turn the rest of the line into text.
+  assert.match(at('Width', 1)!.markdown, /Width/);
+  assert.equal(at("don't", 1), undefined);
+});
+
+test('hover: an argument says which parameter it is', () => {
+  const code = [
+    'Game.AddOption("Game mode", "Pick how to play", "Mode", ["Co-op", "Versus"], "Co-op");',
+    'var ini = "a";',
+    'Game.Play = function () {',
+    '  Context.ModifySaveFile(ini, ini, Nucleus.SaveType.INI, [new Nucleus.IniSaveInfo("Video", "Width", Context.Width)]);',
+    '};',
+    'function mine(first, second) {}',
+    'mine(1, 2);',
+    'Game.AddOption("unfinished", ',
+  ].join('\n');
+  const at = (needle: string, plus = 1) => hoverAt(code, code.indexOf(needle) + plus, {});
+  // A plain value: the parameter's name and type, what to pass, and the call it belongs to. The whole argument is its range.
+  const name = at('"Game mode"')!;
+  assert.match(name.markdown, /^```ts\n\(parameter\) name: [^\n]+\n```\n\n[^\n]+\n\nArgument 1 of `Game\.AddOption\(name, desc, key, value, defaultValue\)`$/);
+  assert.equal(code.slice(name.range.start, name.range.end), '"Game mode"');
+  assert.match(at('"Mode"')!.markdown, /^```ts\n\(parameter\) key: string\n```[\s\S]*Argument 3 of `Game\.AddOption\(/);
+  // Inside an array that is an argument: the parameter the array is passed as.
+  const values = at('"Versus"')!;
+  assert.match(values.markdown, /\(parameter\) value: /);
+  assert.equal(code.slice(values.range.start, values.range.end), '["Co-op", "Versus"]');
+  // A Nucleus class and the handler's own function.
+  assert.match(at('"Video"')!.markdown, /^```ts\n\(parameter\) [\w]+: string\n```[\s\S]*Argument 1 of `new Nucleus\.IniSaveInfo\(/);
+  assert.match(at('2);', 0)!.markdown, /^```ts\n\(parameter\) second\n```\n\nArgument 2 of `mine\(first, second\)`$/);
+  // One of the handler's own names keeps its hover, with the parameter it is passed as under it.
+  const own = at('ini, ini')!;
+  assert.match(own.markdown, /ini/);
+  assert.match(own.markdown, /\n\nArgument 1 of `Context\.ModifySaveFile\([^`]*\)`: `\w+`/);
+  // An API name keeps its own docs; a call that isn't closed yet, and a place between arguments, show nothing new.
+  assert.doesNotMatch(hoverAt(code, code.indexOf('Nucleus.SaveType.INI') + 10, {})!.markdown, /\(parameter\)/);
+  assert.equal(at('"unfinished"'), undefined);
+  assert.equal(hoverAt(code, code.indexOf(', "Pick how') + 1, {}), undefined);
+});

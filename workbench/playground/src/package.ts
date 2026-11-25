@@ -55,6 +55,72 @@ export function buildPackage(handler: string, files: PackageFile[]): Uint8Array 
   return zipBytes(packageEntries(new TextEncoder().encode(handler), keep.map((f) => ({ name: f.name, data: f.data }))));
 }
 
+/** A handler in a .zip of several: its name (the file's, without .js), its code and its package files. */
+export interface BundleHandler { name: string; handler: string; files: PackageFile[] }
+/**
+ * Several handlers in one .zip, laid out as Nucleus Co-op's handlers folder holds them: `<Name>.js`, and the files of
+ * its package in `<Name>/` (the contents of each top-level folder, as a Hub install merges them; files at a package's
+ * root and a Hub package's files that aren't here are left out). Two handlers with one name get "(2)".
+ */
+export function buildBundle(list: BundleHandler[]): Uint8Array {
+  const files: { name: string; data: Uint8Array }[] = [];
+  // "handler" is taken: a root handler.js is what makes a .zip one package, not several handlers.
+  const used = new Set<string>(['handler']);
+  for (const h of list) {
+    let name = h.name;
+    for (let n = 2; used.has(name.toLowerCase()); n++) name = `${h.name} (${n})`;
+    used.add(name.toLowerCase());
+    files.push({ name: `${name}.js`, data: new TextEncoder().encode(h.handler) });
+    for (const f of h.files) {
+      const parts = f.name.split('/').filter((p) => p && p !== '.' && p !== '..');
+      if (parts.length < 2 || f.remote) continue;
+      files.push({ name: `${name}/${parts.slice(1).join('/')}`, data: f.data });
+    }
+  }
+  const dirs = new Set<string>();
+  for (const f of files) {
+    const parts = f.name.split('/');
+    for (let i = 1; i < parts.length; i++) dirs.add(`${parts.slice(0, i).join('/')}/`);
+  }
+  return zipBytes([...[...dirs].sort().map((name) => ({ name })), ...files]);
+}
+/** The handlers of a bundle, with the names of the entries this browser couldn't unpack (they're left out). */
+export type Bundle = BundleHandler[] & { unreadable: string[] };
+/**
+ * Reads a .zip of several handlers, as buildBundle writes them: two or more .js at its root, no handler.js, and
+ * every other entry in a folder named after one of them. Null when it isn't one (a package with a helper .js and
+ * files at its root stays one package, for readPackage).
+ */
+export async function readBundle(buf: ArrayBuffer): Promise<Bundle | null> {
+  let records: ZipRecord[];
+  try {
+    records = zipRecords(new Uint8Array(buf)).filter((r) => r.body);
+  } catch {
+    return null;
+  }
+  const roots = records.filter((e) => !e.name.includes('/') && /\.js$/i.test(e.name));
+  if (roots.length < 2 || roots.some((e) => e.name.toLowerCase() === 'handler.js')) return null;
+  const folders = new Set(roots.map((r) => r.name.replace(/\.js$/i, '').toLowerCase()));
+  if (records.some((e) => !roots.includes(e) && !folders.has(e.name.split('/')[0].toLowerCase()))) return null;
+  const read = async (e: ZipRecord) => (e.method === 0 ? e.body!.slice() : e.method === 8 ? inflate(e.body!) : null);
+  const out = Object.assign([] as BundleHandler[], { unreadable: [] as string[] });
+  for (const r of roots) {
+    const code = await read(r);
+    if (!code) { out.unreadable.push(r.name); continue; }
+    const name = r.name.replace(/\.js$/i, '');
+    const prefix = `${name.toLowerCase()}/`;
+    const files: PackageFile[] = [];
+    for (const e of records) {
+      if (!e.name.toLowerCase().startsWith(prefix)) continue;
+      const data = await read(e);
+      if (data) files.push({ name: e.name, data });
+      else out.unreadable.push(e.name);
+    }
+    out.push({ name, handler: new TextDecoder().decode(code), files });
+  }
+  return out.length ? out : null;
+}
+
 // --- kept with the draft in this browser, so a reload doesn't lose them
 const KEY = 'nucleus-workbench-package-files';
 const b64 = (d: Uint8Array) => {

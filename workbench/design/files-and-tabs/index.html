@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Workbench files and tabs</title>
+<style>
+/* A preview of the workbench with a file list on the left and tabs for open files (the maintainer's request,
+   2026-11-22). The workbench's own look (www): its colours, fonts and radii. Layout: rail | side panel | code | results. */
+:root {
+  --bg: #f5f6f7; --surface: #ffffff; --surface-2: #ebedf0; --line: #dadde1; --fg: #1c1e21; --muted: #5c636c;
+  --accent: #0c76a5; --accent-fg: #ffffff; --err: #c2262c; --warn: #855700; --ok: #0a7a2e; --info: #0b5c8a;
+  --code-bg: #f6f8fa; --gutter: #ebedf0;
+  --kw: #6f2db8; --str: #b0175a; --prop: #0b5c8a; --cmt: #6a737d; --name: #3b6600; --num: #5c636c; --atom: #0f6f6d;
+  --sel: color-mix(in srgb, var(--accent) 14%, var(--surface));
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, Ubuntu, Cantarell, "Noto Sans", sans-serif;
+  --mono: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  --r-pane: 12px; --r-ctl: 8px;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  color-scheme: dark;
+  --bg: #1b1b1d; --surface: #242526; --surface-2: #2e3033; --line: #444950; --fg: #e3e3e3; --muted: #b0b4ba;
+  --accent: #30bbf8; --accent-fg: #06131c; --err: #ff7b7f; --warn: #ffc94d; --ok: #5fd97c; --info: #8be9fd;
+  --code-bg: #282a36; --gutter: #2e3033;
+  --kw: #ff79c6; --str: #f1fa8c; --prop: #8be9fd; --cmt: #8b96c4; --name: #4ec9b0; --num: #b0b4ba; --atom: #bd93f9;
+} }
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #1b1b1d; --surface: #242526; --surface-2: #2e3033; --line: #444950; --fg: #e3e3e3; --muted: #b0b4ba;
+  --accent: #30bbf8; --accent-fg: #06131c; --err: #ff7b7f; --warn: #ffc94d; --ok: #5fd97c; --info: #8be9fd;
+  --code-bg: #282a36; --gutter: #2e3033;
+  --kw: #ff79c6; --str: #f1fa8c; --prop: #8be9fd; --cmt: #8b96c4; --name: #4ec9b0; --num: #b0b4ba; --atom: #bd93f9;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { background: var(--bg); color: var(--fg); font: 14px/1.45 var(--font); display: flex; flex-direction: column; }
+button { font: inherit; color: inherit; cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* What this page is: one line above the workbench, the notes below it. */
+.about { display: flex; flex-wrap: wrap; gap: 6px 16px; align-items: baseline; padding: 8px 16px; background: var(--surface); border-bottom: 1px solid var(--line); font-size: 13px; }
+.about h1 { font-size: 14px; margin: 0; }
+.about p { margin: 0; color: var(--muted); }
+.notes { padding: 10px 16px 14px; background: var(--surface); border-top: 1px solid var(--line); font-size: 13px; }
+.notes h2 { font-size: 13px; margin: 0 0 4px; }
+.notes ul { margin: 0; padding-left: 18px; display: grid; gap: 2px; max-width: 110ch; }
+
+.wb { flex: 1; min-height: 0; display: flex; }
+/* The rail: which side panel shows (as an editor's activity bar), then help and the menu. */
+.rail { width: 52px; flex: none; background: var(--surface); border-right: 1px solid var(--line); display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 10px 0; }
+.rail button { width: 36px; height: 36px; border: 0; border-radius: var(--r-ctl); background: none; color: var(--muted); display: grid; place-items: center; position: relative; }
+.rail button:hover { background: var(--surface-2); color: var(--fg); }
+.rail button[aria-pressed="true"] { color: var(--accent); background: var(--sel); }
+.rail button[aria-pressed="true"]::before { content: ""; position: absolute; left: -8px; top: 6px; bottom: 6px; width: 3px; border-radius: 2px; background: var(--accent); }
+.rail .sp { flex: 1; }
+svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+
+/* The side panel: the file list, or Lines. */
+.side { width: 248px; flex: none; background: var(--surface); border-right: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+.side[hidden] { display: none; }
+.side-head { display: flex; align-items: center; gap: 6px; padding: 10px 10px 6px 14px; font-size: 11.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.side-head span { flex: 1; }
+.side-head button { width: 26px; height: 26px; border: 0; border-radius: 6px; background: none; color: var(--muted); display: grid; place-items: center; }
+.side-head button:hover { background: var(--surface-2); color: var(--fg); }
+.side-head svg { width: 16px; height: 16px; }
+.tree { list-style: none; margin: 0; padding: 0 6px 8px; overflow: auto; flex: 1; }
+.tree ul { list-style: none; margin: 0; padding: 0; }
+.row { display: flex; align-items: center; gap: 6px; width: 100%; min-height: 28px; padding: 2px 8px; border: 0; border-radius: 6px; background: none; text-align: left; font-size: 13.5px; }
+.row:hover { background: var(--surface-2); }
+.row[aria-current="true"] { background: var(--sel); }
+.row .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .tw { width: 12px; flex: none; color: var(--muted); font-size: 10px; text-align: center; }
+.ico { width: 16px; height: 16px; flex: none; border-radius: 4px; display: grid; place-items: center; font: 700 8.5px/1 var(--mono); color: #fff; }
+.ico.js { background: #b8860b; } .ico.ini { background: #6a737d; } .ico.txt { background: #8d6e97; } .ico.dir { background: none; color: var(--muted); font-size: 12px; }
+.badge { flex: none; min-width: 18px; padding: 0 5px; border-radius: 999px; font-size: 11px; font-weight: 600; text-align: center; background: color-mix(in srgb, var(--err) 14%, var(--surface)); color: var(--err); }
+.badge.ok { background: color-mix(in srgb, var(--ok) 14%, var(--surface)); color: var(--ok); }
+.depth1 { padding-left: 18px; } .depth2 { padding-left: 38px; } .depth3 { padding-left: 58px; }
+.add { color: var(--muted); font-size: 12.5px; }
+.game { border-top: 1px solid var(--line); padding: 10px 14px 12px; font-size: 12.5px; color: var(--muted); }
+.game b { display: block; font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase; margin-bottom: 4px; }
+.btn { border: 1px solid var(--line); background: var(--surface); border-radius: var(--r-ctl); padding: 5px 12px; font-size: 13px; }
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); font-weight: 600; }
+.lines { padding: 0 14px 10px; overflow: auto; font-size: 13px; }
+.lines h3 { font-size: 12px; color: var(--muted); margin: 10px 0 4px; }
+.lines code { display: block; padding: 3px 6px; border-radius: 6px; font: 12.5px var(--mono); }
+.lines code:hover { background: var(--surface-2); }
+
+/* The work area: tabs for open files, the code, the results. */
+.work { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 10px 12px 12px; gap: 10px; }
+.tabbar { display: flex; align-items: flex-end; gap: 8px; }
+.tabs { display: flex; gap: 2px; flex: 1; min-width: 0; overflow-x: auto; overflow-y: hidden; padding-top: 2px; }
+.tab { display: flex; align-items: center; gap: 7px; height: 36px; padding: 0 6px 0 12px; border: 1px solid transparent; border-bottom: 0; border-radius: 10px 10px 0 0; background: none; color: var(--muted); white-space: nowrap; font-size: 13.5px; }
+.tab:hover { background: var(--surface-2); }
+.tab[aria-selected="true"] { background: var(--surface); border-color: var(--line); color: var(--fg); font-weight: 600; }
+.tab small { color: var(--muted); font-weight: 400; font-size: 12px; }
+.tab .x { width: 22px; height: 22px; border: 0; border-radius: 6px; background: none; color: var(--muted); font-size: 15px; line-height: 1; }
+.tab .x:hover { background: var(--surface-2); color: var(--fg); }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--err); flex: none; }
+.dot.ok { background: var(--ok); }
+.acts { display: flex; gap: 8px; padding-bottom: 4px; }
+.panes { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 12px; position: relative; }
+.panes.no-results { grid-template-columns: minmax(0, 1fr); }
+.pane { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-pane); overflow: hidden; display: flex; flex-direction: column; min-height: 0; position: relative; }
+.crumb { padding: 7px 14px; border-bottom: 1px solid var(--line); font-size: 12.5px; color: var(--muted); }
+.crumb b { color: var(--fg); font-weight: 600; }
+.code { flex: 1; overflow: auto; background: var(--code-bg); font: 13px/1.55 var(--mono); display: grid; grid-template-columns: auto 1fr; align-content: start; }
+.code .ln { background: var(--gutter); color: var(--muted); text-align: right; padding: 0 10px 0 8px; user-select: none; display: flex; gap: 6px; justify-content: flex-end; align-items: center; }
+.code .ln i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.code .ln i.e { background: var(--err); } .code .ln i.w { background: #e8a400; clip-path: polygon(50% 0, 100% 100%, 0 100%); border-radius: 0; }
+.code .tx { padding: 0 14px 0 10px; white-space: pre; }
+.code .first { padding-top: 8px; }
+.k { color: var(--kw); } .s { color: var(--str); } .p { color: var(--prop); } .c { color: var(--cmt); font-style: italic; } .n { color: var(--name); font-weight: 600; } .d { color: var(--num); } .a { color: var(--atom); }
+.sq { text-decoration: underline wavy var(--err); text-underline-offset: 3px; }
+.plain .tx { color: var(--fg); }
+.rtabs { display: flex; gap: 4px; padding: 7px 56px 0 12px; border-bottom: 1px solid var(--line); min-height: 50px; align-items: flex-end; }
+.rtabs button { border: 0; background: none; padding: 9px 10px; border-bottom: 2px solid transparent; color: var(--muted); font-size: 14.5px; }
+.rtabs button[aria-selected="true"] { color: var(--fg); border-bottom-color: var(--fg); font-weight: 600; }
+.shelf { position: absolute; top: 8px; right: 8px; z-index: 2; height: 34px; display: inline-flex; align-items: center; gap: 6px; padding: 0 8px; border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--surface); color: var(--muted); font-size: 12.5px; }
+.shelf:hover { color: var(--fg); border-color: var(--accent); }
+.shelf svg { width: 16px; height: 16px; }
+.check { overflow: auto; padding: 12px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; align-content: start; }
+.verdict { background: var(--surface-2); border-radius: 10px; padding: 10px 12px; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: 13.5px; }
+.verdict .chip { padding: 2px 9px; border-radius: 999px; font-weight: 600; font-size: 12.5px; background: color-mix(in srgb, var(--err) 14%, var(--surface)); color: var(--err); }
+.verdict .chip.ok { background: color-mix(in srgb, var(--ok) 14%, var(--surface)); color: var(--ok); }
+.prob .btn { flex: none; }
+.prob { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 1px solid var(--line); border-left: 3px solid var(--err); border-radius: 10px; font-size: 13.5px; }
+.prob.w { border-left-color: #e8a400; } .prob.i { border-left-color: var(--info); }
+.prob code { font: 12px var(--mono); color: var(--info); }
+.prob b { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 600; }
+.empty { padding: 28px 16px; color: var(--muted); text-align: center; }
+@media (max-width: 900px) { .panes { grid-template-columns: minmax(0, 1fr); } .panes > .results { display: none; } .side { width: 210px; } .acts .btn:not(.primary) { display: none; } }
+@media (max-width: 560px) { .side { position: absolute; z-index: 5; top: 0; bottom: 0; left: 52px; box-shadow: 0 0 24px rgba(0,0,0,.2); } .wb { position: relative; } }
+@media (prefers-reduced-motion: no-preference) { .row, .tab, .rail button { transition: background-color .12s ease-out; } }
+</style>
+</head>
+<body>
+<header class="about">
+  <h1>Preview: a file list on the left, tabs for open files</h1>
+  <p>A mock-up to click around in, not the real workbench. The code and the problems are examples.</p>
+</header>
+
+<div class="wb">
+  <nav class="rail" aria-label="Tools">
+    <button type="button" id="r-files" aria-pressed="true" aria-label="Files" title="Files (click again to hide)"><svg viewBox="0 0 24 24"><path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z"/></svg></button>
+    <button type="button" id="r-lines" aria-pressed="false" aria-label="Lines" title="Lines: every name a handler can use"><svg viewBox="0 0 24 24"><path d="M5 7h14M5 12h14M5 17h9"/></svg></button>
+    <span class="sp"></span>
+    <button type="button" aria-label="Help test this beta" title="Help test this beta"><svg viewBox="0 0 24 24"><path d="M9 3h6M10 3v6l-5 9a2 2 0 0 0 1.8 3h10.4a2 2 0 0 0 1.8-3l-5-9V3"/></svg></button>
+    <button type="button" aria-label="Menu: settings, Advanced mode, help" title="Menu"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6l1.4 1.4M17 17l1.4 1.4M5.6 18.4 7 17M17 7l1.4-1.4"/></svg></button>
+  </nav>
+
+  <aside class="side" id="side-files" aria-label="Files">
+    <div class="side-head"><span>Files</span>
+      <button type="button" aria-label="New handler" title="New handler"><svg viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg></button>
+      <button type="button" aria-label="Open a file, an example or a Hub handler" title="Open a file, an example or a Hub handler"><svg viewBox="0 0 24 24"><path d="M4 7a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v1H4zM4 10h18l-2 9H6z"/></svg></button>
+    </div>
+    <ul class="tree" id="tree" role="tree" aria-label="Open handlers: a folder per game, as in a Hub package"></ul>
+    <div class="game"><b>Your game on this PC</b>Link the game's folder and Check compares the handler's paths with it.<div style="margin-top:8px"><button class="btn" type="button">Link the game's folder…</button></div></div>
+  </aside>
+  <aside class="side" id="side-lines" aria-label="Lines" hidden>
+    <div class="side-head"><span>Lines</span></div>
+    <div class="lines"><h3>The game</h3><code>Game.GameName</code><code>Game.GUID</code><code>Game.ExecutableName</code><code>Game.MaxPlayers</code><h3>Windows</h3><code>Game.SetWindowHook</code><code>Game.ResetWindows</code><code>Game.KeepAspectRatio</code><h3>Starting it</h3><code>Game.Play</code><code>Context.StartArguments</code><code>Game.KillMutex</code></div>
+  </aside>
+
+  <div class="work">
+    <div class="tabbar">
+      <div class="tabs" id="tabs" role="tablist" aria-label="Open files"></div>
+      <div class="acts"><button class="btn" type="button">Share</button><button class="btn primary" type="button">Save</button></div>
+    </div>
+    <div class="panes" id="panes">
+      <section class="pane" aria-label="Code">
+        <div class="crumb" id="crumb"></div>
+        <div class="code" id="code" tabindex="0" aria-label="The open file"></div>
+      </section>
+      <section class="pane results" aria-label="Results">
+        <div class="rtabs" role="tablist" aria-label="Results"><button type="button" role="tab" aria-selected="true">Check <span id="rcount"></span></button><button type="button" role="tab" aria-selected="false">Try it</button><button type="button" role="tab" aria-selected="false">Docs</button></div>
+        <div class="check" id="check"></div>
+      </section>
+      <button class="shelf" type="button" id="shelf" aria-pressed="true" aria-label="Hide the results"><span id="shelf-text" hidden>Results</span><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M15 3v18"/></svg></button>
+    </div>
+  </div>
+</div>
+
+<footer class="notes">
+  <h2>What is different from today</h2>
+  <ul>
+    <li><b>The file list is the outer level.</b> Each open handler is a folder named after its game, laid out like its Hub package: <code>handler.js</code> first, then the other files. Today the tabs are whole handlers and Files lists what's inside one.</li>
+    <li><b>Tabs are open files.</b> Click a file in the list to open it, the × to close its tab. Closing a tab doesn't close the handler: it stays in the list.</li>
+    <li><b>The rail switches the side panel</b>, Files or Lines, and the same button hides it. Save and Share move to the right of the tabs.</li>
+    <li><b>Check, Try it and Docs follow the handler of the open file</b>, also when that file is its <code>config.ini</code>. A tab names the game beside the file, since every handler's code is a <code>handler.js</code>.</li>
+  </ul>
+</footer>
+
+<script>
+// The open handlers, as the Hub's packages: a folder named after the game, handler.js first, then its other files.
+var HANDLERS = [
+  { id: 'buggy', name: 'Buggy Game', open: true, problems: [
+      ['e', 6, 'The value has the wrong form:', 'Game.KillMutex'], ['e', 12, 'Code in the wrong place:', 'Context'], ['e', 15, 'Newer JavaScript than Nucleus understands', ''],
+      ['w', 5, 'The same setting is set twice:', 'Game.MaxPlayers'], ['w', 7, 'A name Nucleus doesn\'t know:', 'IgnoreWindowBordercheck'], ['i', 3, 'Special characters in the GUID:', 'Game.GUID']],
+    files: [
+      { name: 'handler.js', kind: 'js', marks: { 5: 'w', 6: 'e', 7: 'w', 12: 'e', 15: 'e' }, text: '// A handler with common mistakes. See what Check finds, then fix them.\nGame.GameName = "Buggy Game";\nGame.GUID = "Buggy: Game!";\nGame.ExecutableName = "buggy.exe";\nGame.MaxPlayers = 4;\nGame.KillMutex = "BuggyMutex";\nGame.IgnoreWindowBordercheck = true;\nGame.SymlinkGame = "true";\nGame.DPIHandling = true;\nGame.MaxPlayers = 8;\n\nvar width = Context.Width;\n\nGame.Play = function () {\n  const args = `-windowed -w ${Context.Width}`;\n  Context.StartArguments = args + " -id " + Context.PlayerID;\n  var ini = Context.GetFolder(Nucleus.Folder.InstancedGameFolder) + "\\\\config.ini";\n  Context.ModifySaveFile(ini, ini, Nucleus.SaveType.INI, [\n    new Nucleus.IniSaveInfo("Video", "Width", Context.Width)\n  ]);\n};' },
+      { name: 'config.ini', kind: 'ini', text: '[Video]\nWidth=1920\nHeight=1080\nFullscreen=0\n\n[Input]\nController=1' },
+      { name: 'readme.txt', kind: 'txt', text: 'Copy config.ini next to buggy.exe before the first start.\nThe handler writes each player\'s window size into it.' }
+    ] },
+  { id: 'mine', name: 'My Game', open: true, problems: [],
+    files: [
+      { name: 'handler.js', kind: 'js', marks: {}, text: 'Game.GameName = "My Game";\nGame.GUID = "My Game";\nGame.ExecutableName = "mygame.exe";\nGame.MaxPlayers = 4;\nGame.SymlinkGame = true;\nGame.SymlinkExe = false;\n\nGame.Play = function () {\n  Context.StartArguments = "-windowed -w " + Context.Width + " -h " + Context.Height;\n};' }
+    ] }
+];
+var tabs = [['buggy', 0], ['buggy', 1], ['mine', 0]];
+var active = 0;
+function esc(t) { return t.replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
+function handler(id) { return HANDLERS.filter(function (h) { return h.id === id; })[0]; }
+// A small highlighter for the example code: comments, strings, keywords, the API's names, numbers.
+function hl(line) {
+  var out = '', re = /(\/\/.*$)|("(?:[^"\\]|\\.)*"|`[^`]*`)|\b(var|const|function|new|return|if|else|for|true|false)\b|\b(Game|Context|Nucleus)\b|\.([A-Za-z_]\w*)|\b(\d+)\b/g, last = 0, m;
+  while ((m = re.exec(line))) {
+    out += esc(line.slice(last, m.index));
+    out += m[1] ? '<span class="c">' + esc(m[1]) + '</span>' : m[2] ? '<span class="s">' + esc(m[2]) + '</span>' : m[3] ? '<span class="' + (/true|false/.test(m[3]) ? 'a' : 'k') + '">' + m[3] + '</span>' : m[4] ? '<span class="n">' + m[4] + '</span>' : m[5] ? '.<span class="p">' + m[5] + '</span>' : '<span class="d">' + m[6] + '</span>';
+    last = re.lastIndex;
+  }
+  return out + esc(line.slice(last));
+}
+function draw() {
+  var cur = tabs[active], h = cur && handler(cur[0]), f = h && h.files[cur[1]];
+  // The file list: a folder per open handler, named after the game; handler.js, then the package's other files.
+  var tree = '';
+  HANDLERS.forEach(function (hd) {
+    var isCur = function (i) { return cur && cur[0] === hd.id && cur[1] === i; };
+    tree += '<li><button type="button" class="row" data-fold="' + hd.id + '" aria-expanded="' + hd.open + '"><span class="tw">' + (hd.open ? '▾' : '▸') + '</span><span class="nm"><b>' + esc(hd.name) + '</b></span>' + (hd.problems.length ? '<span class="badge" title="Problems in handler.js">' + hd.problems.length + '</span>' : '<span class="badge ok" title="No problems">✓</span>') + '</button>';
+    if (hd.open) {
+      tree += '<ul>' + hd.files.map(function (x, i) { return '<li><button type="button" class="row depth1" data-open="' + hd.id + ':' + i + '"' + (isCur(i) ? ' aria-current="true"' : '') + '><span class="tw"></span><span class="ico ' + x.kind + '">' + x.kind.slice(0, 2).toUpperCase() + '</span><span class="nm">' + esc(x.name) + '</span></button></li>'; }).join('')
+        + '<li><button type="button" class="row depth1 add"><span class="tw"></span><span class="nm">+ Add files…</span></button></li></ul>';
+    }
+    tree += '</li>';
+  });
+  document.getElementById('tree').innerHTML = tree;
+  // Tabs: one per open file, with its game beside the name (every handler's code is a handler.js).
+  document.getElementById('tabs').innerHTML = tabs.map(function (t, i) {
+    var hd = handler(t[0]), x = hd.files[t[1]];
+    return '<div class="tab" role="tab" tabindex="0" aria-selected="' + (i === active) + '" data-tab="' + i + '">' + (t[1] === 0 ? '<span class="dot' + (hd.problems.length ? '' : ' ok') + '" aria-hidden="true"></span>' : '') + '<span class="ico ' + x.kind + '">' + x.kind.slice(0, 2).toUpperCase() + '</span><span>' + esc(x.name) + ' <small>' + esc(hd.name) + '</small></span><button type="button" class="x" data-close="' + i + '" aria-label="Close ' + esc(x.name) + ' of ' + esc(hd.name) + '">×</button></div>';
+  }).join('');
+  if (!f) {
+    document.getElementById('crumb').innerHTML = 'No file open';
+    document.getElementById('code').innerHTML = '<div class="ln first"></div><div class="tx first c">Pick a file in the list on the left.</div>';
+    document.getElementById('check').innerHTML = '<p class="empty">Open a handler to check it.</p>';
+    document.getElementById('rcount').textContent = '';
+    return;
+  }
+  document.getElementById('crumb').innerHTML = esc(h.name) + ' › <b>' + esc(f.name) + '</b>';
+  var code = document.getElementById('code');
+  code.className = 'code' + (f.kind === 'js' ? '' : ' plain');
+  code.innerHTML = f.text.split('\n').map(function (l, i) {
+    var mark = f.marks && f.marks[i + 1];
+    return '<div class="ln' + (i ? '' : ' first') + '">' + (mark ? '<i class="' + mark + '" title="A problem on this line"></i>' : '') + (i + 1) + '</div><div class="tx' + (i ? '' : ' first') + '">' + (f.kind === 'js' ? hl(l) : esc(l)) + '</div>';
+  }).join('');
+  // The results are the handler's, whichever of its files is open.
+  document.getElementById('rcount').textContent = h.problems.length ? '(' + h.problems.length + ')' : '';
+  document.getElementById('check').innerHTML = h.problems.length
+    ? '<div class="verdict"><span class="chip">Nucleus can\'t use this handler yet</span>' + h.problems.length + ' problems in ' + esc(h.name) + '<button class="btn primary" type="button">Fix 4 problems automatically</button></div>' + h.problems.map(function (p) { return '<div class="prob ' + (p[0] === 'e' ? '' : p[0]) + '"><code>Line ' + p[1] + '</code><b>' + esc(p[2]) + (p[3] ? ' <code>' + esc(p[3]) + '</code>' : '') + '</b><button class="btn" type="button">Fix this</button></div>'; }).join('')
+    : '<div class="verdict"><span class="chip ok">Nothing to fix</span>' + esc(h.name) + ' loads, and Check found no problems.</div>';
+}
+function openFile(id, i) {
+  var at = -1;
+  tabs.forEach(function (t, k) { if (t[0] === id && t[1] === i) at = k; });
+  if (at < 0) { tabs.push([id, i]); at = tabs.length - 1; }
+  active = at;
+  draw();
+}
+document.addEventListener('click', function (e) {
+  var t = e.target.closest('[data-close]');
+  if (t) { var i = +t.dataset.close; tabs.splice(i, 1); active = Math.max(0, Math.min(tabs.length - 1, i < active ? active - 1 : active)); return draw(); }
+  t = e.target.closest('[data-tab]');
+  if (t) { active = +t.dataset.tab; return draw(); }
+  t = e.target.closest('[data-open]');
+  if (t) { var a = t.dataset.open.split(':'); return openFile(a[0], +a[1]); }
+  t = e.target.closest('[data-fold]');
+  if (t) { var h = handler(t.dataset.fold); h.open = !h.open; return draw(); }
+});
+document.addEventListener('keydown', function (e) { var t = e.target.closest && e.target.closest('[data-tab]'); if (t && e.target === t && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); active = +t.dataset.tab; draw(); } });
+// The rail: Files or Lines in the side panel; the pressed one again hides it.
+function side(which) {
+  var files = document.getElementById('side-files'), lines = document.getElementById('side-lines');
+  var showing = !files.hidden ? 'files' : !lines.hidden ? 'lines' : '';
+  var next = showing === which ? '' : which;
+  files.hidden = next !== 'files'; lines.hidden = next !== 'lines';
+  document.getElementById('r-files').setAttribute('aria-pressed', String(next === 'files'));
+  document.getElementById('r-lines').setAttribute('aria-pressed', String(next === 'lines'));
+}
+document.getElementById('r-files').addEventListener('click', function () { side('files'); });
+document.getElementById('r-lines').addEventListener('click', function () { side('lines'); });
+// The results' shelf button: in one corner, pane in or out.
+document.getElementById('shelf').addEventListener('click', function () {
+  var panes = document.getElementById('panes'), off = panes.classList.toggle('no-results');
+  panes.querySelector('.results').hidden = off;
+  this.setAttribute('aria-pressed', String(!off));
+  this.setAttribute('aria-label', off ? 'Show the results' : 'Hide the results');
+  document.getElementById('shelf-text').hidden = !off;
+});
+// On a phone the side panel lies over the code, so it starts closed there.
+if (window.innerWidth < 560) side('files');
+draw();
+</script>
+</body>
+</html>

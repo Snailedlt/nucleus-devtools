@@ -30,6 +30,30 @@ export interface HubScan {
   matched: number[];
 }
 
+/** What the Hub install reads from one line (as Nucleus sees it, a BOM already dropped): nothing (undefined) unless
+ *  the line starts with `Game.ExecutableName` or `Game.GameName`, any case; then the text between its first and last
+ *  `"`, or null when it has fewer than two (the install throws there). */
+export function hubLine(line: string): { key: 'ExecutableName' | 'GameName'; value: string | null } | undefined {
+  const lower = line.toLowerCase();
+  const key = lower.startsWith('game.executablename') ? 'ExecutableName' : lower.startsWith('game.gamename') ? 'GameName' : null;
+  if (!key) return undefined;
+  const first = line.indexOf('"');
+  const last = line.lastIndexOf('"');
+  return { key, value: first < 0 || last === first ? null : line.slice(first + 1, last) };
+}
+
+/** Whether a tool may turn the line `before` into `after` without changing what a Hub install does with it:
+ *  - a line the install reads fine must read exactly the same afterwards;
+ *  - a line it doesn't read, or throws on, may stay so, or become a clean read (one value in double quotes, which is
+ *    what its author meant: `'My Game'` in double quotes, an indented line moved to the start);
+ *  - anything else (a read that picks up a second string, a new throw) is a change for the worse. */
+export function hubLineKeeps(before: string, after: string): boolean {
+  const a = hubLine(before)?.value;
+  const b = hubLine(after)?.value;
+  if (typeof a === 'string') return b === a;
+  return b === a || (typeof b === 'string' && !b.includes('"'));
+}
+
 /** Replays Nucleus' Hub install scan (see above). Stops at a crash, as the install does. */
 export function hubScan(text: string): HubScan {
   const result: HubScan = { matched: [] };
@@ -40,13 +64,11 @@ export function hubScan(text: string): HubScan {
   for (let i = 0; i < lines.length; i++) {
     const raw = lines[i];
     const line = i === 0 && raw.startsWith('\uFEFF') ? raw.slice(1) : raw; // ReadAllLines drops the BOM
-    const lower = line.toLowerCase();
-    const key = lower.startsWith('game.executablename') ? 'ExecutableName' : lower.startsWith('game.gamename') ? 'GameName' : null;
-    if (key) {
-      const first = line.indexOf('"');
-      const last = line.lastIndexOf('"');
-      const crash = first < 0 || last === first;
-      result[key] = { value: crash ? null : line.slice(first + 1, last), line: i, offset, crash };
+    const hit = hubLine(line);
+    if (hit) {
+      const { key } = hit;
+      const crash = hit.value === null;
+      result[key] = { value: hit.value, line: i, offset, crash };
       result.matched.push(i + 1);
       found++;
       if (crash || found === 2) break;

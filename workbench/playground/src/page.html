@@ -100,11 +100,17 @@ a.btn { text-decoration: none; color: var(--fg); display: inline-block; }
 .splitter { position: relative; cursor: col-resize; touch-action: none; }
 
 /* The results pane hidden (panels-ui.ts, Ctrl+J): the code takes the whole width. Wide screens only; phones switch views. */
-.results-hide { position: absolute; top: 5px; right: 6px; z-index: 2; color: var(--muted); }
-.results-hide:hover { color: var(--fg); }
-.pane.side > .pane-head { padding-right: 44px; }
-.results-show { align-self: stretch; padding: 2px 10px; font-size: 12.5px; }
+/* Its button is a shelf in one spot, the top right corner of the work area, whether the pane is in or out: in, it's the
+   pane's corner button; out, the same corner of the code pane holds "Results" with the problem count. */
+.results-hide, .results-show { position: absolute; top: 8px; right: 8px; z-index: 2; height: 34px; box-sizing: border-box; color: var(--muted); }
+.results-hide:hover, .results-show:hover { color: var(--fg); }
+.results-hide { width: 34px; }
+.results-show { display: inline-flex; align-items: center; gap: 6px; padding: 0 8px 0 12px; font-size: 12.5px; }
+.results-show[hidden] { display: none; }
 .results-show .count:empty { display: none; }
+/* The tabs leave the corner free, and never get a scrollbar of their own on the side (they scroll sideways when they
+   don't fit: an overflow in one direction makes the other one scroll too unless it's told not to). */
+.pane.side > .pane-head { padding-right: 48px; overflow-y: hidden; }
 @media (min-width: 861px) {
   .main.results-hidden, .main.results-hidden.sized { grid-template-columns: minmax(0, 1fr); }
   .main.results-hidden > .pane.side, .main.results-hidden > #split-main { display: none; }
@@ -132,6 +138,18 @@ body.resizing-v, body.resizing-v * { cursor: row-resize !important; user-select:
 @media (min-width: 861px) { .pane-head { min-height: 52px; } .pane-head[role=tablist] { padding-block: 7px; } }
 #status { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 12.5px; }
 .code-row { flex: 1; min-height: 0; display: flex; position: relative; }
+.code-col { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; position: relative; }
+/* The tabs above the code (side rail layout): a strip the open tab joins the code from. */
+#tabs-slot:empty { display: none; }
+#tabs-slot .htabs-wrap { background: var(--surface-2); border-bottom: 1px solid var(--line); padding: 5px 6px 0; align-self: auto; flex: none; }
+#tabs-slot .htab-w { margin-bottom: -1px; border-radius: 7px 7px 0 0; }
+#tabs-slot .htab-w:hover { background: color-mix(in srgb, var(--surface) 70%, transparent); }
+#tabs-slot .htab-w.on { background: var(--surface); }
+#tabs-slot .htab { padding: 6px 4px 6px 10px; }
+#tabs-slot .htab-add { width: 26px; height: 26px; margin-bottom: 4px; }
+#tabs-slot .htab-add:hover, #tabs-slot .htab-add[aria-expanded="true"] { background: var(--surface); }
+:root[data-zen] #tabs-slot { display: none !important; }
+@media (min-width: 861px) { :root[data-layout="rail"] header { min-height: 0; } }
 #editor { flex: 1; min-height: 0; min-width: 0; position: relative; }
 /* Lines: a Pawno-style list of every name, beside the code */
 .lines-toggle { padding: 2px 10px; font-size: 12.5px; margin-left: 6px; }
@@ -221,6 +239,8 @@ body.resizing-v, body.resizing-v * { cursor: row-resize !important; user-select:
 #line-pop .lp-doc pre { background: var(--surface-2); border-radius: 5px; padding: 6px 8px; font: 12px/1.45 var(--font-mono); margin: 0 0 6px; white-space: pre-wrap; overflow-wrap: anywhere; }
 #touch-title { position: fixed; z-index: 90; max-width: min(320px, calc(100vw - 16px)); background: var(--fg); color: var(--bg); border-radius: 6px; padding: 6px 10px; font-size: 13px; line-height: 1.4; white-space: pre-line; pointer-events: none; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
 #touch-title[hidden] { display: none; }
+/* The workbench's tooltip (tooltips.ts): what a `title` says, in our own bubble instead of the browser's. */
+#tooltip { position: fixed; inset: auto; margin: 0; max-width: min(340px, calc(100vw - 16px)); padding: 6px 10px; border: 0; border-radius: 8px; background: var(--fg); color: var(--bg); font: 12.5px/1.4 var(--font-body); white-space: pre-line; pointer-events: none; box-shadow: 0 6px 18px rgba(0,0,0,.25); }
 @media (pointer: coarse) {
   .open-foot { display: none !important; }
   .entry.active:not(:focus-visible) { background: var(--e-bg); box-shadow: none; }
@@ -471,7 +491,64 @@ details.set-sec[open] summary { margin-bottom: 4px; }
 .more-list { display: flex; flex-direction: column; gap: 8px; }
 .more-list .btn { text-align: left; padding: 12px 14px; font-size: 15px; }
 /* Save or copy: one recommended action (the .zip for Nucleus), the rest as a grid of small choices. */
-#code-dialog { width: min(560px, calc(100vw - 32px)); }
+/* Download: which handlers (the open one, some, or all), and as what. */
+/* Share or download: two short rows of buttons, Share on top and Download under a line. A button shows only what
+   it takes to tell it apart: the leading one its icon and name, the other ways to share their name, the other
+   files their kind (.js, .nc). What each does is a tooltip (pointer or keyboard focus); warnings stay on screen. */
+#code-dialog { width: min(580px, calc(100vw - 32px)); padding: 16px 18px 18px; border-radius: 14px; overflow: visible; }
+.code-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+#code-dialog .code-head h2 { margin: 0; padding: 0; font-size: 16px; }
+.code-x { flex: none; display: grid; place-items: center; width: 32px; height: 32px; margin: -4px -8px -4px 0; border: 0; border-radius: 8px; background: none; color: var(--muted); cursor: pointer; }
+.code-x:hover { background: var(--surface-2); color: var(--fg); }
+#code-dialog .code-x svg { color: currentColor; }
+.code-part { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px; min-width: 0; }
+.code-part + .code-part { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.code-part > :not(button):not(.code-top):not(.code-grid) { flex: 0 0 100%; }
+.code-part-h { order: -2; display: flex; align-items: center; gap: 8px; margin: 0 0 2px; }
+.code-part-i { flex: none; display: grid; place-items: center; color: var(--accent); }
+.code-part-h > div { flex: 1; min-width: 0; }
+.code-part-h .code-h { margin: 0; font-size: 14px; font-weight: 700; color: var(--fg); text-transform: none; letter-spacing: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.code-part-h .code-h .code-of { font-weight: 500; color: var(--muted); }
+.code-part-h .code-h:focus { outline: none; }
+.code-part-h p { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+#code-dialog .code-part :is(.code-top, .code-grid):not([hidden]) { display: contents; }
+#code-dialog .code-part :is(.code-opt, .code-hero) { position: relative; display: flex; align-items: center; gap: 8px; width: auto; min-height: 34px; padding: 6px 12px; border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--surface); color: var(--fg); font-size: 13.5px; transition: background-color .16s ease-out, border-color .16s ease-out; }
+#code-dialog .code-part :is(.code-opt, .code-hero)[hidden] { display: none; }
+#code-dialog .code-part .code-opt:hover { background: var(--surface-2); }
+#code-dialog .code-part :is(.code-hero, .code-lead) { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+#code-dialog .code-part :is(.code-hero, .code-lead):hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 17%, var(--surface)); }
+#code-dialog .code-part :is(.code-opt, .code-hero) b { font-weight: 600; white-space: nowrap; }
+#code-dialog .code-part :is(.code-opt, .code-hero) > svg { width: 16px; height: 16px; }
+/* Sharing: the leading way keeps its icon, the others are their name. */
+#code-p-share .code-opt > svg { display: none; }
+/* Downloading: the kind of file says it; only the leading one adds its name. */
+.code-ext { flex: none; color: var(--fg); font: 700 12.5px var(--font-mono); font-style: normal; letter-spacing: -.02em; }
+@media (hover: hover) { #code-dialog .code-dl .code-opt:not(.code-lead) { gap: 0; } #code-dialog .code-dl .code-opt:not(.code-lead) b { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
+/* What a button does: a tooltip under it. A warning (.code-warn-line, .code-keep) is a line in the button instead. */
+@media (hover: hover) {
+  #code-dialog .code-part button small:not(.code-warn-line):not(.code-keep) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  #code-dialog .code-part button:is(:hover, :focus-visible) small:not(.code-warn-line):not(.code-keep) { top: calc(100% + 6px); left: 0; z-index: 5; width: max-content; max-width: 250px; height: auto; overflow: visible; clip-path: none; white-space: normal; padding: 6px 9px; border-radius: 8px; background: var(--fg); color: var(--surface); font-size: 12.5px; line-height: 1.35; box-shadow: 0 4px 14px rgb(0 0 0 / .18); pointer-events: none; }
+}
+@media (hover: none) { #code-dialog .code-part button small:not(.code-warn-line):not(.code-keep) { display: none; } }
+#code-dialog .code-part button :is(small.code-warn-line, small.code-keep) { max-width: 230px; white-space: normal; }
+#code-dialog .code-part button small.code-keep { color: var(--warn); font-weight: 600; }
+/* Which handlers to download: a plain list above the buttons. */
+.dl-set { border: 0; margin: 0; padding: 0; display: grid; gap: 0; min-width: 0; }
+.dl-set legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.dl-set .set-check { align-items: center; padding: 3px 8px; margin-left: -8px; border-radius: 8px; font-size: 13.5px; }
+.dl-set .set-check:hover { background: var(--surface-2); }
+.dl-set .set-check input { margin-top: 0; }
+.dl-set > .set-check { color: var(--muted); font-size: 12.5px; }
+.dl-set .set-check > span { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.dl-set .set-check .ui-ico { flex: none; color: var(--accent); }
+.dl-set .set-check .dl-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dl-set .set-check small { flex: none; display: inline; white-space: nowrap; }
+.dl-set .set-check .dl-here { padding: 0 6px; border: 1px solid var(--line); border-radius: 999px; font-size: 11px; }
+.dl-set[hidden], .code-dl[hidden], .code-many[hidden] { display: none; }
+#dl-items { display: grid; gap: 0; max-height: 28vh; overflow: auto; }
+#dl-items .set-check { margin-left: 0; }
+#code-hub-note, #dl-note { margin: 2px 0 0 !important; }
+#dl-note:empty { display: none; }
 #code-dialog button svg { flex: none; color: var(--accent); }
 #code-dialog button span { display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: left; }
 #code-dialog button small { color: var(--muted); font-size: 12.5px; font-weight: 400; }
@@ -515,7 +592,7 @@ html.kb-up #toasts { bottom: calc(var(--kb) + 12px); }
 #tipbar.contextual .tip-icon { color: var(--info); }
 #tipbar .tip-body { flex: 1; min-width: 0; }
 #tipbar #tip-label { color: var(--fg); margin-right: 2px; }
-#tipbar.contextual #tip-label { color: var(--info); }
+#tipbar.contextual #tip-label { color: color-mix(in srgb, var(--info) 55%, var(--fg)); } /* on the bar's own info tint, plain --info is too faint in the light theme */
 #tipbar code { font: 11.5px var(--font-mono); background: var(--surface-2); padding: 0 4px; border-radius: 3px; }
 #tipbar .tip-actions { display: flex; gap: 6px; flex: none; }
 /* The control a tip is about, while that tip shows: a ring (a soft pulse when motion is on). */
@@ -585,7 +662,7 @@ html.kb-up #toasts { bottom: calc(var(--kb) + 12px); }
 .CodeMirror-cursor { border-left-color: var(--code-fg, var(--fg)); }
 .CodeMirror-selected, .CodeMirror-focused .CodeMirror-selected { background: color-mix(in srgb, var(--accent) 22%, transparent); }
 .CodeMirror-matchingbracket { color: var(--accent) !important; font-weight: 600; }
-.cm-s-default .cm-keyword { color: var(--kw); font-weight: var(--kw-weight, normal); } .cm-s-default .cm-string, .cm-s-default .cm-string-2 { color: var(--str); }
+.cm-s-default .cm-keyword { color: var(--kw); font-weight: var(--kw-weight, normal); } .cm-s-default .cm-string, .cm-s-default .cm-string-2, .cm-s-default .cm-quote { color: var(--str); } /* cm-quote: a value in an .ini or .cfg file */
 .cm-s-default .cm-number { color: var(--num); } .cm-s-default .cm-comment { color: var(--cmt); font-style: italic; }
 /* Nucleus names (semhl.ts). The Nucleus colouring, the default: each kind its own colour, from the look (obj, group,
    choice and fn fall back to related colours, so a look or theme file without them still works). */
@@ -1650,7 +1727,10 @@ header { flex-wrap: nowrap; gap: 12px; min-height: 40px; }
 .htab-w:hover .htab, .htab-w.on .htab { color: var(--fg); }
 .htab-w.on .htab { font-weight: 600; }
 .htab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
-.htab .ht-name { overflow: hidden; text-overflow: ellipsis; }
+.htab .ht-name { overflow: hidden; text-overflow: ellipsis; flex: 0 1 auto; min-width: 6ch; }
+.htab-w:not(.ftab) .ht-name { flex: none; } /* "handler.js" is never cut */
+.htab .ht-of { color: var(--muted); font-weight: 400; font-size: 12px; overflow: hidden; text-overflow: ellipsis; flex: 0 20 auto; min-width: 0; } /* the game a tab's file belongs to: it gives way before the file's name */
+.htab .fi-badge { flex: none; }
 .htab .ht-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; background: var(--line); }
 .htab .ht-dot.e { background: var(--err); } .htab .ht-dot.w { background: var(--warn); } .htab .ht-dot.ok { background: var(--ok); }
 .htab .ht-pk { font: 700 10px/1 var(--font-mono); color: var(--muted); border: 1px solid var(--line); border-radius: 4px; padding: 2px 4px; flex: none; }
@@ -1713,12 +1793,23 @@ kbd.keys .kplus { color: var(--muted); padding: 0 1px; }
 :root[data-layout="rail"] .rail { display: flex; flex-direction: column; align-items: center; gap: 6px; position: fixed; left: 0; top: 0; bottom: 0; width: 52px; padding: 12px 0; background: var(--surface); border-right: 1px solid var(--line); z-index: 20; }
 :root[data-layout="rail"] .app { padding-left: calc(52px + 12px); }
 :root[data-layout="rail"] header .brand, :root[data-layout="rail"] header .toolbar { display: none; }
+/* The page's heading: the brand's in the slim bar; in the rail, which hides the brand, this one (for screen readers). */
+.rail-h1 { display: none; }
+:root[data-layout="rail"] .rail-h1 { display: block; position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; margin: -1px; }
 .rail-btn { width: 36px; height: 36px; display: grid; place-items: center; border: 0; border-radius: 9px; background: none; color: var(--muted); cursor: pointer; font-size: 16px; text-decoration: none; }
 .rail-btn:hover, .rail-btn[aria-pressed="true"], .rail-btn[aria-expanded="true"] { background: var(--surface-2); color: var(--fg); }
 .rail-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .rail-logo { color: var(--accent); }
 .rail-sp { flex: 1; }
 .rail-btn { position: relative; }
+/* The rail has Files and Lines, so the code pane's own two buttons go; with nothing else in it, so does its head. */
+@media (min-width: 861px) {
+  :root[data-layout="rail"] .doc-title :is(.files-toggle, .lines-toggle) { display: none; }
+  /* "+ N files" opens Files: with Files open beside the code it says nothing new. */
+  :root[data-layout="rail"] .code-row:has(#files-panel:not([hidden])) #files-open { display: none; }
+  :root[data-layout="rail"] .doc-head:not(:has(#doc-meta > :not(#files-open), #doc-edited:not([hidden]), #results-show:not([hidden]))) { display: none; }
+  :root[data-layout="rail"] .code-row:has(#files-panel[hidden]) .doc-head:has(#files-open) { display: flex; }
+}
 .rail-btn.confirmed::after { content: "✓"; position: absolute; right: 2px; top: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--ok); color: #fff; font: 700 10px/14px var(--font-body); text-align: center; }
 .rail-label { display: none; }
 :root[data-layout="rail"][data-rail-open] .rail { width: 196px; box-sizing: border-box; align-items: stretch; padding: 12px 8px; }
@@ -1732,6 +1823,7 @@ kbd.keys .kplus { color: var(--muted); padding: 0 1px; }
   :root[data-layout="rail"] .rail { display: none; }
   :root[data-layout="rail"] .app { padding-left: max(16px, env(safe-area-inset-left, 0px)); }
   :root[data-layout="rail"] header .brand, :root[data-layout="rail"] header .toolbar { display: flex; }
+  :root[data-layout="rail"] .rail-h1 { display: none; }
   .htabs-wrap { display: none; }
   .phone-name { display: inline-flex !important; }
   /* Too narrow for the name and the view buttons in one row: the name gets its own, the buttons wrap under it. */
@@ -1810,7 +1902,7 @@ kbd.keys .kplus { color: var(--muted); padding: 0 1px; }
 .fs-tab[aria-selected="true"] { background: var(--surface); color: var(--fg); border-color: var(--line); font-weight: 600; }
 .fs-tab .fs-x { margin-left: 6px; color: var(--muted); border-radius: 4px; padding: 0 3px; }
 .fs-tab .fs-x:hover { background: var(--surface-2); color: var(--fg); }
-#file-editor { flex: 1; min-width: 0; position: relative; }
+#file-editor { flex: 1; min-width: 0; min-height: 0; position: relative; }
 #file-editor[hidden], #file-card[hidden] { display: none; }
 #file-editor .CodeMirror { height: 100%; font: var(--code-size, 13px)/1.55 var(--font-mono); background: var(--code-bg); color: var(--code-fg, var(--fg)); }
 #file-card { flex: 1; min-width: 0; padding: 18px; overflow: auto; background: var(--surface); }
@@ -1824,6 +1916,40 @@ kbd.keys .kplus { color: var(--muted); padding: 0 1px; }
 .fp-head { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; margin: 2px 4px 6px; }
 .fp-where { font-size: 12px; color: var(--muted); margin: 0 4px 8px; overflow-wrap: anywhere; }
 .fp-list { list-style: none; margin: 0; padding: 0; }
+/* A folder per open handler, named after its game: handler.js, its other files, its game on this PC. */
+.fp-h + .fp-h { margin-top: 6px; }
+.fp-hrow .fp-open { font-weight: 600; gap: 4px; }
+.fp-h.on > .fp-hrow .fp-name { color: var(--fg); }
+.fp-h:not(.on) > .fp-hrow .fp-name { color: var(--muted); }
+.fp-tw { flex: none; color: var(--muted); }
+.fp-fo { flex: none; color: var(--accent); }
+.fp-head { justify-content: space-between; min-height: 26px; margin: 0 0 4px 6px; }
+.fp-ibtn { width: 26px; height: 26px; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--muted); cursor: pointer; }
+.fp-ibtn:hover, .fp-ibtn[aria-expanded="true"] { background: var(--surface-2); color: var(--fg); }
+.fp-ibtn:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.fp-tree .fp-open .fp-name { display: block; white-space: nowrap; text-overflow: ellipsis; } /* one line each; the tooltip has the whole name */
+.fp-tree .fp-del { display: grid; place-items: center; padding: 0; }
+.fp-tree .fp-item:focus-within .fp-del { opacity: 1; }
+.fp-tree .fp-open[aria-current="true"] ~ .fp-del, .fp-tree .fp-h.on > .fp-hrow .fp-del { opacity: 1; }
+@media (hover: none) { .fp-tree .fp-del { opacity: 1; } }
+.fp-tree .fp-dir { gap: 4px; color: var(--muted); font-size: 12.5px; }
+/* The preview tab: a file looked at, not kept yet (the next file picked takes its tab). */
+.htab-w.preview .ht-name { font-style: italic; }
+.fp-gf .fp-open { font-size: 12px; gap: 6px; }
+.fp-gf .ui-ico { flex: none; }
+/* One handler open: its name is a title over its files, not a folder to open. */
+.fp-title { cursor: default; font-weight: 600; padding-left: 8px; }
+.fp-title:hover { background: none; }
+.fp-h:not(.on) > .fp-hrow .fp-cnt { opacity: .75; }
+.fp-cnt { margin-left: auto; flex: none; min-width: 18px; padding: 0 5px; border-radius: 999px; font-size: 11px; font-weight: 600; line-height: 16px; text-align: center; }
+.fp-cnt.e { background: var(--err-bg, color-mix(in srgb, var(--err) 14%, var(--surface))); color: var(--err); }
+.fp-cnt.w { background: var(--warn-bg, color-mix(in srgb, var(--warn) 16%, var(--surface))); color: var(--warn); }
+.fp-cnt.ok { background: var(--ok-bg, color-mix(in srgb, var(--ok) 14%, var(--surface))); color: var(--ok); }
+.fp-gf .fp-open { color: var(--muted); }
+.fp-gf .fp-open:hover { color: var(--fg); }
+.fp-tree .fp-game { margin: 4px 0 0 22px; padding: 0; border: 0; }
+.fc-empty { max-width: 46ch; margin: 12vh auto 0; text-align: center; }
+.fc-empty .fp-actions, .fc-empty h2 { justify-content: center; }
 .fp-item { display: flex; align-items: center; gap: 2px; }
 .fp-open { flex: 1; min-width: 0; display: flex; align-items: center; padding: 4px 6px; border: 0; border-radius: 6px; background: none; color: var(--fg); font: inherit; font-size: 13px; text-align: left; cursor: pointer; }
 .fp-open:hover { background: var(--surface-2); } .fp-open[aria-current="true"] { background: color-mix(in srgb, var(--accent) 16%, transparent); font-weight: 600; }
@@ -1845,8 +1971,12 @@ kbd.keys .kplus { color: var(--muted); padding: 0 1px; }
 .fp-game .fp-prog-row { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; overflow-wrap: anywhere; }
 .fp-game .fp-prog-row .link { flex: none; white-space: nowrap; }
 .fp-game .fp-prog progress { display: block; width: 100%; height: 6px; margin: 4px 0 2px; accent-color: var(--accent); }
-/* Duo pushing the bar (mascotprogress.ts) stands in for the bar; the <progress> stays for screen readers. */
-.fp-game .fp-prog .fp-duo { display: block; width: 100% !important; max-width: 240px; height: auto !important; aspect-ratio: 102 / 72; margin: 2px 0 0; }
+/* Duo pushing the bar (mascotprogress.ts) stands in for the bar; the <progress> stays for screen readers. A low strip
+   as wide as the panel: mascotprogress.ts fits the drawing to the width, so Duo keeps his size. */
+.fp-game .fp-prog .fp-duo { display: block; width: 100% !important; height: 41px !important; margin: 2px 0 0; }
+/* While a folder is read, the loader takes the place of the section's text, so the panel keeps about its height
+   instead of growing under the pointer. The buttons stay: another folder can be picked meanwhile. */
+.fp-game:has(.fp-prog) > p { display: none; }
 :root:not([data-mascots="off"]):not([data-site="alpha8"]) .fp-game .fp-prog .fp-duo + progress { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .fp-game .fp-prog-n { font-size: 11.5px; min-height: 1.4em; }
 /* No moving bar without a total when motion is reduced: the count below says it's working. */
@@ -1907,7 +2037,7 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
       <svg class="logo logo-v3" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><rect x="2" y="3" width="28" height="12.5" rx="3.4" fill="var(--p1)"></rect><rect x="2" y="17.5" width="13" height="11.5" rx="3.4" fill="var(--p2)"></rect><circle cx="23.5" cy="23.25" r="5.75" fill="var(--p3)"></circle></svg>
       <h1><span class="brand-long">Nucleus Handler </span>Workbench</h1></a><a class="start-link home-link" href="https://snailedlt.github.io/nucleus-devtools/start/" title="The home page: what the workbench and the VS Code extension do, and how to get them"><svg viewBox="0 0 16 16" width="12" height="12" aria-hidden="true"><path d="M2.5 7.2 8 2.8l5.5 4.4M4 6.3V13h3V9.5h2V13h3V6.3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>Home</a></div>
     </div>
-    <div class="htabs-wrap"><div id="htabs" role="tablist" aria-label="Open handlers"></div><button class="htab-add" id="tab-add" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="New handler, open a file, or an example"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>
+    <div class="htabs-wrap"><div id="htabs" role="tablist" aria-label="Open files"></div><button class="htab-add" id="tab-add" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="New handler, open a file, or an example"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M8 3v10M3 8h10" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button></div>
     <div class="switch" role="group" aria-label="Show">
       <button type="button" data-view="code" aria-pressed="false">Handler</button>
       <button type="button" data-view="results" aria-pressed="true">Results <span class="count" id="count-switch">0</span></button>
@@ -1926,9 +2056,11 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
         <label class="adv"><input type="checkbox" id="advanced" role="switch">Advanced mode</label>
       </div>
     </div>
+    <h1 class="rail-h1">Nucleus Handler Workbench</h1>
     <nav class="rail" aria-label="Tools">
       <a class="rail-btn rail-logo start-link" href="https://snailedlt.github.io/nucleus-devtools/start/" aria-label="Home" data-rail="Home"><svg viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><path d="M2.5 7.2 8 2.8l5.5 4.4M4 6.3V13h3V9.5h2V13h3V6.3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="rail-label" aria-hidden="true">Home</span></a>
       <button class="rail-btn" type="button" data-rail="add" aria-label="New, open a file or an example" aria-haspopup="menu"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 5v14M5 12h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="rail-label" aria-hidden="true">New or open</span></button>
+      <button class="rail-btn" type="button" data-rail="files" aria-label="Files: your handlers and their files" aria-pressed="false" aria-controls="files-panel"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M4 6a2 2 0 0 1 2-2h4l2 2h6a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="rail-label" aria-hidden="true">Files</span></button>
       <button class="rail-btn" type="button" data-rail="lines" aria-label="Lines"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M5 7h14M5 12h14M5 17h9" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span class="rail-label" aria-hidden="true">Lines</span></button>
       <button class="rail-btn" type="button" data-rail="share" aria-label="Share: a link, the code, or a post for Discord"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="rail-label" aria-hidden="true">Share</span></button><button class="rail-btn" type="button" data-rail="save" aria-label="Save the handler"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span class="rail-label" aria-hidden="true">Save</span></button>
       <span class="rail-sp"></span>
@@ -1942,18 +2074,22 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
   <div id="updated" role="status" hidden><span id="updated-text"></span> <button class="link" type="button" id="updated-open">What's new</button><button class="btn icon" type="button" id="updated-close" aria-label="Dismiss">×</button></div>
   <main class="main" id="main" data-view="results">
     <section class="pane" aria-label="Handler source">
+      <div class="code-row">
+        <!-- The code column: the tabs (in the side rail layout; the slim bar has them in the header), what the
+             handler is, a notice, then the code. Files and Lines stand beside it, as tall as the pane. -->
+        <div class="code-col">
+          <div id="tabs-slot"></div>
       <div class="pane-head doc-head">
-        <div class="doc-title"><button type="button" id="doc-switch" class="phone-name" aria-haspopup="menu" aria-label="Open handlers: switch, new or open"><span id="doc-name">Untitled handler</span><svg class="chev" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span id="doc-edited" class="muted" hidden>· edited</span><button class="btn files-toggle" id="files-toggle" type="button" aria-pressed="false" aria-controls="files-panel"><span class="fi-badge fi-dir" aria-hidden="true">▤</span>Files<span class="files-n" id="files-n"></span><span class="files-game" id="files-game" hidden title="Your game's folder is linked">+ game</span></button><button class="btn lines-toggle" id="lines-toggle" type="button" aria-pressed="false" aria-controls="lines" title="List every name a handler can use; click one to insert it (Ctrl+B)">Lines</button><button class="btn results-show" id="results-show" type="button" hidden aria-label="Show the results: Check, Try it and Docs" title="Show the results: Check, Try it and Docs (Ctrl+J)">Results <span class="count" id="count-results"></span></button><button class="btn icon phone-only" id="code-menu-phone" type="button" aria-label="Save or copy the handler" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
+        <div class="doc-title"><button type="button" id="doc-switch" class="phone-name" aria-haspopup="menu" aria-label="Open handlers: switch, new or open"><span id="doc-name">Untitled handler</span><svg class="chev" viewBox="0 0 12 12" width="12" height="12" aria-hidden="true"><path d="M2.5 4.5 6 8l3.5-3.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button><span id="doc-edited" class="muted" hidden>· edited</span><button class="btn files-toggle" id="files-toggle" type="button" aria-pressed="false" aria-controls="files-panel"><span class="fi-badge fi-dir" aria-hidden="true">▤</span>Files<span class="files-n" id="files-n"></span><span class="files-game" id="files-game" hidden title="Your game's folder is linked">+ game</span></button><button class="btn lines-toggle" id="lines-toggle" type="button" aria-pressed="false" aria-controls="lines" title="List every name a handler can use; click one to insert it (Ctrl+B)">Lines</button><button class="btn results-show" id="results-show" type="button" hidden aria-label="Show the results: Check, Try it and Docs" title="Show the results: Check, Try it and Docs (Ctrl+J)">Results <span class="count" id="count-results"></span><span data-icon="panel-right-open" data-icon-size="16"></span></button><button class="btn icon phone-only" id="code-menu-phone" type="button" aria-label="Save or copy the handler" aria-haspopup="dialog"><svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button></div>
         <div id="doc-meta"></div>
       </div>
       <div id="notice" hidden><svg class="notice-icon" viewBox="0 0 24 24" aria-hidden="true"></svg><div class="notice-text"></div><button class="btn notice-action" type="button" hidden></button><button class="notice-close" type="button" aria-label="Dismiss" title="Dismiss"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div>
-      <div id="file-strip" role="tablist" aria-label="Files in this package" hidden></div>
-      <div class="code-row">
         <div id="line-pop" role="dialog" aria-label="Problems on this line" hidden></div>
         <div id="editor"><div id="sig" hidden></div></div>
         <div id="file-editor" hidden></div>
         <div id="file-card" hidden></div>
-        <section id="files-panel" aria-label="Files in this package" hidden><div class="splitter" id="split-files" role="separator" aria-orientation="vertical" aria-label="Resize the Files panel (double-click to reset, menu key for layout)" title="Drag to resize · double-click to reset · right-click for layout" tabindex="0"></div><div id="files-list"></div></section>
+        </div>
+        <section id="files-panel" aria-label="Files: your handlers and their files" hidden><div class="splitter" id="split-files" role="separator" aria-orientation="vertical" aria-label="Resize the Files panel (double-click to reset, menu key for layout)" title="Drag to resize · double-click to reset · right-click for layout" tabindex="0"></div><div id="files-list"></div></section>
         <section id="lines" aria-label="Names a handler can use" hidden>
           <div class="splitter" id="split-lines" role="separator" aria-orientation="vertical" aria-label="Resize the Lines list (double-click to reset, menu key for layout)" title="Drag to resize · double-click to reset · right-click for layout" tabindex="0"></div>
           <div class="sheet-grip" id="split-sheet" role="separator" aria-orientation="horizontal" aria-label="Resize the list (double-click to reset)" title="Drag to resize · double-tap to reset" tabindex="0"></div>
@@ -2041,11 +2177,13 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
       </div>
       <div role="tabpanel" id="panel-probes" hidden><div id="probes"></div></div>
     </section>
+    <!-- The hover card (docs, problems, which parameter a value is): inside main, so it belongs to a landmark
+         while it shows. It is placed by its own fixed position, not by the grid. -->
+    <div id="tip" hidden></div>
   </main>
   <footer><span id="build-info" class="dev-only"></span><span>Your draft is kept in this browser only.</span><button class="link foot-dup" id="tour-open" type="button"><span data-icon="compass"></span> Take the tour</button><button class="link tg-open" id="test-open" type="button"><span data-icon="flask-conical"></span> Help test this beta</button><button class="link foot-dup" id="help-open-2" type="button">Keyboard shortcuts</button><button class="link foot-dup" type="button" data-tips-toggle aria-pressed="true">Tips: on</button><button class="link foot-dup" type="button" id="news-open-2">What's new</button><a class="link start-link foot-dup" href="https://snailedlt.github.io/nucleus-devtools/start/" title="What the workbench and the VS Code extension do, and how to install them">About these tools</a><span class="comm-foot">Questions? <a class="link" href="__DISCORD_INVITE__" target="_blank" rel="noopener">Discord</a> · <a class="link" href="__REDDIT__" target="_blank" rel="noopener">r/nucleuscoop</a></span><span class="made-by">Made by <a class="link" href="https://github.com/Snailedlt" rel="author" target="_blank">Snailedlt</a> (Jørgen KH)</span></footer>
 </div>
 
-<div id="tip" hidden></div>
 
 <dialog id="open-dialog" aria-label="Open">
   <div class="open-head">
@@ -2109,8 +2247,9 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
   <div class="set-panel" role="tabpanel" id="sp-motion" aria-labelledby="st-motion" data-label="Motion" hidden>
     <div class="set-sec motion-sec"><h3>Motion</h3>
       <label class="set-line">Animations <select id="set-motion"><option value="all">All</option><option value="balanced">Balanced</option><option value="some">Some</option><option value="none">None</option><option value="custom" disabled>Custom</option></select></label>
+      <p class="muted small" id="set-motion-what" style="margin:-4px 0 4px"></p>
       <label class="set-check"><input type="checkbox" id="set-motion-ui"> <span>Moving interface<small>Dialogs, tabs and notes slide and spring into place</small></span></label>
-      <label class="set-line">Duo and Nucli <select id="set-motion-masc"><option value="loop">Lively</option><option value="still">Still</option><option value="off">Hidden</option></select></label>
+      <label class="set-line">Duo and Nucli <select id="set-motion-masc"><option value="loop">Lively</option><option value="work">Loaders only</option><option value="still">Still</option><option value="off">Hidden</option></select></label>
       <label class="set-check"><input type="checkbox" id="set-motion-edit"> <span>Nucli edits the code during fixes<small>He zaps the old text and the new text glows. It briefly covers the code.</small></span></label>
       <label class="set-check"><input type="checkbox" id="set-motion-news"> <span>What's new plays animations by itself<small>Otherwise they wait for Play</small></span></label>
       <p class="muted small" id="set-motion-note" style="margin:0"></p></div>
@@ -2122,8 +2261,8 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
         <label class="set-layout"><input type="radio" name="set-layout" value="rail"><span><strong>Side rail</strong><small>Tools in a strip on the left, like VS Code; more room for code</small></span></label>
       </div></div>
     <div class="set-sec"><h3>Panels</h3>
-      <label class="set-check"><input type="checkbox" id="set-results"> <span>Results beside the code<small>Check, Try it and Docs. Turn it off for a wider code editor (<kbd>Ctrl</kbd>+<kbd>J</kbd>); Zen mode (<kbd>Ctrl</kbd>+<kbd>K</kbd> <kbd>Z</kbd>) hides everything but the code.</small></span></label>
-      <label class="set-row">Files panel <select id="set-files-side"><option value="right">Right of the code</option><option value="left">Left of the code</option></select></label>
+      <label class="set-check"><input type="checkbox" id="set-results"> <span>Results beside the code<small>Check, Try it and Docs. Turn it off for a wider code editor (<span data-key="results">Ctrl+J</span>); Zen mode (<span data-key="zen">Ctrl+K Z</span>) hides everything but the code.</small></span></label>
+      <label class="set-row">Files panel <select id="set-files-side"><option value="left">Left of the code</option><option value="right">Right of the code</option></select></label>
       <label class="set-row">Lines list <select id="set-lines-side"><option value="right">Right of the code</option><option value="left">Left of the code</option></select></label>
       <p class="muted small" style="margin:0">On a phone both open as a sheet from the bottom.</p></div>
     <div class="set-sec"><h3>Panel sizes</h3>
@@ -2134,7 +2273,7 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
 
     <div class="set-sec">
       <label class="set-line">Text size <select id="set-size"><option value="s">Small</option><option value="m">Medium</option><option value="l">Large</option></select></label>
-      <label class="set-check"><input type="checkbox" id="set-wrap"> <span>Wrap long lines<small>In the code and everywhere code is shown, keeping the indent, instead of scrolling sideways (as VS Code's word wrap; Alt+Z). On by default on phones.</small></span></label>
+      <label class="set-check"><input type="checkbox" id="set-wrap"> <span>Wrap long lines<small>In the code and everywhere code is shown, keeping the indent, instead of scrolling sideways (as VS Code's word wrap; <span data-key="wordWrap">Alt+Z</span>). On by default on phones.</small></span></label>
       <label class="set-check"><input type="checkbox" id="set-keybar"> <span>Symbol keys on touch screens<small>A row with ; = " ( ) { } [ ], Suggest and Undo above the on-screen keyboard</small></span></label></div>
   </div>
  <div class="set-panel" role="tabpanel" id="sp-keys" aria-labelledby="st-keys" data-label="Keyboard shortcuts" hidden></div>
@@ -2145,7 +2284,7 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
   <div class="set-panel" role="tabpanel" id="sp-lines" aria-labelledby="st-lines" data-label="Lines" hidden>
 
     <div class="set-sec">
-      <label class="set-check"><input type="checkbox" id="set-lines"> <span>Show the Lines list<small>Every name a handler can use, click to insert<span class="wide-only"> (Ctrl+B)</span></small></span></label></div>
+      <label class="set-check"><input type="checkbox" id="set-lines"> <span>Show the Lines list<small>Every name a handler can use, click to insert<span class="wide-only"> (<span data-key="lines">Ctrl+B</span>)</span></small></span></label></div>
     <div class="set-sec" id="lines-settings" aria-label="List settings"></div>
   </div>
   <div class="set-panel" role="tabpanel" id="sp-a11y" aria-labelledby="st-a11y" data-label="Accessibility" hidden>
@@ -2228,7 +2367,7 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
 
     <div class="set-sec">
       <label class="set-check"><input type="checkbox" id="set-advanced"> <span>Advanced mode<small>Rule ids, filters, suggestions, recorded calls and engine probes</small></span></label>
-      <label class="set-check dev-only"><input type="checkbox" id="set-devbar"> <span>Developer bar<span class="chip adv-tag">Advanced</span><small>Site theme, colour mode and contrast checks (Ctrl+Alt+D)</small></span></label></div>
+      <label class="set-check dev-only"><input type="checkbox" id="set-devbar"> <span>Developer bar<span class="chip adv-tag">Advanced</span><small>Site theme, colour mode and contrast checks (<kbd class="keys"><kbd>Ctrl</kbd><span class="kplus">+</span><kbd>Alt</kbd><span class="kplus">+</span><kbd>D</kbd></kbd>)</small></span></label></div>
     <div class="set-sec dev-only"><h3>WakaTime<span class="chip adv-tag">Advanced</span></h3>
       <label class="set-check"><input type="checkbox" id="set-waka"> <span>Track my time in WakaTime<small>Like WakaTime's VS Code plugin: sends the handler's name, the game's name, the time, what you're doing (writing, testing, reading docs), line numbers and how many lines you changed. Never the code. Your API key stays in this browser.</small></span></label>
       <div class="set-fields" id="set-waka-fields">
@@ -2245,18 +2384,35 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
 </dialog>
 
 <dialog id="code-dialog" aria-labelledby="save-h">
-  <h2 id="save-h">Share</h2>
+  <div class="code-head"><h2 id="save-h">Share or download</h2><button class="code-x" type="button" id="code-close" aria-label="Close" title="Close"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>
   <div id="code-main">
+    <div class="code-rows">
+    <section class="code-part" id="code-p-share" aria-labelledby="code-share-h">
+    <div class="code-part-h"><span class="code-part-i"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M8.6 10.7l6.8-3.9M8.6 13.3l6.8 3.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="6" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="5.5" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="18.5" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span><div><h3 class="code-h" id="code-share-h">Share</h3><p>Send it to someone else</p></div></div>
     <div class="code-top">
       <button class="code-hero" type="button" data-code="link"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Copy a link</b><small id="code-link-sub">Opens this handler for anyone, or just the selected lines</small></span></button>
-      <button class="code-opt" type="button" data-code="file"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7zM14 3v4h4M12 11v6M9.5 14.5 12 17l2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Share the file</b><small id="code-file-sub">The .zip, and a message to post with it</small><small class="code-warn-line" id="code-file-warn" hidden><span aria-hidden="true">⚠ </span><span></span></small></span></button>
     </div>
     <div class="code-grid">
       <button class="code-opt" type="button" data-code="copy"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M9 9h10v10H9zM5 15V5h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Copy the code</b><small>To paste anywhere</small></span></button>
       <button class="code-opt" type="button" data-code="discord"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 5h14v10H9l-4 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span><b>Copy for Discord</b><small id="code-discord-sub">The code in a code block, ready to paste</small></span></button>
     </div>
+    </section>
+    <section class="code-part" id="code-p-download" aria-labelledby="code-dl-h">
+    <div class="code-part-h"><span class="code-part-i"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><div><h3 class="code-h" id="code-dl-h" tabindex="-1">Download</h3><p>Save a file to this computer</p></div></div>
+    <fieldset class="dl-set" id="dl-set" hidden><legend>Which handlers</legend>
+      <label class="set-check"><input type="checkbox" id="dl-all"> <span>All</span></label>
+      <div id="dl-items"></div>
+    </fieldset>
+    <div class="code-grid code-dl" id="dl-kinds">
+      <button class="code-opt code-lead" type="button" data-code="zip"><i class="code-ext" aria-hidden="true">.zip</i><span><b>For Nucleus Co-op</b><small>A .zip with the handler and its files, to install or to send to someone</small><small class="code-warn-line" id="code-file-warn" hidden><span aria-hidden="true">⚠ </span><span></span></small></span></button>
+      <button class="code-opt" type="button" data-code="js"><i class="code-ext" aria-hidden="true">.js</i><span><b>The code only</b><small>The .js, without its files</small></span></button>
+      <button class="code-opt" type="button" data-code="nc"><i class="code-ext" aria-hidden="true">.nc</i><span><b>Hub-format package</b><small>A .nc, the Hub's package format</small></span></button>
+    </div>
+    <button class="code-opt code-lead code-many" type="button" data-code="bundle" id="dl-many" hidden><i class="code-ext" aria-hidden="true">.zip</i><span><b id="dl-many-b">All as one .zip</b><small>Each handler's .js and its files in one .zip. Drop it on the workbench to open them all.</small></span></button>
     <p class="muted small" id="code-hub-note" style="margin:10px 0 0" hidden><a href="#" target="_blank" rel="noopener">Get the big files from the Hub page</a>, then add them with Files › Add files… to include them.</p>
-    <p class="muted small" style="margin:10px 0 0">To get a file for Nucleus, use <b>Save</b> (Ctrl+S).</p>
+    <p class="muted small" id="dl-note" role="status" style="margin:8px 0 0"></p>
+    </section>
+    </div>
   </div>
   <div id="code-done" hidden>
     <p class="code-saved" id="code-saved"></p>
@@ -2267,7 +2423,6 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
     </ol>
     <p class="muted small">By hand instead: copy the code into <code>Nucleus Co-op\handlers\<span id="code-js-name"></span></code>, then restart Nucleus.</p>
   </div>
-  <div class="actions"><button class="btn" type="button" id="code-close">Close</button></div>
 </dialog>
 <dialog id="more-dialog" aria-label="More">
   <div class="more-list">

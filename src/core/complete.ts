@@ -190,7 +190,55 @@ export function memberContextAt(text: string, offset: number): MemberContext | u
 }
 
 /** For hover: resolve the identifier at `offset` (with its chain). */
+/** Whether `offset` is inside a string or a `//` comment of its line (handlers have no strings over several lines). */
+export function inTextAt(text: string, offset: number): boolean {
+  let quote = '';
+  for (let i = text.lastIndexOf('\n', offset - 1) + 1; i < offset; i++) {
+    const c = text[i];
+    if (quote) {
+      if (c === '\\') i++;
+      else if (c === quote) quote = '';
+    } else if (c === '"' || c === "'") quote = c;
+    else if (c === '/' && text[i + 1] === '/') return true;
+    else if (c === '/' && text[i + 1] === '*') {
+      // A block comment: text too while the offset is in it; past its end the code goes on (a quote in it isn't one).
+      const e = text.indexOf('*/', i + 2);
+      if (e < 0 || e + 2 > offset) return true;
+      i = e + 1;
+    }
+  }
+  return !!quote;
+}
+
+/**
+ * Where the regular-expression literal that starts at `i` ends (the index of its closing `/`), or -1 when the `/`
+ * there is a division or the literal isn't closed on its line. A `/` starts a literal where a value can start: after
+ * an opening bracket, a comma, an operator or `return`. After `++` or `--` (`n++ / 2`) it divides. Escapes and
+ * character classes (`[/,]`) are skipped.
+ */
+export function regexEnd(text: string, i: number, limit = text.length): number {
+  if (text[i] !== '/' || text[i + 1] === '/' || text[i + 1] === '*') return -1;
+  let b = i - 1;
+  while (b >= 0 && (text[b] === ' ' || text[b] === '\t')) b--;
+  const before = b < 0 ? '' : text[b];
+  const postfix = (before === '+' || before === '-') && text[b - 1] === before; // `n++ / 2`, `n-- / 2`
+  const afterReturn = /(^|[^\w$])return$/.test(text.slice(Math.max(0, b - 6), b + 1)); // not `myreturn / 2`
+  if (before && (postfix || !'(,=:[!&|?{};+-*%<>~^\n'.includes(before)) && !afterReturn) return -1;
+  let cls = false;
+  for (let j = i + 1; j < limit; j++) {
+    const c = text[j];
+    if (c === '\n') return -1;
+    if (c === '\\') j++;
+    else if (c === '[') cls = true;
+    else if (c === ']') cls = false;
+    else if (c === '/' && !cls) return j;
+  }
+  return -1;
+}
+
 export function resolveAt(text: string, offset: number, aliases?: Map<string, Chain | null>): { resolved: Resolved; start: number; end: number } | undefined {
+  // A word in a string or a comment is text, not a name: "Game mode" isn't `Game`.
+  if (inTextAt(text, offset)) return undefined;
   let s = offset;
   let e = offset;
   while (s > 0 && /[\w$]/.test(text[s - 1])) s--;
@@ -229,12 +277,19 @@ export function innerCallFrame(text: string, offset: number): { pos: number; com
     } else if (c === '/' && text[i + 1] === '*') {
       const e = text.indexOf('*/', i + 2);
       i = e < 0 || e > offset ? offset : e + 1;
-    } else if (c === '(' || c === '[' || c === '{') stack.push({ pos: i, commas: 0, ch: c });
+    } else if (c === '/' && regexEnd(text, i, offset) > 0) i = regexEnd(text, i, offset);
+    else if (c === '(' || c === '[' || c === '{') stack.push({ pos: i, commas: 0, ch: c });
     else if (c === ')' || c === ']' || c === '}') stack.pop();
     else if (c === ',' && stack.length) stack[stack.length - 1].commas++;
   }
-  // Inside an array/object literal that is itself an argument: the call around it.
-  for (let k = stack.length - 1; k >= 0; k--) if (stack[k].ch === '(') return { pos: stack[k].pos, commas: stack[k].commas };
+  // Inside an array/object literal that is itself an argument: the call around it. Parentheses that only group an
+  // expression (`mine((1 + 2), 3)`: nothing callable before them) aren't a call either.
+  const calls = (pos: number) => {
+    let b = pos - 1;
+    while (b >= 0 && /\s/.test(text[b])) b--;
+    return b >= 0 && /[\w$)\]]/.test(text[b]);
+  };
+  for (let k = stack.length - 1; k >= 0; k--) if (stack[k].ch === '(' && calls(stack[k].pos)) return { pos: stack[k].pos, commas: stack[k].commas };
   return undefined;
 }
 
