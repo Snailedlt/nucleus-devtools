@@ -1243,7 +1243,7 @@ test('PR77 results: reload and size resets preserve visibility and panel sides',
   assert.equal(p.resultsShown(), false);
   assert.equal(f.ids.get('results-show').hidden, false);
   assert.equal(f.ids.get('set-results').checked, false);
-  assert.equal(f.ids.get('main').style.getPropertyValue('--split-l'), '0.7fr');
+  assert.equal(f.ids.get('main').style.getPropertyValue('--split-l'), '70fr');
   p.resetOne('main');
   assert.equal(p.resultsShown(), false);
   assert.equal(JSON.parse(f.storage.getItem('nucleus-workbench-panels')).lines, 400);

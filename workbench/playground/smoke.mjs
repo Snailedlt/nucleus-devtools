@@ -1467,6 +1467,27 @@ section('files and tabs', async () => {
   check(!s.errors.length, `files and tabs: no page errors ${s.errors.join(' ')}`);
   await s.ctx.close();
 });
+section('pane resize', async () => {
+  // Dragging the border between the code and the results to the right: it follows the pointer until the results are
+  // at their smallest, and stays there. (It used to jump back by a few hundred pixels at that point.)
+  const s = await page('light', { viewport: { width: 1440, height: 860 } });
+  await s.p.goto(BASE + '#example-mistakes');
+  await s.p.waitForSelector('.CodeMirror');
+  await s.p.waitForTimeout(700);
+  await s.p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
+  const at = () => s.p.evaluate(() => Math.round(document.querySelector('#split-main').getBoundingClientRect().left));
+  const start = await at();
+  await s.p.mouse.move(start + 6, 400);
+  await s.p.mouse.down();
+  const seen = [];
+  for (let x = start; x <= 1420; x += 40) { await s.p.mouse.move(x, 400); seen.push(await at()); }
+  await s.p.mouse.up();
+  const back = seen.findIndex((v, i) => i > 0 && v < seen[i - 1] - 2);
+  const right = await s.p.evaluate(() => Math.round(document.querySelector('.main > .pane.side').getBoundingClientRect().width));
+  check(back < 0 && seen[seen.length - 1] > start + 150 && right >= 298, `pane resize: the border never jumps back while dragged right (${seen.join(' ')}; results ${right}px)`);
+  check(!s.errors.length, `pane resize: no page errors ${s.errors.join(' ')}`);
+  await s.ctx.close();
+});
 section('learn', async () => {
   // Learn (learn/): the intro scene step by step; a lesson ticks when its code is done; Solve; Try it; the test
   // lesson's download; the lesson list; axe in light and dark; nothing cut off on a phone. #learn in the workbench

@@ -27,8 +27,12 @@ export function initPanels(opts: { refresh: () => void; toast: (s: string) => vo
   function apply() {
     if (sizes.main) {
       main.classList.add('sized');
-      main.style.setProperty('--split-l', `${sizes.main}fr`);
-      main.style.setProperty('--split-r', `${1 - sizes.main}fr`);
+      // As whole shares (70fr and 30fr, not 0.7fr and 0.3fr): when one pane is at its smallest width, a grid gives
+      // the other only its fraction of the room left if the shares still in play add up to less than 1, and the
+      // border jumped back by a few hundred pixels.
+      const share = (v: number) => `${Number((v * 100).toFixed(3))}fr`;
+      main.style.setProperty('--split-l', share(sizes.main));
+      main.style.setProperty('--split-r', share(1 - sizes.main));
     } else {
       main.classList.remove('sized');
       main.style.removeProperty('--split-l');
