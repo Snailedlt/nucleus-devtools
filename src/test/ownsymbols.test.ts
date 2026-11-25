@@ -193,6 +193,9 @@ test('hover: grouping parentheses, a regular expression and a block comment don\
     'mine((1 + 2), 3, 4);',
     'mine(/,[/,]\\//, 22, 33);',
     'var half = 8 / 2, rest = mine(5, 6, 7);',
+    'var n = 1, myreturn = 4;',
+    'mine(n++ / 2, 66 / 3, 77);',
+    'mine(myreturn / 2, 88 / 4, 99);',
     "/* don't */ Context.Width;",
   ].join('\n');
   const at = (needle: string, plus = 0) => hoverAt(code, code.indexOf(needle) + plus, {});
@@ -201,6 +204,9 @@ test('hover: grouping parentheses, a regular expression and a block comment don\
   // A comma inside a regular expression isn't a separator; a division is still a division.
   assert.match(at('22')!.markdown, /\(parameter\) second\n/);
   assert.match(at('6, 7')!.markdown, /\(parameter\) second\n/);
+  // After a postfix ++ and after a name that only ends in "return", a slash still divides.
+  assert.match(at('77')!.markdown, /\(parameter\) third\n/);
+  assert.match(at('99')!.markdown, /\(parameter\) third\n/);
   // A quote in a block comment doesn't turn the rest of the line into text.
   assert.match(at('Width', 1)!.markdown, /Width/);
   assert.equal(at("don't", 1), undefined);

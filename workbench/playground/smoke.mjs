@@ -1466,7 +1466,7 @@ section('files and tabs', async () => {
   // keeps the file in a tab of its own. Folders inside a handler fold.
   await s.p.evaluate(() => {
     const dt = new DataTransfer();
-    for (const n of ['a.ini', 'b.ini', 'c.ini']) dt.items.add(new File(['[S]\nK=1\n'], n, { type: 'text/plain' }));
+    for (const n of ['a.ini', 'b.ini', 'c.ini', 'd.ini', 'e.ini']) dt.items.add(new File(['[S]\nK=1\n'], n, { type: 'text/plain' }));
     document.querySelector('#files-panel').dispatchEvent(new DragEvent('drop', { dataTransfer: dt, bubbles: true, cancelable: true }));
   });
   await s.p.waitForTimeout(500);
@@ -1488,6 +1488,17 @@ section('files and tabs', async () => {
   await s.p.dblclick('#htabs .htab-w.preview .htab');
   await s.p.waitForTimeout(250);
   check(!(await names()).some((n) => n.startsWith('~')), 'files: a double click on the preview tab keeps it');
+  // A change to the previewed file keeps its tab at once, also when another file is picked right after.
+  await s.p.click('#files-panel .fp-h.on .fp-open[data-fp$="d.ini"]');
+  await s.p.waitForTimeout(300);
+  const previewA = await names();
+  await s.p.evaluate(() => {
+    document.querySelector('#file-editor .CodeMirror').CodeMirror.replaceRange('; typed\n', { line: 0, ch: 0 });
+    document.querySelector('#files-panel .fp-h.on .fp-open[data-fp$="e.ini"]').click();
+  });
+  await s.p.waitForTimeout(600);
+  const afterEdit = await names();
+  check(previewA.includes('~d.ini') && afterEdit.includes('d.ini') && afterEdit.includes('~e.ini'), `files: an edited preview file keeps its tab when another file is picked right after (${previewA.join()} | ${afterEdit.join()})`);
   const dirs = await s.p.$$('#files-panel .fp-h.on [data-fp-dir]');
   if (dirs.length) {
     const rowsBefore = (await s.p.$$('#files-panel .fp-h.on .fp-open[data-fp]')).length;

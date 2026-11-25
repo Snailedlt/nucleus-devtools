@@ -74,31 +74,37 @@ export function initFileOpen(deps: FileOpenDeps) {
     }
   }
   const clean = (text: string) => text.replace(/^\uFEFF/, '').replace(/\r\n/g, '\n');
-  async function openFolderHandler(h: FolderHandler) {
+  /** Opens one handler of a folder. What the person should know about it comes back, for the caller to show once
+   *  everything is open (opening a handler clears the notice, so a warning shown earlier would be gone). */
+  async function openFolderHandler(h: FolderHandler): Promise<{ text: string; kind: 'warning' | 'error' } | undefined> {
     try {
       if (h.files.length > FOLDER_MAX_FILES) {
         deps.loadSource(clean(await h.js.text()), { name: h.name, kind: 'draft' });
-        // After it's open: opening clears the notice.
-        notice(`${h.name} has ${h.files.length} files beside it, which looks like a game's folder, not a handler's: opened without them.`, { kind: 'warning' });
-        return;
+        return { text: `${h.name} has ${h.files.length} files beside it, which looks like a game's folder, not a handler's: opened without them.`, kind: 'warning' };
       }
       const files: PackageFile[] = [];
       for (const f of h.files) files.push({ name: f.name, data: new Uint8Array(await f.file.arrayBuffer()) });
       deps.loadSource(clean(await h.js.text()), { name: h.name, kind: 'draft' });
-      if (!files.length) return;
+      if (!files.length) return undefined;
       deps.setPackageFiles(files);
-      if (!storeFiles(files)) notice(`The ${files.length} other file${files.length === 1 ? '' : 's'} are too big to keep after a reload: save before closing the page.`, { kind: 'warning' });
+      if (!storeFiles(files)) return { text: `${h.name}: the ${files.length} other file${files.length === 1 ? '' : 's'} are too big to keep after a reload, so save before closing the page.`, kind: 'warning' };
     } catch {
-      notice(`Couldn't read ${h.name}.`, { kind: 'error' });
+      return { text: `Couldn't read ${h.name}.`, kind: 'error' };
     }
+    return undefined;
+  }
+  async function openFolderHandlers(list: FolderHandler[]) {
+    const said: { text: string; kind: 'warning' | 'error' }[] = [];
+    for (const h of list) { const w = await openFolderHandler(h); if (w) said.push(w); }
+    if (said.length) notice(said.map((w) => w.text).join(' '), { kind: said.some((w) => w.kind === 'error') ? 'error' : 'warning' });
   }
   async function openFolder(picked: File[]) {
     const rel = (f: File) => ((f as File & { webkitRelativePath?: string }).webkitRelativePath || f.name).replace(/\\/g, '/');
     const folder = rel(picked[0]).split('/')[0] || 'handler';
     const found = handlersInFolder(folder, picked.map((file) => ({ path: rel(file).split('/').slice(1).join('/'), file })));
     if (!found.length) return notice(`${folder} has no handler: a .js file at its top (with its files in a folder of the same name), or a handler.js.`, { kind: 'error' });
-    if (found.length === 1) return void openFolderHandler(found[0]);
-    deps.choose(found.map((h) => h.name), (which) => void (async () => { for (const i of which) await openFolderHandler(found[i]); })());
+    if (found.length === 1) return void openFolderHandlers(found);
+    deps.choose(found.map((h) => h.name), (which) => void openFolderHandlers(which.map((i) => found[i])));
   }
   const folderInput = document.createElement('input');
   folderInput.type = 'file';

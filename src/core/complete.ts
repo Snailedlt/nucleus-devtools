@@ -213,14 +213,17 @@ export function inTextAt(text: string, offset: number): boolean {
 /**
  * Where the regular-expression literal that starts at `i` ends (the index of its closing `/`), or -1 when the `/`
  * there is a division or the literal isn't closed on its line. A `/` starts a literal where a value can start: after
- * an opening bracket, a comma, an operator or `return`. Escapes and character classes (`[/,]`) are skipped.
+ * an opening bracket, a comma, an operator or `return`. After `++` or `--` (`n++ / 2`) it divides. Escapes and
+ * character classes (`[/,]`) are skipped.
  */
 export function regexEnd(text: string, i: number, limit = text.length): number {
   if (text[i] !== '/' || text[i + 1] === '/' || text[i + 1] === '*') return -1;
   let b = i - 1;
   while (b >= 0 && (text[b] === ' ' || text[b] === '\t')) b--;
   const before = b < 0 ? '' : text[b];
-  if (before && !'(,=:[!&|?{};+-*%<>~^\n'.includes(before) && !/\breturn$/.test(text.slice(Math.max(0, b - 5), b + 1))) return -1;
+  const postfix = (before === '+' || before === '-') && text[b - 1] === before; // `n++ / 2`, `n-- / 2`
+  const afterReturn = /(^|[^\w$])return$/.test(text.slice(Math.max(0, b - 6), b + 1)); // not `myreturn / 2`
+  if (before && (postfix || !'(,=:[!&|?{};+-*%<>~^\n'.includes(before)) && !afterReturn) return -1;
   let cls = false;
   for (let j = i + 1; j < limit; j++) {
     const c = text[j];

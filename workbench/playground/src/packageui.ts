@@ -91,8 +91,9 @@ export interface PkgHost {
   /** The files of the handler in the editor. */
   getFiles(): PackageFile[];
   /** Replaces the package's files (store them, update the header). */
-  /** `edited`: the file whose text changed (a typed edit), so its preview tab is kept whatever shows by then. */
-  setFiles(files: PackageFile[], edited?: string): void;
+  setFiles(files: PackageFile[]): void;
+  /** A file's text was changed just now (before it is committed): its preview tab becomes a tab of its own. */
+  edited?(name: string): void;
   /** Called when the main editor should show again (the host re-applies Code / Form). */
   showMain(): void;
   /** Called when the package's problems may have changed. */
@@ -144,6 +145,7 @@ export function initPackageUI(host: PkgHost) {
     fileEd.on('change', () => {
       if (pendingFile && pendingFile !== active) commit(); // another file's wait ends here
       pendingFile = active;
+      if (active) host.edited?.(active);
       clearTimeout(saveTimer);
       saveTimer = window.setTimeout(commit, 350);
     });
@@ -161,7 +163,7 @@ export function initPackageUI(host: PkgHost) {
     pendingFile = null;
     const d = name ? docs.get(name) : undefined;
     if (!name || !d) return;
-    host.setFiles(files().map((f) => (f.name === name && !f.remote ? { name: f.name, data: bytesOf(d.doc.getValue(), d.enc) } : f)), name);
+    host.setFiles(files().map((f) => (f.name === name && !f.remote ? { name: f.name, data: bytesOf(d.doc.getValue(), d.enc) } : f)));
     host.changed();
   }
   const flush = () => { if (pendingFile) commit(); };
