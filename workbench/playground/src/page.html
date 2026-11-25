@@ -490,85 +490,58 @@ details.set-sec[open] summary { margin-bottom: 4px; }
 .more-list .btn { text-align: left; padding: 12px 14px; font-size: 15px; }
 /* Save or copy: one recommended action (the .zip for Nucleus), the rest as a grid of small choices. */
 /* Download: which handlers (the open one, some, or all), and as what. */
-/* Share or download: two columns with a line between them, each a short menu under its own name. One choice per
-   column leads (tinted, filled tile); the rest are quiet rows that light up under the pointer. Stacked when narrow. */
-#code-dialog { width: min(800px, calc(100vw - 32px)); padding: 22px 24px 24px; border-radius: 16px; }
-.code-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
-#code-dialog .code-head h2 { margin: 0; padding: 0; font-size: 18px; }
+/* Share or download: two short rows of buttons, Share on top and Download under a line. A button shows only what
+   it takes to tell it apart: the leading one its icon and name, the other ways to share their name, the other
+   files their kind (.js, .nc). What each does is a tooltip (pointer or keyboard focus); warnings stay on screen. */
+#code-dialog { width: min(580px, calc(100vw - 32px)); padding: 16px 18px 18px; border-radius: 14px; overflow: visible; }
+.code-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 14px; }
+#code-dialog .code-head h2 { margin: 0; padding: 0; font-size: 16px; }
 .code-x { flex: none; display: grid; place-items: center; width: 32px; height: 32px; margin: -4px -8px -4px 0; border: 0; border-radius: 8px; background: none; color: var(--muted); cursor: pointer; }
 .code-x:hover { background: var(--surface-2); color: var(--fg); }
 #code-dialog .code-x svg { color: currentColor; }
-.code-cols { display: grid; grid-template-columns: 1fr 1fr; }
-.code-part { min-width: 0; }
-.code-part:first-child { padding-right: 24px; }
-.code-part + .code-part { padding-left: 24px; border-left: 1px solid var(--line); }
-.code-part-h { display: flex; align-items: flex-start; gap: 10px; margin: 0 0 14px 2px; }
-.code-part-i { flex: none; display: grid; place-items: center; height: 22px; color: var(--accent); }
-.code-part-h .code-h { margin: 0; font-size: 16px; line-height: 22px; font-weight: 700; color: var(--fg); text-transform: none; letter-spacing: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.code-part { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 6px; min-width: 0; }
+.code-part + .code-part { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.code-part > :not(button):not(.code-top):not(.code-grid) { flex: 0 0 100%; }
+.code-part-h { order: -2; display: flex; align-items: center; gap: 8px; margin: 0 0 2px; }
+.code-part-i { flex: none; display: grid; place-items: center; color: var(--accent); }
 .code-part-h > div { flex: 1; min-width: 0; }
+.code-part-h .code-h { margin: 0; font-size: 14px; font-weight: 700; color: var(--fg); text-transform: none; letter-spacing: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .code-part-h .code-h .code-of { font-weight: 500; color: var(--muted); }
 .code-part-h .code-h:focus { outline: none; }
-.code-part-h p { margin: 2px 0 0; font-size: 12.5px; color: var(--muted); }
-.code-part .code-top { gap: 2px; }
-.code-part .code-grid { grid-template-columns: 1fr; gap: 2px; margin-top: 2px; }
-.code-part .code-grid.code-dl { margin-top: 0; }
-#code-dialog .code-part :is(.code-opt, .code-hero) { position: relative; align-items: center; gap: 12px; width: 100%; padding: 9px 12px 9px 10px; border: 1px solid transparent; border-radius: 12px; background: none; font-size: 14px; transition: background-color .16s ease-out, border-color .16s ease-out; }
-#code-dialog .code-part :is(.code-opt, .code-hero) > span { flex: 1; }
+.code-part-h p { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+#code-dialog .code-part :is(.code-top, .code-grid):not([hidden]) { display: contents; }
+#code-dialog .code-part :is(.code-opt, .code-hero) { position: relative; display: flex; align-items: center; gap: 8px; width: auto; min-height: 34px; padding: 6px 12px; border: 1px solid var(--line); border-radius: var(--r-ctl); background: var(--surface); color: var(--fg); font-size: 13.5px; transition: background-color .16s ease-out, border-color .16s ease-out; }
+#code-dialog .code-part :is(.code-opt, .code-hero)[hidden] { display: none; }
 #code-dialog .code-part .code-opt:hover { background: var(--surface-2); }
-#code-dialog .code-part :is(.code-hero, .code-lead) { margin-bottom: 6px; padding-block: 12px; border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); background: color-mix(in srgb, var(--accent) 9%, var(--surface)); }
-#code-dialog .code-part :is(.code-hero, .code-lead):hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 15%, var(--surface)); }
-/* The tile: an icon, or the kind of file. */
-#code-dialog .code-part :is(.code-opt, .code-hero) > svg { box-sizing: content-box; padding: 9px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 11%, var(--surface)); }
-.code-ext { flex: none; display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; background: color-mix(in srgb, var(--accent) 11%, var(--surface)); color: var(--fg); font: 700 11.5px var(--font-mono); font-style: normal; letter-spacing: -.02em; }
-#code-dialog .code-part .code-hero > svg, #code-dialog .code-part .code-lead > .code-ext { background: var(--accent); color: var(--accent-fg, #fff); }
-/* A small arrow at the end of a row: there for the leading choice, on the others once they're pointed at. */
-#code-dialog .code-part :is(.code-opt, .code-hero)::after { content: ""; flex: none; width: 7px; height: 7px; margin-right: 4px; border: solid var(--muted); border-width: 2px 2px 0 0; transform: rotate(45deg); opacity: 0; transition: opacity .16s ease-out; }
-#code-dialog .code-part :is(.code-opt, .code-hero):is(:hover, :focus-visible)::after { opacity: 1; }
-#code-dialog .code-part :is(.code-hero, .code-lead)::after { opacity: 1; border-color: var(--accent); }
-@media (max-width: 460px) {
-  .code-cols { grid-template-columns: 1fr; }
-  .code-part:first-child { padding-right: 0; }
-  .code-part + .code-part { padding-left: 0; border-left: 0; margin-top: 18px; padding-top: 18px; border-top: 1px solid var(--line); }
+#code-dialog .code-part :is(.code-hero, .code-lead) { border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); background: color-mix(in srgb, var(--accent) 10%, var(--surface)); }
+#code-dialog .code-part :is(.code-hero, .code-lead):hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 17%, var(--surface)); }
+#code-dialog .code-part :is(.code-opt, .code-hero) b { font-weight: 600; white-space: nowrap; }
+#code-dialog .code-part :is(.code-opt, .code-hero) > svg { width: 16px; height: 16px; }
+/* Sharing: the leading way keeps its icon, the others are their name. */
+#code-p-share .code-opt > svg { display: none; }
+/* Downloading: the kind of file says it; only the leading one adds its name. */
+.code-ext { flex: none; color: var(--fg); font: 700 12.5px var(--font-mono); font-style: normal; letter-spacing: -.02em; }
+@media (hover: hover) { #code-dialog .code-dl .code-opt:not(.code-lead) { gap: 0; } #code-dialog .code-dl .code-opt:not(.code-lead) b { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; } }
+/* What a button does: a tooltip under it. A warning (.code-warn-line, .code-keep) is a line in the button instead. */
+@media (hover: hover) {
+  #code-dialog .code-part button small:not(.code-warn-line):not(.code-keep) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  #code-dialog .code-part button:is(:hover, :focus-visible) small:not(.code-warn-line):not(.code-keep) { top: calc(100% + 6px); left: 0; z-index: 5; width: max-content; max-width: 250px; height: auto; overflow: visible; clip-path: none; white-space: normal; padding: 6px 9px; border-radius: 8px; background: var(--fg); color: var(--surface); font-size: 12.5px; line-height: 1.35; box-shadow: 0 4px 14px rgb(0 0 0 / .18); pointer-events: none; }
 }
-/* Which handlers to download: a plain list above the choices, with a line under it. */
-.dl-set { border: 0; border-bottom: 1px solid var(--line); margin: 0 0 12px; padding: 0 2px 10px; display: grid; gap: 0; min-width: 0; }
-.dl-set legend { padding: 0; margin-bottom: 4px; font-size: 11.5px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
-.dl-set .set-check { align-items: center; padding: 5px 8px; margin-inline: -8px; border-radius: 8px; }
+@media (hover: none) { #code-dialog .code-part button small:not(.code-warn-line):not(.code-keep) { display: none; } }
+#code-dialog .code-part button :is(small.code-warn-line, small.code-keep) { max-width: 230px; white-space: normal; }
+#code-dialog .code-part button small.code-keep { color: var(--warn); font-weight: 600; }
+/* Which handlers to download: a plain list above the buttons. */
+.dl-set { border: 0; margin: 0; padding: 0; display: grid; gap: 0; min-width: 0; }
+.dl-set legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.dl-set .set-check { align-items: center; padding: 3px 8px; margin-left: -8px; border-radius: 8px; font-size: 13.5px; }
 .dl-set .set-check:hover { background: var(--surface-2); }
 .dl-set .set-check input { margin-top: 0; }
 .dl-set > .set-check { font-weight: 600; }
 .dl-set .set-check small { display: inline; margin-left: 6px; white-space: nowrap; }
 .dl-set[hidden], .code-dl[hidden], .code-many[hidden] { display: none; }
-#dl-items { display: grid; gap: 0; max-height: 28vh; overflow: auto; padding-left: 22px; margin-inline: -8px; padding-right: 8px; }
-#dl-items .set-check { margin-inline: 0; }
-.code-many { width: 100%; }
-/* Compact: a choice is its icon and its name. What it does shows in the line at the foot of the dialog while it is
-   pointed at or focused (a touch screen, which can't point, keeps the line under each name instead). */
-#code-dialog { width: min(540px, calc(100vw - 32px)); padding: 16px 18px 12px; border-radius: 14px; }
-.code-head { margin-bottom: 12px; }
-#code-dialog .code-head h2 { font-size: 16px; }
-.code-part:first-child { padding-right: 14px; }
-.code-part + .code-part { padding-left: 14px; }
-.code-part-h { align-items: center; gap: 8px; margin: 0 0 6px 8px; }
-.code-part-h .code-h { font-size: 14px; }
-.code-part-h p { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.code-part .code-top, .code-part .code-grid { gap: 1px; }
-.code-part .code-grid { margin-top: 1px; }
-#code-dialog .code-part :is(.code-opt, .code-hero) { gap: 10px; padding: 6px 8px; border-radius: 8px; }
-#code-dialog .code-part :is(.code-hero, .code-lead) { margin-bottom: 3px; padding-block: 7px; }
-#code-dialog .code-part :is(.code-opt, .code-hero) > svg { padding: 1px 8px; border-radius: 0; background: none; }
-#code-dialog .code-part .code-hero > svg { background: none; color: var(--accent); }
-.code-ext { width: 34px; height: 20px; border-radius: 5px; font-size: 10.5px; }
-#code-dialog .code-part :is(.code-opt, .code-hero) b { font-weight: 600; }
-.dl-set { margin-bottom: 6px; padding: 0 0 6px; }
-.dl-set legend { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-.dl-set .set-check { padding: 3px 8px; margin-inline: 0; font-size: 13.5px; }
-#dl-items { margin-inline: 0; padding-right: 0; }
-.code-hint { margin: 10px 0 0; padding: 8px 8px 0; border-top: 1px solid var(--line); min-height: calc(1.4em + 8px); font-size: 12.5px; line-height: 1.4; color: var(--muted); }
-@media (hover: hover) {
-  #code-dialog .code-part button small:not(.code-warn-line):not(.code-keep) { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
-}
-@media (hover: none) { .code-hint { display: none; } }
+#dl-items { display: grid; gap: 0; max-height: 28vh; overflow: auto; padding-left: 22px; }
+#dl-items .set-check { margin-left: 0; }
+#code-hub-note, #dl-note { margin: 2px 0 0 !important; }
 #dl-note:empty { display: none; }
 #code-dialog button svg { flex: none; color: var(--accent); }
 #code-dialog button span { display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: left; }
@@ -2405,7 +2378,7 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
 <dialog id="code-dialog" aria-labelledby="save-h">
   <div class="code-head"><h2 id="save-h">Share or download</h2><button class="code-x" type="button" id="code-close" aria-label="Close" title="Close"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button></div>
   <div id="code-main">
-    <div class="code-cols">
+    <div class="code-rows">
     <section class="code-part" id="code-p-share" aria-labelledby="code-share-h">
     <div class="code-part-h"><span class="code-part-i"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M8.6 10.7l6.8-3.9M8.6 13.3l6.8 3.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="6" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="5.5" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="18.5" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span><div><h3 class="code-h" id="code-share-h">Share</h3><p>Send it to someone else</p></div></div>
     <div class="code-top">
@@ -2433,7 +2406,6 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
     <p class="muted small" id="dl-note" role="status" style="margin:8px 0 0"></p>
     </section>
     </div>
-    <p class="code-hint" id="code-hint" aria-hidden="true"></p>
   </div>
   <div id="code-done" hidden>
     <p class="code-saved" id="code-saved"></p>

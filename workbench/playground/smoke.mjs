@@ -1535,8 +1535,11 @@ section('files and tabs', async () => {
   // One handler: Share or download has no handler list, and its Download buttons save it.
   await s.p.click('.rail [data-rail=share]');
   await s.p.waitForTimeout(300);
-  const sideBySide = await s.p.evaluate(() => { const a = document.querySelector('#code-p-share').getBoundingClientRect(), b = document.querySelector('#code-p-download').getBoundingClientRect(); return a.width > 0 && b.width > 0 && b.left >= a.right - 1 && Math.abs(a.top - b.top) < 2; });
-  check(sideBySide, 'share or download: Share and Download show side by side, both at once');
+  const bothShow = await s.p.evaluate(() => { const a = document.querySelector('#code-p-share').getBoundingClientRect(), b = document.querySelector('#code-p-download').getBoundingClientRect(); return a.height > 0 && b.height > 0 && b.top >= a.bottom - 1 && b.bottom <= innerHeight; });
+  check(bothShow, 'share or download: Share and Download both show at once, Download under Share');
+  await s.p.hover('#code-dialog [data-code=nc]');
+  const tip = await s.p.evaluate(() => { const r = document.querySelector('#code-dialog [data-code=nc] small').getBoundingClientRect(); return r.width > 40 && r.height > 10; });
+  check(tip, 'share or download: pointing at a button shows what it does');
   const oneDlg = await s.p.evaluate(() => ({ list: !document.querySelector('#dl-set').hidden, kinds: [...document.querySelectorAll('#dl-kinds [data-code]')].map((b) => b.dataset.code).join() }));
   check(!oneDlg.list && oneDlg.kinds === 'zip,js,nc', `download: with one handler open, Share or download offers the three kinds and no handler list (${JSON.stringify(oneDlg)})`);
   await axe(s.p, 'share or download');
