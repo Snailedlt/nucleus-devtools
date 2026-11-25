@@ -3486,7 +3486,7 @@ function openCodeDialog(download: string[] = [activeTab]) {
   const opening = ++codeDialogOpening; // a slow link from an earlier opening doesn't update this one
   $('#save-h').textContent = 'Share or download';
   // Sharing is one handler: the one in the editor, named here when more are open (they aren't part of it).
-  $('#code-share-h').textContent = tabsReady && tabs.length > 1 ? `Share ${gameOf(doc.name)}` : 'Share';
+  $('#code-share-h').innerHTML = tabsReady && tabs.length > 1 ? `Share <span class="code-of">${esc(gameOf(doc.name))}</span>` : 'Share';
   if (tabsReady) fillDownload(download);
   $('#code-main').hidden = false;
   $('#code-done').hidden = true;
@@ -3575,7 +3575,7 @@ function openDownload(ids: string[] = [activeTab], trigger: HTMLElement = saveBu
 /** The Download part: which handlers (shown once more than one is open), then how. */
 function fillDownload(ids: string[]) {
   ($('#dl-set') as HTMLElement).hidden = tabs.length < 2;
-  $('#dl-items').innerHTML = tabs.map((x) => `<label class="set-check"><input type="checkbox" name="dl-h" value="${x.id}"${ids.includes(x.id) ? ' checked' : ''}> <span>${esc(gameOf(x.id === activeTab ? doc.name : x.meta.name))}${x.id === activeTab ? ' <small>(open in the editor)</small>' : ''}</span></label>`).join('');
+  $('#dl-items').innerHTML = tabs.map((x) => `<label class="set-check"><input type="checkbox" name="dl-h" value="${x.id}"${ids.includes(x.id) ? ' checked' : ''}> <span>${esc(gameOf(x.id === activeTab ? doc.name : x.meta.name))}${x.id === activeTab ? ' <small>in the editor</small>' : ''}</span></label>`).join('');
   syncDownload();
 }
 const dlPicked = () => (tabs.length < 2 ? [activeTab] : [...document.querySelectorAll<HTMLInputElement>('#dl-items input:checked')].map((i) => i.value));
