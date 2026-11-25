@@ -489,21 +489,24 @@ details.set-sec[open] summary { margin-bottom: 4px; }
 .more-list { display: flex; flex-direction: column; gap: 8px; }
 .more-list .btn { text-align: left; padding: 12px 14px; font-size: 15px; }
 /* Save or copy: one recommended action (the .zip for Nucleus), the rest as a grid of small choices. */
-#code-dialog { width: min(560px, calc(100vw - 32px)); }
+#code-dialog { width: min(820px, calc(100vw - 32px)); }
 /* Download: which handlers (the open one, some, or all), and as what. */
-/* Share and Download are two tabs of the dialog: one part shows at a time, opened on the one the button was for. */
-#code-dialog .code-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; margin-bottom: 14px; border-radius: var(--r-pane); background: var(--surface-2); }
-.code-tabs button { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 12px; border: 1px solid transparent; border-radius: var(--r-ctl); background: none; color: var(--muted); font: inherit; font-size: 15px; font-weight: 600; cursor: pointer; }
-.code-tabs button:hover { color: var(--fg); }
-.code-tabs button[aria-selected=true] { background: var(--surface); border-color: var(--line); color: var(--fg); box-shadow: 0 1px 2px rgb(0 0 0 / .08); }
-#code-dialog .code-tabs button svg { color: currentColor; }
-#code-dialog .code-tabs button[aria-selected=true] svg { color: var(--accent); }
-.code-part[hidden] { display: none; }
-#code-dialog .code-part { padding: 0; }
-.code-part-h { margin-bottom: 10px; }
-.code-part-h .code-h { margin: 0; font-size: 15px; font-weight: 700; color: var(--fg); }
+/* Share and Download sit side by side, a line between them, each under its own icon and name. Stacked when narrow. */
+.code-cols { display: grid; grid-template-columns: 1fr 1fr; }
+.code-part { min-width: 0; }
+.code-part:first-child { padding-right: 20px; }
+.code-part + .code-part { padding-left: 20px; border-left: 1px solid var(--line); }
+.code-part-h { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.code-part-i { flex: none; display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); }
+.code-part-h .code-h { margin: 0; font-size: 16px; font-weight: 700; color: var(--fg); text-transform: none; letter-spacing: 0; }
 .code-part-h .code-h:focus { outline: none; }
 .code-part-h p { margin: 1px 0 0; font-size: 12.5px; color: var(--muted); }
+.code-part .code-grid, .code-part .code-grid.code-dl { grid-template-columns: 1fr; }
+@media (max-width: 760px) {
+  .code-cols { grid-template-columns: 1fr; }
+  .code-part:first-child { padding-right: 0; }
+  .code-part + .code-part { padding-left: 0; border-left: 0; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--line); }
+}
 .dl-set { border: 0; margin: 0 0 8px; padding: 0; display: grid; gap: 4px; }
 .dl-set[hidden], .code-dl[hidden], .code-many[hidden] { display: none; }
 #dl-items { display: grid; gap: 4px; margin-left: 22px; max-height: 28vh; overflow: auto; }
@@ -2346,12 +2349,9 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
 <dialog id="code-dialog" aria-labelledby="save-h">
   <h2 id="save-h">Share or download</h2>
   <div id="code-main">
-    <div class="code-tabs" role="tablist" aria-label="Share or download">
-      <button type="button" role="tab" id="code-tab-share" aria-controls="code-p-share" aria-selected="true" data-code-tab="share"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M8.6 10.7l6.8-3.9M8.6 13.3l6.8 3.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="6" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="5.5" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="18.5" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>Share</button>
-      <button type="button" role="tab" id="code-tab-download" aria-controls="code-p-download" aria-selected="false" tabindex="-1" data-code-tab="download"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Download</button>
-    </div>
-    <section class="code-part" id="code-p-share" role="tabpanel" aria-labelledby="code-tab-share">
-    <div class="code-part-h"><h3 class="code-h" id="code-share-h">Share</h3><p>Send it to someone else</p></div>
+    <div class="code-cols">
+    <section class="code-part" id="code-p-share" aria-labelledby="code-share-h">
+    <div class="code-part-h"><span class="code-part-i"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M8.6 10.7l6.8-3.9M8.6 13.3l6.8 3.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="6" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="5.5" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="18.5" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span><div><h3 class="code-h" id="code-share-h">Share</h3><p>Send it to someone else</p></div></div>
     <div class="code-top">
       <button class="code-hero" type="button" data-code="link"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Copy a link</b><small id="code-link-sub">Opens this handler for anyone, or just the selected lines</small></span></button>
       <button class="code-opt" type="button" data-code="file"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7zM14 3v4h4M12 11v6M9.5 14.5 12 17l2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Share the file</b><small id="code-file-sub">The .zip, and a message to post with it</small><small class="code-warn-line" id="code-file-warn" hidden><span aria-hidden="true">⚠ </span><span></span></small></span></button>
@@ -2362,8 +2362,8 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
     </div>
     <p class="muted small" id="code-hub-note" style="margin:10px 0 0" hidden><a href="#" target="_blank" rel="noopener">Get the big files from the Hub page</a>, then add them with Files › Add files… to include them.</p>
     </section>
-    <section class="code-part" id="code-p-download" role="tabpanel" aria-labelledby="code-tab-download" hidden>
-    <div class="code-part-h"><h3 class="code-h" id="code-dl-h" tabindex="-1">Download</h3><p>Save a file to this computer</p></div>
+    <section class="code-part" id="code-p-download" aria-labelledby="code-dl-h">
+    <div class="code-part-h"><span class="code-part-i"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><div><h3 class="code-h" id="code-dl-h" tabindex="-1">Download</h3><p>Save a file to this computer</p></div></div>
     <fieldset class="dl-set" id="dl-set" hidden><legend class="sr-only">Which handlers to download</legend>
       <label class="set-check"><input type="checkbox" id="dl-all"> <span>All open handlers</span></label>
       <div id="dl-items"></div>
@@ -2376,6 +2376,7 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
     <button class="code-opt code-many" type="button" data-code="bundle" id="dl-many" hidden><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b id="dl-many-b">Download them as one .zip</b><small>Each handler's .js, with its files in a folder of the same name. Dropping the .zip on the workbench opens them all.</small></span></button>
     <p class="muted small" id="dl-note" role="status" style="margin:8px 0 0"></p>
     </section>
+    </div>
   </div>
   <div id="code-done" hidden>
     <p class="code-saved" id="code-saved"></p>

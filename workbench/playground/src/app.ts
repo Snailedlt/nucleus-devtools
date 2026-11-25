@@ -3481,30 +3481,7 @@ function syncSaveButton() {
 }
 syncSaveButton();
 let codeDialogOpening = 0;
-type CodeTab = 'share' | 'download';
-/** Shows one part of Share or download. */
-function setCodeTab(which: CodeTab, focus = false) {
-  document.querySelectorAll<HTMLElement>('#code-dialog [data-code-tab]').forEach((b) => {
-    const on = b.dataset.codeTab === which;
-    b.setAttribute('aria-selected', String(on));
-    b.tabIndex = on ? 0 : -1;
-    if (on && focus) b.focus();
-  });
-  $('#code-p-share').hidden = which !== 'share';
-  $('#code-p-download').hidden = which !== 'download';
-}
-document.querySelector('#code-dialog .code-tabs')!.addEventListener('click', (e) => {
-  const b = (e.target as HTMLElement).closest<HTMLElement>('[data-code-tab]');
-  if (b) setCodeTab(b.dataset.codeTab as CodeTab);
-});
-document.querySelector('#code-dialog .code-tabs')!.addEventListener('keydown', (e) => {
-  const k = (e as KeyboardEvent).key;
-  if (k !== 'ArrowLeft' && k !== 'ArrowRight' && k !== 'Home' && k !== 'End') return;
-  e.preventDefault();
-  setCodeTab(k === 'ArrowLeft' || k === 'Home' ? 'share' : 'download', true);
-});
-function openCodeDialog(download: string[] = [activeTab], part: CodeTab = 'share') {
-  setCodeTab(part);
+function openCodeDialog(download: string[] = [activeTab]) {
   pkgUI?.flush(); // a package file typed in just now counts
   const opening = ++codeDialogOpening; // a slow link from an earlier opening doesn't update this one
   $('#save-h').textContent = 'Share or download';
@@ -3592,7 +3569,7 @@ let dlTrigger: HTMLElement | null = null;
 /** Opens Share or download with these handlers ticked for the download (and the keyboard on its Download part). */
 function openDownload(ids: string[] = [activeTab], trigger: HTMLElement = saveButton()) {
   dlTrigger = trigger;
-  openCodeDialog(ids, 'download');
+  openCodeDialog(ids);
   requestAnimationFrame(() => (document.querySelector<HTMLElement>('#dl-many:not([hidden]), #dl-kinds:not([hidden]) [data-code]') ?? $('#code-dl-h')).focus());
 }
 /** The Download part: which handlers (shown once more than one is open), then how. */
