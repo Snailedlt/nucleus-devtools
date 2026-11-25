@@ -35,6 +35,7 @@ How to write it (people and AI agents read this, and the workbench shows it):
 
   </details>
 ### 🛠️ Improved
+- **Folders look like folders in Files.** Each handler and each folder inside a package has a folder icon, open or shut.
 - **Each handler links its own game folder.** *Link the game's folder…* is the last row of every handler in Files, so two handlers for two games each compare against their own install.
 - **Next, previous and close handler are in the command palette.** They show their shortcuts there, and the tour names your own keys for Check, Lines and Save if you changed them, without a reload.
 - **Animations: All, Balanced, Some or None.** Settings › Motion has one simple choice. *Balanced*, the default, moves everything except Nucli editing your code during fixes. *Some* keeps the interface easing into place and the loaders moving, and holds Duo and Nucli still otherwise. *None* moves nothing. "Play once, then rest" is gone: anyone who had it gets lively mascots. The switches underneath are still there.

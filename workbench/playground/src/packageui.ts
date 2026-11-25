@@ -322,7 +322,7 @@ export function initPackageUI(host: PkgHost) {
         if (!seenDirs.has(dir)) {
           seenDirs.add(dir);
           const shut = shutDirs.has(`${h.id}:${dir}`);
-          rows.push(`<li class="fp-item"><button type="button" class="fp-open fp-dir" data-fp-dir="${esc(`${h.id}:${dir}`)}" aria-expanded="${!shut}" style="padding-left:${pad(i - 1)}px">${icon(shut ? 'chevron-right' : 'chevron-down', 13, 'ui-ico fp-tw')}<span class="fp-name">${esc(parts[i - 1])}/</span></button></li>`);
+          rows.push(`<li class="fp-item"><button type="button" class="fp-open fp-dir" data-fp-dir="${esc(`${h.id}:${dir}`)}" aria-expanded="${!shut}" style="padding-left:${pad(i - 1)}px">${icon(shut ? 'chevron-right' : 'chevron-down', 13, 'ui-ico fp-tw')}${icon(shut ? 'folder' : 'folder-open', 14, 'ui-ico fp-fo')}<span class="fp-name">${esc(parts[i - 1])}</span></button></li>`);
         }
       }
       if (hidden || (parts.length > 1 && shutDirs.has(`${h.id}:${parts.slice(0, -1).join('/')}`))) continue;
@@ -359,8 +359,8 @@ export function initPackageUI(host: PkgHost) {
       const tip = esc(`${h.name}: installs to handlers\\${game}\\`);
       const acts = `${!single && host.download ? `<button type="button" class="fp-del" data-fp-dl="${h.id}" aria-label="Download ${esc(h.name)}" title="Download this handler…">${icon('download', 14)}</button>` : ''}<button type="button" class="fp-del" data-fp-add data-h="${h.id}" aria-label="Add files to ${esc(h.name)}" title="Add files… (or drop them on the list)">${icon('file-plus', 14)}</button><button type="button" class="fp-del" data-fp-hclose="${h.id}" aria-label="Close ${esc(h.name)}" title="Close this handler">${icon('x', 14)}</button>`;
       const head = single
-        ? `<div class="fp-item fp-hrow fp-one" title="${tip}"><span class="fp-open fp-title"><span class="fp-name">${esc(h.name)}</span>${badge(h.counts)}</span>${acts}</div>`
-        : `<div class="fp-item fp-hrow"><button type="button" class="fp-open fp-fold" data-fp-fold="${h.id}" aria-expanded="${!shut}" title="${tip}">${icon(shut ? 'chevron-right' : 'chevron-down', 14, 'ui-ico fp-tw')}<span class="fp-name">${esc(h.name)}</span>${badge(h.counts)}</button>${acts}</div>`;
+        ? `<div class="fp-item fp-hrow fp-one" title="${tip}"><span class="fp-open fp-title">${icon('folder-open', 14, 'ui-ico fp-fo')}<span class="fp-name">${esc(h.name)}</span>${badge(h.counts)}</span>${acts}</div>`
+        : `<div class="fp-item fp-hrow"><button type="button" class="fp-open fp-fold" data-fp-fold="${h.id}" aria-expanded="${!shut}" title="${tip}">${icon(shut ? 'chevron-right' : 'chevron-down', 14, 'ui-ico fp-tw')}${icon(shut ? 'folder' : 'folder-open', 14, 'ui-ico fp-fo')}<span class="fp-name">${esc(h.name)}</span>${badge(h.counts)}</button>${acts}</div>`;
       if (shut) return `<li class="fp-h${h.on ? ' on' : ''}" data-h="${h.id}">${head}</li>`;
       const base = single ? 8 : 22;
       const rows = [`<li class="fp-item"><button type="button" class="fp-open" data-fp="" data-h="${h.id}" aria-current="${h.on && active === null && !empty}" style="padding-left:${base}px">${handlerIcon()}<span class="fp-name">handler.js</span></button></li>`, ...fileRows(h, game, base)];
