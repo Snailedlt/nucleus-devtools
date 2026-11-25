@@ -3481,11 +3481,13 @@ function syncSaveButton() {
 }
 syncSaveButton();
 let codeDialogOpening = 0;
-function openCodeDialog() {
+function openCodeDialog(download: string[] = [activeTab]) {
   pkgUI?.flush(); // a package file typed in just now counts
   const opening = ++codeDialogOpening; // a slow link from an earlier opening doesn't update this one
-  // Sharing is one handler: the one in the editor, named here (other open handlers aren't part of it).
-  $('#save-h').textContent = tabsReady && tabs.length > 1 ? `Share ${gameOf(doc.name)}` : 'Share';
+  $('#save-h').textContent = 'Share or download';
+  // Sharing is one handler: the one in the editor, named here when more are open (they aren't part of it).
+  $('#code-share-h').textContent = tabsReady && tabs.length > 1 ? `Share ${gameOf(doc.name)}` : 'Share';
+  if (tabsReady) fillDownload(download);
   $('#code-main').hidden = false;
   $('#code-done').hidden = true;
   const len = editor.getValue().length + 10;
@@ -3563,39 +3565,33 @@ async function saveAs(kind: SaveKind = saveKind(), trigger: HTMLElement = saveBu
  * editor ticked, a folder's button in Files that handler, the button at the top of Files all of them.
  * One handler downloads as the kind picked (.zip, .js or .nc); several as one .zip with a .js and a folder each.
  */
-const dlDialog = $('#dl-dialog') as HTMLDialogElement;
 let dlTrigger: HTMLElement | null = null;
+/** Opens Share or download with these handlers ticked for the download (and the keyboard on its Download part). */
 function openDownload(ids: string[] = [activeTab], trigger: HTMLElement = saveButton()) {
-  pkgUI?.flush();
   dlTrigger = trigger;
-  const kind = saveKind();
-  $('#dl-items').innerHTML = tabs.map((x) => `<label class="set-check"><input type="checkbox" name="dl-h" value="${x.id}"${ids.includes(x.id) ? ' checked' : ''}> <span>${esc(gameOf(x.id === activeTab ? doc.name : x.meta.name))}${x.id === activeTab ? ' <small>(open in the editor)</small>' : ''}</span></label>`).join('');
-  $('#dl-kinds').innerHTML = '<legend>As</legend>' + (['zip', 'js', 'nc'] as SaveKind[]).map((k) => `<label class="set-check"><input type="radio" name="dl-kind" value="${k}"${k === kind ? ' checked' : ''}> <span>${esc(SAVE_LABEL[k])}</span></label>`).join('');
-  syncDownload();
-  dlDialog.showModal();
+  openCodeDialog(ids);
+  requestAnimationFrame(() => (document.querySelector<HTMLElement>('#dl-many:not([hidden]), #dl-kinds:not([hidden]) [data-code]') ?? $('#code-dl-h')).focus());
 }
-const dlPicked = () => [...document.querySelectorAll<HTMLInputElement>('#dl-items input:checked')].map((i) => i.value);
+/** The Download part: which handlers (shown once more than one is open), then how. */
+function fillDownload(ids: string[]) {
+  ($('#dl-set') as HTMLElement).hidden = tabs.length < 2;
+  $('#dl-items').innerHTML = tabs.map((x) => `<label class="set-check"><input type="checkbox" name="dl-h" value="${x.id}"${ids.includes(x.id) ? ' checked' : ''}> <span>${esc(gameOf(x.id === activeTab ? doc.name : x.meta.name))}${x.id === activeTab ? ' <small>(open in the editor)</small>' : ''}</span></label>`).join('');
+  syncDownload();
+}
+const dlPicked = () => (tabs.length < 2 ? [activeTab] : [...document.querySelectorAll<HTMLInputElement>('#dl-items input:checked')].map((i) => i.value));
 function syncDownload() {
   const n = dlPicked().length;
   const all = $('#dl-all') as HTMLInputElement;
   all.checked = n === tabs.length;
   all.indeterminate = n > 0 && n < tabs.length;
-  // Several handlers: one .zip, so the kinds (which are for one handler) don't apply.
-  document.querySelectorAll<HTMLInputElement>('#dl-kinds input').forEach((i) => (i.disabled = n > 1));
-  ($('#dl-kinds') as HTMLFieldSetElement).classList.toggle('muted', n > 1);
-  $('#dl-note').textContent = n > 1 ? `${n} handlers in one .zip: each handler's .js, with its files in a folder of the same name (as Nucleus Co-op's handlers folder holds them). Dropping that .zip on the workbench opens them all.` : n === 1 ? '' : 'Pick at least one handler.';
-  ($('#dl-go') as HTMLButtonElement).disabled = !n;
+  // One handler: as a .zip, the .js or a .nc. Several: one .zip of them all.
+  ($('#dl-kinds') as HTMLElement).hidden = n !== 1;
+  ($('#dl-many') as HTMLElement).hidden = n < 2;
+  $('#dl-many-b').textContent = `Download ${n} handlers as one .zip`;
+  $('#dl-note').textContent = n ? '' : 'Tick at least one handler to download.';
 }
 $('#dl-items').addEventListener('change', syncDownload);
 $('#dl-all').addEventListener('change', () => { const on = ($('#dl-all') as HTMLInputElement).checked; document.querySelectorAll<HTMLInputElement>('#dl-items input').forEach((i) => (i.checked = on)); syncDownload(); });
-$('#dl-cancel').addEventListener('click', () => dlDialog.close());
-$('#dl-form').addEventListener('submit', (e) => {
-  e.preventDefault();
-  const ids = dlPicked();
-  const kind = (document.querySelector<HTMLInputElement>('#dl-kinds input:checked')?.value ?? 'zip') as SaveKind;
-  dlDialog.close();
-  void downloadHandlers(ids, kind, dlTrigger ?? saveButton());
-});
 /** A handler's code and files as they'd be saved: the one in the editor with its credit lines, another as it was left. */
 function exportOf(id: string): { name: string; text: string; files: PackageFile[] } {
   const x = tabs.find((y) => y.id === id)!;
@@ -3727,16 +3723,22 @@ async function copyForDiscord(trigger: HTMLElement) {
 }
 $('#code-menu-open').addEventListener('click', () => saveOrAsk());
 $('#save-more').addEventListener('click', () => openMenu($('#save-more'), 'Save as', saveItems()));
-$('#share-open').addEventListener('click', openCodeDialog);
+$('#share-open').addEventListener('click', () => openCodeDialog());
 $('#code-close').addEventListener('click', () => codeDialog.close());
 codeDialog.querySelectorAll<HTMLButtonElement>('[data-code]').forEach((b) =>
   b.addEventListener('click', async () => {
     const kind = b.dataset.code;
+    const picked = dlPicked();
     codeDialog.close();
     if (kind === 'copy') return copyCode();
     if (kind === 'link') return copyLink(shareButton());
     if (kind === 'discord') return copyForDiscord(shareButton());
     if (kind === 'file') return shareFile(shareButton());
+    // Download: the handlers ticked (the one in the editor when only one is open), as the kind of the button.
+    const ids = picked, trigger = dlTrigger ?? saveButton();
+    dlTrigger = null;
+    if (kind === 'bundle') return downloadHandlers(ids, 'zip', trigger);
+    if (kind === 'zip' || kind === 'js' || kind === 'nc') return downloadHandlers(ids, kind, trigger);
   }),
 );
 initSheetDrag();

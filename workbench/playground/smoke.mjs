@@ -1499,27 +1499,27 @@ section('files and tabs', async () => {
     check(rowsShut < rowsBefore && (await s.p.$$('#files-panel .fp-h.on .fp-open[data-fp]')).length === rowsBefore, `files: a folder inside a handler folds shut and opens again (${rowsBefore} -> ${rowsShut})`);
   }
   // Download, with several handlers open: one prompt from every button, only its ticks differ. Sharing is one handler.
-  const ticks = () => s.p.evaluate(() => ({ open: document.querySelector('#dl-dialog').open, all: document.querySelector('#dl-all').checked, on: [...document.querySelectorAll('#dl-items input')].map((i) => i.checked), kinds: [...document.querySelectorAll('#dl-kinds input')].map((i) => !i.disabled) }));
+  const ticks = () => s.p.evaluate(() => ({ open: document.querySelector('#code-dialog').open, title: document.querySelector('#save-h').textContent, all: document.querySelector('#dl-all').checked, on: [...document.querySelectorAll('#dl-items input')].map((i) => i.checked), kinds: !document.querySelector('#dl-kinds').hidden, many: !document.querySelector('#dl-many').hidden }));
   const nHandlers = await s.p.$$eval('#files-panel .fp-h', (l) => l.length);
   if (nHandlers > 1) {
     await s.p.click('.rail [data-rail=save]');
     const fromSave = await ticks();
-    check(fromSave.open && fromSave.on.filter(Boolean).length === 1 && !fromSave.all && fromSave.kinds.every(Boolean), `download: Save asks which handlers, with the one in the editor ticked (${JSON.stringify(fromSave)})`);
-    await s.p.click('#dl-cancel');
+    check(fromSave.open && fromSave.title === 'Share or download' && fromSave.on.filter(Boolean).length === 1 && !fromSave.all && fromSave.kinds && !fromSave.many, `download: Save opens Share or download, with the handler in the editor ticked and the three kinds to pick from (${JSON.stringify(fromSave)})`);
+    await s.p.click('#code-close');
     await s.p.evaluate(() => document.querySelector('#files-panel .fp-h:not(.on) [data-fp-dl]').click());
     const fromFolder = await ticks();
     const which = await s.p.evaluate(() => [...document.querySelectorAll('#files-panel .fp-h')].findIndex((h) => !h.classList.contains('on')));
     check(fromFolder.open && fromFolder.on.filter(Boolean).length === 1 && fromFolder.on[which], `download: a folder's button asks the same, with that handler ticked (${JSON.stringify(fromFolder)})`);
-    await s.p.click('#dl-cancel');
+    await s.p.click('#code-close');
     await s.p.evaluate(() => document.querySelector('#files-panel .fp-head [data-fp-dl]').click());
     const fromHead = await ticks();
-    check(fromHead.open && fromHead.all && fromHead.on.every(Boolean) && fromHead.kinds.every((k) => !k), `download: the button at the top of Files asks the same, with every handler ticked (${JSON.stringify(fromHead)})`);
-    const [zip] = await Promise.all([s.p.waitForEvent('download'), s.p.click('#dl-go')]);
+    check(fromHead.open && fromHead.all && fromHead.on.every(Boolean) && !fromHead.kinds && fromHead.many, `download: the button at the top of Files asks the same, with every handler ticked and one .zip offered (${JSON.stringify(fromHead)})`);
+    const [zip] = await Promise.all([s.p.waitForEvent('download'), s.p.click('#dl-many')]);
     const bytes = fs.readFileSync(await zip.path()).toString('latin1');
     check(zip.suggestedFilename() === 'handlers.zip' && (bytes.match(/\.js/g) ?? []).length >= nHandlers, `download: several handlers come as one .zip with a .js each (${zip.suggestedFilename()})`);
     await s.p.click('.rail [data-rail=share]');
     await s.p.waitForTimeout(300);
-    const shareTitle = await s.p.textContent('#save-h');
+    const shareTitle = await s.p.textContent('#code-share-h');
     check(/^Share ./.test(shareTitle) && shareTitle !== 'Share', `share: with several handlers open, Share names the one it shares (${shareTitle})`);
     await s.p.keyboard.press('Escape');
   }
@@ -1530,7 +1530,16 @@ section('files and tabs', async () => {
   await axe(s.p, 'files and tabs, one handler');
   check((await s.p.$$('#files-panel [data-fp-dl]')).length === 0, 'download: with one handler open, Files has no download buttons (Save saves it)');
   const [single] = await Promise.all([s.p.waitForEvent('download'), s.p.click('.rail [data-rail=save]')]);
-  check(!(await s.p.evaluate(() => document.querySelector('#dl-dialog').open)) && /\.(zip|js|nc)$/.test(single.suggestedFilename()), `download: with one handler open, Save saves it without asking (${single.suggestedFilename()})`);
+  check(!(await s.p.evaluate(() => document.querySelector('#code-dialog').open && !document.querySelector('#code-main').hidden)) && /\.(zip|js|nc)$/.test(single.suggestedFilename()), `download: with one handler open, Save saves it without asking (${single.suggestedFilename()})`);
+  await s.p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
+  // One handler: Share or download has no handler list, and its Download buttons save it.
+  await s.p.click('.rail [data-rail=share]');
+  await s.p.waitForTimeout(300);
+  const oneDlg = await s.p.evaluate(() => ({ list: !document.querySelector('#dl-set').hidden, kinds: [...document.querySelectorAll('#dl-kinds [data-code]')].map((b) => b.dataset.code).join() }));
+  check(!oneDlg.list && oneDlg.kinds === 'zip,js,nc', `download: with one handler open, Share or download offers the three kinds and no handler list (${JSON.stringify(oneDlg)})`);
+  await axe(s.p, 'share or download');
+  const [js] = await Promise.all([s.p.waitForEvent('download'), s.p.click('#code-dialog [data-code=js]')]);
+  check(/\.js$/.test(js.suggestedFilename()), `download: The code only saves the .js (${js.suggestedFilename()})`);
   await s.p.evaluate(() => document.querySelectorAll('dialog[open]').forEach((d) => d.close()));
   check(!s.errors.length, `files and tabs: no page errors ${s.errors.join(' ')}`);
   await s.ctx.close();

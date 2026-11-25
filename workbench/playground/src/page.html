@@ -491,10 +491,15 @@ details.set-sec[open] summary { margin-bottom: 4px; }
 /* Save or copy: one recommended action (the .zip for Nucleus), the rest as a grid of small choices. */
 #code-dialog { width: min(560px, calc(100vw - 32px)); }
 /* Download: which handlers (the open one, some, or all), and as what. */
-.dl-set { border: 0; margin: 0 0 12px; padding: 0; display: grid; gap: 4px; }
-.dl-set legend { padding: 0; margin-bottom: 4px; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
-#dl-items { display: grid; gap: 4px; margin-left: 22px; max-height: 40vh; overflow: auto; }
-#dl-note { margin: 0 0 12px; min-height: 1.4em; }
+.code-h { margin: 16px 0 8px; font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+#code-main > .code-h:first-child { margin-top: 0; }
+.dl-set { border: 0; margin: 0 0 8px; padding: 0; display: grid; gap: 4px; }
+.dl-set[hidden], .code-dl[hidden], .code-many[hidden] { display: none; }
+#dl-items { display: grid; gap: 4px; margin-left: 22px; max-height: 28vh; overflow: auto; }
+.code-grid.code-dl { grid-template-columns: repeat(3, 1fr); margin-top: 0; }
+.code-many { width: 100%; }
+#dl-note:empty { display: none; }
+@media (max-width: 520px) { .code-grid.code-dl { grid-template-columns: 1fr; } }
 #code-dialog button svg { flex: none; color: var(--accent); }
 #code-dialog button span { display: flex; flex-direction: column; gap: 2px; min-width: 0; text-align: left; }
 #code-dialog button small { color: var(--muted); font-size: 12.5px; font-weight: 400; }
@@ -2328,8 +2333,9 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
 </dialog>
 
 <dialog id="code-dialog" aria-labelledby="save-h">
-  <h2 id="save-h">Share</h2>
+  <h2 id="save-h">Share or download</h2>
   <div id="code-main">
+    <h3 class="code-h" id="code-share-h">Share</h3>
     <div class="code-top">
       <button class="code-hero" type="button" data-code="link"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Copy a link</b><small id="code-link-sub">Opens this handler for anyone, or just the selected lines</small></span></button>
       <button class="code-opt" type="button" data-code="file"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7zM14 3v4h4M12 11v6M9.5 14.5 12 17l2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Share the file</b><small id="code-file-sub">The .zip, and a message to post with it</small><small class="code-warn-line" id="code-file-warn" hidden><span aria-hidden="true">⚠ </span><span></span></small></span></button>
@@ -2339,7 +2345,18 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
       <button class="code-opt" type="button" data-code="discord"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 5h14v10H9l-4 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span><b>Copy for Discord</b><small id="code-discord-sub">The code in a code block, ready to paste</small></span></button>
     </div>
     <p class="muted small" id="code-hub-note" style="margin:10px 0 0" hidden><a href="#" target="_blank" rel="noopener">Get the big files from the Hub page</a>, then add them with Files › Add files… to include them.</p>
-    <p class="muted small" style="margin:10px 0 0">To get a file for Nucleus, use <b>Save</b> (Ctrl+S).</p>
+    <h3 class="code-h" id="code-dl-h">Download</h3>
+    <fieldset class="dl-set" id="dl-set" hidden><legend class="sr-only">Which handlers to download</legend>
+      <label class="set-check"><input type="checkbox" id="dl-all"> <span>All open handlers</span></label>
+      <div id="dl-items"></div>
+    </fieldset>
+    <div class="code-grid code-dl" id="dl-kinds">
+      <button class="code-opt" type="button" data-code="zip"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>For Nucleus Co-op</b><small>A .zip with the handler and its files, to install</small></span></button>
+      <button class="code-opt" type="button" data-code="js"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>The code only</b><small>The .js, without its files</small></span></button>
+      <button class="code-opt" type="button" data-code="nc"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Hub-format package</b><small>A .nc, the Hub's package format</small></span></button>
+    </div>
+    <button class="code-opt code-many" type="button" data-code="bundle" id="dl-many" hidden><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b id="dl-many-b">Download them as one .zip</b><small>Each handler's .js, with its files in a folder of the same name. Dropping the .zip on the workbench opens them all.</small></span></button>
+    <p class="muted small" id="dl-note" role="status" style="margin:8px 0 0"></p>
   </div>
   <div id="code-done" hidden>
     <p class="code-saved" id="code-saved"></p>
@@ -2444,19 +2461,6 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
   <div class="actions"><button class="btn primary" type="button" id="help-close">Close</button></div>
 </dialog>
 
-
-<dialog id="dl-dialog" aria-labelledby="dl-h">
-  <form id="dl-form">
-    <h2 id="dl-h">Download</h2>
-    <fieldset class="dl-set"><legend>Which handlers</legend>
-      <label class="set-check"><input type="checkbox" id="dl-all"> <span>All open handlers</span></label>
-      <div id="dl-items"></div>
-    </fieldset>
-    <fieldset class="dl-set" id="dl-kinds"><legend>As</legend></fieldset>
-    <p class="muted small" id="dl-note" role="status"></p>
-    <div class="actions"><button class="btn" type="button" id="dl-cancel">Cancel</button><button class="btn primary" type="submit" id="dl-go">Download</button></div>
-  </form>
-</dialog>
 
 <dialog id="new-dialog">
   <form id="new-form">
