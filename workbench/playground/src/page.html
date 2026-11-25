@@ -536,10 +536,14 @@ details.set-sec[open] summary { margin-bottom: 4px; }
 .dl-set .set-check { align-items: center; padding: 3px 8px; margin-left: -8px; border-radius: 8px; font-size: 13.5px; }
 .dl-set .set-check:hover { background: var(--surface-2); }
 .dl-set .set-check input { margin-top: 0; }
-.dl-set > .set-check { font-weight: 600; }
-.dl-set .set-check small { display: inline; margin-left: 6px; white-space: nowrap; }
+.dl-set > .set-check { color: var(--muted); font-size: 12.5px; }
+.dl-set .set-check > span { display: flex; align-items: center; gap: 7px; min-width: 0; }
+.dl-set .set-check .ui-ico { flex: none; color: var(--accent); }
+.dl-set .set-check .dl-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dl-set .set-check small { flex: none; display: inline; white-space: nowrap; }
+.dl-set .set-check .dl-here { padding: 0 6px; border: 1px solid var(--line); border-radius: 999px; font-size: 11px; }
 .dl-set[hidden], .code-dl[hidden], .code-many[hidden] { display: none; }
-#dl-items { display: grid; gap: 0; max-height: 28vh; overflow: auto; padding-left: 22px; }
+#dl-items { display: grid; gap: 0; max-height: 28vh; overflow: auto; }
 #dl-items .set-check { margin-left: 0; }
 #code-hub-note, #dl-note { margin: 2px 0 0 !important; }
 #dl-note:empty { display: none; }
@@ -2383,26 +2387,25 @@ dialog.tour.free :is(.tour-card, .tour-block) { pointer-events: auto; }
     <div class="code-part-h"><span class="code-part-i"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M8.6 10.7l6.8-3.9M8.6 13.3l6.8 3.9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="6" cy="12" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="5.5" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="18" cy="18.5" r="2.6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg></span><div><h3 class="code-h" id="code-share-h">Share</h3><p>Send it to someone else</p></div></div>
     <div class="code-top">
       <button class="code-hero" type="button" data-code="link"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Copy a link</b><small id="code-link-sub">Opens this handler for anyone, or just the selected lines</small></span></button>
-      <button class="code-opt" type="button" data-code="file"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M14 3H7a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V7zM14 3v4h4M12 11v6M9.5 14.5 12 17l2.5-2.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Share the file</b><small id="code-file-sub">The .zip, and a message to post with it</small><small class="code-warn-line" id="code-file-warn" hidden><span aria-hidden="true">⚠ </span><span></span></small></span></button>
     </div>
     <div class="code-grid">
       <button class="code-opt" type="button" data-code="copy"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M9 9h10v10H9zM5 15V5h10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg><span><b>Copy the code</b><small>To paste anywhere</small></span></button>
       <button class="code-opt" type="button" data-code="discord"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 5h14v10H9l-4 4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg><span><b>Copy for Discord</b><small id="code-discord-sub">The code in a code block, ready to paste</small></span></button>
     </div>
-    <p class="muted small" id="code-hub-note" style="margin:10px 0 0" hidden><a href="#" target="_blank" rel="noopener">Get the big files from the Hub page</a>, then add them with Files › Add files… to include them.</p>
     </section>
     <section class="code-part" id="code-p-download" aria-labelledby="code-dl-h">
     <div class="code-part-h"><span class="code-part-i"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></span><div><h3 class="code-h" id="code-dl-h" tabindex="-1">Download</h3><p>Save a file to this computer</p></div></div>
     <fieldset class="dl-set" id="dl-set" hidden><legend>Which handlers</legend>
-      <label class="set-check"><input type="checkbox" id="dl-all"> <span>All open handlers</span></label>
+      <label class="set-check"><input type="checkbox" id="dl-all"> <span>All</span></label>
       <div id="dl-items"></div>
     </fieldset>
     <div class="code-grid code-dl" id="dl-kinds">
-      <button class="code-opt code-lead" type="button" data-code="zip"><i class="code-ext" aria-hidden="true">.zip</i><span><b>For Nucleus Co-op</b><small>A .zip with the handler and its files, to install</small></span></button>
+      <button class="code-opt code-lead" type="button" data-code="zip"><i class="code-ext" aria-hidden="true">.zip</i><span><b>For Nucleus Co-op</b><small>A .zip with the handler and its files, to install or to send to someone</small><small class="code-warn-line" id="code-file-warn" hidden><span aria-hidden="true">⚠ </span><span></span></small></span></button>
       <button class="code-opt" type="button" data-code="js"><i class="code-ext" aria-hidden="true">.js</i><span><b>The code only</b><small>The .js, without its files</small></span></button>
       <button class="code-opt" type="button" data-code="nc"><i class="code-ext" aria-hidden="true">.nc</i><span><b>Hub-format package</b><small>A .nc, the Hub's package format</small></span></button>
     </div>
     <button class="code-opt code-lead code-many" type="button" data-code="bundle" id="dl-many" hidden><i class="code-ext" aria-hidden="true">.zip</i><span><b id="dl-many-b">All as one .zip</b><small>Each handler's .js and its files in one .zip. Drop it on the workbench to open them all.</small></span></button>
+    <p class="muted small" id="code-hub-note" style="margin:10px 0 0" hidden><a href="#" target="_blank" rel="noopener">Get the big files from the Hub page</a>, then add them with Files › Add files… to include them.</p>
     <p class="muted small" id="dl-note" role="status" style="margin:8px 0 0"></p>
     </section>
     </div>

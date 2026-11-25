@@ -270,21 +270,21 @@ for (const theme of ['light', 'dark']) section(`workbench, ${theme}`, async () =
   await p.waitForTimeout(400);
   check((await p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue())) === 'Game.GUID = "A";\nGame.GameName = "A";\nGame.ExecutableName = "a.exe";\nGame.Play = function () {\n    Context.StartArguments = "-w";\n};\n', `${theme}: Shift+Alt+F formats the code`);
   check(/Shortcut|Pitfall|Best practice|Feature|Setting|Heads up/.test(await p.innerText('#tip-label').catch(() => '')), `${theme}: tips show their topic`);
-  // Share: the link leads while it fits a Discord message; past that, the file does (the .zip and a message to post).
+  // Share: the link says so when it's too long for a Discord message, and Copy for Discord saves the .zip instead.
   const shareLead = async () => {
     await p.click('#share-open');
     await p.waitForTimeout(500);
-    const r = await p.evaluate(() => ({ lead: document.querySelector('#code-dialog .code-hero')?.dataset.code, link: document.querySelector('#code-link-sub').textContent, file: document.querySelector('#code-file-sub').textContent }));
+    const r = await p.evaluate(() => ({ lead: document.querySelector('#code-dialog .code-hero')?.dataset.code, link: document.querySelector('#code-link-sub').textContent, kept: document.querySelector('#code-link-sub').classList.contains('code-keep'), file: document.querySelector('#code-discord-sub').textContent, dup: !!document.querySelector('#code-dialog [data-code=file]') }));
     await p.click('#code-close');
     return r;
   };
   const short = await shareLead();
-  check(short.lead === 'link' && /Opens this handler/.test(short.link), `${theme}: Share leads with the link for a short handler (${short.lead}: ${short.link})`);
+  check(short.lead === 'link' && !short.kept && !short.dup && /Opens this handler/.test(short.link), `${theme}: Share leads with the link for a short handler (${short.lead}: ${short.link})`);
   const shortCode = await p.evaluate(() => document.querySelector('.CodeMirror').CodeMirror.getValue());
   // Text that doesn't compress, so the link is long whatever the compression.
   await p.evaluate(() => { let x = 7, pad = ''; for (let i = 0; i < 4000; i++) { x = (x * 1103515245 + 12345) % 2147483648; pad += String.fromCharCode(97 + (x % 26)); } const cm = document.querySelector('.CodeMirror').CodeMirror; cm.setValue(cm.getValue() + '// ' + pad + '\n'); });
   const long = await shareLead();
-  check(long.lead === 'file' && /too long for a Discord message/.test(long.link) && /\.zip/.test(long.file), `${theme}: Share leads with the file when the link is too long for Discord (${long.lead}: ${long.link})`);
+  check(long.kept && /too long for a Discord message/.test(long.link) && /saves the \.zip/.test(long.file), `${theme}: Share says when the link is too long for Discord, and Copy for Discord offers the .zip (${long.link} / ${long.file})`);
   await p.evaluate((c) => document.querySelector('.CodeMirror').CodeMirror.setValue(c), shortCode);
   await p.waitForTimeout(200);
   // Folding, as in VS Code: Ctrl+K Ctrl+0 folds all, Ctrl+K Ctrl+J unfolds all.
@@ -442,7 +442,7 @@ for (const theme of ['light', 'dark']) section(`workbench, ${theme}`, async () =
         // Before saving, Share and the Save menu say the .zip leaves the big files out, with the Hub link.
         await p.click('#share-open');
         await p.waitForTimeout(300);
-        const note = await p.evaluate(() => ({ shown: !document.getElementById('code-hub-note').hidden, href: document.querySelector('#code-hub-note a').href, sub: document.getElementById('code-file-warn').hidden ? '' : document.getElementById('code-file-warn').textContent, warnColour: getComputedStyle(document.getElementById('code-file-warn')).color !== getComputedStyle(document.getElementById('code-file-sub')).color }));
+        const note = await p.evaluate(() => ({ shown: !document.getElementById('code-hub-note').hidden, href: document.querySelector('#code-hub-note a').href, sub: document.getElementById('code-file-warn').hidden ? '' : document.getElementById('code-file-warn').textContent, warnColour: getComputedStyle(document.getElementById('code-file-warn')).color !== getComputedStyle(document.querySelector('#code-dialog [data-code=zip] b')).color }));
         await p.click('#code-close');
         check(note.shown && note.warnColour && /hub\.splitscreen\.me/.test(note.href) && /only on the Hub/.test(note.sub), `${theme}: Share says which Hub files the .zip leaves out (${note.sub})`);
         await p.click('#save-more');
@@ -499,9 +499,9 @@ for (const theme of ['light', 'dark']) section(`workbench, ${theme}`, async () =
           await p.waitForTimeout(200);
           await p.evaluate(() => { document.querySelector('#file-editor .CodeMirror').CodeMirror.replaceRange('; edited\n', { line: 0, ch: 0 }); document.querySelector('#share-open').click(); });
           await p.waitForTimeout(500);
-          const lead = await p.evaluate(() => document.querySelector('#code-dialog .code-hero')?.dataset.code);
+          const lead = await p.evaluate(() => (document.querySelector('#code-link-sub').classList.contains('code-keep') ? document.querySelector('#code-link-sub').textContent : ''));
           await p.click('#code-close');
-          check(lead === 'file', `${theme}: Share right after editing a package file leads with the file (${lead})`);
+          check(/Download the \.zip/.test(lead), `${theme}: Share right after editing a package file says the link leaves the files out (${lead})`);
           // Edit again, go straight to handler.js and Share the file, all in the same tick (well inside the 350 ms
           // pause): the downloaded .zip has the edit. buildPackage stores files uncompressed, so the text is in the bytes.
           await p.click(`#files-panel .fp-open[data-fp="${txt.name.replace(/"/g, '\\"')}"]`);
@@ -512,7 +512,7 @@ for (const theme of ['light', 'dark']) section(`workbench, ${theme}`, async () =
               document.querySelector('#file-editor .CodeMirror').CodeMirror.replaceRange('; second edit\n', { line: 0, ch: 0 });
               document.querySelector('#files-panel .fp-h.on .fp-open[data-fp=""]').click();
               document.querySelector('#share-open').click();
-              document.querySelector('#code-dialog [data-code=file]').click();
+              document.querySelector('#code-dialog [data-code=zip]').click();
             }),
           ]);
           const zipText = fs.readFileSync(await zip.path()).toString('latin1');

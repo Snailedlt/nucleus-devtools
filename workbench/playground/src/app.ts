@@ -2177,7 +2177,7 @@ function commandList(): OpenEntry[] {
     c('New handler…', '', 'new create template', () => newDialog.showModal()),
     c('Copy the handler', '', 'copy clipboard code', () => copyCode()),
     c('Copy a link to this handler', '', 'share link url copy', click('[data-code=link]')),
-    c('Share the file (.zip and a message to post)', '', 'share file zip attach discord send package', click('[data-code=file]')),
+    c('Share the file (.zip and a message to post)', '', 'share file zip attach discord send package', () => void shareFile(shareButton())),
     c('Download for Nucleus (.zip)', labelOf('save'), 'save download zip nc package nucleus', click('[data-code=zip]')),
     c('Download the code (.js)', '', 'save download js file', click('[data-code=js]')),
     c('Theme: light', '', 'theme light colour color appearance', () => setThemeMode('light')),
@@ -3481,6 +3481,7 @@ function syncSaveButton() {
 }
 syncSaveButton();
 let codeDialogOpening = 0;
+let discordAsFile = false;
 function openCodeDialog(download: string[] = [activeTab]) {
   pkgUI?.flush(); // a package file typed in just now counts
   const opening = ++codeDialogOpening; // a slow link from an earlier opening doesn't update this one
@@ -3490,7 +3491,6 @@ function openCodeDialog(download: string[] = [activeTab]) {
   if (tabsReady) fillDownload(download);
   $('#code-main').hidden = false;
   $('#code-done').hidden = true;
-  const len = editor.getValue().length + 10;
   // Which of the two leads: the link when it carries the whole handler and fits a Discord message, else the file.
   const selection = !!editor.getSelection();
   // Unchanged (code and package files): the link is the handler's own; a name link (#hub-…) is short and opens its files too.
@@ -3507,20 +3507,21 @@ function openCodeDialog(download: string[] = [activeTab]) {
   }
   const advise = (linkLength: number | null) => {
     const a = shareAdvice({ selection, files: packageFiles.length, linkLength, named, missing: remote.length });
-    $('#code-link-sub').textContent = a.linkSub;
-    $('#code-file-sub').textContent = a.fileSub;
+    // A link that can't carry all of it (files, or too long to post) says so on the button; the .zip is in Download.
+    $('#code-link-sub').textContent = a.fileFirst ? `${a.linkSub}. Download the .zip to send all of it.` : a.linkSub;
+    $('#code-link-sub').classList.toggle('code-keep', a.fileFirst);
     $('#code-file-warn').hidden = !a.fileWarn;
     $('#code-file-warn').lastChild!.textContent = a.fileWarn;
-    codeDialog.querySelector('[data-code=link]')!.className = a.fileFirst ? 'code-opt' : 'code-hero';
-    codeDialog.querySelector('[data-code=file]')!.className = a.fileFirst ? 'code-hero' : 'code-opt';
   };
   advise(null);
   // The link's real length takes a moment (it's compressed): the dialog opens at once and settles when it's known.
   const base = location.href.replace(/#.*$/, '').length + 1;
   if (unchanged) advise(base + doc.hash!.length);
   else void encodeShare(editor.getSelection() || editor.getValue()).then((id) => { if (codeDialog.open && opening === codeDialogOpening) advise(base + id.length); }, () => {});
-  $('#code-discord-sub').classList.toggle('code-keep', len > DISCORD_LIMIT); // too long to paste: that stays on screen
-  $('#code-discord-sub').textContent = len > DISCORD_LIMIT ? `Too long for one message (${len.toLocaleString()} of ${DISCORD_LIMIT.toLocaleString()} characters): select the lines that matter first` : 'The code in a code block, ready to paste';
+  // Too long for one Discord message: the button says so, and saves the .zip with a message to post instead.
+  discordAsFile = (editor.getSelection() || editor.getValue()).length + 10 > DISCORD_LIMIT;
+  $('#code-discord-sub').classList.toggle('code-keep', discordAsFile);
+  $('#code-discord-sub').textContent = discordAsFile ? 'Too long for one message: this saves the .zip and copies a message to post with it. Or select fewer lines first.' : 'The code in a code block, ready to paste';
   codeDialog.showModal();
 }
 function showInstallSteps(filename: string) {
@@ -3573,10 +3574,12 @@ function openDownload(ids: string[] = [activeTab], trigger: HTMLElement = saveBu
   openCodeDialog(ids);
   requestAnimationFrame(() => (document.querySelector<HTMLElement>('#dl-many:not([hidden]), #dl-kinds:not([hidden]) [data-code]') ?? $('#code-dl-h')).focus());
 }
+/** A handler's size as its row says it: its handler.js and the files with it. */
+const dlFiles = (x: Tab) => { const n = (x.id === activeTab ? packageFiles : x.files).length + 1; return `${n} file${n === 1 ? '' : 's'}`; };
 /** The Download part: which handlers (shown once more than one is open), then how. */
 function fillDownload(ids: string[]) {
   ($('#dl-set') as HTMLElement).hidden = tabs.length < 2;
-  $('#dl-items').innerHTML = tabs.map((x) => `<label class="set-check"><input type="checkbox" name="dl-h" value="${x.id}"${ids.includes(x.id) ? ' checked' : ''}> <span>${esc(gameOf(x.id === activeTab ? doc.name : x.meta.name))}${x.id === activeTab ? ' <small>in the editor</small>' : ''}</span></label>`).join('');
+  $('#dl-items').innerHTML = tabs.map((x) => `<label class="set-check"><input type="checkbox" name="dl-h" value="${x.id}"${ids.includes(x.id) ? ' checked' : ''}> <span>${icon('folder', 15)}<span class="dl-name">${esc(gameOf(x.id === activeTab ? doc.name : x.meta.name))}</span><small>${dlFiles(x)}</small>${x.id === activeTab ? '<small class="dl-here">in the editor</small>' : ''}</span></label>`).join('');
   syncDownload();
 }
 const dlPicked = () => (tabs.length < 2 ? [activeTab] : [...document.querySelectorAll<HTMLInputElement>('#dl-items input:checked')].map((i) => i.value));
@@ -3733,8 +3736,7 @@ codeDialog.querySelectorAll<HTMLButtonElement>('[data-code]').forEach((b) =>
     codeDialog.close();
     if (kind === 'copy') return copyCode();
     if (kind === 'link') return copyLink(shareButton());
-    if (kind === 'discord') return copyForDiscord(shareButton());
-    if (kind === 'file') return shareFile(shareButton());
+    if (kind === 'discord') return discordAsFile ? shareFile(shareButton()) : copyForDiscord(shareButton());
     // Download: the handlers ticked (the one in the editor when only one is open), as the kind of the button.
     const ids = picked, trigger = dlTrigger ?? saveButton();
     dlTrigger = null;
