@@ -1504,7 +1504,7 @@ section('files and tabs', async () => {
   if (nHandlers > 1) {
     await s.p.click('.rail [data-rail=save]');
     const fromSave = await ticks();
-    check(fromSave.open && fromSave.title === 'Share or download' && fromSave.on.filter(Boolean).length === 1 && !fromSave.all && fromSave.kinds && !fromSave.many, `download: Save opens Share or download, with the handler in the editor ticked and the three kinds to pick from (${JSON.stringify(fromSave)})`);
+    check(fromSave.open && fromSave.title === 'Share or download' && (await s.p.evaluate(() => document.querySelector('#code-p-share').hidden && !document.querySelector('#code-p-download').hidden)) && fromSave.on.filter(Boolean).length === 1 && !fromSave.all && fromSave.kinds && !fromSave.many, `download: Save opens Share or download, with the handler in the editor ticked and the three kinds to pick from (${JSON.stringify(fromSave)})`);
     await s.p.click('#code-close');
     await s.p.evaluate(() => document.querySelector('#files-panel .fp-h:not(.on) [data-fp-dl]').click());
     const fromFolder = await ticks();
@@ -1535,6 +1535,11 @@ section('files and tabs', async () => {
   // One handler: Share or download has no handler list, and its Download buttons save it.
   await s.p.click('.rail [data-rail=share]');
   await s.p.waitForTimeout(300);
+  const onShare = await s.p.evaluate(() => !document.querySelector('#code-p-share').hidden && document.querySelector('#code-p-download').hidden);
+  check(onShare, 'share or download: the Share button opens it on its Share part');
+  await axe(s.p, 'share or download, Share');
+  await s.p.click('#code-tab-download');
+  check(await s.p.evaluate(() => document.querySelector('#code-p-share').hidden && !document.querySelector('#code-p-download').hidden && document.querySelector('#code-tab-download').getAttribute('aria-selected') === 'true'), 'share or download: the Download tab shows the Download part only');
   const oneDlg = await s.p.evaluate(() => ({ list: !document.querySelector('#dl-set').hidden, kinds: [...document.querySelectorAll('#dl-kinds [data-code]')].map((b) => b.dataset.code).join() }));
   check(!oneDlg.list && oneDlg.kinds === 'zip,js,nc', `download: with one handler open, Share or download offers the three kinds and no handler list (${JSON.stringify(oneDlg)})`);
   await axe(s.p, 'share or download');
