@@ -1463,7 +1463,7 @@ section('files and tabs', async () => {
   check(/As a folder, for another editor/.test(await s.p.innerText('.app-menu')), 'files: Save as offers a folder for another editor');
   await s.p.keyboard.press('Escape');
   // The preview tab, as in VS Code: one click shows a file in it and the next file picked takes it over; a double click
-  // keeps the file in a tab of its own. Folders inside a handler fold. Each handler has its game's picture.
+  // keeps the file in a tab of its own. Folders inside a handler fold.
   await s.p.evaluate(() => {
     const dt = new DataTransfer();
     for (const n of ['a.ini', 'b.ini', 'c.ini']) dt.items.add(new File(['[S]\nK=1\n'], n, { type: 'text/plain' }));
@@ -1498,7 +1498,6 @@ section('files and tabs', async () => {
     await s.p.waitForTimeout(150);
     check(rowsShut < rowsBefore && (await s.p.$$('#files-panel .fp-h.on .fp-open[data-fp]')).length === rowsBefore, `files: a folder inside a handler folds shut and opens again (${rowsBefore} -> ${rowsShut})`);
   }
-  check((await s.p.$$eval('#files-panel .fp-hrow', (l) => l.every((r) => !!r.querySelector('.mono')))), "files: every handler has its game's picture");
   // One handler open: no folders, its files under its name, and tabs without the game beside them.
   while ((await s.p.$$('#files-panel .fp-h')).length > 1) { await s.p.evaluate(() => document.querySelector('#files-panel .fp-h:not(.on) [data-fp-hclose]').click()); await s.p.waitForTimeout(200); }
   const one = await s.p.evaluate(() => ({ folds: document.querySelectorAll('#files-panel [data-fp-fold]').length, title: !!document.querySelector('#files-panel .fp-hrow .fp-title'), rows: document.querySelectorAll('#files-panel .fp-h.on .fp-open[data-fp]').length, of: document.querySelectorAll('#htabs .ht-of').length }));

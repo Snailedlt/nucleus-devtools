@@ -2911,10 +2911,7 @@ pkgUI = initPackageUI({
   editor,
   handlers: () => (tabsReady ? tabs : []).map((x) => {
     const on = x.id === activeTab;
-    const name = gameOf(on ? doc.name : x.meta.name), meta = on ? doc : x.meta;
-    // The game's picture: its initials, under its cover from the Hub when the handler is the Hub's or a Hub handler has its name.
-    const hub = meta.kind === 'hub' && meta.hubIndex !== undefined ? HUB_EXAMPLES.handlers[meta.hubIndex] : HUB_EXAMPLES.handlers.find((h) => (h.game || h.title).toLowerCase() === name.toLowerCase());
-    return { id: x.id, name, on, files: on ? packageFiles : x.files, counts: on ? countsOf(current) : x.counts, icon: monogram(name, hub?.cover) };
+    return { id: x.id, name: gameOf(on ? doc.name : x.meta.name), on, files: on ? packageFiles : x.files, counts: on ? countsOf(current) : x.counts };
   }),
   switchTo: (id) => switchTab(id),
   closeHandler: (id) => closeTab(id),

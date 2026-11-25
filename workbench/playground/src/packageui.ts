@@ -72,8 +72,6 @@ export interface PkgHandler {
   files: PackageFile[];
   /** What Check found in its handler.js, when it has been checked. */
   counts?: { e: number; w: number };
-  /** Its game's picture (trusted markup: the game's initials, under its Hub cover when it has one). */
-  icon?: string;
 }
 export interface PkgHost {
   editor: CM;
@@ -359,8 +357,8 @@ export function initPackageUI(host: PkgHost) {
       const tip = esc(`${h.name}: installs to handlers\\${game}\\`);
       const acts = `<button type="button" class="fp-del" data-fp-add data-h="${h.id}" aria-label="Add files to ${esc(h.name)}" title="Add files… (or drop them on the list)">${icon('file-plus', 14)}</button><button type="button" class="fp-del" data-fp-hclose="${h.id}" aria-label="Close ${esc(h.name)}" title="Close this handler">${icon('x', 14)}</button>`;
       const head = single
-        ? `<div class="fp-item fp-hrow fp-one" title="${tip}"><span class="fp-open fp-title">${h.icon ?? ''}<span class="fp-name">${esc(h.name)}</span>${badge(h.counts)}</span>${acts}</div>`
-        : `<div class="fp-item fp-hrow"><button type="button" class="fp-open fp-fold" data-fp-fold="${h.id}" aria-expanded="${!shut}" title="${tip}">${icon(shut ? 'chevron-right' : 'chevron-down', 14, 'ui-ico fp-tw')}${h.icon ?? ''}<span class="fp-name">${esc(h.name)}</span>${badge(h.counts)}</button>${acts}</div>`;
+        ? `<div class="fp-item fp-hrow fp-one" title="${tip}"><span class="fp-open fp-title"><span class="fp-name">${esc(h.name)}</span>${badge(h.counts)}</span>${acts}</div>`
+        : `<div class="fp-item fp-hrow"><button type="button" class="fp-open fp-fold" data-fp-fold="${h.id}" aria-expanded="${!shut}" title="${tip}">${icon(shut ? 'chevron-right' : 'chevron-down', 14, 'ui-ico fp-tw')}<span class="fp-name">${esc(h.name)}</span>${badge(h.counts)}</button>${acts}</div>`;
       if (shut) return `<li class="fp-h${h.on ? ' on' : ''}" data-h="${h.id}">${head}</li>`;
       const base = single ? 8 : 22;
       const rows = [`<li class="fp-item"><button type="button" class="fp-open" data-fp="" data-h="${h.id}" aria-current="${h.on && active === null && !empty}" style="padding-left:${base}px">${handlerIcon()}<span class="fp-name">handler.js</span></button></li>`, ...fileRows(h, game, base)];
@@ -368,9 +366,6 @@ export function initPackageUI(host: PkgHost) {
     });
     $('#files-list').innerHTML = `<div class="fp-head"><span>Files</span>${host.newMenu ? `<button type="button" class="fp-ibtn" data-fp-new aria-haspopup="menu" aria-label="New handler, or open a file, a folder or an example" title="New or open">${icon('plus', 15)}</button>` : ''}</div><ul class="fp-list fp-tree" aria-label="${esc(`Open handlers. Files dropped here are added to ${on ? on.name : 'the handler'}`)}">${groups.join('')}</ul>`;
   }
-
-  // A cover that doesn't load leaves the game's initials (the list is drawn anew often: one listener, on the panel).
-  $('#files-panel').addEventListener('error', (e) => { const img = e.target as HTMLElement; if (img.matches?.('img.cv')) img.remove(); }, true);
 
   /** The Files panel in or out; the buttons that toggle it say which. Beside the code (not as a phone's sheet) the
    *  choice is kept for the next visit. */
