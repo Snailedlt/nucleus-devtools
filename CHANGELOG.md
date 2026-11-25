@@ -27,6 +27,10 @@ How to write it (people and AI agents read this; the release workflow publishes 
 - **ncdev for Linux.** Releases now include `ncdev-linux-x64`, the standalone ncdev for Linux (nothing else to install; `ncdev update` keeps it current), so every editor setup can run `ncdev lsp`. `nucleus.js` with Node.js still works everywhere else.
 - **The Claude Code plugin brings the tools too.** Installing the nucleus-coop plugin now also adds the `nucleus` MCP server (check, fix, Try it, API lookup, Hub search), so Claude Code calls them as tools without any setup.
 
+### 🛠️ Improved
+
+- **API search understands questions.** `ncdev api --search "my game pauses when it loses focus"` (and `nucleus_api_search`) now skips the little words, matches word endings ("pauses" finds "pause") and reads the "In practice" notes too, so a question of three or more words finds the members that have most of them.
+
 ### ⚡ Faster
 
 - **Smaller downloads.** `ncdev` and the skill's script are about 1.6 MB smaller and the extension about 1.2 MB: they carry only the general JavaScript checks the tools use, not all of ESLint's, and the Try it simulator's own copy of the API no longer includes the documentation.
