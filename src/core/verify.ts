@@ -178,6 +178,8 @@ export interface VerifyResult {
   players: PlayerCheck[];
   /** What was looked at, so a report says what wasn't. */
   checked: { log: boolean; crash: boolean; windows: boolean };
+  /** When the session it read started (the debug log's time), so an old one is noticed. */
+  sessionStarted?: string;
 }
 
 const near = (a: number, b: number, tol: number) => Math.abs(a - b) <= tol;
@@ -209,6 +211,32 @@ function onMonitor(w: ObservedWindow): Rect {
   const m = w.monitor;
   return m ? { x: w.rect.x - m.x, y: w.rect.y - m.y, width: w.rect.width, height: w.rect.height } : w.rect;
 }
+
+/** The grid the windows tile their screen in (every window the same size, on a cols × rows grid), if they do. */
+function gridOf(wins: ObservedWindow[], tol: number): { cols: number; rows: number } | undefined {
+  if (!wins.length) return undefined;
+  for (let rows = 1; rows <= 4; rows++)
+    for (let cols = 1; cols <= 4; cols++) {
+      // Each window fills one cell of its screen, and no two share a cell.
+      const cells = new Set<string>();
+      const fits = wins.every((w) => {
+        const m = w.monitor;
+        if (!m) return false;
+        const r = onMonitor(w);
+        const cw = m.width / cols;
+        const ch = m.height / rows;
+        const cx = Math.round(r.x / cw);
+        const cy = Math.round(r.y / ch);
+        const cell = `${m.x},${m.y}:${cx},${cy}`;
+        if (cells.has(cell)) return false;
+        cells.add(cell);
+        return near(r.width, cw, tol) && near(r.height, ch, tol) && near(r.x, cx * cw, tol) && near(r.y, cy * ch, tol);
+      });
+      if (fits) return { cols, rows };
+    }
+  return undefined;
+}
+const gridWords = (g: { cols: number; rows: number }) => (g.cols === 1 && g.rows === 1 ? 'one window per screen' : g.rows === 1 ? 'side by side' : g.cols === 1 ? 'top and bottom' : `${g.cols} × ${g.rows}`);
 
 export function verifySession(input: VerifyInput): VerifyResult {
   const { sim, log, crash, seen } = input;
@@ -248,6 +276,12 @@ export function verifySession(input: VerifyInput): VerifyResult {
     if (!seen.processes.length) add({ severity: 'error', kind: 'processes', message: `No ${seen.exe} is running.`, hint: log?.launched.length ? `Nucleus launched ${log.launched[log.launched.length - 1]}; the game closed or crashed. Check its own log, and Game.ExecutableName.` : 'Start the session in Nucleus first, or check Game.ExecutableName.' });
     else if (seen.processes.length !== sim.players.length) add({ severity: 'warning', kind: 'processes', message: `${plural(seen.processes.length, `${seen.exe} is`, `copies of ${seen.exe} are`)} running for ${plural(sim.players.length, 'player')}.`, hint: seen.processes.length < sim.players.length ? 'An instance closed or never started: the game may allow only one copy (Game.KillMutex) or need its own folder (Game.SymlinkGame / Game.HardcopyGame).' : 'Copies from an earlier session may still be open.' });
     if (seen.processes.length && wins.length < expected.length) add({ severity: 'warning', kind: 'windows', message: `Found ${plural(wins.length, 'game window')} for ${plural(expected.length, 'player')}.`, hint: 'A window may still be loading, or the game draws in a window Windows doesn\'t list for its process.' });
+    // Nucleus splits the screen the way the player picked (side by side, top and bottom, one per screen); Try it
+    // assumes side by side. Windows that tile their screen in another split are that choice, not a problem.
+    const tried = sim.players.length ? { cols: Math.min(2, sim.players.length), rows: Math.ceil(sim.players.length / Math.min(2, sim.players.length)) } : undefined;
+    const grid = wins.length === expected.length ? gridOf(wins, tol) : undefined;
+    const otherLayout = grid && tried && (grid.cols !== tried.cols || grid.rows !== tried.rows);
+    if (otherLayout) add({ severity: 'info', kind: 'players', message: `Nucleus split the screen ${gridWords(grid!)}; Try it assumed ${gridWords(tried!)}. Each window fills its part, so the sizes are what that layout gives.` });
     const pairs = pairWindows(expected, wins);
     pairs.forEach((w, i) => {
       const e = expected[i];
@@ -258,6 +292,7 @@ export function verifySession(input: VerifyInput): VerifyResult {
         return;
       }
       const r = onMonitor(w);
+      if (otherLayout && !w.minimized) return;
       if (w.minimized) {
         pc.ok = false;
         add({ severity: 'warning', kind: 'window-size', player: i + 1, message: `Player ${i + 1}'s window is minimized.`, hint: 'The game minimizes itself when it loses focus: see Game.SetForegroundWindowElsewhere and the fake focus options.' });
@@ -282,11 +317,14 @@ export function verifySession(input: VerifyInput): VerifyResult {
   }
 
   for (const pc of players) if (!pc.window && seen) pc.ok = false;
-  return { ok: !findings.some((f) => f.severity !== 'info'), findings, players, checked: { log: !!log, crash: !!crash, windows: !!seen } };
+  // Nothing to look at is not a match.
+  if (!log && !seen && !crash) add({ severity: 'error', kind: 'not-started', message: "There was nothing to compare: no debug log and no game windows.", hint: "Turn the debug log on (ncdev test --debug-log on), start the session, and run verify on the PC it runs on." });
+  return { ok: !findings.some((f) => f.severity !== 'info'), findings, players, checked: { log: !!log, crash: !!crash, windows: !!seen }, sessionStarted: log?.startedAt };
 }
 
 export function formatVerify(r: VerifyResult): string {
   const out: string[] = [];
+  if (r.sessionStarted) out.push(`Session started ${r.sessionStarted} (the newest in the debug log).`);
   out.push(r.ok ? 'The session matches Try it.' : `The session differs from Try it: ${plural(r.findings.filter((f) => f.severity !== 'info').length, 'problem')}.`);
   for (const p of r.players) {
     const got = p.window ? `${size(onMonitor(p.window))} ${place(onMonitor(p.window))}` : r.checked.windows ? 'no window found' : 'not checked';

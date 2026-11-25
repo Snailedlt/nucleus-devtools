@@ -214,6 +214,7 @@ body.resizing-v, body.resizing-v * { cursor: row-resize !important; user-select:
 #flow .b-branch .b-node, #flow .b-loop .b-node { width: 100%; }
 #flow .tok { display: inline-flex; align-items: center; gap: 4px; border: 1px solid transparent; border-radius: 999px; padding: 0 8px; line-height: 20px; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--fg); background: var(--surface-2); vertical-align: baseline; }
 #flow .tok[data-ref] { cursor: help; }
+#flow button .tok[data-ref] { cursor: inherit; }
 #flow .tok .ui-ico { flex: none; }
 #flow .k-place { color: var(--prop); background: color-mix(in srgb, var(--prop) 12%, transparent); }
 #flow .k-player { color: var(--obj); background: color-mix(in srgb, var(--obj) 13%, transparent); }

@@ -30,7 +30,7 @@ import { checkPackage } from './core/pkgcheck';
 import { packageFilesFor } from './pkgfiles';
 import { parseBreakpoint, runDebug } from './debugrun';
 import { formatVerify, parseDebugLog, verifySession, type Observation } from './core/verify';
-import { logTime, newestCrash, observeWindows, readDebugLog } from './verifywin';
+import { crashSince, newestCrash, observeWindows, readDebugLog } from './verifywin';
 
 declare const __VERSION__: string;
 const VERSION = typeof __VERSION__ === 'string' ? __VERSION__ : '0.0.0';
@@ -173,8 +173,8 @@ export const TOOLS: Tool[] = [
         debugLog: { type: 'string', description: "The text of Nucleus' debug-log.txt, instead of reading it from the folder." },
         windows: { type: 'object', description: 'The observed processes and windows, instead of reading them (Windows only).' },
         players: { type: 'integer', minimum: 1, maximum: 16 },
-        width: { type: 'integer', default: 1920 },
-        height: { type: 'integer', default: 1080 },
+        width: { type: 'integer', description: "Screen width; default: the one Nucleus logged, else 1920" },
+        height: { type: 'integer', description: "Screen height; default: the one Nucleus logged, else 1080" },
         exe: { type: 'string', description: "The game's program to look for, when it isn't Game.ExecutableName (a launcher)." },
       },
     },
@@ -187,8 +187,9 @@ export const TOOLS: Tool[] = [
       const log = logText !== undefined ? parseDebugLog(logText) : undefined;
       const players = Number(a.players ?? (log?.started ? new Set(log.playersSetUp).size : 2)) || 2;
       if (!Number.isInteger(players) || players < 1 || players > 16) throw new Error('players must be a whole number from 1 to 16.');
-      const sim = await simWorker().simulate(text, { players, width: Number(a.width ?? 1920), height: Number(a.height ?? 1080), keyboardPlayer: 0, plugins: file ? pluginsFor(file) : undefined });
-      const crash = nucleus ? newestCrash(nucleus, logTime(log?.startedAt)) : undefined;
+      const screen = a.width === undefined && a.height === undefined && log?.monitors[0] ? log.monitors[0] : { width: Number(a.width ?? 1920), height: Number(a.height ?? 1080) };
+      const sim = await simWorker().simulate(text, { players, width: screen.width, height: screen.height, keyboardPlayer: 0, plugins: file ? pluginsFor(file) : undefined });
+      const crash = nucleus ? newestCrash(nucleus, crashSince(log)) : undefined;
       const exe = typeof a.exe === 'string' ? a.exe : sim.options.find((o) => o.path === 'Game.ExecutableName')?.value.replace(/^"|"$/g, '');
       let seen = a.windows as Observation | undefined;
       if (!seen && process.platform === 'win32' && exe) seen = observeWindows(exe);

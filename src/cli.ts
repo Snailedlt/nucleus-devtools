@@ -41,7 +41,7 @@ import { buildReport, DISCORD_THREAD, findDuplicates, handlerHelp, handlerOrigin
 import { spawn } from 'node:child_process';
 import { formatVerify, parseDebugLog, verifySession, type Observation, type SessionLog } from './core/verify';
 import type { SimOptions } from './core/sim';
-import { logTime, newestCrash, observeWindows, readDebugLog } from './verifywin';
+import { crashSince, newestCrash, observeWindows, readDebugLog } from './verifywin';
 
 const HELP = helpText(VERSION);
 
@@ -510,7 +510,9 @@ async function cmdTest(args: Args, json: boolean): Promise<number> {
     return 4;
   }
   const players = new Set(session.playersSetUp).size;
-  const v = verifyFile(file, { ...simOptsFrom(args, file), players }, nucleus, session);
+  const base = simOptsFrom(args, file);
+  const screen = flag(args, '--resolution') === undefined && session.monitors[0] ? session.monitors[0] : base;
+  const v = verifyFile(file, { ...base, players, width: screen.width, height: screen.height }, nucleus, session);
   print(json, { ...started, session: true, verify: v.result, crashFile: v.crashFile }, () => formatVerify(v.result));
   return v.result.ok ? 0 : 1;
 }
@@ -522,7 +524,10 @@ async function waitForSession(nucleus: string, from: number, ms: number): Promis
   let quietSince = 0;
   while (Date.now() < end) {
     await new Promise((res) => setTimeout(res, 2000));
-    const text = (readDebugLog(nucleus) ?? '').slice(from);
+    const all = readDebugLog(nucleus) ?? '';
+    // Cleared or replaced meanwhile: read it from the start.
+    if (all.length < from) from = 0;
+    const text = all.slice(from);
     const s = parseDebugLog(text);
     if (!s.started) continue;
     if (text !== last) {
@@ -550,7 +555,9 @@ function cmdVerify(args: Args, json: boolean): number {
   const seen: Observation | undefined = windowsFile ? JSON.parse(fs.readFileSync(windowsFile, 'utf8')) : undefined;
   // Without --players, compare with as many players as Nucleus set up.
   const players = flag(args, '--players') === undefined && log?.started ? new Set(log.playersSetUp).size || opts.players : opts.players;
-  const v = verifyFile(file, { ...opts, players }, nucleus, log, seen, flag(args, '--exe'));
+  // Without --resolution, the screen Nucleus logged for the players.
+  const screen = flag(args, '--resolution') === undefined && log?.monitors[0] ? log.monitors[0] : opts;
+  const v = verifyFile(file, { ...opts, players, width: screen.width, height: screen.height }, nucleus, log, seen, flag(args, '--exe'));
   print(json, { file, ...v.result, crashFile: v.crashFile, exe: v.exe }, () => formatVerify(v.result));
   return v.result.ok ? 0 : 1;
 }
@@ -563,7 +570,7 @@ function simOptsFrom(args: Args, file: string) {
 function verifyFile(file: string, opts: SimOptions, nucleus: string | undefined, log: SessionLog | undefined, seen?: Observation, exeFlag?: string) {
   const src = fs.readFileSync(file, 'utf8').replace(/^\uFEFF/, '');
   const sim = simulateIsolated(src, opts);
-  const crash = nucleus ? newestCrash(nucleus, logTime(log?.startedAt)) : undefined;
+  const crash = nucleus ? newestCrash(nucleus, crashSince(log)) : undefined;
   const exe = exeFlag ?? sim.options.find((o) => o.path === 'Game.ExecutableName')?.value.replace(/^"|"$/g, '');
   if (!seen && process.platform === 'win32' && exe) seen = observeWindows(exe);
   return { result: verifySession({ sim, log, crash: crash?.crash, seen }), crashFile: crash?.file, exe };

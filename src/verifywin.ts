@@ -11,6 +11,7 @@ import { parseCrashLog } from './core/verify';
 /** Every process called <exe> and its top-level windows, with the monitor each is on (one PowerShell call). */
 const PS = `
 $ErrorActionPreference = 'SilentlyContinue'
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type @"
 using System; using System.Runtime.InteropServices; using System.Text; using System.Collections.Generic;
@@ -24,7 +25,10 @@ public static class NcWin {
   [DllImport("user32.dll")] static extern IntPtr GetWindow(IntPtr h, uint cmd);
   [StructLayout(LayoutKind.Sequential)] public struct RECT { public int L, T, R, B; }
   [DllImport("user32.dll")] public static extern bool GetWindowRect(IntPtr h, out RECT r);
+  [DllImport("user32.dll")] static extern bool SetProcessDPIAware();
   public static List<object[]> Of(HashSet<uint> pids) {
+    // Real pixels, as Nucleus places the windows (a DPI-unaware process gets scaled ones on a 125% or 150% screen).
+    SetProcessDPIAware();
     var list = new List<object[]>();
     EnumWindows((h, p) => {
       uint pid; GetWindowThreadProcessId(h, out pid);
@@ -51,6 +55,11 @@ $wins = foreach ($w in [NcWin]::Of($set)) {
   windows = @($wins)
 } | ConvertTo-Json -Depth 5 -Compress
 `;
+
+/** From when an error file counts as this session's: the session's start in the debug log, else the last two hours. */
+export function crashSince(log?: { startedAt?: string }): Date {
+  return logTime(log?.startedAt) ?? new Date(Date.now() - 2 * 3600 * 1000);
+}
 
 export function observeWindows(exe: string): Observation {
   if (process.platform !== 'win32') throw new Error('Reading the game windows only works on Windows, where the session runs.');

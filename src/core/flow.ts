@@ -8,7 +8,7 @@
 // (`var savePath = (Context.SavePath = …); var savePkgOrigin = …; System.IO.File.Copy(savePkgOrigin, savePath, true);`),
 // a folder made, lines changed with FindLineNumberInTextFile + ReplaceLinesInTextFile, a text file written,
 // RunAdditionalFiles, the start arguments.
-import type * as acorn from 'acorn';
+import * as acorn from 'acorn';
 import { parseLikeJint } from './jsparse';
 import { api } from './api';
 import { optionLabel, readableName } from './optionlabels';
@@ -283,6 +283,28 @@ class Reader {
   }
 }
 
+/** The `//` comments between `from` and `to` that hold code (they parse as JavaScript, and say more than one word):
+ *  code turned off. A run of them on consecutive lines is read together, so a call split over lines counts. */
+function codeComments(comments: acorn.Comment[], text: string, from: number, to: number): acorn.Comment[] {
+  const inRange = comments.filter((c) => c.type === 'Line' && c.start >= from && c.end <= to);
+  const runs: acorn.Comment[][] = [];
+  for (const c of inRange) {
+    const last = runs[runs.length - 1];
+    if (last && /^[ \t]*\r?\n[ \t]*$/.test(text.slice(last[last.length - 1].end, c.start))) last.push(c);
+    else runs.push([c]);
+  }
+  const isCode = (src: string) => {
+    try {
+      const p = acorn.parse(src, { ecmaVersion: 'latest', allowReturnOutsideFunction: true }) as N;
+      // A word or a few ("// Deprecated", "// TODO") isn't code; a statement with a call, an assignment or a declaration is.
+      return p.body.length > 0 && p.body.every((st: N) => st.type !== 'ExpressionStatement' || /Call|Assignment|Update/.test(st.expression.type));
+    } catch {
+      return false;
+    }
+  };
+  return runs.flatMap((run) => (isCode(run.map((c) => c.value).join('\n')) ? run : run.filter((c) => isCode(c.value))));
+}
+
 const act = (id: string, n: N, icon: string, verb: string, summary: Part[], fields: Field[], ref?: string): Step => ({ id, kind: 'act', icon, verb, summary, fields, ref, from: n.start, to: n.end });
 
 export function readFlow(text: string): Flow {
@@ -302,11 +324,11 @@ export function readFlow(text: string): Flow {
   const stepOf = (n: N, id: string): Step => {
     const code = src(text, n);
     if (n.type === 'IfStatement') {
-      return { id, kind: 'if', icon: 'if', verb: 'If', summary: [], cond: r.cond(n.test), then: lane(blockBody(n.consequent), `${id}.y`), else: n.alternate ? lane(blockBody(n.alternate), `${id}.n`) : undefined, from: n.start, to: n.end };
+      return { id, kind: 'if', icon: 'if', verb: 'If', summary: [], cond: r.cond(n.test), then: lane(blockBody(n.consequent), `${id}.y`, n.consequent), else: n.alternate ? lane(blockBody(n.alternate), `${id}.n`, n.alternate) : undefined, from: n.start, to: n.end };
     }
     if (n.type === 'ForStatement' || n.type === 'WhileStatement' || n.type === 'ForInStatement' || n.type === 'DoWhileStatement') {
       const what = n.type === 'ForInStatement' ? [`each ${src(text, n.left).replace(/^var\s+/, '')} in`, ...r.value(n.right)] : n.type === 'ForStatement' && n.test ? ['while', ...r.cond(n.test)] : n.test ? ['while', ...r.cond(n.test)] : ['for ever'];
-      return { id, kind: 'loop', icon: 'loop', verb: 'Repeat', summary: what, body: lane(blockBody(n.body), `${id}.b`), from: n.start, to: n.end };
+      return { id, kind: 'loop', icon: 'loop', verb: 'Repeat', summary: what, body: lane(blockBody(n.body), `${id}.b`, n.body), from: n.start, to: n.end };
     }
     if (n.type === 'VariableDeclaration' && n.declarations.length === 1 && n.declarations[0].init) {
       const d = n.declarations[0];
@@ -363,16 +385,20 @@ export function readFlow(text: string): Flow {
 
   /** A run of statements as steps: the copy triple and other `var`s used once fold into their step, commented-out
    *  code between them is a "turned off" step, and runs of the same kind of step become one group. */
-  const lane = (body: N[], base: string): Step[] => {
+  const lane = (body: N[], base: string, block?: { start: number; end: number }): Step[] => {
     const steps: Step[] = [];
+    const offStep = (from: number, to: number, id: string) => {
+      const off = codeComments(comments, text, from, to);
+      if (off.length) steps.push({ id, kind: 'off', icon: 'off', verb: 'Turned off', summary: [`${off.length} commented-out line${off.length === 1 ? '' : 's'}`], from: off[0].start, to: off[off.length - 1].end });
+    };
     body.forEach((n, i) => {
-      // Commented-out code right before this statement (after the previous one)
-      const prevEnd = i ? body[i - 1].end : (n as N).start - 0;
-      const off = comments.filter((c) => c.type === 'Line' && c.start >= (i ? prevEnd : 0) && c.end <= n.start && /[;=(]/.test(c.value) && /^\s*[\w.$[\]"' ]+\s*(=|\()/.test(c.value));
-      if (off.length && i) steps.push({ id: `${base}.${i}off`, kind: 'off', icon: 'off', verb: 'Turned off', summary: [`${off.length} commented-out line${off.length === 1 ? '' : 's'}`], from: off[0].start, to: off[off.length - 1].end });
+      // Commented-out code before this statement (after the previous one, or from the block's start)
+      offStep(i ? body[i - 1].end : block?.start ?? n.start, n.start, `${base}.${i}off`);
       r.next = body.slice(i + 1, i + 3);
       steps.push(stepOf(n as N, `${base}.${i}`));
     });
+    // and after the last one
+    if (block) offStep(body.length ? body[body.length - 1].end : block.start, block.end, `${base}.endoff`);
     // Fold `var x = …` into the next step when that's its only use.
     for (let i = 0; i < steps.length - 1; i++) {
       const s = steps[i];
@@ -405,7 +431,7 @@ export function readFlow(text: string): Flow {
       r.vars = new Map();
       r.uses = regionUses(e.right.body);
       const body = e.right.body.type === 'BlockStatement' ? e.right.body.body : [];
-      flow.callbacks.push({ id: `cb:${p}`, api: p, label: CALLBACKS[p] ?? (memberOf(p)?.doc?.split(/\.\s/)[0] ?? readableName(p.split('.').pop()!)), steps: lane(body, p), from: st.start, to: st.end });
+      flow.callbacks.push({ id: `cb:${p}`, api: p, label: CALLBACKS[p] ?? (memberOf(p)?.doc?.split(/\.\s/)[0] ?? readableName(p.split('.').pop()!)), steps: lane(body, p, e.right.body), from: st.start, to: st.end });
       Object.assign(r, top);
       return;
     }

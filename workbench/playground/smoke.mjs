@@ -1376,6 +1376,10 @@ section('flow', async () => {
     question: document.querySelector('#flow .b-q')?.textContent ?? '',
   }));
   check(shown.editor && shown.verbs.includes('Game settings') && shown.verbs.includes('Copy a file') && shown.fork && shown.place.includes("This player's game folder") && /Mode\?/.test(shown.question), `flow: Ctrl+K V draws the settings, the question, the copy as one step and the if as a fork (${JSON.stringify(shown)})`);
+  await s.p.locator('#flow .b-cs .tok').first().click();
+  const fold = await s.p.evaluate(() => ({ fork: !!document.querySelector('#flow .b-fork'), folded: document.querySelector('#flow .b-cs')?.textContent ?? '', docs: !document.getElementById('panel-api')?.hidden }));
+  check(!fold.fork && /1 step folded/.test(fold.folded), `flow: clicking an if's head (its pill too) folds it (${JSON.stringify(fold)})`);
+  await s.p.locator('#flow .b-cs').first().click();
   await s.p.locator('#flow .b-node:has(.b-verb:text("Copy a file")) [data-code]').click();
   check(/System\.IO\.File\.Copy/.test(await s.p.locator('#flow pre.f-code').first().textContent()), 'flow: a step shows its code on request');
   await s.p.locator('#flow .b-node:has(.b-verb:text("Copy a file")) .codebtn[data-go]').click();

@@ -39,21 +39,31 @@ export function initFlow(deps: Deps) {
   let flow: Flow | undefined;
   /** Nodes opened (their form shown), and nodes, fields and callbacks shown as code, kept per person (not in the file). */
   const opened = new Set<string>();
-  let asCode = new Set<string>();
+  let saved = new Set<string>();
   try {
-    asCode = new Set(JSON.parse(localStorage.getItem(VIEW_KEY) ?? '[]'));
+    saved = new Set(JSON.parse(localStorage.getItem(VIEW_KEY) ?? '[]'));
   } catch { /* default */ }
   const saveView = () => {
     try {
-      localStorage.setItem(VIEW_KEY, JSON.stringify([...asCode].slice(-500)));
+      localStorage.setItem(VIEW_KEY, JSON.stringify([...saved].slice(-500)));
     } catch { /* not kept */ }
   };
+  /** Which handler the choices are for (its GUID, else its game name): a step's id is only unique within one. */
+  let handlerKey = '';
+  const asCode = {
+    has: (id: string) => saved.has(`${handlerKey}|${id}`),
+    add: (id: string) => saved.add(`${handlerKey}|${id}`),
+    delete: (id: string) => saved.delete(`${handlerKey}|${id}`),
+  };
+  /** Ifs and loops folded to their head. */
+  const folded = new Set<string>();
+  let allOpen = false;
   /** Problems per step id, worst first. */
   let probs = new Map<string, Diagnostic[]>();
 
   const tok = (t: Tok) => {
     if (t.t === 'list') {
-      const items = (t.items ?? []).slice(0, 6).map((v) => `<span class="chip">${v.map((x) => (x.t === 'text' ? esc(x.l) : esc(x.l))).join('')}</span>`).join('');
+      const items = (t.items ?? []).slice(0, 6).map((v) => `<span class="chip">${v.map((x) => esc(x.l)).join('')}</span>`).join('');
       const more = (t.items?.length ?? 0) > 6 ? `<span class="chip more">+${t.items!.length - 6} more</span>` : '';
       return `<span class="chips" title="${esc(t.c)}">${items || '<span class="chip more">empty</span>'}${more}</span>`;
     }
@@ -121,14 +131,18 @@ export function initFlow(deps: Deps) {
     return `<table class="tbl"><thead><tr><th></th>${cols.map((c) => `<th>${esc(c)}</th>`).join('')}<th></th></tr></thead><tbody>${rows.join('')}</tbody></table>`;
   };
   const lane = (steps: Step[]) => (steps.length ? steps.map((s) => conn() + node(s)).join('') + conn() : `<div class="b-lane-empty">${conn()}<span class="muted">nothing</span>${conn()}</div>`);
+  /** Steps inside an if or a loop, all levels down. */
+  const inside = (s: Step): number => [...(s.then ?? []), ...(s.else ?? []), ...(s.body ?? [])].reduce((n, x) => n + 1 + inside(x), 0);
   const condHead = (s: Step, label: Part[]) =>
-    `<div class="b-cond${sevClass(s.id)}" data-id="${esc(s.id)}"><span class="ic logic">${icon(ICON[s.icon], 15)}</span><button type="button" class="b-hbtn b-cs" data-open="${esc(s.id)}" aria-expanded="true">${parts(label)}</button><span class="b-tools">${probChip(s.id)}${codeBtn(s.id, 'this')}${goBtn(s.from, s.to)}</span></div>`;
+    `<div class="b-cond${sevClass(s.id)}" data-id="${esc(s.id)}"><span class="ic logic">${icon(ICON[s.icon], 15)}</span><button type="button" class="b-hbtn b-cs" data-fold="${esc(s.id)}" aria-expanded="${!folded.has(s.id)}" title="${folded.has(s.id) ? 'Unfold' : 'Fold'} (Enter)">${parts(label)}${folded.has(s.id) ? `<span class="count">${inside(s)} step${inside(s) === 1 ? '' : 's'} folded</span>` : ''}</button><span class="b-tools">${probChip(s.id)}${codeBtn(s.id, 'this')}${goBtn(s.from, s.to)}</span></div>`;
   const forkNode = (s: Step) => {
+    if (folded.has(s.id) && !asCode.has(s.id)) return condHead(s, ['If', ...(s.cond ?? [])]);
     if (asCode.has(s.id)) return `${condHead(s, ['If', ...(s.cond ?? [])])}${conn()}<div class="b-node">${`<div class="b-body">${code(s.from, s.to)}</div>`}</div>`;
     const branches: [string, string][] = [['Yes', lane(s.then ?? [])], ['No', s.else ? lane(s.else) : `<div class="b-skip muted">skip</div>`]];
     return `<div class="b-forkwrap" style="--n:2">${condHead(s, ['If', ...(s.cond ?? [])])}<div class="b-fork">${branches.map(([l, b]) => `<div class="b-branch"><span class="b-blabel">${l}</span>${b}<div class="b-tail"></div></div>`).join('')}</div><div class="b-join"></div></div>`;
   };
   const loopNode = (s: Step) => {
+    if (folded.has(s.id) && !asCode.has(s.id)) return condHead(s, ['Repeat', ...s.summary]);
     if (asCode.has(s.id)) return `${condHead(s, ['Repeat', ...s.summary])}${conn()}<div class="b-node"><div class="b-body">${code(s.from, s.to)}</div></div>`;
     return `<div class="b-forkwrap" style="--n:1">${condHead(s, ['Repeat', ...s.summary])}<div class="b-loop">${lane(s.body ?? [])}</div></div>`;
   };
@@ -164,7 +178,7 @@ export function initFlow(deps: Deps) {
   const questionsNode = (f: Flow) => {
     if (!f.questions.length) return '';
     const id = 'n-questions';
-    const rows = f.questions.map((q) => `<div class="b-q"><button type="button" class="tok k-opt" data-go="${q.from}:${q.to}" title="${esc(`Context.Options["${q.key}"]`)} (show in the code)">${icon('message-circle-question', 13)}${esc(q.key)}</button> <span>${esc(q.question.length > 64 ? q.question.slice(0, 63) + '…' : q.question)}</span> <span class="muted">${esc(q.answers.length > 8 ? `${q.answers.slice(0, 6).join(' / ')} / … (${q.answers.length})` : q.answers.join(' / '))}</span></div>`).join('');
+    const rows = f.questions.map((q, qi) => `<div class="b-q">${probChip(`q:${qi}`)}<button type="button" class="tok k-opt" data-go="${q.from}:${q.to}" title="${esc(`Context.Options["${q.key}"]`)} (show in the code)">${icon('message-circle-question', 13)}${esc(q.key)}</button> <span>${esc(q.question.length > 64 ? q.question.slice(0, 63) + '…' : q.question)}</span> <span class="muted">${esc(q.answers.length > 8 ? `${q.answers.slice(0, 6).join(' / ')} / … (${q.answers.length})` : q.answers.join(' / '))}</span></div>`).join('');
     return `${conn()}<div class="b-node trigger" data-id="${id}"><div class="b-nh"><span class="b-hbtn"><span class="ic">${icon('message-circle-question', 15)}</span><span class="b-verb">Ask the players</span><span class="count">${f.questions.length} question${f.questions.length === 1 ? '' : 's'}</span></span><span class="b-tools">${helpBtn('Game.AddOption')}</span></div><div class="b-qs">${rows}</div></div>`;
   };
 
@@ -172,12 +186,16 @@ export function initFlow(deps: Deps) {
     if (!open) return;
     const text = deps.editor.getValue();
     flow = readFlow(text);
+    const id = flow.settings.find((x) => x.path === 'Game.GUID') ?? flow.settings.find((x) => x.path === 'Game.GameName');
+    handlerKey = id?.value.map((t) => t.l).join('') ?? '';
     probs = new Map();
     if (flow.ok) {
       for (const d of deps.problems()) {
         const set = flow.settings.find((s) => d.start >= s.from && d.start < s.to);
         const st = set ? undefined : stepAt(flow, d.start);
-        const key = set ? `set:${set.path}` : st?.id;
+        const q = set || st ? -1 : flow.questions.findIndex((x) => d.start >= x.from && d.start < x.to);
+        const cb = set || st || q >= 0 ? undefined : flow.callbacks.find((c) => d.start >= c.from && d.start < c.to);
+        const key = set ? `set:${set.path}` : st ? st.id : q >= 0 ? `q:${q}` : cb?.id;
         if (key) probs.set(key, [...(probs.get(key) ?? []), d]);
       }
       // A group shows its rows' problems while it's closed.
@@ -194,10 +212,10 @@ export function initFlow(deps: Deps) {
       const asC = asCode.has(c.id);
       const end = c.api === 'Game.Play' ? "The player's game starts" : 'Done';
       const steps = asC ? `${conn()}<div class="b-node"><div class="b-body">${code(c.from, c.to)}</div></div>` : c.steps.length ? lane(c.steps) : `${conn()}<div class="b-node ghost empty-node">Nothing happens here yet.</div>`;
-      return `${conn()}<div class="b-trig" data-id="${esc(c.id)}">${icon('play', 15)}<b>${esc(c.label)}</b><span class="b-api">${esc(c.api)}</span>${helpBtn(c.api)}${codeBtn(c.id, 'this callback')}${goBtn(c.from, c.to)}</div>${steps}${asC ? conn() : ''}<div class="b-end">${esc(end)}</div>`;
+      return `${conn()}<div class="b-trig" data-id="${esc(c.id)}">${icon('play', 15)}<b>${esc(c.label)}</b><span class="b-api">${esc(c.api)}</span>${probChip(c.id)}${helpBtn(c.api)}${codeBtn(c.id, 'this callback')}${goBtn(c.from, c.to)}</div>${steps}${asC ? conn() : ''}<div class="b-end">${esc(end)}</div>`;
     });
     const other = flow.other.length ? `${conn()}<div class="b-trig b-other">${icon('code', 15)}<b>Also at the top of the file</b><span class="count">${flow.other.length}</span></div>${lane(flow.other)}` : '';
-    root.innerHTML = `<div class="b-bar"><span class="b-title">Flow</span><span class="muted b-note" title="Flow is read from the code. Editing here comes later.">Read-only for now</span><span class="sp"></span><button type="button" class="btn" data-openall>Open all</button><button type="button" class="btn" data-leave title="Back to the code (${'Ctrl+K V'})">Code</button></div><div class="b-canvas"><div class="b-flow"><div class="b-start">${icon('flag', 15)}Nucleus loads the handler</div>${conn()}${settingsNode(flow)}${questionsNode(flow)}${other}${cbs.join('')}</div></div>`;
+    root.innerHTML = `<div class="b-bar"><span class="b-title">Flow</span><span class="muted b-note" title="Flow is read from the code. Editing here comes later.">Read-only for now</span><span class="sp"></span><button type="button" class="btn" data-openall>${allOpen ? 'Close all' : 'Open all'}</button><button type="button" class="btn" data-leave title="Back to the code (${'Ctrl+K V'})">Code</button></div><div class="b-canvas"><div class="b-flow"><div class="b-start">${icon('flag', 15)}Nucleus loads the handler</div>${conn()}${settingsNode(flow)}${questionsNode(flow)}${other}${cbs.join('')}</div></div>`;
     root.scrollTop = scrollTop;
   };
 
@@ -233,25 +251,35 @@ export function initFlow(deps: Deps) {
     if (open) setOpen(false);
   });
   // Another tab, or the code changed (an undo, a fix): drawn again.
-  deps.editor.on('swapDoc', refresh);
+  deps.editor.on('swapDoc', () => {
+    // Another handler: what was opened or folded was this one's.
+    opened.clear();
+    folded.clear();
+    allOpen = false;
+    refresh();
+  });
   deps.editor.on('changes', refresh);
   btn.addEventListener('click', toggle);
 
   root.addEventListener('click', (e) => {
-    const t = (e.target as HTMLElement).closest<HTMLElement>('button, .tok[data-ref]');
+    // A pill inside a button (an if's head) is part of that button; one on its own opens its docs.
+    const el = e.target as HTMLElement;
+    const t = el.closest<HTMLElement>('button') ?? el.closest<HTMLElement>('.tok[data-ref]');
     if (!t) return;
     if (t.hasAttribute('data-leave')) return setOpen(false, true);
     if (t.hasAttribute('data-openall')) {
       if (!flow) return;
-      const every = ['n-settings', ...allSteps(flow).filter((s) => s.kind !== 'if' && s.kind !== 'loop').map((s) => s.id)];
-      const anyClosed = every.some((id) => !opened.has(id));
-      for (const id of every) anyClosed ? opened.add(id) : opened.delete(id);
+      allOpen = !allOpen;
+      for (const id of ['n-settings', ...allSteps(flow).filter((x) => x.kind !== 'if' && x.kind !== 'loop').map((x) => x.id)]) allOpen ? opened.add(id) : opened.delete(id);
+      if (allOpen) folded.clear();
       render();
-      const b = root.querySelector<HTMLElement>('[data-openall]');
-      if (b) {
-        b.textContent = anyClosed ? 'Close all' : 'Open all';
-        b.focus();
-      }
+      root.querySelector<HTMLElement>('[data-openall]')?.focus();
+      return;
+    }
+    if (t.dataset.fold) {
+      folded.has(t.dataset.fold) ? folded.delete(t.dataset.fold) : folded.add(t.dataset.fold);
+      render();
+      root.querySelector<HTMLElement>(`[data-fold="${CSS.escape(t.dataset.fold)}"]`)?.focus();
       return;
     }
     const go = t.dataset.go;

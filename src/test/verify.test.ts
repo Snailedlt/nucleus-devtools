@@ -101,3 +101,22 @@ test("verify: a different player count is said, not counted as a problem; what w
   assert.equal(r.ok, true);
   assert.match(formatVerify(r), /Not checked: the game windows/);
 });
+
+test("verify: another split than Try it's (top and bottom) is the player's choice, not a problem", () => {
+  const r = verifySession({ sim: sim2(), seen: seen([{ x: 0, y: 0, width: 1920, height: 540 }, { x: 0, y: 540, width: 1920, height: 540 }]) });
+  assert.equal(r.ok, true, formatVerify(r));
+  assert.ok(r.findings.some((f) => f.severity === 'info' && /top and bottom/.test(f.message)));
+  // One window per screen, on two screens
+  const two = verifySession({
+    sim: sim2(),
+    seen: { exe: 'TestGame.exe', processes: [{ pid: 1, name: 'TestGame.exe' }, { pid: 2, name: 'TestGame.exe' }], windows: [{ pid: 1, title: '', rect: screen, monitor: screen }, { pid: 2, title: '', rect: { x: 1920, y: 0, width: 1920, height: 1080 }, monitor: { x: 1920, y: 0, width: 1920, height: 1080 } }] },
+  });
+  assert.equal(two.ok, true, formatVerify(two));
+});
+
+test('verify: nothing to compare is not a match; the session time is said', () => {
+  const r = verifySession({ sim: sim2() });
+  assert.equal(r.ok, false);
+  assert.match(formatVerify(r), /nothing to compare/);
+  assert.match(formatVerify(verifySession({ sim: sim2(), log: parseDebugLog(LOG) })), /Session started 2026-11-25 11:00:00/);
+});
