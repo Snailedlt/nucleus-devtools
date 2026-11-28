@@ -2111,14 +2111,6 @@ Game.SteamlessArgs = "--quiet --keepbind";
 ### Game.SteamlessPatch
 `SteamlessPatch: string[]`
 bool apply to launcher,string Steamless Args,int wait for exe patching finished.
-Example (From Hub handlers):
-```js
-Game.SteamlessPatch = [
-  "false",
-  "--quiet --keepbind",
-  "5000"
-];
-```
 
 ### Game.SteamlessTiming
 `SteamlessTiming: number`
@@ -2735,11 +2727,7 @@ Game.Hook.XInputEnabled = true;
 ### Game.Hook.XInputNames
 `XInputNames: string[]`
 default `new string[]`
-Which XInput DLLs the custom DLL replaces. DInput DLLs are not supported.
-Example:
-```js
-Game.Hook.XInputNames = ["xinput1_3.dll"];
-```
+The name of our custom DLL for gamepad control, some games need other names like xinput1_4.dll, xinput1_2.dll, xinput1_1.dll and xinput9_1_0.dll.
 
 ### Game.Hook.XInputReroute
 `XInputReroute: boolean`

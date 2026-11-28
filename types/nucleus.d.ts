@@ -600,8 +600,6 @@ interface Game {
   SteamlessTiming: number;
   /**
    * bool apply to launcher,string Steamless Args,int wait for exe patching finished.
-   * From Hub handlers:
-   * @example Game.SteamlessPatch = ["false", "--quiet --keepbind", "5000"];
    */
   SteamlessPatch: string[];
   /**
@@ -1769,9 +1767,8 @@ interface GameHook {
    */
   SDL2Enabled: boolean;
   /**
-   * Which XInput DLLs the custom DLL replaces. DInput DLLs are not supported.
+   * The name of our custom DLL for gamepad control, some games need other names like xinput1_4.dll, xinput1_2.dll, xinput1_1.dll and xinput9_1_0.dll.
    * @default new string[]
-   * @example Game.Hook.XInputNames = [ "xinput1_3.dll"];
    */
   XInputNames: string[];
   /**
